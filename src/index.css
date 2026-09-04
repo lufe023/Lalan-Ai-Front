@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Playfair Display', Georgia, serif;
+    
+    /* Dynamic 3-Color Triad */
+    --primary: #c46b7c;
+    --primary-light-val: #fce7ef;
+    --primary-dark-val: #a31d4d;
+    --primary-gradient: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    
+    --secondary: #a58fe3;
+    --secondary-light-val: #f3e8ff;
+    --secondary-dark-val: #6b21a8;
+
+    --accent: #a58fe3;
+    --accent-light-val: #ede9fe;
+    --accent-dark-val: #6d28d9;
+
+    --tertiary: #d4a853;
+    --tertiary-light-val: #fef9c3;
+    --tertiary-dark-val: #854d0e;
+    
+    --ios-bg: #f8fafc;
+    --ios-card: rgba(255, 255, 255, 0.95);
+    --ios-card-solid: #ffffff;
+    --ios-border: rgba(0, 0, 0, 0.08);
+    --ios-text: #0f172a;
+    --ios-text-secondary: #64748b;
+    --ios-glass: rgba(255, 255, 255, 0.82);
+  }
+
+  .dark {
+    --ios-bg: #09090b;
+    --ios-card: rgba(24, 24, 27, 0.9);
+    --ios-card-solid: #18181b;
+    --ios-border: rgba(255, 255, 255, 0.1);
+    --ios-text: #f8fafc;
+    --ios-text-secondary: #94a3b8;
+    --ios-glass: rgba(18, 18, 22, 0.85);
+  }
+}
+
+/* Custom iOS Utilities & Animations */
+.glass-ios {
+  background: var(--ios-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--ios-border);
+}
+
+.glass-nav {
+  background: var(--ios-glass);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Smooth spring ease for iOS feel */
+.ios-spring {
+  transition: all 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* iOS active tap effect */
+.ios-touch {
+  transition: transform 0.12s cubic-bezier(0.2, 0, 0, 1), opacity 0.12s ease;
+}
+.ios-touch:active {
+  transform: scale(0.96);
+  opacity: 0.88;
+}
+
+.font-display {
+  font-family: 'Playfair Display', Georgia, serif;
+}

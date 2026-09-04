@@ -1,0 +1,6 @@
+{
+  "name": "Lalan AI",
+  "description": "Live Assistant for Logistics, Appointments & Networks - Aplicación móvil inteligente para gestión de salón, citas, hospitalidad y comunicación.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
