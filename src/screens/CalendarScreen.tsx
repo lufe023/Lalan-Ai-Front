@@ -25,6 +25,7 @@ import { Appointment, AppointmentStatus, CommunicationChannel, ServiceCategory }
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
+import { PageContent } from '../components/ui/PageContent';
 
 export const CalendarScreen: React.FC = () => {
   const {
@@ -227,7 +228,7 @@ export const CalendarScreen: React.FC = () => {
         }
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-8 space-y-3.5">
+      <PageContent className="space-y-3.5">
         {/* Horizontal iOS Date Picker */}
         <div className="flex items-center justify-between gap-1.5 p-1 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs">
           {daysList.map(day => {
@@ -355,7 +356,7 @@ export const CalendarScreen: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
+      </PageContent>
 
       {/* Appointment Detail Modal */}
       <IOSModal

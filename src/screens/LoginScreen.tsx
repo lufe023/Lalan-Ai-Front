@@ -1,244 +1,148 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import {
-  Sparkles,
-  ShieldCheck,
-  UserCheck,
-  Headphones,
-  CheckCircle2,
-  ArrowRight,
-  Flower2,
-  KeyRound,
-  Lock,
-  Bot,
-} from 'lucide-react';
-import { useAuth, PROFILES } from '../context/AuthContext';
+import { Sparkles, Flower2, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
-import { UserRole } from '../types';
 
 export const LoginScreen: React.FC = () => {
-  const { loginAs } = useAuth();
+  const { login } = useAuth();
   const { showToast, navigateTo } = useApp();
-  const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleQuickLogin = (role: UserRole) => {
-    loginAs(role);
-    const profile = PROFILES[role];
-    showToast(
-      `¡Bienvenida/o ${profile.name}!`,
-      `Has iniciado sesión con el rol de ${profile.roleTitle}.`,
-      'success'
-    );
-    // Navigate to appropriate primary screen based on role
-    if (role === 'assistant') {
-      navigateTo('calendar');
-    } else if (role === 'support') {
-      navigateTo('bots');
-    } else {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) { setError('Ingresa tu correo y contraseña.'); return; }
+    setError('');
+    setLoading(true);
+    try {
+      await login({ email, password });
+      showToast('¡Bienvenida/o!', 'Sesión iniciada correctamente.', 'success');
       navigateTo('dashboard');
+    } catch (err: any) {
+      setError(err?.message === 'Invalid credentials' ? 'Credenciales incorrectas.' : (err?.message ?? 'Error al iniciar sesión.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await login({ email: 'admin@lalan.ai', password: 'Admin1234!' });
+      showToast('¡Bienvenida/o!', 'Sesión iniciada correctamente.', 'success');
+      navigateTo('dashboard');
+    } catch (err: any) {
+      setError(err?.message ?? 'Error al iniciar sesión.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div
       id="login-screen"
-      className="flex-1 w-full h-full overflow-y-auto hide-scrollbar p-5 flex flex-col justify-between select-none"
+      className="flex-1 w-full h-full overflow-y-auto hide-scrollbar flex flex-col items-center justify-center p-6 select-none"
     >
-      {/* Top Brand Header */}
-      <div className="flex flex-col items-center text-center pt-3 pb-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-indigo-500 p-0.5 shadow-lg mb-3 flex items-center justify-center">
-          <div className="w-full h-full rounded-[14px] bg-white dark:bg-neutral-900 flex items-center justify-center">
-            <Bot className="w-8 h-8 text-[var(--primary)]" />
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+        className="w-full max-w-sm"
+      >
+        {/* Brand */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-indigo-500 p-0.5 shadow-lg mb-4 flex items-center justify-center">
+            <div className="w-full h-full rounded-[14px] bg-white dark:bg-neutral-900 flex items-center justify-center">
+              <Flower2 className="w-7 h-7 text-[var(--primary)]" />
+            </div>
           </div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Lalan AI</h1>
+          <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">Studio & Lounge · Gestión inteligente</p>
         </div>
 
-        <h1 className="text-2xl font-bold font-display text-slate-900 dark:text-white tracking-tight">
-          Lalan AI
-        </h1>
-        <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1 max-w-xs font-medium">
-          Live Assistant for Logistics, Appointments & Networks
-        </p>
-      </div>
-
-      {/* Role Selection / Quick Access Section */}
-      <div className="my-auto space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[var(--primary)]" />
-            Acceso Rápido por Perfil (Mock Login)
-          </span>
-          <span className="text-[10px] text-slate-400 font-medium">1-Tap Login</span>
-        </div>
-
-        {/* 3 Quick Access Role Cards */}
-        <div className="space-y-2.5">
-          {/* Card 1: Alanny (Admin) */}
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSelectedRole('admin')}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
-              selectedRole === 'admin'
-                ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-500/60 shadow-md ring-2 ring-rose-500/30'
-                : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 hover:border-slate-300'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <img
-                src={PROFILES.admin.avatar}
-                alt="Alanny"
-                className="w-12 h-12 rounded-full object-cover border-2 border-rose-500/50 shadow-xs"
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-neutral-400 mb-1.5">
+              Correo electrónico
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="email"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError(''); }}
+                placeholder="tu@correo.com"
+                autoComplete="email"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 transition"
               />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">Alanny</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" />
-                      Administradora
-                    </span>
-                  </div>
-                  {selectedRole === 'admin' && (
-                    <CheckCircle2 className="w-4 h-4 text-rose-500 fill-rose-500 text-white" />
-                  )}
-                </div>
-
-                <p className="text-[11px] text-slate-600 dark:text-neutral-300 mt-1 leading-snug">
-                  Acceso total: Métricas financieras, configuración de bots Meta y gestión global.
-                </p>
-
-                <div className="mt-2 flex flex-wrap gap-1">
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Métricas & Ganancias
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Control de Bots
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Toda la Agenda
-                  </span>
-                </div>
-              </div>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Card 2: Alan (Assistant) */}
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSelectedRole('assistant')}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
-              selectedRole === 'assistant'
-                ? 'bg-sky-50/80 dark:bg-sky-950/30 border-sky-500/60 shadow-md ring-2 ring-sky-500/30'
-                : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 hover:border-slate-300'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <img
-                src={PROFILES.assistant.avatar}
-                alt="Alan"
-                className="w-12 h-12 rounded-full object-cover border-2 border-sky-500/50 shadow-xs"
+          {/* Password */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-neutral-400 mb-1.5">
+              Contraseña
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setError(''); }}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 transition"
               />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">Alan</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center gap-1">
-                      <UserCheck className="w-3 h-3" />
-                      Asistente
-                    </span>
-                  </div>
-                  {selectedRole === 'assistant' && (
-                    <CheckCircle2 className="w-4 h-4 text-sky-500 fill-sky-500 text-white" />
-                  )}
-                </div>
-
-                <p className="text-[11px] text-slate-600 dark:text-neutral-300 mt-1 leading-snug">
-                  Acceso a la agenda del salón, confirmación de citas y atención de chats directos.
-                </p>
-
-                <div className="mt-2 flex flex-wrap gap-1">
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Calendario y Citas
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Inbox WhatsApp / IG
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Tomar Control Manual
-                  </span>
-                </div>
-              </div>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Card 3: Lufe (Technical Support) */}
-          <motion.div
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSelectedRole('support')}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
-              selectedRole === 'support'
-                ? 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-500/60 shadow-md ring-2 ring-purple-500/30'
-                : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 hover:border-slate-300'
-            }`}
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 text-xs"
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {error}
+            </motion.div>
+          )}
+
+          {/* Submit */}
+          <button
+            id="login-submit-button"
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-md hover:opacity-90 active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
-            <div className="flex items-start gap-3">
-              <img
-                src={PROFILES.support.avatar}
-                alt="Lufe"
-                className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/50 shadow-xs"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">Lufe</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                      <Headphones className="w-3 h-3" />
-                      Soporte Técnico
-                    </span>
-                  </div>
-                  {selectedRole === 'support' && (
-                    <CheckCircle2 className="w-4 h-4 text-purple-500 fill-purple-500 text-white" />
-                  )}
-                </div>
+            {loading ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Iniciando sesión...</>
+            ) : (
+              <><Sparkles className="w-4 h-4" /> Iniciar sesión</>
+            )}
+          </button>
+        </form>
 
-                <p className="text-[11px] text-slate-600 dark:text-neutral-300 mt-1 leading-snug">
-                  Acceso a configuraciones avanzadas del sistema, Meta Webhooks, logs y bots.
-                </p>
-
-                <div className="mt-2 flex flex-wrap gap-1">
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Meta Graph API & Webhooks
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Telemetría & Logs
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium">
-                    ✓ Configuración de Servidor
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Action Button */}
-      <div className="pt-4 pb-2">
+        {/* Dev quick-login */}
         <button
-          id="login-submit-button"
-          onClick={() => handleQuickLogin(selectedRole)}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 ios-touch cursor-pointer hover:opacity-95"
+          type="button"
+          onClick={handleQuickLogin}
+          disabled={loading}
+          className="w-full mt-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] text-slate-400 dark:text-neutral-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-40 cursor-pointer"
         >
-          <span>Ingresar como {PROFILES[selectedRole].name}</span>
-          <ArrowRight className="w-4 h-4" />
+          ⚡ Admin rápido
         </button>
 
-        <p className="text-[11px] text-center text-slate-400 mt-2">
-          Diseñado para Expo Router & React Native en iOS 18
+        <p className="text-center text-[11px] text-slate-400 dark:text-neutral-600 mt-4">
+          Gomez Santana Solutions Group SRL · Lalan AI v2.0
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -53,6 +53,9 @@ export interface SalonProduct {
   sku: string;
   basePrice: number;
   stock: number;
+  unit: string;        // ml | g | oz | L | unit
+  unitQty?: number;    // contenido por unidad (ej: 15 ml por botella)
+  unitQtyUnit?: string; // unidad del contenido (ml, g, oz, L)
   image?: string;
   description: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
@@ -102,6 +105,7 @@ export interface Client {
   totalSpent: number;
   lastVisitDate?: string;
   registeredDate: string;
+  priceListId?: string;  // lista de precios asignada (undefined = default)
 }
 
 export type AppointmentStatus = 'confirmed_by_ai' | 'attending' | 'completed' | 'cancelled' | 'pending';

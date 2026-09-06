@@ -28,6 +28,7 @@ import { useAuth } from '../context/AuthContext';
 import { Client, ClientTag, CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
+import { PageContent } from '../components/ui/PageContent';
 
 export const ClientsScreen: React.FC = () => {
   const {
@@ -46,6 +47,9 @@ export const ClientsScreen: React.FC = () => {
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('all');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string }>({});
+  const [formApiError, setFormApiError] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
 
   // Form State for New / Edit Client
@@ -134,48 +138,62 @@ export const ClientsScreen: React.FC = () => {
     });
   };
 
-  const handleSaveClient = (e: React.FormEvent) => {
+  const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
-
-    if (isEditing && selectedClient) {
-      updateClient(selectedClient.id, {
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        preferredChannel: formData.preferredChannel,
-        tags: formData.tags,
-        beautyNotes: formData.beautyNotes,
-        medicalOrAllergyNotes: formData.medicalOrAllergyNotes,
-      });
-      setSelectedClient({
-        ...selectedClient,
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        preferredChannel: formData.preferredChannel,
-        tags: formData.tags,
-        beautyNotes: formData.beautyNotes,
-        medicalOrAllergyNotes: formData.medicalOrAllergyNotes,
-      });
-    } else {
-      const created = addClient({
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        avatar:
-          formData.avatar ||
-          `https://images.unsplash.com/photo-${1534528741775 + (clients.length % 7)}?w=150&auto=format&fit=crop&q=80`,
-        preferredChannel: formData.preferredChannel,
-        tags: formData.tags,
-        beautyNotes: formData.beautyNotes,
-        medicalOrAllergyNotes: formData.medicalOrAllergyNotes,
-        totalVisits: 0,
-        totalSpent: 0,
-      });
-      setSelectedClient(created);
+    // Client-side validation
+    const errors: { name?: string; phone?: string } = {};
+    if (!formData.name.trim()) errors.name = 'El nombre es obligatorio.';
+    if (!formData.phone.trim()) errors.phone = 'El teléfono es obligatorio.';
+    else if (!/^[+\d][\d\s\-().]{5,}$/.test(formData.phone.trim())) errors.phone = 'Ingresa un teléfono válido.';
+    if (Object.keys(errors).length) { setFormErrors(errors); return; }
+    setFormErrors({});
+    setFormApiError('');
+    setIsSaving(true);
+    try {
+      if (isEditing && selectedClient) {
+        await updateClient(selectedClient.id, {
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim(),
+          preferredChannel: formData.preferredChannel,
+          tags: formData.tags,
+          beautyNotes: formData.beautyNotes.trim(),
+          medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
+        });
+        setSelectedClient({
+          ...selectedClient,
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim(),
+          preferredChannel: formData.preferredChannel,
+          tags: formData.tags,
+          beautyNotes: formData.beautyNotes.trim(),
+          medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
+        });
+      } else {
+        const created = await addClient({
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim(),
+          avatar:
+            formData.avatar ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name.trim())}&background=e2e8f0&color=475569`,
+          preferredChannel: formData.preferredChannel,
+          tags: formData.tags,
+          beautyNotes: formData.beautyNotes.trim(),
+          medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
+          totalVisits: 0,
+          totalSpent: 0,
+        });
+        setSelectedClient(created);
+        showToast('Clienta registrada', `${formData.name.trim()} ha sido añadida a tu CRM.`, 'success');
+      }
+      setShowAddModal(false);
+    } catch (err: any) {
+      setFormApiError(err?.message ?? 'Ocurrió un error. Intenta de nuevo.');
+    } finally {
+      setIsSaving(false);
     }
-    setShowAddModal(false);
   };
 
   const getTagBadge = (tag: ClientTag) => {
@@ -224,7 +242,7 @@ export const ClientsScreen: React.FC = () => {
         }
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6 space-y-3.5">
+      <PageContent className="space-y-3.5">
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -348,7 +366,7 @@ export const ClientsScreen: React.FC = () => {
             ))}
           </div>
         )}
-      </div>
+      </PageContent>
 
       {/* Client Detail Sheet / Modal */}
       <IOSModal
@@ -580,34 +598,59 @@ export const ClientsScreen: React.FC = () => {
         title={isEditing ? 'Editar Datos de Clienta' : 'Registrar Nueva Clienta'}
         subtitle="Lalan AI CRM & Ficha Personalizada"
       >
-        <form onSubmit={handleSaveClient} className="space-y-3 text-xs select-none">
+        <form onSubmit={handleSaveClient} noValidate className="space-y-3 text-xs select-none">
+
+          {/* API error banner */}
+          {formApiError && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[11px] font-medium">
+              <span className="mt-0.5 shrink-0">⚠️</span>
+              <span>{formApiError}</span>
+            </div>
+          )}
+
+          {/* Nombre */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Nombre Completo *
+              Nombre Completo <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
-              required
+              autoFocus
               placeholder="Ej: Luciana Gómez"
               value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              onChange={e => { setFormData({ ...formData, name: e.target.value }); setFormErrors(fe => ({ ...fe, name: '' })); }}
+              className={`w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition ${
+                formErrors.name ? 'border-rose-400 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/20' : 'border-slate-200 dark:border-neutral-700'
+              }`}
             />
+            {formErrors.name && (
+              <p className="mt-1 text-[10px] text-rose-500 font-semibold flex items-center gap-1">
+                <span>●</span> {formErrors.name}
+              </p>
+            )}
           </div>
 
+          {/* Teléfono + Canal */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Teléfono / WhatsApp *
+                Teléfono <span className="text-rose-500">*</span>
               </label>
               <input
                 type="tel"
-                required
-                placeholder="+52 55 0000 0000"
+                inputMode="tel"
+                placeholder="+58 414 000 0000"
                 value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                onChange={e => { setFormData({ ...formData, phone: e.target.value }); setFormErrors(fe => ({ ...fe, phone: '' })); }}
+                className={`w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition ${
+                  formErrors.phone ? 'border-rose-400 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/20' : 'border-slate-200 dark:border-neutral-700'
+                }`}
               />
+              {formErrors.phone && (
+                <p className="mt-1 text-[10px] text-rose-500 font-semibold flex items-center gap-1">
+                  <span>●</span> {formErrors.phone}
+                </p>
+              )}
             </div>
 
             <div>
@@ -617,32 +660,35 @@ export const ClientsScreen: React.FC = () => {
               <select
                 value={formData.preferredChannel}
                 onChange={e => setFormData({ ...formData, preferredChannel: e.target.value as any })}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition"
               >
-                <option value="whatsapp">WhatsApp Business</option>
-                <option value="instagram">Instagram Direct</option>
-                <option value="messenger">Facebook Messenger</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="instagram">Instagram</option>
+                <option value="messenger">Messenger</option>
               </select>
             </div>
           </div>
 
+          {/* Email */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Correo Electrónico (Opcional)
+              Correo Electrónico
+              <span className="ml-1 font-normal text-slate-400">(opcional)</span>
             </label>
             <input
               type="email"
+              inputMode="email"
               placeholder="cliente@ejemplo.com"
               value={formData.email}
               onChange={e => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition"
             />
           </div>
 
-          {/* Tags Selector */}
+          {/* Tags */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Etiquetas de Categorización
+              Perfil de Clienta
             </label>
             <div className="grid grid-cols-2 gap-1.5">
               {availableTags.map(tag => {
@@ -655,7 +701,7 @@ export const ClientsScreen: React.FC = () => {
                     className={`px-2 py-1.5 rounded-xl text-[11px] font-bold text-left border flex items-center gap-1.5 transition ios-touch cursor-pointer ${
                       isSelected
                         ? `${tag.colorClass} border-current ring-1 ring-current`
-                        : 'bg-slate-50 dark:bg-neutral-800/40 text-slate-500 border-slate-200 dark:border-neutral-700'
+                        : 'bg-slate-50 dark:bg-neutral-800/40 text-slate-500 border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
                     }`}
                   >
                     <span>{tag.icon}</span>
@@ -669,36 +715,53 @@ export const ClientsScreen: React.FC = () => {
           {/* Beauty Notes */}
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Preferencias de Belleza (Uñas, Tonos, Aromas)
+              Preferencias de Belleza
+              <span className="ml-1 font-normal text-slate-400">(uñas, tonos, aromas)</span>
             </label>
             <textarea
               rows={2}
-              placeholder="Ej: Prefiere punta coffin #2, tono baby boomer, aromaterapia de lavanda..."
+              placeholder="Ej: Punta coffin, tono baby boomer, aromaterapia lavanda…"
               value={formData.beautyNotes}
               onChange={e => setFormData({ ...formData, beautyNotes: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition resize-none"
             />
           </div>
 
           {/* Medical Notes */}
           <div>
-            <label className="block text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-1">
-              ⚠️ Alergias o Cuidados Especiales
+            <label className="block text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1">
+              <span>⚠️</span> Alergias o Cuidados Especiales
             </label>
             <textarea
               rows={2}
-              placeholder="Ej: Alergia a acetona pura, piel reactiva a la parafina caliente..."
+              placeholder="Ej: Alergia a acetona pura, piel reactiva a la parafina…"
               value={formData.medicalOrAllergyNotes}
               onChange={e => setFormData({ ...formData, medicalOrAllergyNotes: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-slate-900 dark:text-white focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition resize-none"
             />
           </div>
 
+          {/* Hint line */}
+          <p className="text-[10px] text-slate-400 dark:text-neutral-600 text-center">
+            Los campos marcados con <span className="text-rose-500 font-bold">*</span> son obligatorios.
+          </p>
+
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer mt-2"
+            disabled={isSaving}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer mt-1 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition"
           >
-            {isEditing ? 'Guardar Cambios' : 'Registrar Clienta'}
+            {isSaving ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                {isEditing ? 'Guardando…' : 'Registrando…'}
+              </>
+            ) : (
+              isEditing ? '✓ Guardar Cambios' : '✨ Registrar Clienta'
+            )}
           </button>
         </form>
       </IOSModal>

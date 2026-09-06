@@ -21,6 +21,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
+import { PageContent } from '../components/ui/PageContent';
 
 export const DashboardScreen: React.FC = () => {
   const { metricsPeriod, setMetricsPeriod, currentMetrics, navigateTo, appointments } = useApp();
@@ -51,7 +52,7 @@ export const DashboardScreen: React.FC = () => {
         subtitle="Rendimiento y logística en tiempo real"
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-8 space-y-4">
+      <PageContent className="space-y-4 lg:space-y-6">
         {/* Segmented Control for Period Selection */}
         <div className="pt-1">
           <IOSSegmentedControl
@@ -64,7 +65,7 @@ export const DashboardScreen: React.FC = () => {
         </div>
 
         {/* Hero Revenue & Client Metrics Inset Group */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:gap-4">
           {/* Card 1: Revenue */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -76,7 +77,7 @@ export const DashboardScreen: React.FC = () => {
             </span>
 
             <div className="my-2.5">
-              <div className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <div className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 ${currentMetrics.totalRevenue.toLocaleString()}
               </div>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
@@ -99,7 +100,7 @@ export const DashboardScreen: React.FC = () => {
             </span>
 
             <div className="my-2.5">
-              <div className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <div className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {currentMetrics.clientsCount}
               </div>
               <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
@@ -155,7 +156,7 @@ export const DashboardScreen: React.FC = () => {
           </div>
 
           {/* Minimalist Bar Chart */}
-          <div className="pt-2 pb-1 flex items-end justify-between gap-2.5 h-24">
+          <div className="pt-2 pb-1 flex items-end justify-between gap-2.5 h-24 lg:h-36">
             {currentMetrics.peakHours.map((item, idx) => {
               const isPeak = item.busynessScore >= 85;
               return (
@@ -251,7 +252,7 @@ export const DashboardScreen: React.FC = () => {
             ))}
           </div>
         </div>
-      </div>
+      </PageContent>
     </div>
   );
 };

@@ -21,12 +21,13 @@ import {
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { useApp } from '../context/AppContext';
-import { useAuth, PROFILES } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { CommunicationChannel, ThemeMode, UserRole, ThemePalettePreset } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { IOSModal } from '../components/ui/IOSModal';
 import { ThemeCustomizerModal } from '../components/ui/ThemeCustomizerModal';
+import { PageContent } from '../components/ui/PageContent';
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -54,7 +55,7 @@ export const SettingsScreen: React.FC = () => {
     showToast,
   } = useApp();
 
-  const { currentUser, switchUser, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
 
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showCustomPickers, setShowCustomPickers] = useState(isCustomPalette);
@@ -119,7 +120,7 @@ export const SettingsScreen: React.FC = () => {
         subtitle="Temas, colores de marca, mensajes automatizados y perfil"
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-8 space-y-4 text-xs select-none">
+      <PageContent className="space-y-4 text-xs select-none">
         {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
@@ -656,7 +657,7 @@ export const SettingsScreen: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
+      </PageContent>
 
       {/* System Logs Bottom Sheet Modal */}
       <IOSModal

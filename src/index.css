@@ -84,3 +84,18 @@
 .font-display {
   font-family: 'Playfair Display', Georgia, serif;
 }
+/* ── Viewport height: use dynamic (accounts for mobile browser chrome) ── */
+.h-dvh {
+  height: 100vh;           /* fallback */
+  height: 100dvh;          /* dynamic: excludes browser chrome on mobile */
+}
+
+/* ── Safe-area padding for iPhone tab bar / home indicator ── */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pb-safe-tab {
+  /* Ensures tab bar stays above home indicator AND Safari nav bar */
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+

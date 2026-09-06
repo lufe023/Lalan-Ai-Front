@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSToggle } from '../components/ui/IOSToggle';
+import { PageContent } from '../components/ui/PageContent';
 
 export const BotsControlScreen: React.FC = () => {
   const { botConfigs, toggleBotChannel, settings, updateSettings, showToast, addSystemLog } = useApp();
@@ -67,7 +68,7 @@ export const BotsControlScreen: React.FC = () => {
         subtitle="Control independiente de IA para WhatsApp, Instagram y Messenger"
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6 space-y-4">
+      <PageContent className="space-y-4">
         {/* Meta Server Connection Health Status */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-slate-100 to-sky-500/10 dark:from-emerald-950/30 dark:via-neutral-900 dark:to-sky-950/30 border border-emerald-500/30 flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-3">
@@ -257,7 +258,7 @@ export const BotsControlScreen: React.FC = () => {
             </select>
           </div>
         </div>
-      </div>
+      </PageContent>
     </div>
   );
 };

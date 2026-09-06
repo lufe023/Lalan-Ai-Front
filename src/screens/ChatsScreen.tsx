@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { CommunicationChannel, ChatStatus, Conversation } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSToggle } from '../components/ui/IOSToggle';
+import { PageContent } from '../components/ui/PageContent';
 
 export const ChatsScreen: React.FC = () => {
   const {
@@ -287,7 +288,7 @@ export const ChatsScreen: React.FC = () => {
         subtitle={`${conversations.length} conversaciones activas`}
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6 space-y-3">
+      <PageContent className="space-y-3">
         {/* Search Bar */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -381,7 +382,7 @@ export const ChatsScreen: React.FC = () => {
             </motion.div>
           ))}
         </div>
-      </div>
+      </PageContent>
     </div>
   );
 };

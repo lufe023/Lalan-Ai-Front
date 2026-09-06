@@ -23,12 +23,13 @@ import {
   X,
   Eye,
 } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useApp, ServiceIngredient } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
+import { PageContent } from '../components/ui/PageContent';
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -42,6 +43,9 @@ export const CatalogScreen: React.FC = () => {
     updateProduct,
     deleteProduct,
     toggleProductAi,
+    showToast,
+    loadIngredients,
+    saveIngredients,
   } = useApp();
   const { currentUser } = useAuth();
 
@@ -51,9 +55,22 @@ export const CatalogScreen: React.FC = () => {
 
   // Modals
   const [showServiceModal, setShowServiceModal] = useState(false);
+  const [isSavingService, setIsSavingService] = useState(false);
+  const [serviceApiError, setServiceApiError] = useState('');
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [productApiError, setProductApiError] = useState('');
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
+  // ── Ingredient state ──────────────────────────────────────────────────────
+  const [serviceModalTab, setServiceModalTab] = useState<'config' | 'recipe'>('config');
+  const [ingredients, setIngredients] = useState<ServiceIngredient[]>([]);
+  const [ingredientPickerProductId, setIngredientPickerProductId] = useState('');
+  const [ingredientQty, setIngredientQty] = useState('1');
+  const [ingredientUnit, setIngredientUnit] = useState('unit');
+  const [ingredientNotes, setIngredientNotes] = useState('');
+  const [isSavingIngredients, setIsSavingIngredients] = useState(false);
 
   // Form State for Service
   const [serviceForm, setServiceForm] = useState<{
@@ -90,6 +107,9 @@ export const CatalogScreen: React.FC = () => {
     sku: string;
     basePrice: number;
     stock: number;
+    unit: string;
+    unitQty: string;
+    unitQtyUnit: string;
     image: string;
     description: string;
     aiAvailable: boolean;
@@ -101,6 +121,9 @@ export const CatalogScreen: React.FC = () => {
     sku: 'PROD-',
     basePrice: 20,
     stock: 15,
+    unit: 'unit',
+    unitQty: '',
+    unitQtyUnit: 'ml',
     image: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=150&auto=format&fit=crop&q=80',
     description: '',
     aiAvailable: true,
@@ -165,6 +188,12 @@ export const CatalogScreen: React.FC = () => {
         { id: `tier_${Date.now()}_2`, name: 'Tarifa VIP / Frecuente', price: 30, description: 'Descuento clienta regular' },
       ],
     });
+    setServiceModalTab('config');
+    setIngredients([]);
+    setIngredientPickerProductId('');
+    setIngredientQty('1');
+    setIngredientUnit('unit');
+    setIngredientNotes('');
     setShowServiceModal(true);
   };
 
@@ -180,10 +209,19 @@ export const CatalogScreen: React.FC = () => {
       color: service.color,
       description: service.description || '',
       aiAvailable: service.aiAvailable,
-      priceTiers: service.priceTiers.length > 0 ? service.priceTiers : [
-        { id: `tier_${Date.now()}`, name: 'Precio Base', price: service.price, isDefault: true }
-      ],
+      priceTiers: (() => {
+        const valid = (service.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t));
+        return valid.length > 0 ? valid : [{ id: `tier_${Date.now()}`, name: 'Precio Base', price: service.price, isDefault: true }];
+      })(),
     });
+    setServiceModalTab('config');
+    setIngredients([]);
+    setIngredientPickerProductId('');
+    setIngredientQty('1');
+    setIngredientUnit('unit');
+    setIngredientNotes('');
+    // Load existing ingredients async
+    loadIngredients(service.id).then(setIngredients).catch(() => {});
     setShowServiceModal(true);
   };
 
@@ -196,6 +234,9 @@ export const CatalogScreen: React.FC = () => {
       sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
       basePrice: 20,
       stock: 15,
+      unit: 'unit',
+      unitQty: '',
+      unitQtyUnit: 'ml',
       image: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=150&auto=format&fit=crop&q=80',
       description: '',
       aiAvailable: true,
@@ -216,12 +257,16 @@ export const CatalogScreen: React.FC = () => {
       sku: product.sku,
       basePrice: product.basePrice,
       stock: product.stock,
+      unit: product.unit ?? 'unit',
+      unitQty: product.unitQty != null ? String(product.unitQty) : '',
+      unitQtyUnit: product.unitQtyUnit ?? 'ml',
       image: product.image || '',
       description: product.description,
       aiAvailable: product.aiAvailable,
-      priceTiers: product.priceTiers.length > 0 ? product.priceTiers : [
-        { id: `ptier_${Date.now()}`, name: 'Precio PVP', price: product.basePrice, isDefault: true }
-      ],
+      priceTiers: (() => {
+        const valid = (product.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t));
+        return valid.length > 0 ? valid : [{ id: `ptier_${Date.now()}`, name: 'Precio PVP', price: product.basePrice, isDefault: true }];
+      })(),
     });
     setShowProductModal(true);
   };
@@ -278,70 +323,108 @@ export const CatalogScreen: React.FC = () => {
     }));
   };
 
-  const handleSaveService = (e: React.FormEvent) => {
+  const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!serviceForm.name.trim()) return;
-
-    if (editingServiceId) {
-      updateService(editingServiceId, {
-        name: serviceForm.name,
-        category: serviceForm.category,
-        categoryName: serviceCategoryNames[serviceForm.category],
-        price: serviceForm.price,
-        durationMinutes: serviceForm.durationMinutes,
-        description: serviceForm.description,
-        aiAvailable: serviceForm.aiAvailable,
-        priceTiers: serviceForm.priceTiers,
-      });
-    } else {
-      addService({
-        name: serviceForm.name,
-        category: serviceForm.category,
-        categoryName: serviceCategoryNames[serviceForm.category],
-        price: serviceForm.price,
-        durationMinutes: serviceForm.durationMinutes,
-        icon: serviceForm.icon,
-        color: serviceForm.color,
-        description: serviceForm.description,
-        aiAvailable: serviceForm.aiAvailable,
-        priceTiers: serviceForm.priceTiers,
-      });
+    setServiceApiError('');
+    setIsSavingService(true);
+    try {
+      if (editingServiceId) {
+        await updateService(editingServiceId, {
+          name: serviceForm.name,
+          category: serviceForm.category,
+          categoryName: serviceCategoryNames[serviceForm.category],
+          price: serviceForm.price,
+          durationMinutes: serviceForm.durationMinutes,
+          description: serviceForm.description,
+          aiAvailable: serviceForm.aiAvailable,
+          priceTiers: serviceForm.priceTiers,
+        });
+        // Save ingredients if on recipe tab or if ingredients were loaded
+        if (editingServiceId) {
+          setIsSavingIngredients(true);
+          try {
+            await saveIngredients(editingServiceId, ingredients.map(i => ({
+              productId: i.productId,
+              quantity: i.quantity,
+              unit: i.unit,
+              notes: i.notes,
+            })));
+          } catch (_) { /* non-fatal */ } finally {
+            setIsSavingIngredients(false);
+          }
+        }
+        showToast('Servicio actualizado', serviceForm.name, 'success');
+      } else {
+        await addService({
+          name: serviceForm.name,
+          category: serviceForm.category,
+          categoryName: serviceCategoryNames[serviceForm.category],
+          price: serviceForm.price,
+          durationMinutes: serviceForm.durationMinutes,
+          icon: serviceForm.icon,
+          color: serviceForm.color,
+          description: serviceForm.description,
+          aiAvailable: serviceForm.aiAvailable,
+          priceTiers: serviceForm.priceTiers,
+        });
+        showToast('Servicio creado', serviceForm.name, 'success');
+      }
+      setShowServiceModal(false);
+    } catch (err: any) {
+      setServiceApiError(err?.message ?? 'Error al guardar. Intenta de nuevo.');
+    } finally {
+      setIsSavingService(false);
     }
-    setShowServiceModal(false);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productForm.name.trim()) return;
-
-    if (editingProductId) {
-      updateProduct(editingProductId, {
-        name: productForm.name,
-        category: productForm.category,
-        categoryName: productCategoryNames[productForm.category],
-        sku: productForm.sku,
-        basePrice: productForm.basePrice,
-        stock: productForm.stock,
-        image: productForm.image,
-        description: productForm.description,
-        aiAvailable: productForm.aiAvailable,
-        priceTiers: productForm.priceTiers,
-      });
-    } else {
-      addProduct({
-        name: productForm.name,
-        category: productForm.category,
-        categoryName: productCategoryNames[productForm.category],
-        sku: productForm.sku,
-        basePrice: productForm.basePrice,
-        stock: productForm.stock,
-        image: productForm.image,
-        description: productForm.description,
-        aiAvailable: productForm.aiAvailable,
-        priceTiers: productForm.priceTiers,
-      });
+    setProductApiError('');
+    setIsSavingProduct(true);
+    try {
+      if (editingProductId) {
+        await updateProduct(editingProductId, {
+          name: productForm.name,
+          category: productForm.category,
+          categoryName: productCategoryNames[productForm.category],
+          sku: productForm.sku,
+          basePrice: productForm.basePrice,
+          stock: productForm.stock,
+          unit: productForm.unit,
+          unitQty: productForm.unitQty !== '' ? Number(productForm.unitQty) : undefined,
+          unitQtyUnit: productForm.unitQty !== '' ? productForm.unitQtyUnit : undefined,
+          image: productForm.image,
+          description: productForm.description,
+          aiAvailable: productForm.aiAvailable,
+          priceTiers: productForm.priceTiers,
+        });
+        showToast('Producto actualizado', productForm.name, 'success');
+      } else {
+        await addProduct({
+          name: productForm.name,
+          category: productForm.category,
+          categoryName: productCategoryNames[productForm.category],
+          sku: productForm.sku,
+          basePrice: productForm.basePrice,
+          stock: productForm.stock,
+          unit: productForm.unit,
+          unitQty: productForm.unitQty !== '' ? Number(productForm.unitQty) : undefined,
+          unitQtyUnit: productForm.unitQty !== '' ? productForm.unitQtyUnit : undefined,
+          image: productForm.image,
+          description: productForm.description,
+          aiAvailable: productForm.aiAvailable,
+          priceTiers: productForm.priceTiers,
+        });
+        showToast('Producto creado', productForm.name, 'success');
+      }
+      setShowProductModal(false);
+    } catch (err: any) {
+      setProductApiError(err?.message ?? 'Error al guardar. Intenta de nuevo.');
+    } finally {
+      setIsSavingProduct(false);
     }
-    setShowProductModal(false);
   };
 
   const getServiceCategoryIcon = (category: ServiceCategory) => {
@@ -379,7 +462,7 @@ export const CatalogScreen: React.FC = () => {
         }
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6 space-y-3.5">
+      <PageContent className="space-y-3.5">
         {/* Main Segmented Control: Servicios vs Productos */}
         <IOSSegmentedControl
           id="catalog-tab-selector"
@@ -571,10 +654,7 @@ export const CatalogScreen: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      {(service.priceTiers && service.priceTiers.length > 0
-                        ? service.priceTiers
-                        : [{ id: '1', name: 'Precio Base', price: service.price, isDefault: true }]
-                      ).map(tier => (
+                      {((() => { const v = (service.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)); return v.length > 0 ? v : [{ id: '1', name: 'Precio Base', price: service.price, isDefault: true }]; })()).map(tier => (
                         <div
                           key={tier.id}
                           className="flex items-center justify-between p-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 text-xs"
@@ -680,7 +760,10 @@ export const CatalogScreen: React.FC = () => {
                           </span>
                           <span>•</span>
                           <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                            Stock: {product.stock} un.
+                            Stock: {product.stock} {product.unit ?? 'unid.'}
+                            {product.unit === 'unit' && product.unitQty != null && (
+                              <span className="text-slate-400 dark:text-neutral-500 ml-1">· {product.unitQty} {product.unitQtyUnit ?? 'ml'} c/u</span>
+                            )}
                           </span>
                           <span>•</span>
                           <span className="text-[9px] text-slate-400">SKU: {product.sku}</span>
@@ -727,10 +810,7 @@ export const CatalogScreen: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      {(product.priceTiers && product.priceTiers.length > 0
-                        ? product.priceTiers
-                        : [{ id: '1', name: 'Precio PVP', price: product.basePrice, isDefault: true }]
-                      ).map(tier => (
+                      {((() => { const v = (product.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)); return v.length > 0 ? v : [{ id: '1', name: 'Precio PVP', price: product.basePrice, isDefault: true }]; })()).map(tier => (
                         <div
                           key={tier.id}
                           className="flex items-center justify-between p-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 text-xs"
@@ -787,7 +867,7 @@ export const CatalogScreen: React.FC = () => {
             )}
           </div>
         )}
-      </div>
+      </PageContent>
 
       {/* SERVICE MODAL (Add / Edit + Dynamic Price Table) */}
       <IOSModal
@@ -797,6 +877,199 @@ export const CatalogScreen: React.FC = () => {
         subtitle="Configuración y Tabla de Precios Multinivel"
       >
         <form onSubmit={handleSaveService} className="space-y-3.5 text-xs select-none">
+          {/* Tab switcher — only show when editing */}
+          {editingServiceId && (
+            <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
+              {(['config', 'recipe'] as const).map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setServiceModalTab(tab)}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition ${
+                    serviceModalTab === tab
+                      ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-500 dark:text-neutral-400'
+                  }`}
+                >
+                  {tab === 'config' ? '⚙️ Configuración' : '🧪 Receta / Consumibles'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ── RECIPE TAB ─────────────────────────────────────────────── */}
+          {editingServiceId && serviceModalTab === 'recipe' && (
+            <div className="space-y-3">
+              <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+                Define qué productos consume este servicio y en qué cantidad. El stock se descontará al completar una cita.
+              </p>
+
+              {/* Current ingredients list */}
+              {ingredients.length === 0 && (
+                <div className="py-4 text-center text-[11px] text-slate-400 dark:text-neutral-500 bg-slate-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-slate-200 dark:border-neutral-700">
+                  Sin ingredientes — agrega productos abajo
+                </div>
+              )}
+              {ingredients.length > 0 && (
+                <div className="space-y-1.5">
+                  {ingredients.map((ing, idx) => (
+                    <div key={ing.productId} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate">
+                          {ing.product?.name ?? ing.productId}
+                        </p>
+                        {ing.notes && (
+                          <p className="text-[10px] text-slate-400 dark:text-neutral-500 truncate">{ing.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <input
+                          type="number"
+                          min="0.001"
+                          step="0.001"
+                          value={ing.quantity}
+                          onChange={e => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setIngredients(prev => prev.map((i, j) => j === idx ? { ...i, quantity: val } : i));
+                          }}
+                          className="w-14 px-1.5 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[10px] text-center focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                        />
+                        <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-400 border border-slate-200 dark:border-neutral-700">
+                          {ing.unit}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIngredients(prev => prev.filter((_, j) => j !== idx))}
+                          className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                        >✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add new ingredient */}
+              <div className="p-2.5 rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/20 space-y-2">
+                <p className="text-[10px] font-bold text-[var(--primary)]">+ Agregar producto consumible</p>
+                <select
+                  value={ingredientPickerProductId}
+                  onChange={e => {
+                    setIngredientPickerProductId(e.target.value);
+                    const picked = products.find(p => p.id === e.target.value);
+                    if (picked) {
+                      // If product is stored as units but has a conversion (e.g., 1 bottle = 15ml),
+                      // recipe quantity should be in the sub-unit (ml) so conversion can be applied
+                      const recipeUnit = (picked.unit === 'unit' && picked.unitQtyUnit) ? picked.unitQtyUnit : picked.unit ?? 'unit';
+                      setIngredientUnit(recipeUnit);
+                    }
+                  }}
+                  className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                >
+                  <option value="">— Seleccionar producto —</option>
+                  {products.filter(p => !ingredients.find(i => i.productId === p.id)).map(p => {
+                    const availLabel = (p.unit === 'unit' && p.unitQty != null)
+                      ? `${p.stock} unid. × ${p.unitQty}${p.unitQtyUnit ?? 'ml'} = ${+(p.stock * p.unitQty).toFixed(2)}${p.unitQtyUnit ?? 'ml'} disponibles`
+                      : `stock: ${p.stock} ${p.unit}`;
+                    return <option key={p.id} value={p.id}>{p.name} · {availLabel}</option>;
+                  })}
+                </select>
+                {/* Show available total in recipe units when conversion exists */}
+                {(() => {
+                  const picked = products.find(p => p.id === ingredientPickerProductId);
+                  if (picked && picked.unit === 'unit' && picked.unitQty != null) {
+                    const total = +(picked.stock * picked.unitQty).toFixed(2);
+                    return (
+                      <p className="text-[10px] text-slate-500 dark:text-neutral-400 -mt-1">
+                        Disponible: {picked.stock} unid. × {picked.unitQty} {picked.unitQtyUnit ?? 'ml'} = <strong>{total} {picked.unitQtyUnit ?? 'ml'}</strong>
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    placeholder="Cantidad"
+                    value={ingredientQty}
+                    onChange={e => setIngredientQty(e.target.value)}
+                    className="flex-1 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                  />
+                  <div className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-700 dark:text-neutral-300 font-bold min-w-[40px] text-center">
+                    {ingredientUnit}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Nota opcional (ej: esmalte base, top coat)"
+                  value={ingredientNotes}
+                  onChange={e => setIngredientNotes(e.target.value)}
+                  className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                />
+                <button
+                  type="button"
+                  disabled={!ingredientPickerProductId}
+                  onClick={() => {
+                    if (!ingredientPickerProductId) return;
+                    const prod = products.find(p => p.id === ingredientPickerProductId);
+                    setIngredients(prev => [...prev, {
+                      id: `local_${Date.now()}`,
+                      productId: ingredientPickerProductId,
+                      quantity: parseFloat(ingredientQty) || 1,
+                      unit: ingredientUnit,
+                      notes: ingredientNotes || undefined,
+                      product: prod ? { id: prod.id, name: prod.name, category: prod.category, categoryName: prod.categoryName, sku: prod.sku, stock: prod.stock } : undefined,
+                    }]);
+                    setIngredientPickerProductId('');
+                    setIngredientQty('1');
+                    setIngredientNotes('');
+                  }}
+                  className="w-full py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-40 ios-touch cursor-pointer transition"
+                >
+                  Agregar al servicio
+                </button>
+              </div>
+
+              {/* Save button */}
+              <button
+                type="button"
+                disabled={isSavingIngredients}
+                onClick={async () => {
+                  if (!editingServiceId) return;
+                  setIsSavingIngredients(true);
+                  try {
+                    const saved = await saveIngredients(editingServiceId, ingredients.map(i => ({
+                      productId: i.productId,
+                      quantity: i.quantity,
+                      unit: i.unit,
+                      notes: i.notes,
+                    })));
+                    setIngredients(saved);
+                    showToast('Receta guardada', 'Ingredientes actualizados', 'success');
+                  } catch (e: any) {
+                    showToast('Error al guardar', e?.message ?? 'Intenta de nuevo', 'warning');
+                  } finally {
+                    setIsSavingIngredients(false);
+                  }
+                }}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              >
+                {isSavingIngredients ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    Guardando receta…
+                  </>
+                ) : '✓ Guardar Receta'}
+              </button>
+            </div>
+          )}
+
+          {/* ── CONFIG TAB (default) ──────────────────────────────────── */}
+          <div className={editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : ''}>
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Nombre del Servicio *
@@ -955,11 +1228,61 @@ export const CatalogScreen: React.FC = () => {
             />
           </div>
 
+          {/* Emoji Icon Picker */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Ícono del Servicio
+              <span className="ml-1 font-normal text-slate-400">(selecciona un emoji)</span>
+            </label>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-neutral-800 border-2 border-[var(--primary)] flex items-center justify-center text-xl shrink-0">
+                {serviceForm.icon || '✨'}
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-neutral-400">Seleccionado: <strong>{serviceForm.icon || '✨'}</strong></span>
+            </div>
+            <div className="grid grid-cols-10 gap-1">
+              {['💅','💇‍♀️','💆‍♀️','🦶','✨','💎','🌸','🪷','🌺','🧖‍♀️','💄','👄','💋','🌹','🍃','🌿','🪻','🧴','🪨','🕯️','🛁','🧼','💫','⭐','🌟','🎀','🎁','🌙','☀️','🦋'].map(emoji => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setServiceForm(prev => ({ ...prev, icon: emoji }))}
+                  className={`h-8 w-full rounded-lg text-base flex items-center justify-center transition ios-touch cursor-pointer ${
+                    serviceForm.icon === emoji
+                      ? 'bg-[var(--primary)]/20 ring-1 ring-[var(--primary)]'
+                      : 'hover:bg-slate-100 dark:hover:bg-neutral-800'
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {serviceApiError && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[11px] font-medium">
+              <span className="mt-0.5 shrink-0">⚠️</span>
+              <span>{serviceApiError}</span>
+            </div>
+          )}
+
+          </div>{/* end config tab */}
+
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer"
+            disabled={isSavingService}
+            className={`w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition ${editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : ''}`}
           >
-            {editingServiceId ? 'Guardar Cambios del Servicio' : 'Crear Servicio en Catálogo'}
+            {isSavingService ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                {editingServiceId ? 'Guardando…' : 'Creando…'}
+              </>
+            ) : (
+              editingServiceId ? '✓ Guardar Cambios del Servicio' : '✨ Crear Servicio en Catálogo'
+            )}
           </button>
         </form>
       </IOSModal>
@@ -1011,16 +1334,71 @@ export const CatalogScreen: React.FC = () => {
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Stock Disponible (Unidades)
+                Stock &amp; Unidad de medida
               </label>
-              <input
-                type="number"
-                min="0"
-                value={productForm.stock}
-                onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  placeholder="0"
+                  value={productForm.stock}
+                  onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                  className="flex-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                />
+                <select
+                  value={productForm.unit}
+                  onChange={e => setProductForm({ ...productForm, unit: e.target.value })}
+                  className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
+                >
+                  <option value="unit">unid.</option>
+                  <option value="ml">ml</option>
+                  <option value="L">L</option>
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="oz">oz</option>
+                  <option value="cl">cl</option>
+                </select>
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">
+                El stock se expresa en la unidad seleccionada (ej: 450 ml, 3 unid., 200 g)
+              </p>
             </div>
+
+            {/* Contenido por unidad — solo visible cuando unit === 'unit' */}
+            {productForm.unit === 'unit' && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Contenido por unidad <span className="font-normal text-slate-400">(opcional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    placeholder="ej: 15"
+                    value={productForm.unitQty}
+                    onChange={e => setProductForm({ ...productForm, unitQty: e.target.value })}
+                    className="flex-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  />
+                  <select
+                    value={productForm.unitQtyUnit}
+                    onChange={e => setProductForm({ ...productForm, unitQtyUnit: e.target.value })}
+                    className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
+                  >
+                    <option value="ml">ml</option>
+                    <option value="cl">cl</option>
+                    <option value="L">L</option>
+                    <option value="g">g</option>
+                    <option value="kg">kg</option>
+                    <option value="oz">oz</option>
+                  </select>
+                </div>
+                <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">
+                  Indica cuánto contiene cada unidad (ej: 1 botella = 15 ml). Se usa para calcular consumos en recetas.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

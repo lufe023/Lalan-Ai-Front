@@ -28,6 +28,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { LoungeTrack } from '../types';
 import { MUSIC_VIBES, POPULAR_BEVERAGES, POPULAR_SNACKS } from '../data/mockData';
+import { PageContent } from '../components/ui/PageContent';
 
 export const LoungePlayerScreen: React.FC = () => {
   const {
@@ -151,9 +152,9 @@ export const LoungePlayerScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex-1 w-full h-full flex flex-col bg-[#F9FAFB] dark:bg-neutral-950 overflow-y-auto pb-24 text-slate-900 dark:text-neutral-100 select-none">
+    <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-[#F9FAFB] dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 select-none">
       {/* iOS Minimalist Nav Header */}
-      <div className="sticky top-0 z-20 px-4 pt-3 pb-2.5 bg-[#F9FAFB]/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-slate-200/50 dark:border-neutral-900">
+      <div className="shrink-0 z-20 px-4 pt-3 pb-2.5 bg-[#F9FAFB]/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-slate-200/50 dark:border-neutral-900">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
@@ -277,6 +278,7 @@ export const LoungePlayerScreen: React.FC = () => {
           </button>
         </div>
       </div>
+      <PageContent noPadding className="pb-24">
 
       {/* Main Content Area */}
       <div className="px-4 pt-4 space-y-5">
@@ -924,6 +926,7 @@ export const LoungePlayerScreen: React.FC = () => {
           </motion.div>
         )}
       </div>
+      </PageContent>
     </div>
   );
 };

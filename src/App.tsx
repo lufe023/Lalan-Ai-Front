@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
@@ -15,38 +16,32 @@ import { ChatsScreen } from './screens/ChatsScreen';
 import { BotsControlScreen } from './screens/BotsControlScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LoungePlayerScreen } from './screens/LoungePlayerScreen';
+import { PriceListsScreen } from './screens/PriceListsScreen';
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 const MainAppContent: React.FC = () => {
   const { currentScreen, showSplash, activeConversationId } = useApp();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  // Screen selector helper
   const renderCurrentScreen = () => {
     switch (currentScreen) {
-      case 'dashboard':
-        return <DashboardScreen key="dashboard" />;
-      case 'calendar':
-        return <CalendarScreen key="calendar" />;
-      case 'clients':
-        return <ClientsScreen key="clients" />;
-      case 'lounge':
-        return <LoungePlayerScreen key="lounge" />;
-      case 'catalog':
-        return <CatalogScreen key="catalog" />;
-      case 'chats':
-        return <ChatsScreen key="chats" />;
-      case 'bots':
-        return <BotsControlScreen key="bots" />;
-      case 'settings':
-        return <SettingsScreen key="settings" />;
-      default:
-        return <DashboardScreen key="default" />;
+      case 'dashboard': return <DashboardScreen key="dashboard" />;
+      case 'calendar':  return <CalendarScreen  key="calendar"  />;
+      case 'clients':   return <ClientsScreen   key="clients"   />;
+      case 'lounge':    return <LoungePlayerScreen key="lounge" />;
+      case 'catalog':   return <CatalogScreen   key="catalog"   />;
+      case 'chats':     return <ChatsScreen     key="chats"     />;
+      case 'bots':      return <BotsControlScreen key="bots"    />;
+      case 'settings':  return <SettingsScreen  key="settings"  />;
+      case 'price-lists': return <PriceListsScreen key="price-lists" />;
+      default:          return <DashboardScreen key="default"   />;
     }
   };
 
   return (
     <IPhoneFrame>
-      {/* 1. Splash Screen Animation */}
+      {/* ── Splash overlay ─────────────────────────────── */}
       <AnimatePresence>
         {showSplash && (
           <motion.div
@@ -61,39 +56,79 @@ const MainAppContent: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* 2. Login Screen vs Authenticated Screens */}
-      {!isAuthenticated ? (
-        <motion.div
-          key="login-view"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex-1 w-full h-full flex flex-col"
-        >
-          <LoginScreen />
-        </motion.div>
-      ) : (
-        <div className="flex-1 w-full h-full flex flex-col overflow-hidden relative">
-          {/* Main active screen view with iOS slide & fade transitions */}
-          <div className="flex-1 w-full overflow-hidden flex flex-col relative">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentScreen}
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -12 }}
-                transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-                className="w-full h-full flex flex-col"
-              >
-                {renderCurrentScreen()}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+      {/* ── Session restore loading ─────────────────────── */}
+      <AnimatePresence>
+        {isLoading && !showSplash && (
+          <motion.div
+            key="auth-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 z-40 flex items-center justify-center bg-[#09090b] dark:bg-[#09090b] bg-[#f8fafc]"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 text-[var(--primary)] animate-spin" />
+              <span className="text-xs text-slate-500 dark:text-neutral-400 font-medium tracking-wide">
+                Restaurando sesión…
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* iOS Bottom Tab Bar (hidden only when in deep full-screen conversation detail if desired, but kept accessible) */}
-          {!activeConversationId && <IOSTabBar />}
-        </div>
+      {/* ── Login vs Authenticated ──────────────────────── */}
+      {!isLoading && (
+        !isAuthenticated ? (
+          <motion.div
+            key="login-view"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 w-full h-full flex flex-col"
+          >
+            <LoginScreen />
+          </motion.div>
+        ) : (
+          // On mobile  → flex-col  (sidebar at bottom = tab bar)
+          // On desktop → flex-row  (sidebar on left via lg:order-first)
+          <div className="flex-1 w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
+
+            {/* ── Main content column ── */}
+            <div className="flex-1 overflow-hidden flex flex-col relative min-w-0">
+
+              {/* Screen transitions */}
+              <div className="flex-1 overflow-hidden flex flex-col relative">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentScreen}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+                    className="w-full flex-1 min-h-0 flex flex-col"
+                  >
+                    {renderCurrentScreen()}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* ── Desktop footer (hidden on mobile) ── */}
+              <footer className="hidden lg:flex shrink-0 items-center justify-between px-8 py-2.5 border-t border-slate-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50">
+                <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-600 tracking-wide">
+                  © {CURRENT_YEAR} Gomez Santana Solutions Group SRL
+                </span>
+                <span className="text-[11px] text-slate-300 dark:text-neutral-700">
+                  Lalan AI Studio & Lounge
+                </span>
+              </footer>
+            </div>
+
+            {/* ── Sidebar / Tab bar (IOSTabBar handles both via lg:order-first) ── */}
+            {!activeConversationId && <IOSTabBar />}
+          </div>
+        )
       )}
     </IPhoneFrame>
   );
