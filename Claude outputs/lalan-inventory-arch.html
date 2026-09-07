@@ -1,0 +1,1346 @@
+<title>Lalan.AI — Arquitectura Inventario & BOM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg: #f7f6fb;
+    --surface: #ffffff;
+    --surface2: #f0eefb;
+    --primary: #6d5ce7;
+    --primary-dim: #ede9fd;
+    --amber: #f59e0b;
+    --amber-dim: #fef3c7;
+    --emerald: #059669;
+    --emerald-dim: #d1fae5;
+    --rose: #e11d48;
+    --rose-dim: #ffe4e6;
+    --text: #1e1a3c;
+    --text2: #4a4570;
+    --muted: #8882b3;
+    --border: #e4e1f5;
+    --code-bg: #f0eefb;
+    --code-text: #3d2e9e;
+    --nav-w: 240px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f0e1a;
+      --surface: #1a1828;
+      --surface2: #221f35;
+      --primary: #8b7ef8;
+      --primary-dim: #2a2448;
+      --amber: #fbbf24;
+      --amber-dim: #2d2208;
+      --emerald: #34d399;
+      --emerald-dim: #0a2518;
+      --rose: #fb7185;
+      --rose-dim: #2d0a14;
+      --text: #ede9ff;
+      --text2: #a89fd8;
+      --muted: #6b649a;
+      --border: #2a2840;
+      --code-bg: #1e1b30;
+      --code-text: #b4a7ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f0e1a; --surface: #1a1828; --surface2: #221f35;
+    --primary: #8b7ef8; --primary-dim: #2a2448;
+    --amber: #fbbf24; --amber-dim: #2d2208;
+    --emerald: #34d399; --emerald-dim: #0a2518;
+    --rose: #fb7185; --rose-dim: #2d0a14;
+    --text: #ede9ff; --text2: #a89fd8; --muted: #6b649a;
+    --border: #2a2840; --code-bg: #1e1b30; --code-text: #b4a7ff;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    line-height: 1.7;
+    font-size: 14px;
+  }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; min-height: 100vh; }
+
+  nav.sidebar {
+    width: var(--nav-w);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-brand {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -0.3px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-brand span { color: var(--text2); font-weight: 500; font-size: 10px; display: block; margin-top: 2px; }
+  .nav-section { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 12px 0 4px 8px; }
+  nav a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    color: var(--text2);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+  }
+  nav a:hover { background: var(--primary-dim); color: var(--primary); }
+  nav a.active { background: var(--primary-dim); color: var(--primary); font-weight: 600; }
+
+  main {
+    flex: 1;
+    max-width: 900px;
+    padding: 40px 48px;
+    min-width: 0;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary-dim);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0 0 10px;
+    letter-spacing: -0.8px;
+    line-height: 1.25;
+  }
+  .hero h1 em { color: var(--primary); font-style: normal; }
+  .hero p { color: var(--text2); margin: 0; font-size: 14px; max-width: 600px; }
+  .principle {
+    margin-top: 20px;
+    padding: 14px 18px;
+    background: var(--primary-dim);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* ── SECTIONS ── */
+  .section { margin-bottom: 56px; scroll-margin-top: 24px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .section-num {
+    width: 32px; height: 32px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.4px;
+  }
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin: 28px 0 10px;
+    color: var(--text);
+    letter-spacing: -0.2px;
+  }
+  h4 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    margin: 20px 0 8px;
+  }
+  p { margin: 0 0 12px; color: var(--text2); }
+
+  /* ── CODE ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 12px 0 20px;
+    font-size: 12.5px;
+    line-height: 1.65;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--code-text);
+  }
+  pre code { color: var(--text2); }
+  .kw { color: var(--primary); font-weight: 600; }
+  .str { color: var(--emerald); }
+  .cmt { color: var(--muted); font-style: italic; }
+  .dec { color: var(--amber); }
+  .fn { color: var(--text); font-weight: 600; }
+  .pre-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  .callout-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+  .callout-body strong { display: block; font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+  .callout.info { background: var(--primary-dim); color: var(--primary); }
+  .callout.warn { background: var(--amber-dim); color: #92400e; }
+  .callout.win  { background: var(--emerald-dim); color: #065f46; }
+  .callout.danger { background: var(--rose-dim); color: #9f1239; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .callout.warn { color: var(--amber); }
+    :root:not([data-theme="light"]) .callout.win  { color: var(--emerald); }
+    :root:not([data-theme="light"]) .callout.danger { color: var(--rose); }
+  }
+  :root[data-theme="dark"] .callout.warn { color: var(--amber); }
+  :root[data-theme="dark"] .callout.win  { color: var(--emerald); }
+  :root[data-theme="dark"] .callout.danger { color: var(--rose); }
+
+  /* ── TABLES ── */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 12.5px; }
+  th { background: var(--surface2); color: var(--text); font-weight: 700; text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td code { font-size: 11px; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; color: var(--code-text); }
+
+  /* ── UX MOCKUP ── */
+  .mockup {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+    margin: 16px 0 24px;
+  }
+  .mockup-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mockup-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .mockup-title { font-size: 11px; font-weight: 600; color: var(--text2); margin-left: 6px; }
+  .mockup-body { padding: 16px; }
+
+  .alert-card {
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .alert-card .icon { font-size: 20px; }
+  .alert-card .msg { font-size: 12px; color: var(--text); }
+  .alert-card .msg strong { font-weight: 700; display: block; margin-bottom: 2px; }
+  .alert-card .msg span { color: var(--text2); }
+
+  .bom-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .bom-chip { background: var(--primary-dim); color: var(--primary); border-radius: 6px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+  .bom-name { flex: 1; font-weight: 600; color: var(--text); }
+  .bom-qty { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  .margin-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .margin-bar-wrap { flex: 1; margin: 0 12px; background: var(--border); border-radius: 4px; height: 6px; }
+  .margin-bar { height: 6px; border-radius: 4px; }
+  .tag-good { color: var(--emerald); font-weight: 700; font-size: 11px; }
+  .tag-bad  { color: var(--rose); font-weight: 700; font-size: 11px; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 12px 0 20px;
+  }
+  .flow-step {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+  }
+  .flow-step.highlight { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .flow-arrow { color: var(--muted); font-size: 14px; }
+
+  /* ── GRID ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--text); }
+  .card p { margin: 0; font-size: 12px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    nav.sidebar { display: none; }
+    main { padding: 24px 20px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="nav-brand">Lalan.AI <span>Arquitectura · Inventario & BOM</span></div>
+
+    <div class="nav-section">Base de Datos</div>
+    <a href="#s1">1. Prisma Schema</a>
+    <a href="#product-model">→ Modelo Product</a>
+    <a href="#lot-model">→ Lotes (ProductLot)</a>
+    <a href="#bom-model">→ BOM / Combos</a>
+    <a href="#movement-model">→ StockMovement</a>
+
+    <div class="nav-section">Backend</div>
+    <a href="#s2">2. NestJS Services</a>
+    <a href="#deduction">→ Descuento Automático</a>
+    <a href="#predictive">→ Alerta Predictiva</a>
+    <a href="#cogs">→ COGS & Margen</a>
+
+    <div class="nav-section">Frontend</div>
+    <a href="#s3">3. React UX/UI</a>
+    <a href="#bom-builder">→ BOM Builder</a>
+    <a href="#alert-dashboard">→ Dashboard Alertas</a>
+    <a href="#profitability">→ Rentabilidad</a>
+  </nav>
+
+  <main>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-badge">📐 Documento de Arquitectura</div>
+      <h1>Inventario, BOM & Costos<br><em>para Lalan.AI</em></h1>
+      <p>Módulo ERP/MRP para salones de belleza: trazabilidad de insumos, descuento automático de stock, alertas predictivas y cálculo de margen real en tiempo real.</p>
+      <div class="principle">
+        "Complejidad técnica oculta al usuario; simplicidad absoluta y placer visual para la dueña del salón."
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECCIÓN 1: PRISMA SCHEMA                   -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s1">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <h2>Modelado de Datos — Prisma Schema</h2>
+      </div>
+
+      <p>El esquema extiende el <code>Product</code> actual con campos de costo y umbrales, agrega trazabilidad de lotes (<code>ProductLot</code>), y formaliza el concepto de Combo mixto (<code>ServiceCombo</code>). El modelo <code>ServiceIngredient</code> ya existente actúa como la BOM principal.</p>
+
+      <!-- ─── PRODUCT ENHANCED ─── -->
+      <h3 id="product-model">1.1 Modelo Product — campos nuevos</h3>
+      <div class="callout info">
+        <span class="callout-icon">🔑</span>
+        <div class="callout-body">
+          <strong>Campos críticos a agregar</strong>
+          Los campos de costo (<code>costPrice</code>) y umbrales (<code>minStock</code>, <code>alertThreshold</code>) son la base de todo el módulo de rentabilidad. Sin ellos no hay COGS.
+        </div>
+      </div>
+
+      <div class="pre-label">schema.prisma — modelo Product (adiciones)</div>
+      <pre><code><span class="kw">model</span> <span class="fn">Product</span> {
+  <span class="cmt">// ── campos existentes ──────────────────────────────────────────</span>
+  id           String          <span class="dec">@id @db.Uuid</span>
+  tenantId     String          <span class="dec">@db.Uuid</span>
+  name         String
+  category     ProductCategory
+  categoryName String
+  sku          String
+  basePrice    Decimal         <span class="dec">@db.Decimal(10, 2)</span>
+  currencyCode String          <span class="dec">@default("USD")</span>
+  stock        Decimal         <span class="dec">@default(0) @db.Decimal(10, 3)</span>
+  unit         String          <span class="dec">@default("unit")</span>   <span class="cmt">// ml | g | oz | L | unit</span>
+  unitQty      Decimal?        <span class="dec">@db.Decimal(10, 3)</span>  <span class="cmt">// contenido por unidad (ej: 15 ml)</span>
+  unitQtyUnit  String?                              <span class="cmt">// unidad del contenido (ml, g…)</span>
+  image        String?
+  description  String?
+  aiAvailable  Boolean         <span class="dec">@default(true)</span>
+  priceTiers   Json            <span class="dec">@default("[]")</span>
+  active       Boolean         <span class="dec">@default(true)</span>
+  createdAt    DateTime        <span class="dec">@default(now()) @db.Timestamptz</span>
+
+  <span class="cmt">// ── NUEVOS CAMPOS ──────────────────────────────────────────────</span>
+
+  <span class="cmt">// Costo unitario de compra/adquisición (base para COGS)</span>
+  costPrice      Decimal?      <span class="dec">@db.Decimal(10, 4)</span>
+  costCurrencyCode String      <span class="dec">@default("USD")</span>
+
+  <span class="cmt">// Control de stock</span>
+  minStock       Decimal       <span class="dec">@default(0) @db.Decimal(10, 3)</span>  <span class="cmt">// nivel de reorden</span>
+  alertThreshold Decimal       <span class="dec">@default(0) @db.Decimal(10, 3)</span>  <span class="cmt">// alerta predictiva</span>
+
+  <span class="cmt">// Trazabilidad de lotes</span>
+  hasLotTracking Boolean       <span class="dec">@default(false)</span>
+  lotStrategy    LotStrategy   <span class="dec">@default(FEFO)</span>  <span class="cmt">// FEFO | FIFO</span>
+
+  <span class="cmt">// Relaciones</span>
+  tenant         Tenant              <span class="dec">@relation(fields: [tenantId], references: [id], onDelete: Cascade)</span>
+  ingredients    ServiceIngredient[]
+  stockMovements StockMovement[]
+  lots           ProductLot[]        <span class="cmt">// ← NUEVO</span>
+  comboItems     ComboItem[]         <span class="cmt">// ← NUEVO: aparece en combos</span>
+
+  <span class="dec">@@unique([tenantId, sku])</span>
+  <span class="dec">@@index([tenantId])</span>
+  <span class="dec">@@map("products")</span>
+}
+
+<span class="kw">enum</span> <span class="fn">LotStrategy</span> {
+  FEFO  <span class="cmt">// First Expired, First Out — recomendado para cosméticos</span>
+  FIFO  <span class="cmt">// First In, First Out</span>
+}</code></pre>
+
+      <!-- ─── PRODUCT LOT ─── -->
+      <h3 id="lot-model">1.2 Modelo ProductLot — trazabilidad de lotes</h3>
+      <div class="callout warn">
+        <span class="callout-icon">⚗️</span>
+        <div class="callout-body">
+          <strong>¿Por qué lotes en un salón?</strong>
+          Los cosméticos tienen fecha de caducidad. Un esmalte gel o una ampolla de keratina abierta hace 6 meses puede dañar a una clienta. La estrategia FEFO (expiración primero) descuenta siempre el lote más próximo a vencer.
+        </div>
+      </div>
+
+      <div class="pre-label">schema.prisma — ProductLot (NUEVO)</div>
+      <pre><code><span class="kw">model</span> <span class="fn">ProductLot</span> {
+  id          String    <span class="dec">@id @db.Uuid</span>
+  tenantId    String    <span class="dec">@db.Uuid</span>
+  productId   String    <span class="dec">@db.Uuid</span>
+  lotNumber   String                    <span class="cmt">// número de lote del proveedor</span>
+  expiresAt   DateTime? <span class="dec">@db.Date</span>        <span class="cmt">// fecha de caducidad (null = no aplica)</span>
+  quantity    Decimal   <span class="dec">@db.Decimal(10, 3)</span>  <span class="cmt">// stock actual de este lote</span>
+  initialQty  Decimal   <span class="dec">@db.Decimal(10, 3)</span>  <span class="cmt">// cantidad original al ingresar</span>
+  costPrice   Decimal?  <span class="dec">@db.Decimal(10, 4)</span>  <span class="cmt">// costo de este lote específico</span>
+  receivedAt  DateTime  <span class="dec">@default(now()) @db.Timestamptz</span>
+  createdAt   DateTime  <span class="dec">@default(now()) @db.Timestamptz</span>
+
+  tenant   Tenant     <span class="dec">@relation(fields: [tenantId], references: [id], onDelete: Cascade)</span>
+  product  Product    <span class="dec">@relation(fields: [productId], references: [id], onDelete: Cascade)</span>
+
+  <span class="cmt">// Índice crítico para FEFO: ordenar por expiresAt ASC</span>
+  <span class="dec">@@index([productId, expiresAt])</span>
+  <span class="dec">@@index([tenantId])</span>
+  <span class="dec">@@map("product_lots")</span>
+}
+
+<span class="cmt">// Enlace entre un StockMovement y el lote específico descontado</span>
+<span class="kw">model</span> <span class="fn">StockMovementLot</span> {
+  id          String   <span class="dec">@id @db.Uuid</span>
+  movementId  String   <span class="dec">@db.Uuid</span>
+  lotId       String   <span class="dec">@db.Uuid</span>
+  quantity    Decimal  <span class="dec">@db.Decimal(10, 3)</span>  <span class="cmt">// cuánto se tomó de este lote</span>
+
+  movement StockMovement <span class="dec">@relation(fields: [movementId], references: [id], onDelete: Cascade)</span>
+  lot      ProductLot    <span class="dec">@relation(fields: [lotId], references: [id], onDelete: Cascade)</span>
+
+  <span class="dec">@@index([movementId])</span>
+  <span class="dec">@@map("stock_movement_lots")</span>
+}</code></pre>
+
+      <!-- ─── BOM / COMBO ─── -->
+      <h3 id="bom-model">1.3 BOM ya existente + modelo Combo</h3>
+      <p>El modelo <code>ServiceIngredient</code> ya implementado actúa como BOM Service→Productos. Adicionalmente, un <strong>Combo</strong> agrupa servicios y/o productos que se venden juntos (ej: "Paquete Novia").</p>
+
+      <div class="pre-label">schema.prisma — ServiceCombo y ComboItem (NUEVO)</div>
+      <pre><code><span class="kw">model</span> <span class="fn">ServiceCombo</span> {
+  id          String   <span class="dec">@id @db.Uuid</span>
+  tenantId    String   <span class="dec">@db.Uuid</span>
+  name        String                  <span class="cmt">// "Paquete Novia", "Kit Verano"</span>
+  description String?
+  basePrice   Decimal  <span class="dec">@db.Decimal(10, 2)</span>   <span class="cmt">// precio especial de venta del combo</span>
+  active      Boolean  <span class="dec">@default(true)</span>
+  createdAt   DateTime <span class="dec">@default(now()) @db.Timestamptz</span>
+
+  tenant Tenant      <span class="dec">@relation(fields: [tenantId], references: [id], onDelete: Cascade)</span>
+  items  ComboItem[]
+
+  <span class="dec">@@index([tenantId])</span>
+  <span class="dec">@@map("service_combos")</span>
+}
+
+<span class="kw">model</span> <span class="fn">ComboItem</span> {
+  id        String    <span class="dec">@id @db.Uuid</span>
+  comboId   String    <span class="dec">@db.Uuid</span>
+  <span class="cmt">// Un ítem es o un Servicio o un Producto (uno de los dos)</span>
+  serviceId String?   <span class="dec">@db.Uuid</span>
+  productId String?   <span class="dec">@db.Uuid</span>
+  quantity  Decimal   <span class="dec">@db.Decimal(10, 3) @default(1)</span>
+
+  combo   ServiceCombo <span class="dec">@relation(fields: [comboId], references: [id], onDelete: Cascade)</span>
+  service Service?     <span class="dec">@relation(fields: [serviceId], references: [id], onDelete: SetNull)</span>
+  product Product?     <span class="dec">@relation(fields: [productId], references: [id], onDelete: SetNull)</span>
+
+  <span class="dec">@@map("combo_items")</span>
+}</code></pre>
+
+      <!-- ─── STOCK MOVEMENT ─── -->
+      <h3 id="movement-model">1.4 StockMovement — trazabilidad completa</h3>
+      <p>Se extiende el modelo existente con el campo <code>lotMovements</code> (relación a <code>StockMovementLot</code>) y un campo <code>cogsCost</code> que registra el costo efectivo del movimiento para contabilidad.</p>
+
+      <div class="pre-label">schema.prisma — StockMovement (adición de campos)</div>
+      <pre><code><span class="kw">model</span> <span class="fn">StockMovement</span> {
+  <span class="cmt">// ... campos existentes ...</span>
+  id            String              <span class="dec">@id @db.Uuid</span>
+  tenantId      String              <span class="dec">@db.Uuid</span>
+  productId     String              <span class="dec">@db.Uuid</span>
+  appointmentId String?             <span class="dec">@db.Uuid</span>
+  reason        StockMovementReason
+  delta         Decimal             <span class="dec">@db.Decimal(10, 3)</span>
+  stockAfter    Decimal             <span class="dec">@db.Decimal(10, 3)</span>
+  unit          String              <span class="dec">@default("unit")</span>
+  notes         String?
+  createdByUserId String?           <span class="dec">@db.Uuid</span>
+  createdAt     DateTime            <span class="dec">@default(now()) @db.Timestamptz</span>
+
+  <span class="cmt">// ── NUEVOS ──────────────────────────────────────────────────────</span>
+  <span class="cmt">// Costo total del movimiento (para COGS exacto)</span>
+  cogsCost      Decimal?            <span class="dec">@db.Decimal(10, 4)</span>
+
+  <span class="cmt">// Relaciones</span>
+  tenant      Tenant              <span class="dec">@relation(...)</span>
+  product     Product             <span class="dec">@relation(...)</span>
+  lotMovements StockMovementLot[] <span class="cmt">// ← NUEVO: detalle por lote</span>
+
+  <span class="dec">@@index([tenantId, productId, createdAt(sort: Desc)])</span>
+  <span class="dec">@@map("stock_movements")</span>
+}</code></pre>
+
+      <h3>Resumen de relaciones clave</h3>
+      <table>
+        <thead><tr><th>Relación</th><th>Tipo</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td><code>Service → ServiceIngredient → Product</code></td><td>N:M</td><td>BOM principal: ingredientes que consume un servicio</td></tr>
+          <tr><td><code>Product → ProductLot</code></td><td>1:N</td><td>Trazabilidad de lotes con fecha de caducidad</td></tr>
+          <tr><td><code>StockMovement → StockMovementLot</code></td><td>1:N</td><td>Qué lotes específicos fueron descontados</td></tr>
+          <tr><td><code>ServiceCombo → ComboItem → Service/Product</code></td><td>N:M polimórfico</td><td>Combos mixtos de servicios y productos</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECCIÓN 2: NESTJS                          -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s2">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <h2>Lógica de Negocio — NestJS</h2>
+      </div>
+
+      <!-- ─── FLUJO ─── -->
+      <h3>Flujo general al completar una cita</h3>
+      <div class="flow">
+        <div class="flow-step">Cita → "Completada"</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step highlight">AppointmentsService<br><small>completeAppointment()</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Fetch BOM<br>(ServiceIngredients)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step highlight">InventoryService<br><small>deductBomForAppointment()</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Transacción<br>atómica Prisma</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">StockMovement<br>+ COGS registrado</div>
+      </div>
+
+      <!-- ─── DEDUCCIÓN ─── -->
+      <h3 id="deduction">2.1 Descuento automático de inventario por cita</h3>
+      <div class="callout info">
+        <span class="callout-icon">⚡</span>
+        <div class="callout-body">
+          <strong>Atomicidad obligatoria</strong>
+          Todo el descuento de BOM ocurre dentro de una sola transacción Prisma (<code>$transaction</code>). Si falla el descuento de cualquier ingrediente, se revierte todo. Nunca stock parcialmente descontado.
+        </div>
+      </div>
+
+      <div class="pre-label">inventory.service.ts — deductBomForAppointment()</div>
+      <pre><code><span class="kw">import</span> { Injectable, BadRequestException } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { PrismaService } <span class="kw">from</span> <span class="str">'../prisma/prisma.service'</span>;
+<span class="kw">import</span> { uuidv7 } <span class="kw">from</span> <span class="str">'uuidv7'</span>;
+<span class="kw">import</span> Decimal <span class="kw">from</span> <span class="str">'decimal.js'</span>;
+
+<span class="dec">@Injectable()</span>
+<span class="kw">export class</span> <span class="fn">InventoryService</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> <span class="kw">readonly</span> prisma: PrismaService) {}
+
+  <span class="cmt">/**
+   * Descuenta automáticamente todos los ingredientes del BOM del servicio.
+   * Soporta conversión de unidades (ml ← unidades con unitQty).
+   * Aplica FEFO/FIFO si el producto tiene trazabilidad de lotes.
+   * Registra StockMovement con COGS calculado.
+   */</span>
+  <span class="kw">async</span> <span class="fn">deductBomForAppointment</span>(
+    appointmentId: <span class="kw">string</span>,
+    serviceId: <span class="kw">string</span>,
+    tenantId: <span class="kw">string</span>,
+  ): Promise&lt;<span class="kw">void</span>&gt; {
+    <span class="cmt">// 1. Obtener BOM del servicio con info de producto</span>
+    <span class="kw">const</span> ingredients = <span class="kw">await</span> (this.prisma <span class="kw">as any</span>).serviceIngredient.findMany({
+      where: { serviceId, tenantId },
+      include: {
+        product: {
+          include: { lots: { where: { quantity: { gt: 0 } }, orderBy: [{ expiresAt: <span class="str">'asc'</span> }, { receivedAt: <span class="str">'asc'</span> }] } },
+        },
+      },
+    });
+
+    <span class="kw">if</span> (!ingredients.length) <span class="kw">return</span>; <span class="cmt">// servicio sin BOM, nada que descontar</span>
+
+    <span class="cmt">// 2. Validar stock suficiente antes de iniciar transacción</span>
+    <span class="kw">for</span> (<span class="kw">const</span> ing <span class="kw">of</span> ingredients) {
+      <span class="kw">const</span> product = ing.product;
+      <span class="kw">const</span> required = <span class="kw">new</span> Decimal(ing.quantity);
+
+      <span class="cmt">// Convertir: si el recipe usa ml y el stock está en unidades</span>
+      <span class="kw">const</span> stockInRecipeUnit = product.unit === <span class="str">'unit'</span> && product.unitQty
+        ? <span class="kw">new</span> Decimal(product.stock).mul(product.unitQty)
+        : <span class="kw">new</span> Decimal(product.stock);
+
+      <span class="kw">if</span> (stockInRecipeUnit.lt(required)) {
+        <span class="kw">throw new</span> BadRequestException(
+          <span class="str">`Stock insuficiente para "${product.name}": necesitas ${required} ${ing.unit}, hay ${stockInRecipeUnit.toFixed(3)} ${ing.unit}`</span>
+        );
+      }
+    }
+
+    <span class="cmt">// 3. Transacción atómica: descontar todo o nada</span>
+    <span class="kw">await</span> (this.prisma <span class="kw">as any</span>).$transaction(<span class="kw">async</span> (tx: <span class="kw">any</span>) => {
+      <span class="kw">for</span> (<span class="kw">const</span> ing <span class="kw">of</span> ingredients) {
+        <span class="kw">const</span> product = ing.product;
+        <span class="kw">let</span> remaining = <span class="kw">new</span> Decimal(ing.quantity); <span class="cmt">// cantidad a descontar (en recipe unit)</span>
+        <span class="kw">let</span> totalCogs = <span class="kw">new</span> Decimal(0);
+        <span class="kw">const</span> lotMovements: { lotId: <span class="kw">string</span>; quantity: Decimal }[] = [];
+
+        <span class="kw">if</span> (product.hasLotTracking && product.lots.length) {
+          <span class="cmt">// FEFO: descontar de lotes ordenados por expiresAt ASC</span>
+          <span class="kw">for</span> (<span class="kw">const</span> lot <span class="kw">of</span> product.lots) {
+            <span class="kw">if</span> (remaining.lte(0)) <span class="kw">break</span>;
+
+            <span class="cmt">// Convertir stock de lote a recipe unit</span>
+            <span class="kw">const</span> lotQtyInRecipeUnit = product.unitQty
+              ? <span class="kw">new</span> Decimal(lot.quantity).mul(product.unitQty)
+              : <span class="kw">new</span> Decimal(lot.quantity);
+
+            <span class="kw">const</span> takeFromLot = Decimal.min(remaining, lotQtyInRecipeUnit);
+            <span class="kw">const</span> takeInStockUnit = product.unitQty
+              ? takeFromLot.div(product.unitQty)
+              : takeFromLot;
+
+            <span class="cmt">// Descontar del lote</span>
+            <span class="kw">await</span> tx.productLot.update({
+              where: { id: lot.id },
+              data: { quantity: { decrement: takeInStockUnit.toNumber() } },
+            });
+
+            <span class="kw">const</span> lotCost = lot.costPrice
+              ? takeInStockUnit.mul(lot.costPrice)
+              : <span class="kw">new</span> Decimal(0);
+            totalCogs = totalCogs.add(lotCost);
+            lotMovements.push({ lotId: lot.id, quantity: takeInStockUnit });
+            remaining = remaining.minus(takeFromLot);
+          }
+        }
+
+        <span class="cmt">// Descontar del stock total del producto</span>
+        <span class="kw">const</span> deductInStockUnit = product.unitQty
+          ? <span class="kw">new</span> Decimal(ing.quantity).div(product.unitQty)
+          : <span class="kw">new</span> Decimal(ing.quantity);
+
+        <span class="kw">const</span> updatedProduct = <span class="kw">await</span> tx.product.update({
+          where: { id: product.id },
+          data: { stock: { decrement: deductInStockUnit.toNumber() } },
+        });
+
+        <span class="cmt">// Si no hay lotes: calcular COGS por precio del producto</span>
+        <span class="kw">if</span> (!product.hasLotTracking && product.costPrice) {
+          totalCogs = deductInStockUnit.mul(product.costPrice);
+        }
+
+        <span class="cmt">// Registrar StockMovement</span>
+        <span class="kw">const</span> movementId = uuidv7();
+        <span class="kw">await</span> tx.stockMovement.create({
+          data: {
+            id: movementId,
+            tenantId,
+            productId: product.id,
+            appointmentId,
+            reason: <span class="str">'appointment_use'</span>,
+            delta: -deductInStockUnit.toNumber(),
+            stockAfter: updatedProduct.stock,
+            unit: product.unit,
+            cogsCost: totalCogs.gt(0) ? totalCogs.toNumber() : <span class="kw">null</span>,
+            notes: <span class="str">`BOM: ${ing.notes ?? ing.unit}`</span>,
+            <span class="cmt">// Detalle de lotes descontados</span>
+            lotMovements: lotMovements.length ? {
+              create: lotMovements.map(lm => ({
+                id: uuidv7(), lotId: lm.lotId, quantity: lm.quantity.toNumber(),
+              })),
+            } : <span class="kw">undefined</span>,
+          },
+        });
+      }
+    });
+  }
+}</code></pre>
+
+      <!-- ─── PREDICTIVE ALERTS ─── -->
+      <h3 id="predictive">2.2 Alerta Predictiva de Desabastecimiento</h3>
+      <div class="callout warn">
+        <span class="callout-icon">📡</span>
+        <div class="callout-body">
+          <strong>La diferencia vs. un sistema normal</strong>
+          Un ERP básico avisa cuando <em>ya</em> te quedaste sin stock. Este módulo avisa <em>antes</em>: "el miércoles tienes 6 citas de keratina y solo hay 4 ampollas".
+        </div>
+      </div>
+
+      <div class="pre-label">inventory.service.ts — checkPredictiveAlerts()</div>
+      <pre><code><span class="cmt">/**
+ * Calcula cuántos de cada producto se consumirán en los próximos N días
+ * basándose en citas ya agendadas. Si el stock proyectado no alcanza,
+ * retorna una alerta con el día en que se agotará y cuánto falta pedir.
+ */</span>
+<span class="kw">async</span> <span class="fn">checkPredictiveAlerts</span>(
+  tenantId: <span class="kw">string</span>,
+  horizonDays = 7,
+): Promise&lt;PredictiveAlert[]&gt; {
+  <span class="kw">const</span> horizon = <span class="kw">new</span> Date();
+  horizon.setDate(horizon.getDate() + horizonDays);
+
+  <span class="cmt">// 1. Citas pendientes/confirmadas en el horizonte</span>
+  <span class="kw">const</span> appointments = <span class="kw">await</span> this.prisma.appointment.findMany({
+    where: {
+      tenantId,
+      status: { in: [<span class="str">'pending'</span>, <span class="str">'confirmed_by_ai'</span>, <span class="str">'attending'</span>] },
+      startsAt: { gte: <span class="kw">new</span> Date(), lte: horizon },
+      serviceId: { not: <span class="kw">null</span> },
+    },
+    select: { serviceId: <span class="kw">true</span>, startsAt: <span class="kw">true</span> },
+  });
+
+  <span class="kw">if</span> (!appointments.length) <span class="kw">return</span> [];
+
+  <span class="cmt">// 2. Agrupar consumo proyectado por producto</span>
+  <span class="kw">const</span> serviceIds = [...new Set(appointments.map(a => a.serviceId!))];
+  <span class="kw">const</span> allIngredients = <span class="kw">await</span> (this.prisma <span class="kw">as any</span>).serviceIngredient.findMany({
+    where: { serviceId: { in: serviceIds }, tenantId },
+    include: { product: <span class="kw">true</span> },
+  });
+
+  <span class="cmt">// productId → { product, projectedConsumption, consumingDays }</span>
+  <span class="kw">const</span> projectionMap = <span class="kw">new</span> Map&lt;<span class="kw">string</span>, {
+    product: <span class="kw">any</span>;
+    projected: Decimal;
+    consumingDates: Date[];
+  }&gt;();
+
+  <span class="kw">for</span> (<span class="kw">const</span> appt <span class="kw">of</span> appointments) {
+    <span class="kw">const</span> ings = allIngredients.filter(i => i.serviceId === appt.serviceId);
+    <span class="kw">for</span> (<span class="kw">const</span> ing <span class="kw">of</span> ings) {
+      <span class="kw">const</span> entry = projectionMap.get(ing.productId) ?? {
+        product: ing.product,
+        projected: <span class="kw">new</span> Decimal(0),
+        consumingDates: [],
+      };
+
+      <span class="cmt">// Convertir a unidades de stock si hay factor unitQty</span>
+      <span class="kw">const</span> qtyInStockUnit = ing.product.unitQty
+        ? <span class="kw">new</span> Decimal(ing.quantity).div(ing.product.unitQty)
+        : <span class="kw">new</span> Decimal(ing.quantity);
+
+      entry.projected = entry.projected.add(qtyInStockUnit);
+      entry.consumingDates.push(<span class="kw">new</span> Date(appt.startsAt));
+      projectionMap.set(ing.productId, entry);
+    }
+  }
+
+  <span class="cmt">// 3. Comparar con stock actual y generar alertas</span>
+  <span class="kw">const</span> alerts: PredictiveAlert[] = [];
+
+  <span class="kw">for</span> (<span class="kw">const</span> [productId, entry] <span class="kw">of</span> projectionMap) {
+    <span class="kw">const</span> currentStock = <span class="kw">new</span> Decimal(entry.product.stock);
+    <span class="kw">const</span> shortage = entry.projected.minus(currentStock);
+
+    <span class="kw">if</span> (shortage.gt(0)) {
+      <span class="cmt">// Calcular el día en que se agotará (acumulando consumo por fecha)</span>
+      <span class="kw">const</span> stockoutDate = <span class="kw">this</span>.<span class="fn">estimateStockoutDate</span>(
+        currentStock, entry.consumingDates, allIngredients, productId,
+      );
+
+      alerts.push({
+        productId,
+        productName: entry.product.name,
+        currentStock: currentStock.toNumber(),
+        projectedConsumption: entry.projected.toNumber(),
+        shortage: shortage.toNumber(),
+        unit: entry.product.unit,
+        stockoutDate,
+        urgency: shortage.gte(currentStock.mul(2)) ? <span class="str">'critical'</span> : <span class="str">'warning'</span>,
+        <span class="cmt">// Mensaje en lenguaje llano para la dueña</span>
+        humanMessage: <span class="kw">this</span>.<span class="fn">buildHumanMessage</span>(entry.product, entry.projected, currentStock, stockoutDate),
+      });
+    }
+  }
+
+  <span class="kw">return</span> alerts.sort((a, b) => a.urgency === <span class="str">'critical'</span> ? -1 : 1);
+}
+
+<span class="kw">private</span> <span class="fn">buildHumanMessage</span>(product: <span class="kw">any</span>, projected: Decimal, stock: Decimal, date: Date): <span class="kw">string</span> {
+  <span class="kw">const</span> dow = [<span class="str">'domingo'</span>, <span class="str">'lunes'</span>, <span class="str">'martes'</span>, <span class="str">'miércoles'</span>, <span class="str">'jueves'</span>, <span class="str">'viernes'</span>, <span class="str">'sábado'</span>][date.getDay()];
+  <span class="kw">return</span> <span class="str">`⚠️ Se te agotarán las "${product.name}" el ${dow}: necesitas ${projected.toFixed(1)} ${product.unit} y solo tienes ${stock.toFixed(1)}.`</span>;
+}</code></pre>
+
+      <!-- ─── COGS ─── -->
+      <h3 id="cogs">2.3 Cálculo de COGS y Margen de Utilidad Real</h3>
+      <div class="callout win">
+        <span class="callout-icon">💰</span>
+        <div class="callout-body">
+          <strong>Por qué esto cambia el negocio</strong>
+          Un servicio de "Baño de Color" puede cobrar $45 pero consumir $38 en productos. Sin este cálculo la dueña piensa que gana bien. Con él, ve que está ganando $7 — y puede ajustar precios o reducir consumo.
+        </div>
+      </div>
+
+      <div class="pre-label">inventory.service.ts — getServiceCOGS() y getServiceMargin()</div>
+      <pre><code><span class="kw">interface</span> <span class="fn">CogBreakdown</span> {
+  ingredientName: <span class="kw">string</span>;
+  quantity: <span class="kw">number</span>;
+  unit: <span class="kw">string</span>;
+  unitCost: <span class="kw">number</span>;  <span class="cmt">// costo por unidad de stock</span>
+  lineTotal: <span class="kw">number</span>; <span class="cmt">// cantidad × costo</span>
+}
+<span class="kw">interface</span> <span class="fn">ServiceMargin</span> {
+  serviceId: <span class="kw">string</span>;
+  serviceName: <span class="kw">string</span>;
+  basePrice: <span class="kw">number</span>;
+  totalCogs: <span class="kw">number</span>;
+  grossMargin: <span class="kw">number</span>;     <span class="cmt">// basePrice - totalCogs</span>
+  marginPercent: <span class="kw">number</span>;   <span class="cmt">// (grossMargin / basePrice) × 100</span>
+  breakdown: CogBreakdown[];
+  rating: <span class="str">'excellent'</span> | <span class="str">'good'</span> | <span class="str">'tight'</span> | <span class="str">'loss'</span>;
+}
+
+<span class="kw">async</span> <span class="fn">getServiceMargin</span>(serviceId: <span class="kw">string</span>, tenantId: <span class="kw">string</span>): Promise&lt;ServiceMargin&gt; {
+  <span class="kw">const</span> [service, ingredients] = <span class="kw">await</span> Promise.all([
+    this.prisma.service.findFirstOrThrow({ where: { id: serviceId, tenantId } }),
+    (this.prisma <span class="kw">as any</span>).serviceIngredient.findMany({
+      where: { serviceId, tenantId },
+      include: { product: <span class="kw">true</span> },
+    }),
+  ]);
+
+  <span class="kw">const</span> breakdown: CogBreakdown[] = [];
+  <span class="kw">let</span> totalCogs = <span class="kw">new</span> Decimal(0);
+
+  <span class="kw">for</span> (<span class="kw">const</span> ing <span class="kw">of</span> ingredients) {
+    <span class="kw">const</span> product = ing.product;
+    <span class="kw">if</span> (!product.costPrice) <span class="kw">continue</span>;
+
+    <span class="cmt">// Si la receta usa ml y el stock está en unidades, convertir el costo</span>
+    <span class="kw">let</span> costPerRecipeUnit: Decimal;
+    <span class="kw">if</span> (product.unit === <span class="str">'unit'</span> && product.unitQty && ing.unit !== <span class="str">'unit'</span>) {
+      <span class="cmt">// costPrice está en "por unidad". La receta usa ml.
+      // Costo por ml = costPrice / unitQty</span>
+      costPerRecipeUnit = <span class="kw">new</span> Decimal(product.costPrice).div(product.unitQty);
+    } <span class="kw">else</span> {
+      costPerRecipeUnit = <span class="kw">new</span> Decimal(product.costPrice);
+    }
+
+    <span class="kw">const</span> lineTotal = costPerRecipeUnit.mul(ing.quantity);
+    totalCogs = totalCogs.add(lineTotal);
+
+    breakdown.push({
+      ingredientName: product.name,
+      quantity: Number(ing.quantity),
+      unit: ing.unit,
+      unitCost: costPerRecipeUnit.toNumber(),
+      lineTotal: lineTotal.toNumber(),
+    });
+  }
+
+  <span class="kw">const</span> basePrice = <span class="kw">new</span> Decimal(service.basePrice);
+  <span class="kw">const</span> grossMargin = basePrice.minus(totalCogs);
+  <span class="kw">const</span> marginPct = basePrice.gt(0) ? grossMargin.div(basePrice).mul(100).toNumber() : 0;
+
+  <span class="kw">return</span> {
+    serviceId, serviceName: service.name,
+    basePrice: basePrice.toNumber(),
+    totalCogs: totalCogs.toNumber(),
+    grossMargin: grossMargin.toNumber(),
+    marginPercent: marginPct,
+    breakdown,
+    rating: marginPct >= 60 ? <span class="str">'excellent'</span>
+          : marginPct >= 35 ? <span class="str">'good'</span>
+          : marginPct >= 10 ? <span class="str">'tight'</span>
+          : <span class="str">'loss'</span>,
+  };
+}
+
+<span class="cmt">// Rentabilidad de todos los servicios del tenant (para dashboard)</span>
+<span class="kw">async</span> <span class="fn">getAllServiceMargins</span>(tenantId: <span class="kw">string</span>): Promise&lt;ServiceMargin[]&gt; {
+  <span class="kw">const</span> services = <span class="kw">await</span> this.prisma.service.findMany({
+    where: { tenantId, active: <span class="kw">true</span> },
+    select: { id: <span class="kw">true</span> },
+  });
+  <span class="kw">const</span> margins = <span class="kw">await</span> Promise.all(
+    services.map(s => <span class="kw">this</span>.<span class="fn">getServiceMargin</span>(s.id, tenantId))
+  );
+  <span class="kw">return</span> margins.sort((a, b) => a.marginPercent - b.marginPercent);
+}</code></pre>
+
+      <table>
+        <thead><tr><th>Rating</th><th>Margen</th><th>Acción sugerida al usuario</th></tr></thead>
+        <tbody>
+          <tr><td>🟢 Excellent</td><td>≥ 60 %</td><td>Servicio estrella. Promociónalo activamente.</td></tr>
+          <tr><td>🔵 Good</td><td>35 – 59 %</td><td>Rentable. Mantener y optimizar.</td></tr>
+          <tr><td>🟡 Tight</td><td>10 – 34 %</td><td>Margen ajustado. Revisar precio o reducir insumo.</td></tr>
+          <tr><td>🔴 Loss</td><td>&lt; 10 %</td><td>Pérdida real. Subir precio o descontinuar.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECCIÓN 3: REACT UX/UI                    -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s3">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <h2>Experiencia de Usuario — React + TypeScript</h2>
+      </div>
+      <p>El principio de diseño es <strong>el lenguaje de la dueña, no el de la contadora</strong>. Ninguna pantalla usa los términos "BOM", "COGS", "FEFO" ni "transacción". En su lugar: "Receta", "Cuánto te costó", "Se te va a acabar el martes".</p>
+
+      <!-- ─── BOM BUILDER ─── -->
+      <h3 id="bom-builder">3.1 BOM Builder — "Receta de Cocina"</h3>
+      <p>Una interfaz de tres columnas en el modal de servicio: productos disponibles a la izquierda, zona de receta al centro, resumen de costo a la derecha.</p>
+
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#f87171"></div>
+          <div class="mockup-dot" style="background:#fbbf24"></div>
+          <div class="mockup-dot" style="background:#34d399"></div>
+          <div class="mockup-title">Servicio: Trabajo de Uñas · Pestaña Receta / Consumibles</div>
+        </div>
+        <div class="mockup-body">
+          <div class="bom-row" style="padding-bottom:10px; margin-bottom:6px; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted)">
+            <span style="flex:1">Producto</span><span style="width:90px">Cantidad</span><span style="width:50px">Unidad</span><span style="width:70px">Costo</span><span style="width:28px"></span>
+          </div>
+          <div class="bom-row">
+            <div class="bom-chip">Uñas</div>
+            <div class="bom-name">Esmalte Gel UV Pro</div>
+            <div class="bom-qty" style="width:90px"><input type="number" value="5" style="width:60px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface2); color:var(--text); font-size:11px"></div>
+            <div class="bom-qty" style="width:50px">ml</div>
+            <div class="bom-qty" style="width:70px; color:var(--emerald)">$0.83</div>
+            <div style="width:28px; text-align:center; cursor:pointer; color:var(--muted)">✕</div>
+          </div>
+          <div class="bom-row">
+            <div class="bom-chip">Uñas</div>
+            <div class="bom-name">Top Coat Brillante</div>
+            <div class="bom-qty" style="width:90px"><input type="number" value="3" style="width:60px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface2); color:var(--text); font-size:11px"></div>
+            <div class="bom-qty" style="width:50px">ml</div>
+            <div class="bom-qty" style="width:70px; color:var(--emerald)">$0.42</div>
+            <div style="width:28px; text-align:center; cursor:pointer; color:var(--muted)">✕</div>
+          </div>
+          <div class="bom-row">
+            <div class="bom-chip">Spa</div>
+            <div class="bom-name">Guantes desechables</div>
+            <div class="bom-qty" style="width:90px"><input type="number" value="1" style="width:60px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface2); color:var(--text); font-size:11px"></div>
+            <div class="bom-qty" style="width:50px">unid.</div>
+            <div class="bom-qty" style="width:70px; color:var(--emerald)">$0.15</div>
+            <div style="width:28px; text-align:center; cursor:pointer; color:var(--muted)">✕</div>
+          </div>
+          <div style="border-top:2px solid var(--border); margin-top:10px; padding-top:10px; display:flex; justify-content:space-between; align-items:center">
+            <span style="font-size:11px; color:var(--muted)">+ Agregar producto</span>
+            <div style="text-align:right">
+              <div style="font-size:10px; color:var(--muted)">Costo total de insumos</div>
+              <div style="font-size:16px; font-weight:800; color:var(--primary); font-family:'Syne',sans-serif">$1.40</div>
+              <div style="font-size:10px; color:var(--emerald)">Precio $35 · Margen 96% 🟢</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h4>Componentes React para el BOM Builder</h4>
+      <div class="pre-label">components/BomBuilder/index.tsx</div>
+      <pre><code><span class="cmt">// BomBuilder — armado visual de receta de servicio
+// Props: serviceId, servicePrice, tenantProducts, onSave</span>
+
+<span class="kw">interface</span> <span class="fn">BomBuilderProps</span> {
+  serviceId: <span class="kw">string</span>;
+  servicePrice: <span class="kw">number</span>;
+  tenantProducts: SalonProduct[];
+  onSave: (ingredients: IngredientRow[]) => Promise&lt;<span class="kw">void</span>&gt;;
+}
+
+<span class="kw">interface</span> <span class="fn">IngredientRow</span> {
+  productId: <span class="kw">string</span>;
+  quantity: <span class="kw">number</span>;
+  unit: <span class="kw">string</span>;   <span class="cmt">// ml | g | unid. — auto-set desde producto</span>
+  notes?: <span class="kw">string</span>;
+  <span class="cmt">// computed client-side para display:</span>
+  productName: <span class="kw">string</span>;
+  lineCost: <span class="kw">number</span>;   <span class="cmt">// quantity × costPerRecipeUnit</span>
+}
+
+<span class="kw">export function</span> <span class="fn">BomBuilder</span>({ serviceId, servicePrice, tenantProducts, onSave }: BomBuilderProps) {
+  <span class="kw">const</span> [rows, setRows] = useState&lt;IngredientRow[]&gt;([]);
+  <span class="kw">const</span> [search, setSearch] = useState(<span class="str">''</span>);
+
+  <span class="kw">const</span> totalCogs = rows.reduce((sum, r) => sum + r.lineCost, 0);
+  <span class="kw">const</span> margin = servicePrice - totalCogs;
+  <span class="kw">const</span> marginPct = servicePrice > 0 ? (margin / servicePrice) * 100 : 0;
+  <span class="kw">const</span> ratingEmoji = marginPct >= 60 ? <span class="str">'🟢'</span> : marginPct >= 35 ? <span class="str">'🔵'</span> : marginPct >= 10 ? <span class="str">'🟡'</span> : <span class="str">'🔴'</span>;
+
+  <span class="kw">function</span> <span class="fn">addProduct</span>(product: SalonProduct) {
+    <span class="kw">const</span> recipeUnit = product.unit === <span class="str">'unit'</span> && product.unitQtyUnit
+      ? product.unitQtyUnit  <span class="cmt">// e.g. 'ml' si la botella es en ml</span>
+      : product.unit;
+    <span class="kw">const</span> costPerRecipeUnit = product.costPrice && product.unitQty
+      ? product.costPrice / product.unitQty
+      : (product.costPrice ?? 0);
+    setRows(prev => [...prev, {
+      productId: product.id, productName: product.name,
+      quantity: 1, unit: recipeUnit, lineCost: costPerRecipeUnit,
+    }]);
+  }
+
+  <span class="kw">function</span> <span class="fn">updateQty</span>(idx: <span class="kw">number</span>, qty: <span class="kw">number</span>, product: SalonProduct) {
+    <span class="kw">const</span> costPerRecipeUnit = product.costPrice && product.unitQty
+      ? product.costPrice / product.unitQty : (product.costPrice ?? 0);
+    setRows(prev => prev.map((r, i) => i === idx
+      ? { ...r, quantity: qty, lineCost: costPerRecipeUnit * qty }
+      : r
+    ));
+  }
+
+  <span class="kw">return</span> (
+    &lt;div className=<span class="str">"bom-builder"</span>&gt;
+      &lt;<span class="fn">ProductSearch</span> products={tenantProducts} search={search} onSearch={setSearch} onAdd={addProduct} /&gt;
+      &lt;<span class="fn">IngredientTable</span> rows={rows} products={tenantProducts} onChangeQty={updateQty} onRemove={idx => setRows(p => p.filter((_,i) => i !== idx))} /&gt;
+      &lt;<span class="fn">CogsSummary</span> totalCogs={totalCogs} servicePrice={servicePrice} margin={margin} marginPct={marginPct} ratingEmoji={ratingEmoji} /&gt;
+      &lt;button onClick={() => onSave(rows)}&gt;Guardar receta&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+      <!-- ─── ALERTS DASHBOARD ─── -->
+      <h3 id="alert-dashboard">3.2 Dashboard de Alertas — lenguaje llano</h3>
+      <p>Una sección en el panel principal que muestra las alertas predictivas calculadas por el backend. Sin jerga técnica — como si le hablara una asistente a la dueña.</p>
+
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#f87171"></div>
+          <div class="mockup-dot" style="background:#fbbf24"></div>
+          <div class="mockup-dot" style="background:#34d399"></div>
+          <div class="mockup-title">Panel Inventario · Alertas (próximos 7 días)</div>
+        </div>
+        <div class="mockup-body">
+          <div class="alert-card" style="border-color:var(--rose); background:var(--rose-dim)">
+            <div class="icon">🚨</div>
+            <div class="msg">
+              <strong>Ampolla de Keratina Brasileña — se acaba el MIÉRCOLES</strong>
+              <span>Tienes 4 en stock, pero hay 6 citas de Mantenimiento Capilar agendadas para el miércoles. Te van a faltar 2. <strong>Pide hoy.</strong></span>
+            </div>
+          </div>
+          <div class="alert-card">
+            <div class="icon">⚠️</div>
+            <div class="msg">
+              <strong>Esmalte Gel UV Pro — quedan 12 ml disponibles</strong>
+              <span>Para el viernes necesitas ≈ 20 ml (4 trabajos de uñas agendados). Te faltan 8 ml.</span>
+            </div>
+          </div>
+          <div class="alert-card" style="border-color:var(--emerald); background:var(--emerald-dim)">
+            <div class="icon">✅</div>
+            <div class="msg">
+              <strong>Todo lo demás está cubierto para esta semana</strong>
+              <span>Tus otros 12 productos tienen stock suficiente para cubrir todas las citas agendadas.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pre-label">components/StockAlertPanel.tsx</div>
+      <pre><code><span class="kw">interface</span> <span class="fn">StockAlertPanelProps</span> {
+  tenantId: <span class="kw">string</span>;
+  horizonDays?: <span class="kw">number</span>; <span class="cmt">// default 7</span>
+}
+
+<span class="kw">export function</span> <span class="fn">StockAlertPanel</span>({ tenantId, horizonDays = 7 }: StockAlertPanelProps) {
+  <span class="kw">const</span> { data: alerts, isLoading } = useQuery({
+    queryKey: [<span class="str">'stock-alerts'</span>, tenantId, horizonDays],
+    queryFn: () => api.get&lt;PredictiveAlert[]&gt;(
+      <span class="str">`/inventory/alerts?tenantId=${tenantId}&horizonDays=${horizonDays}`</span>
+    ),
+    refetchInterval: 5 * 60_000, <span class="cmt">// refrescar cada 5 min</span>
+    staleTime: 2 * 60_000,
+  });
+
+  <span class="kw">if</span> (isLoading) <span class="kw">return</span> &lt;<span class="fn">AlertSkeleton</span> /&gt;;
+  <span class="kw">const</span> criticals = alerts?.filter(a => a.urgency === <span class="str">'critical'</span>) ?? [];
+  <span class="kw">const</span> warnings  = alerts?.filter(a => a.urgency === <span class="str">'warning'</span>)  ?? [];
+
+  <span class="kw">return</span> (
+    &lt;section className=<span class="str">"stock-alert-panel"</span>&gt;
+      &lt;h3&gt;📦 Inventario · próximos {horizonDays} días&lt;/h3&gt;
+      {criticals.map(a =&gt; (
+        &lt;<span class="fn">AlertCard</span> key={a.productId} alert={a} variant=<span class="str">"critical"</span>
+          message={a.humanMessage}
+          cta=<span class="str">"Pedir ahora"</span>
+          onCta={() => <span class="cmt">/* abrir orden de compra */</span>}
+        /&gt;
+      ))}
+      {warnings.map(a =&gt; (
+        &lt;<span class="fn">AlertCard</span> key={a.productId} alert={a} variant=<span class="str">"warning"</span>
+          message={a.humanMessage}
+        /&gt;
+      ))}
+      {!criticals.length && !warnings.length && (
+        &lt;<span class="fn">AlertCard</span> variant=<span class="str">"ok"</span>
+          message=<span class="str">"✅ Todo el stock está cubierto para esta semana."</span>
+        /&gt;
+      )}
+    &lt;/section&gt;
+  );
+}</code></pre>
+
+      <!-- ─── PROFITABILITY ─── -->
+      <h3 id="profitability">3.3 Reporte de Rentabilidad Real</h3>
+      <p>Una vista tipo ranking que convierte datos contables en decisiones visuales: barras de margen por color, lenguaje de acción, sin tablas intimidantes.</p>
+
+      <div class="mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot" style="background:#f87171"></div>
+          <div class="mockup-dot" style="background:#fbbf24"></div>
+          <div class="mockup-dot" style="background:#34d399"></div>
+          <div class="mockup-title">Rentabilidad por Servicio · este mes</div>
+        </div>
+        <div class="mockup-body">
+          <div style="font-size:10px; color:var(--muted); margin-bottom:10px; display:flex; justify-content:space-between">
+            <span>Servicio</span><span style="width:160px; text-align:left; padding-left:8px">Margen real</span><span>Precio · Costo · Ganancia</span>
+          </div>
+          <div class="margin-row">
+            <span style="flex:1; font-size:12px; font-weight:600">Trabajo de Uñas</span>
+            <div class="margin-bar-wrap"><div class="margin-bar" style="width:95%; background:var(--emerald)"></div></div>
+            <span class="tag-good">96% 🟢</span>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px; white-space:nowrap">$35 · $1.40 · $33.60</span>
+          </div>
+          <div class="margin-row">
+            <span style="flex:1; font-size:12px; font-weight:600">Spa de Pies Premium</span>
+            <div class="margin-bar-wrap"><div class="margin-bar" style="width:68%; background:var(--emerald)"></div></div>
+            <span class="tag-good">68% 🟢</span>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px; white-space:nowrap">$50 · $16 · $34</span>
+          </div>
+          <div class="margin-row">
+            <span style="flex:1; font-size:12px; font-weight:600">Manicura Francesa</span>
+            <div class="margin-bar-wrap"><div class="margin-bar" style="width:45%; background:var(--amber)"></div></div>
+            <span style="font-size:11px; font-weight:700; color:var(--amber)">45% 🔵</span>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px; white-space:nowrap">$28 · $15.40 · $12.60</span>
+          </div>
+          <div class="margin-row">
+            <span style="flex:1; font-size:12px; font-weight:600">Mantenimiento Capilar</span>
+            <div class="margin-bar-wrap"><div class="margin-bar" style="width:22%; background:var(--amber)"></div></div>
+            <span style="font-size:11px; font-weight:700; color:var(--amber)">22% 🟡</span>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px; white-space:nowrap">$60 · $46.80 · $13.20</span>
+          </div>
+          <div class="margin-row" style="border-bottom:none">
+            <span style="flex:1; font-size:12px; font-weight:600">Baño de Color Completo</span>
+            <div class="margin-bar-wrap"><div class="margin-bar" style="width:8%; background:var(--rose)"></div></div>
+            <span class="tag-bad">8% 🔴</span>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px; white-space:nowrap">$75 · $69 · $6</span>
+          </div>
+          <div style="margin-top:12px; padding:10px; background:var(--rose-dim); border-radius:8px; font-size:11px; color:var(--rose)">
+            💡 <strong>Baño de Color</strong> está dejando solo $6 de ganancia. Con 10 citas al mes esto representa $60 — menos que 1 servicio de uñas. Considera revisar el precio o reducir la cantidad de producto usada.
+          </div>
+        </div>
+      </div>
+
+      <div class="pre-label">screens/ProfitabilityScreen.tsx — estructura de componentes</div>
+      <pre><code><span class="cmt">// Jerarquía de componentes</span>
+
+<span class="fn">ProfitabilityScreen</span>
+  ├── <span class="fn">PeriodSelector</span>          <span class="cmt">// mes / semana / todo el tiempo</span>
+  ├── <span class="fn">MarginRankingList</span>       <span class="cmt">// lista de servicios ordenados por margen ASC</span>
+  │   └── <span class="fn">ServiceMarginRow</span>    <span class="cmt">// barra, rating emoji, precio/costo/ganancia</span>
+  │       └── <span class="fn">CogsBomDrawer</span>   <span class="cmt">// desglose de insumos al hacer tap en la fila</span>
+  ├── <span class="fn">ActionInsightBanner</span>     <span class="cmt">// recomendación automática en lenguaje llano</span>
+  └── <span class="fn">TopCogsProducts</span>        <span class="cmt">// qué productos consumen más presupuesto del salón</span>
+
+<span class="cmt">// Drawer de desglose de costos (CogsBomDrawer)</span>
+<span class="kw">function</span> <span class="fn">CogsBomDrawer</span>({ margin }: { margin: ServiceMargin }) {
+  <span class="kw">return</span> (
+    &lt;Drawer title={<span class="str">`Desglose: ${margin.serviceName}`</span>}&gt;
+      &lt;div className=<span class="str">"summary-row"</span>&gt;
+        &lt;BigStat label=<span class="str">"Precio"</span> value={<span class="str">`$${margin.basePrice}`</span>} /&gt;
+        &lt;BigStat label=<span class="str">"Insumos"</span> value={<span class="str">`-$${margin.totalCogs.toFixed(2)}`</span>} color=<span class="str">"rose"</span> /&gt;
+        &lt;BigStat label=<span class="str">"Ganancia"</span> value={<span class="str">`$${margin.grossMargin.toFixed(2)}`</span>} color=<span class="str">"emerald"</span> /&gt;
+      &lt;/div&gt;
+      &lt;p className=<span class="str">"margin-label"</span>&gt;
+        {margin.ratingEmoji} Por cada cita de <strong>{margin.serviceName}</strong>, ganas en limpio&nbsp;
+        <strong>${margin.grossMargin.toFixed(2)}</strong> ({margin.marginPercent.toFixed(0)}% de margen).
+      &lt;/p&gt;
+      &lt;h4&gt;¿En qué se va el resto?&lt;/h4&gt;
+      {margin.breakdown.map(b =&gt; (
+        &lt;BomCostRow key={b.ingredientName}
+          name={b.ingredientName}
+          qty={b.quantity} unit={b.unit}
+          lineCost={b.lineTotal}
+        /&gt;
+      ))}
+    &lt;/Drawer&gt;
+  );
+}</code></pre>
+
+      <!-- ─── COMPONENT TREE ─── -->
+      <h3>Estructura completa de componentes del módulo</h3>
+      <div class="grid2">
+        <div class="card">
+          <h5>📦 Inventario</h5>
+          <p style="font-size:11px; font-family:'JetBrains Mono',monospace; line-height:1.9">
+            InventoryScreen<br>
+            ├─ ProductCard (+unitQty badge)<br>
+            ├─ LotTrackerDrawer<br>
+            ├─ StockAdjustModal<br>
+            └─ PurchaseOrderModal
+          </p>
+        </div>
+        <div class="card">
+          <h5>🧪 Recetas / BOM</h5>
+          <p style="font-size:11px; font-family:'JetBrains Mono',monospace; line-height:1.9">
+            ServiceModal (tab Receta)<br>
+            ├─ BomBuilder<br>
+            │  ├─ ProductSearch<br>
+            │  ├─ IngredientTable<br>
+            │  └─ CogsSummary<br>
+            └─ ComboBuilder
+          </p>
+        </div>
+        <div class="card">
+          <h5>🚨 Alertas</h5>
+          <p style="font-size:11px; font-family:'JetBrains Mono',monospace; line-height:1.9">
+            StockAlertPanel<br>
+            ├─ AlertCard (critical)<br>
+            ├─ AlertCard (warning)<br>
+            ├─ ExpiryAlertList<br>
+            └─ QuickReorderButton
+          </p>
+        </div>
+        <div class="card">
+          <h5>💰 Rentabilidad</h5>
+          <p style="font-size:11px; font-family:'JetBrains Mono',monospace; line-height:1.9">
+            ProfitabilityScreen<br>
+            ├─ MarginRankingList<br>
+            │  └─ ServiceMarginRow<br>
+            │     └─ CogsBomDrawer<br>
+            ├─ ActionInsightBanner<br>
+            └─ TopCogsProducts
+          </p>
+        </div>
+      </div>
+
+      <!-- MIGRACION -->
+      <h3>Migraciones requeridas para este módulo</h3>
+      <div class="callout danger">
+        <span class="callout-icon">🗄️</span>
+        <div class="callout-body">
+          <strong>Correr desde terminal Windows</strong>
+          <code style="font-size:11px; display:block; margin-top:4px">npx prisma migrate dev --name add_inventory_bom_module</code>
+          Esto agrega: <code>costPrice</code>, <code>minStock</code>, <code>alertThreshold</code>, <code>hasLotTracking</code>, <code>lotStrategy</code> a Product; nuevas tablas <code>product_lots</code>, <code>stock_movement_lots</code>, <code>service_combos</code>, <code>combo_items</code>.
+        </div>
+      </div>
+    </div>
+
+    <div style="height:48px"></div>
+  </main>
+</div>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('[id]');
+  const links = document.querySelectorAll('nav a');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
+</script>

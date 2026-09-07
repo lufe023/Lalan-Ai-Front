@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   TrendingUp,
@@ -16,15 +16,19 @@ import {
   Flame,
   CheckCircle2,
   ChevronRight,
+  PackageOpen,
+  AlertTriangle,
+  TrendingDown,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
 
 export const DashboardScreen: React.FC = () => {
-  const { metricsPeriod, setMetricsPeriod, currentMetrics, navigateTo, appointments } = useApp();
+  const { metricsPeriod, setMetricsPeriod, currentMetrics, navigateTo, navigateToCatalog, appointments } = useApp();
   const { currentUser } = useAuth();
 
   const periodOptions: { id: 'day' | 'week' | 'month'; label: string }[] = [
@@ -32,6 +36,15 @@ export const DashboardScreen: React.FC = () => {
     { id: 'week', label: 'Esta Semana' },
     { id: 'month', label: 'Este Mes' },
   ];
+
+  // ── Inventario: alertas y márgenes ──────────────────────────────────
+  const [stockAlerts, setStockAlerts] = useState<any[]>([]);
+  const [serviceMargins, setServiceMargins] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get<any[]>('/inventory/alerts').then(setStockAlerts).catch(() => {});
+    api.get<any[]>('/inventory/margins').then(setServiceMargins).catch(() => {});
+  }, []);
 
   // Helper for period title
   const getPeriodLabel = () => {
@@ -86,6 +99,12 @@ export const DashboardScreen: React.FC = () => {
                 <span className="text-slate-400 font-normal text-[10px] ml-0.5">{getPeriodLabel()}</span>
               </div>
             </div>
+            <button
+              onClick={() => navigateTo('ganancias')}
+              className="mt-1 text-[10px] font-semibold text-[var(--primary)] hover:opacity-70 transition text-left ios-touch cursor-pointer"
+            >
+              Ver informe →
+            </button>
           </motion.div>
 
           {/* Card 2: Clients */}
@@ -252,6 +271,113 @@ export const DashboardScreen: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* ── Alertas de Inventario ──────────────────────────────────────── */}
+        {stockAlerts.length > 0 && (
+          <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-900/50 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Alertas de Inventario</span>
+              <span className="ml-auto text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-semibold px-2 py-0.5 rounded-full">
+                {stockAlerts.length} {stockAlerts.length === 1 ? 'alerta' : 'alertas'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {stockAlerts.map((alert, idx) => (
+                <div key={idx} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30">
+                  <PackageOpen className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-slate-700 dark:text-neutral-300">{alert.message}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">
+                      Stock: {alert.currentStock} {alert.unit} · Consumo proyectado: {alert.projectedConsumption.toFixed(2)} {alert.unit}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Rentabilidad por Servicio ───────────────────────────────────── */}
+        {serviceMargins.length > 0 && (
+          <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingDown className="w-4 h-4 text-[var(--primary)]" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Rentabilidad por Servicio</span>
+              <div className="ml-auto flex items-center gap-1 group relative">
+                <span className="text-[10px] text-slate-400 cursor-default">Costo vs Precio</span>
+                <span className="text-[10px] text-slate-400 cursor-help">ⓘ</span>
+                <div className="absolute bottom-5 right-0 w-56 bg-slate-800 text-white text-[10px] rounded-lg p-2.5 hidden group-hover:block z-50 leading-relaxed shadow-xl">
+                  <strong>Costo de Producción (COGS)</strong> es cuánto te cuesta hacer el servicio en productos: esmaltes, aceites, tintes, etc. La ganancia es lo que queda después de restarle eso al precio que cobras.
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2.5">
+              {serviceMargins.map((svc, idx) => {
+                const isLoss = svc.marginPercent < 0;
+                // Semáforo: rojo <20%, naranja 20-49%, verde 50%+
+                const ratingColor = isLoss
+                  ? '#ef4444'
+                  : svc.marginPercent >= 50 ? '#10b981'
+                  : svc.marginPercent >= 20 ? '#f59e0b'
+                  : '#ef4444';
+                const ratingLabel = isLoss ? 'Pérdida'
+                  : svc.marginPercent >= 50 ? 'Excelente'
+                  : svc.marginPercent >= 20 ? 'Ajustado'
+                  : 'Bajo';
+                const barBg = isLoss ? '#fee2e2' : svc.marginPercent >= 50 ? '#d1fae5' : svc.marginPercent >= 20 ? '#fef3c7' : '#fee2e2';
+                const barWidth = isLoss ? 0 : Math.min(100, svc.marginPercent);
+                // Tooltip texto
+                const tooltipText = isLoss
+                  ? `Por cada servicio de ${svc.serviceName} estás perdiendo $${Math.abs(svc.grossMargin).toFixed(2)} porque el costo de los productos ($${svc.totalCogs.toFixed(2)}) supera el precio que cobrás ($${svc.basePrice}).`
+                  : svc.totalCogs === 0
+                  ? `Aún no tiene receta o costo de productos configurado. Agregá los insumos en el Catálogo para ver la ganancia real.`
+                  : `De cada $${svc.basePrice} que cobrás, $${svc.totalCogs.toFixed(2)} se van en productos y te quedan $${svc.grossMargin.toFixed(2)} de ganancia — el ${svc.marginPercent}% del precio.`;
+                return (
+                  <div key={idx} className="cursor-pointer group/row" onClick={() => navigateToCatalog({ serviceId: svc.serviceId, tab: 'recipe' })}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate flex-1 group-hover/row:underline group-hover/row:text-[var(--primary)]">{svc.serviceName}</span>
+                      <div className="flex items-center gap-1.5 shrink-0 relative group/pct">
+                        <span className="text-[10px] font-bold" style={{ color: ratingColor }}>{ratingLabel}</span>
+                        <span className="text-xs font-extrabold cursor-help" style={{ color: ratingColor }}>
+                          {isLoss ? `-${Math.abs(svc.marginPercent).toFixed(1)}%` : `${svc.marginPercent}%`}
+                        </span>
+                        {/* Tooltip del porcentaje */}
+                        <div className="absolute bottom-5 right-0 w-60 bg-slate-800 text-white text-[10px] rounded-lg p-2.5 hidden group-hover/pct:block z-50 leading-relaxed shadow-xl">
+                          {tooltipText}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: barBg }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${barWidth}%`, backgroundColor: ratingColor }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-0.5">
+                      <span className="text-[10px] text-slate-400">Precio: ${svc.basePrice}</span>
+                      {isLoss ? (
+                        <span className="text-[10px] font-semibold text-red-500">
+                          ⚠ Costo (${svc.totalCogs.toFixed(2)}) supera el precio · Perdés ${Math.abs(svc.grossMargin).toFixed(2)} por servicio
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">
+                          Costo: ${svc.totalCogs.toFixed(2)} · Ganancia: ${svc.grossMargin.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {serviceMargins.some(s => s.totalCogs === 0) && (
+              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-3 text-center">
+                * Servicios sin costo calculado: configurá la receta y el precio de compra de cada producto en el Catálogo.
+              </p>
+            )}
+          </div>
+        )}
+
       </PageContent>
     </div>
   );

@@ -60,6 +60,12 @@ export interface SalonProduct {
   description: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
   priceTiers: PriceTier[]; // Multiple pricing table
+  // ── Costeo e inventario inteligente ──────────────────────────────────
+  costPrice?: number;       // costo de compra por unidad base
+  minStock?: number;        // stock mínimo de seguridad
+  alertThreshold?: number;  // umbral alerta predictiva
+  hasLotTracking?: boolean; // control por lote/vencimiento
+  lotStrategy?: 'FEFO' | 'FIFO'; // estrategia de deducción
 }
 
 export interface ClientHospitalityPreferences {
@@ -132,6 +138,8 @@ export interface Appointment {
   channel: CommunicationChannel;
   notes?: string;
   createdAt: string;
+  startsAt?: string;       // ISO full datetime from backend
+  completedAt?: string;    // actual service delivery time (may differ from startsAt)
 }
 
 export interface ChatMessage {

@@ -17,6 +17,7 @@ import { BotsControlScreen } from './screens/BotsControlScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LoungePlayerScreen } from './screens/LoungePlayerScreen';
 import { PriceListsScreen } from './screens/PriceListsScreen';
+import { GananciasScreen } from './screens/GananciasScreen';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -35,6 +36,7 @@ const MainAppContent: React.FC = () => {
       case 'bots':      return <BotsControlScreen key="bots"    />;
       case 'settings':  return <SettingsScreen  key="settings"  />;
       case 'price-lists': return <PriceListsScreen key="price-lists" />;
+      case 'ganancias':   return <GananciasScreen   key="ganancias"   />;
       default:          return <DashboardScreen key="default"   />;
     }
   };

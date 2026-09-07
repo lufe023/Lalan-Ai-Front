@@ -9,6 +9,10 @@ interface IOSModalProps {
   subtitle?: string;
   children: React.ReactNode;
   id?: string;
+  /** Fija la altura del sheet para evitar saltos al cambiar contenido (default: true) */
+  fixedHeight?: boolean;
+  /** Altura CSS del sheet, e.g. "88%" o "560px" (default: "88%") */
+  height?: string;
 }
 
 export const IOSModal: React.FC<IOSModalProps> = ({
@@ -18,6 +22,8 @@ export const IOSModal: React.FC<IOSModalProps> = ({
   subtitle,
   children,
   id = 'ios-sheet-modal',
+  fixedHeight = true,
+  height = '88%',
 }) => {
   // Prevent body scroll when open
   useEffect(() => {
@@ -47,7 +53,8 @@ export const IOSModal: React.FC<IOSModalProps> = ({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 350 }}
-            className="relative w-full max-h-[88%] bg-white dark:bg-neutral-900 rounded-t-[28px] shadow-2xl flex flex-col border-t border-white/20 dark:border-neutral-800 z-10 overflow-hidden"
+            className="relative w-full bg-white dark:bg-neutral-900 rounded-t-[28px] shadow-2xl flex flex-col border-t border-white/20 dark:border-neutral-800 z-10 overflow-hidden"
+            style={{ height: fixedHeight ? height : undefined, maxHeight: fixedHeight ? undefined : height }}
           >
             {/* Grabber Bar */}
             <div className="w-full flex justify-center pt-2.5 pb-1">

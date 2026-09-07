@@ -9,7 +9,7 @@ import { loungeAudio } from '../utils/loungeAudio';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias';
 
 export interface ToastInfo {
   id: string; title: string; message: string;
@@ -38,8 +38,11 @@ export interface PriceList {
 interface AppContextType {
   currentScreen: ScreenName;
   navigateTo: (screen: ScreenName) => void;
+  navigateToCatalog: (opts: { serviceId?: string; productId?: string; tab?: 'config' | 'recipe' }) => void;
   screenHistory: ScreenName[];
   goBack: () => void;
+  catalogDeepLink: { serviceId?: string; productId?: string; tab?: 'config' | 'recipe' } | null;
+  clearCatalogDeepLink: () => void;
   clients: Client[];
   isLoadingClients: boolean;
   addClient: (client: Omit<Client, 'id' | 'registeredDate'>) => Promise<Client>;
@@ -57,7 +60,7 @@ interface AppContextType {
   toggleProductAi: (id: string, aiAvailable: boolean) => Promise<void>;
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => Promise<void>;
-  updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<void>;
+  updateAppointmentStatus: (id: string, status: AppointmentStatus, completedAt?: string) => Promise<void>;
   deleteAppointment: (id: string) => Promise<void>;
   conversations: Conversation[];
   activeConversationId: string | null;
@@ -151,6 +154,11 @@ function mapApiProduct(p: any): SalonProduct {
     id: p.id, name: p.name, category: p.category, categoryName: p.categoryName,
     sku: p.sku, basePrice: Number(p.basePrice), stock: Number(p.stock ?? 0), unit: p.unit ?? 'unit',
     unitQty: p.unitQty != null ? Number(p.unitQty) : undefined, unitQtyUnit: p.unitQtyUnit ?? undefined,
+      costPrice: p.costPrice != null ? Number(p.costPrice) : undefined,
+      minStock: p.minStock != null ? Number(p.minStock) : undefined,
+      alertThreshold: p.alertThreshold != null ? Number(p.alertThreshold) : undefined,
+      hasLotTracking: p.hasLotTracking ?? false,
+      lotStrategy: (p.lotStrategy as 'FEFO' | 'FIFO') ?? 'FEFO',
     image: p.image, description: p.description ?? '',
     aiAvailable: p.aiAvailable ?? true, priceTiers: ((p.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
   };
@@ -165,6 +173,7 @@ function mapApiAppointment(a: any): Appointment {
     price: Number(a.price), selectedPriceTierName: a.selectedPriceTierName,
     depositPaid: Number(a.depositPaid ?? 0), staffName: a.staffName,
     status: a.status, channel: a.channel, notes: a.notes, createdAt: a.createdAt,
+    startsAt: a.startsAt, completedAt: a.completedAt ?? undefined,
   };
 }
 function mapApiConversation(c: any): Conversation {
@@ -231,6 +240,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const navigateTo = useCallback((screen: ScreenName) => {
     setScreenHistory(h => [...h, currentScreen]);
     setCurrentScreen(screen);
+  }, [currentScreen]);
+  const [catalogDeepLink, setCatalogDeepLink] = useState<{ serviceId?: string; productId?: string; tab?: 'config' | 'recipe' } | null>(null);
+  const clearCatalogDeepLink = useCallback(() => setCatalogDeepLink(null), []);
+  const navigateToCatalog = useCallback((opts: { serviceId?: string; productId?: string; tab?: 'config' | 'recipe' }) => {
+    setCatalogDeepLink(opts);
+    setScreenHistory(h => [...h, currentScreen]);
+    setCurrentScreen('catalog');
   }, [currentScreen]);
   const goBack = useCallback(() => {
     setScreenHistory(h => {
@@ -364,6 +380,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const res = await api.post<any>('/products', {
       name: data.name, category: data.category, categoryName: data.categoryName,
       sku: data.sku, basePrice: data.basePrice, stock: data.stock ?? 0,
+      unit: data.unit ?? 'unit',
+      unitQty: data.unitQty ?? undefined,
+      unitQtyUnit: data.unitQtyUnit ?? undefined,
+      costPrice: data.costPrice ?? undefined,
+      minStock: data.minStock ?? undefined,
+      alertThreshold: data.alertThreshold ?? undefined,
+      hasLotTracking: data.hasLotTracking ?? undefined,
+      lotStrategy: data.lotStrategy ?? undefined,
       image: data.image || undefined, description: data.description || undefined,
       aiAvailable: data.aiAvailable, priceTiers: data.priceTiers ?? [],
     });
@@ -379,8 +403,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.stock !== undefined)        payload.stock = updated.stock;
     if (updated.image !== undefined)        payload.image = updated.image || undefined;
     if (updated.description !== undefined)  payload.description = updated.description || undefined;
-    if (updated.aiAvailable !== undefined)  payload.aiAvailable = updated.aiAvailable;
-    if (updated.priceTiers !== undefined)   payload.priceTiers = updated.priceTiers;
+    if (updated.aiAvailable !== undefined)    payload.aiAvailable = updated.aiAvailable;
+    if (updated.priceTiers !== undefined)     payload.priceTiers = updated.priceTiers;
+    if (updated.unit !== undefined)           payload.unit = updated.unit;
+    if (updated.unitQty !== undefined)        payload.unitQty = updated.unitQty;
+    if (updated.unitQtyUnit !== undefined)    payload.unitQtyUnit = updated.unitQtyUnit;
+    if (updated.costPrice !== undefined)      payload.costPrice = updated.costPrice;
+    if (updated.minStock !== undefined)       payload.minStock = updated.minStock;
+    if (updated.alertThreshold !== undefined) payload.alertThreshold = updated.alertThreshold;
+    if (updated.hasLotTracking !== undefined) payload.hasLotTracking = updated.hasLotTracking;
+    if (updated.lotStrategy !== undefined)    payload.lotStrategy = updated.lotStrategy;
     const res = await api.patch<any>(`/products/${id}`, payload);
     setProducts(p => p.map(x => x.id === id ? mapApiProduct(res) : x));
   }, []);
@@ -395,14 +427,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addAppointment = useCallback(async (data: Omit<Appointment, 'id' | 'createdAt'>) => {
     const res = await api.post<any>('/appointments', {
-      ...data, startsAt: `${data.date}T${data.time}:00`,
-      locationId: '',
+      locationId: data.locationId || undefined,
+      clientId: data.clientId || undefined,
+      clientName: data.clientName,
+      clientPhone: data.clientPhone,
+      serviceId: data.serviceId || undefined,
+      serviceName: data.serviceName,
+      serviceCategory: data.serviceCategory,
+      staffId: data.staffId || undefined,
+      staffName: data.staffName,
+      startsAt: data.startsAt ?? `${(data as any).date}T${(data as any).time}:00`,
+      durationMinutes: data.durationMinutes,
+      price: data.price,
+      currencyCode: (data as any).currencyCode || undefined,
+      selectedPriceTierName: data.selectedPriceTierName || undefined,
+      depositPaid: data.depositPaid ?? 0,
+      channel: data.channel,
+      notes: data.notes || undefined,
     });
     setAppointments(a => [...a, mapApiAppointment(res)]);
   }, []);
-  const updateAppointmentStatus = useCallback(async (id: string, status: AppointmentStatus) => {
-    await api.patch(`/appointments/${id}/status`, { status });
-    setAppointments(a => a.map(x => x.id === id ? { ...x, status } : x));
+  const updateAppointmentStatus = useCallback(async (id: string, status: AppointmentStatus, completedAt?: string) => {
+    const body: Record<string, string> = { status };
+    if (completedAt) body.completedAt = completedAt;
+    await api.patch(`/appointments/${id}/status`, body);
+    setAppointments(a => a.map(x => x.id === id ? { ...x, status, ...(completedAt ? { completedAt } : {}) } : x));
   }, []);
   const deleteAppointment = useCallback(async (id: string) => {
     await api.delete(`/appointments/${id}`);
@@ -466,8 +515,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToast(null);
   }, []);
 
-  const [showSplash, setShowSplash] = useState(true);
-  useEffect(() => { const t = setTimeout(() => setShowSplash(false), 2200); return () => clearTimeout(t); }, []);
+  const [showSplash, setShowSplash] = useState(() => {
+    try { return localStorage.getItem('skipSplash') !== 'true'; } catch { return true; }
+  });
+  useEffect(() => {
+    if (!showSplash) return; // already hidden (skip mode)
+    const t = setTimeout(() => setShowSplash(false), 2200);
+    return () => clearTimeout(t);
+  }, [showSplash]);
   const triggerSplash = () => setShowSplash(true);
   const closeSplash = () => setShowSplash(false);
   const [isPhoneFrame, setIsPhoneFrame] = useState(false);
@@ -565,7 +620,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
-      currentScreen, navigateTo, screenHistory, goBack,
+      currentScreen, navigateTo, navigateToCatalog, screenHistory, goBack, catalogDeepLink, clearCatalogDeepLink,
       clients, isLoadingClients, addClient, updateClient, deleteClient,
       services, addService, updateService, deleteService, toggleServiceAi,
       products, addProduct, updateProduct, deleteProduct, toggleProductAi,

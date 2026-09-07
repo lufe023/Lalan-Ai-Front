@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
@@ -46,6 +46,8 @@ export const CatalogScreen: React.FC = () => {
     showToast,
     loadIngredients,
     saveIngredients,
+    catalogDeepLink,
+    clearCatalogDeepLink,
   } = useApp();
   const { currentUser } = useAuth();
 
@@ -114,6 +116,11 @@ export const CatalogScreen: React.FC = () => {
     description: string;
     aiAvailable: boolean;
     priceTiers: PriceTier[];
+    costPrice: string;
+    minStock: string;
+    alertThreshold: string;
+    hasLotTracking: boolean;
+    lotStrategy: 'FEFO' | 'FIFO';
   }>({
     name: '',
     category: 'nailcare',
@@ -130,6 +137,11 @@ export const CatalogScreen: React.FC = () => {
     priceTiers: [
       { id: 'ptier_1', name: 'Precio Venta Público (PVP)', price: 20, isDefault: true, description: 'Venta individual estándar' },
     ],
+    costPrice: '',
+    minStock: '',
+    alertThreshold: '',
+    hasLotTracking: false,
+    lotStrategy: 'FEFO',
   });
 
   // Category names mapping
@@ -244,6 +256,11 @@ export const CatalogScreen: React.FC = () => {
         { id: `ptier_${Date.now()}_1`, name: 'Precio Venta al Público (PVP)', price: 20, isDefault: true },
         { id: `ptier_${Date.now()}_2`, name: 'Precio con Cita / Descuento', price: 15, description: 'Comprando en el salón' },
       ],
+      costPrice: '',
+      minStock: '',
+      alertThreshold: '',
+      hasLotTracking: false,
+      lotStrategy: 'FEFO',
     });
     setShowProductModal(true);
   };
@@ -267,9 +284,33 @@ export const CatalogScreen: React.FC = () => {
         const valid = (product.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t));
         return valid.length > 0 ? valid : [{ id: `ptier_${Date.now()}`, name: 'Precio PVP', price: product.basePrice, isDefault: true }];
       })(),
+      costPrice: product.costPrice != null ? String(product.costPrice) : '',
+      minStock: product.minStock != null ? String(product.minStock) : '',
+      alertThreshold: product.alertThreshold != null ? String(product.alertThreshold) : '',
+      hasLotTracking: product.hasLotTracking ?? false,
+      lotStrategy: product.lotStrategy ?? 'FEFO',
     });
     setShowProductModal(true);
   };
+
+  // Deep-link desde Dashboard: abrir servicio/producto directo en la pestaña solicitada
+  useEffect(() => {
+    if (!catalogDeepLink) return;
+    if (catalogDeepLink.serviceId) {
+      const svc = services.find(s => s.id === catalogDeepLink.serviceId);
+      if (svc) {
+        handleOpenEditService(svc);
+        if (catalogDeepLink.tab === 'recipe') {
+          setTimeout(() => setServiceModalTab('recipe'), 50);
+        }
+      }
+    } else if (catalogDeepLink.productId) {
+      const prod = products.find(p => p.id === catalogDeepLink.productId);
+      if (prod) handleOpenEditProduct(prod);
+    }
+    clearCatalogDeepLink();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogDeepLink]);
 
   // Price tier row helpers for Service
   const addServicePriceTier = () => {
@@ -384,39 +425,31 @@ export const CatalogScreen: React.FC = () => {
     setProductApiError('');
     setIsSavingProduct(true);
     try {
+      const productPayload = {
+        name: productForm.name,
+        category: productForm.category,
+        categoryName: productCategoryNames[productForm.category],
+        sku: productForm.sku,
+        basePrice: productForm.basePrice,
+        stock: productForm.stock,
+        unit: productForm.unit,
+        unitQty: productForm.unitQty !== '' ? Number(productForm.unitQty) : undefined,
+        unitQtyUnit: productForm.unitQty !== '' ? productForm.unitQtyUnit : undefined,
+        image: productForm.image,
+        description: productForm.description,
+        aiAvailable: productForm.aiAvailable,
+        priceTiers: productForm.priceTiers,
+        costPrice: productForm.costPrice !== '' ? Number(productForm.costPrice) : undefined,
+        minStock: productForm.minStock !== '' ? Number(productForm.minStock) : undefined,
+        alertThreshold: productForm.alertThreshold !== '' ? Number(productForm.alertThreshold) : undefined,
+        hasLotTracking: productForm.hasLotTracking,
+        lotStrategy: productForm.lotStrategy,
+      };
       if (editingProductId) {
-        await updateProduct(editingProductId, {
-          name: productForm.name,
-          category: productForm.category,
-          categoryName: productCategoryNames[productForm.category],
-          sku: productForm.sku,
-          basePrice: productForm.basePrice,
-          stock: productForm.stock,
-          unit: productForm.unit,
-          unitQty: productForm.unitQty !== '' ? Number(productForm.unitQty) : undefined,
-          unitQtyUnit: productForm.unitQty !== '' ? productForm.unitQtyUnit : undefined,
-          image: productForm.image,
-          description: productForm.description,
-          aiAvailable: productForm.aiAvailable,
-          priceTiers: productForm.priceTiers,
-        });
+        await updateProduct(editingProductId, productPayload);
         showToast('Producto actualizado', productForm.name, 'success');
       } else {
-        await addProduct({
-          name: productForm.name,
-          category: productForm.category,
-          categoryName: productCategoryNames[productForm.category],
-          sku: productForm.sku,
-          basePrice: productForm.basePrice,
-          stock: productForm.stock,
-          unit: productForm.unit,
-          unitQty: productForm.unitQty !== '' ? Number(productForm.unitQty) : undefined,
-          unitQtyUnit: productForm.unitQty !== '' ? productForm.unitQtyUnit : undefined,
-          image: productForm.image,
-          description: productForm.description,
-          aiAvailable: productForm.aiAvailable,
-          priceTiers: productForm.priceTiers,
-        });
+        await addProduct(productPayload);
         showToast('Producto creado', productForm.name, 'success');
       }
       setShowProductModal(false);
@@ -759,10 +792,17 @@ export const CatalogScreen: React.FC = () => {
                             {product.categoryName}
                           </span>
                           <span>•</span>
-                          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                          <span className={`font-medium ${
+                            product.minStock != null && product.stock <= product.minStock
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                          }`}>
                             Stock: {product.stock} {product.unit ?? 'unid.'}
                             {product.unit === 'unit' && product.unitQty != null && (
                               <span className="text-slate-400 dark:text-neutral-500 ml-1">· {product.unitQty} {product.unitQtyUnit ?? 'ml'} c/u</span>
+                            )}
+                            {product.minStock != null && product.stock <= product.minStock && (
+                              <span className="ml-1 text-amber-500">⚠️</span>
                             )}
                           </span>
                           <span>•</span>
@@ -806,7 +846,20 @@ export const CatalogScreen: React.FC = () => {
                         <ShoppingBag className="w-3 h-3 text-[var(--primary)]" />
                         Tabla de Precios de Venta ({product.priceTiers?.length || 1})
                       </span>
-                      <span>Precio</span>
+                      <div className="flex items-center gap-2">
+                        {product.costPrice != null && product.basePrice > 0 && (
+                          <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                            ((product.basePrice - product.costPrice) / product.basePrice) >= 0.35
+                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
+                              : ((product.basePrice - product.costPrice) / product.basePrice) >= 0.15
+                              ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                              : 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400'
+                          }`}>
+                            {Math.round(((product.basePrice - product.costPrice) / product.basePrice) * 100)}% margen
+                          </span>
+                        )}
+                        <span>Precio</span>
+                      </div>
                     </div>
 
                     <div className="space-y-1">
@@ -876,44 +929,41 @@ export const CatalogScreen: React.FC = () => {
         title={editingServiceId ? 'Editar Servicio' : 'Nuevo Servicio de Belleza'}
         subtitle="Configuración y Tabla de Precios Multinivel"
       >
-        <form onSubmit={handleSaveService} className="space-y-3.5 text-xs select-none">
+        <form onSubmit={handleSaveService} className="space-y-0 text-xs select-none">
           {/* Tab switcher — only show when editing */}
           {editingServiceId && (
-            <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
-              {(['config', 'recipe'] as const).map(tab => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setServiceModalTab(tab)}
-                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition ${
-                    serviceModalTab === tab
-                      ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-sm'
-                      : 'text-slate-500 dark:text-neutral-400'
-                  }`}
-                >
-                  {tab === 'config' ? '⚙️ Configuración' : '🧪 Receta / Consumibles'}
-                </button>
-              ))}
+            <div className="mb-4">
+              <IOSSegmentedControl
+                id="service-modal-tabs"
+                options={[
+                  { id: 'config', label: '⚙️ Configuración' },
+                  { id: 'recipe', label: '🧪 Receta / Consumibles' },
+                ]}
+                value={serviceModalTab}
+                onChange={(val) => setServiceModalTab(val as 'config' | 'recipe')}
+              />
             </div>
           )}
 
           {/* ── RECIPE TAB ─────────────────────────────────────────────── */}
           {editingServiceId && serviceModalTab === 'recipe' && (
-            <div className="space-y-3">
-              <p className="text-[10px] text-slate-500 dark:text-neutral-400">
-                Define qué productos consume este servicio y en qué cantidad. El stock se descontará al completar una cita.
-              </p>
+            <div className="space-y-4">
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
+                Define qué productos usa este servicio y cuánto se gasta de cada uno. El sistema descuenta el stock automáticamente al completar una cita.
+              </div>
 
-              {/* Current ingredients list */}
-              {ingredients.length === 0 && (
-                <div className="py-4 text-center text-[11px] text-slate-400 dark:text-neutral-500 bg-slate-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-slate-200 dark:border-neutral-700">
-                  Sin ingredientes — agrega productos abajo
+              {ingredients.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-slate-400 dark:text-neutral-500 bg-slate-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-slate-200 dark:border-neutral-700">
+                  <Package className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-neutral-600" />
+                  <p>Sin ingredientes — agrega productos abajo</p>
                 </div>
-              )}
-              {ingredients.length > 0 && (
-                <div className="space-y-1.5">
+              ) : (
+                <div className="space-y-2">
                   {ingredients.map((ing, idx) => (
-                    <div key={ing.productId} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
+                    <div key={ing.productId} className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 shadow-xs">
+                      <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0">
+                        <Package className="w-4 h-4" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate">
                           {ing.product?.name ?? ing.productId}
@@ -922,7 +972,7 @@ export const CatalogScreen: React.FC = () => {
                           <p className="text-[10px] text-slate-400 dark:text-neutral-500 truncate">{ing.notes}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <input
                           type="number"
                           min="0.001"
@@ -932,16 +982,18 @@ export const CatalogScreen: React.FC = () => {
                             const val = parseFloat(e.target.value) || 0;
                             setIngredients(prev => prev.map((i, j) => j === idx ? { ...i, quantity: val } : i));
                           }}
-                          className="w-14 px-1.5 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[10px] text-center focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                          className="w-16 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-center font-bold focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
                         />
-                        <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-400 border border-slate-200 dark:border-neutral-700">
+                        <span className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-400 border border-slate-200 dark:border-neutral-700 min-w-[32px] text-center">
                           {ing.unit}
                         </span>
                         <button
                           type="button"
                           onClick={() => setIngredients(prev => prev.filter((_, j) => j !== idx))}
-                          className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
-                        >✕</button>
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -949,21 +1001,19 @@ export const CatalogScreen: React.FC = () => {
               )}
 
               {/* Add new ingredient */}
-              <div className="p-2.5 rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/20 space-y-2">
-                <p className="text-[10px] font-bold text-[var(--primary)]">+ Agregar producto consumible</p>
+              <div className="p-3.5 rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/20 space-y-3">
+                <p className="text-[10px] font-bold text-[var(--primary)] uppercase tracking-wide">+ Agregar producto consumible</p>
                 <select
                   value={ingredientPickerProductId}
                   onChange={e => {
                     setIngredientPickerProductId(e.target.value);
                     const picked = products.find(p => p.id === e.target.value);
                     if (picked) {
-                      // If product is stored as units but has a conversion (e.g., 1 bottle = 15ml),
-                      // recipe quantity should be in the sub-unit (ml) so conversion can be applied
                       const recipeUnit = (picked.unit === 'unit' && picked.unitQtyUnit) ? picked.unitQtyUnit : picked.unit ?? 'unit';
                       setIngredientUnit(recipeUnit);
                     }
                   }}
-                  className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 >
                   <option value="">— Seleccionar producto —</option>
                   {products.filter(p => !ingredients.find(i => i.productId === p.id)).map(p => {
@@ -973,40 +1023,48 @@ export const CatalogScreen: React.FC = () => {
                     return <option key={p.id} value={p.id}>{p.name} · {availLabel}</option>;
                   })}
                 </select>
-                {/* Show available total in recipe units when conversion exists */}
                 {(() => {
                   const picked = products.find(p => p.id === ingredientPickerProductId);
                   if (picked && picked.unit === 'unit' && picked.unitQty != null) {
                     const total = +(picked.stock * picked.unitQty).toFixed(2);
                     return (
-                      <p className="text-[10px] text-slate-500 dark:text-neutral-400 -mt-1">
-                        Disponible: {picked.stock} unid. × {picked.unitQty} {picked.unitQtyUnit ?? 'ml'} = <strong>{total} {picked.unitQtyUnit ?? 'ml'}</strong>
+                      <p className="text-[10px] text-slate-500 dark:text-neutral-400 -mt-1.5 px-1">
+                        Disponible: {picked.stock} unid. × {picked.unitQty} {picked.unitQtyUnit ?? 'ml'} = <strong className="text-slate-700 dark:text-neutral-300">{total} {picked.unitQtyUnit ?? 'ml'}</strong>
                       </p>
                     );
                   }
                   return null;
                 })()}
                 <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min="0.001"
-                    step="0.001"
-                    placeholder="Cantidad"
-                    value={ingredientQty}
-                    onChange={e => setIngredientQty(e.target.value)}
-                    className="flex-1 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
-                  />
-                  <div className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-700 dark:text-neutral-300 font-bold min-w-[40px] text-center">
-                    {ingredientUnit}
+                  <div className="flex-1">
+                    <label className="block text-[10px] text-slate-500 dark:text-neutral-400 mb-1">Cantidad</label>
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      placeholder="Cantidad"
+                      value={ingredientQty}
+                      onChange={e => setIngredientQty(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    />
+                  </div>
+                  <div className="w-20 text-center">
+                    <label className="block text-[10px] text-slate-500 dark:text-neutral-400 mb-1">Unidad</label>
+                    <div className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-700 dark:text-neutral-300 font-bold">
+                      {ingredientUnit}
+                    </div>
                   </div>
                 </div>
-                <input
-                  type="text"
-                  placeholder="Nota opcional (ej: esmalte base, top coat)"
-                  value={ingredientNotes}
-                  onChange={e => setIngredientNotes(e.target.value)}
-                  className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
-                />
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-neutral-400 mb-1">Nota opcional</label>
+                  <input
+                    type="text"
+                    placeholder="ej: esmalte base, top coat"
+                    value={ingredientNotes}
+                    onChange={e => setIngredientNotes(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  />
+                </div>
                 <button
                   type="button"
                   disabled={!ingredientPickerProductId}
@@ -1025,7 +1083,7 @@ export const CatalogScreen: React.FC = () => {
                     setIngredientQty('1');
                     setIngredientNotes('');
                   }}
-                  className="w-full py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-40 ios-touch cursor-pointer transition"
+                  className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-40 ios-touch cursor-pointer transition"
                 >
                   Agregar al servicio
                 </button>
@@ -1069,208 +1127,245 @@ export const CatalogScreen: React.FC = () => {
           )}
 
           {/* ── CONFIG TAB (default) ──────────────────────────────────── */}
-          <div className={editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : ''}>
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Nombre del Servicio *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ej: Kapping Gel con Nivelación Rusa"
-              value={serviceForm.name}
-              onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-            />
-          </div>
+          <div className={editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : 'space-y-5'}>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Categoría
-              </label>
-              <select
-                value={serviceForm.category}
-                onChange={e =>
-                  setServiceForm({
-                    ...serviceForm,
-                    category: e.target.value as ServiceCategory,
-                    categoryName: serviceCategoryNames[e.target.value as ServiceCategory],
-                  })
-                }
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-              >
-                <option value="nails">💅 Uñas & Manicura</option>
-                <option value="hair">💇‍♀️ Peinados & Color</option>
-                <option value="massage">💆‍♀️ Masajes & Spa</option>
-                <option value="pedi_spa">🦶 Spa de Pies</option>
-                <option value="facial">✨ Faciales</option>
-              </select>
+            {/* SECTION: Información del Servicio */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+                <div className="w-6 h-6 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">Información del Servicio</span>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Nombre *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Kapping Gel con Nivelación Rusa"
+                  value={serviceForm.name}
+                  onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })}
+                  className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-semibold text-[13px] placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Categoría
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { id: 'nails', label: 'Uñas & Manicura', emoji: '💅' },
+                    { id: 'hair', label: 'Peinados & Color', emoji: '💇‍♀️' },
+                    { id: 'massage', label: 'Masajes & Spa', emoji: '💆‍♀️' },
+                    { id: 'pedi_spa', label: 'Spa de Pies', emoji: '🦶' },
+                    { id: 'facial', label: 'Faciales', emoji: '✨' },
+                  ] as const).map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setServiceForm({ ...serviceForm, category: cat.id, categoryName: serviceCategoryNames[cat.id] })}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ios-touch cursor-pointer ${
+                        serviceForm.category === cat.id
+                          ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)] font-bold'
+                          : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 hover:border-slate-300 dark:hover:border-neutral-600'
+                      }`}
+                    >
+                      <span className="text-base shrink-0">{cat.emoji}</span>
+                      <span className="text-[11px] leading-tight flex-1">{cat.label}</span>
+                      {serviceForm.category === cat.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Duración estimada
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setServiceForm(prev => ({ ...prev, durationMinutes: Math.max(15, prev.durationMinutes - 5) }))}
+                    className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 font-bold text-xl flex items-center justify-center hover:bg-slate-200 dark:hover:bg-neutral-700 transition ios-touch cursor-pointer shrink-0"
+                  >−</button>
+                  <div className="flex-1 text-center py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
+                    <span className="text-xl font-black text-slate-900 dark:text-white">{serviceForm.durationMinutes}</span>
+                    <span className="text-[11px] text-slate-500 dark:text-neutral-400 ml-1.5">minutos</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setServiceForm(prev => ({ ...prev, durationMinutes: prev.durationMinutes + 5 }))}
+                    className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 font-bold text-xl flex items-center justify-center hover:bg-slate-200 dark:hover:bg-neutral-700 transition ios-touch cursor-pointer shrink-0"
+                  >+</button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Descripción <span className="normal-case font-normal opacity-60 text-[10px]">(el Bot IA la usa para explicar el servicio)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Detalla qué incluye el servicio para que el Bot IA lo explique a las clientas..."
+                  value={serviceForm.description}
+                  onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })}
+                  className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Duración Estimada (min)
-              </label>
-              <input
-                type="number"
-                min="15"
-                step="5"
-                value={serviceForm.durationMinutes}
-                onChange={e => setServiceForm({ ...serviceForm, durationMinutes: Number(e.target.value) })}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-              />
+            {/* SECTION: Tabla de Precios */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Tag className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-bold text-xs text-slate-800 dark:text-white">Tabla de Precios</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={addServicePriceTier}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer ios-touch"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ Variante</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+                Agrega variantes de precio: VIP, retoque, promoción, etc.
+              </p>
+
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {serviceForm.priceTiers.map((tier, index) => (
+                  <div
+                    key={tier.id}
+                    className={`p-3 rounded-xl border space-y-2 ${
+                      index === 0
+                        ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40'
+                        : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700/80'
+                    }`}
+                  >
+                    {index === 0 && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        <CheckCircle2 className="w-2.5 h-2.5" /> Precio Base (requerido)
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder={index === 0 ? 'Ej: Precio Estándar' : 'Ej: VIP, Retoque, Promo'}
+                        value={tier.name}
+                        onChange={e => updateServicePriceTier(index, 'name', e.target.value)}
+                        className="flex-1 px-2.5 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                      />
+                      <div className="flex items-center gap-1 bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-2.5 py-2 w-24">
+                        <DollarSign className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <input
+                          type="number"
+                          min="0"
+                          value={tier.price}
+                          onChange={e => {
+                            const val = Number(e.target.value);
+                            updateServicePriceTier(index, 'price', val);
+                            if (index === 0) setServiceForm(prev => ({ ...prev, price: val }));
+                          }}
+                          className="w-full bg-transparent text-[12px] font-black text-slate-900 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                      {serviceForm.priceTiers.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeServicePriceTier(index)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Detalle opcional: ej. hasta 21 días de duración"
+                      value={tier.description || ''}
+                      onChange={e => updateServicePriceTier(index, 'description', e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200/60 dark:border-neutral-700/60 text-[10px] text-slate-500 dark:text-neutral-400 placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Descripción del Procedimiento & Beneficios
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Detalla qué incluye el servicio para que el Bot IA lo explique a las clientas..."
-              value={serviceForm.description}
-              onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-            />
-          </div>
+            {/* SECTION: Ícono */}
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+                <div className="w-6 h-6 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center text-sm leading-none">
+                  {serviceForm.icon || '✨'}
+                </div>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">Ícono del Servicio</span>
+              </div>
+              <div className="grid grid-cols-10 gap-1">
+                {['💅','💇‍♀️','💆‍♀️','🦶','✨','💎','🌸','🪷','🌺','🧖‍♀️','💄','👄','💋','🌹','🍃','🌿','🪻','🧴','🪨','🕯️','🛁','🧼','💫','⭐','🌟','🎀','🎁','🌙','☀️','🦋'].map(emoji => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setServiceForm(prev => ({ ...prev, icon: emoji }))}
+                    className={`h-9 w-full rounded-lg text-base flex items-center justify-center transition ios-touch cursor-pointer ${
+                      serviceForm.icon === emoji
+                        ? 'bg-[var(--primary)]/20 ring-2 ring-[var(--primary)]'
+                        : 'hover:bg-slate-100 dark:hover:bg-neutral-800'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          {/* DYNAMIC PRICE TIERS BUILDER */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-200 dark:border-neutral-700 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-[11px] text-slate-800 dark:text-white flex items-center gap-1">
-                <Tag className="w-3.5 h-3.5 text-[var(--primary)]" />
-                Tabla de Precios (Variantes / Niveles)
-              </span>
+            {/* SECTION: Bot IA */}
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-500/8 dark:bg-purple-500/10 border border-purple-500/20">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-bold text-[12px] text-slate-900 dark:text-white block">
+                    Ofrecer con Bot IA
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-neutral-400">
+                    El bot lo ofrece en WhatsApp, IG y Messenger
+                  </span>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={addServicePriceTier}
-                className="px-2 py-1 rounded-lg bg-[var(--primary)] text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer ios-touch"
+                onClick={() => setServiceForm(prev => ({ ...prev, aiAvailable: !prev.aiAvailable }))}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 focus:outline-none ${
+                  serviceForm.aiAvailable ? 'bg-purple-500' : 'bg-slate-300 dark:bg-neutral-700'
+                }`}
               >
-                <Plus className="w-3 h-3" />
-                <span>Agregar Variante</span>
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200 ${
+                  serviceForm.aiAvailable ? 'left-6' : 'left-0.5'
+                }`} />
               </button>
             </div>
 
-            <p className="text-[10px] text-slate-500 dark:text-neutral-400">
-              Configura diferentes precios según tipo de cliente, mantenimiento o complejidad (ej. VIP, Retoque, Promoción).
-            </p>
-
-            <div className="space-y-2 max-h-48 overflow-y-auto hide-scrollbar pt-1">
-              {serviceForm.priceTiers.map((tier, index) => (
-                <div
-                  key={tier.id}
-                  className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700/80 space-y-1.5"
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nombre (ej. VIP, Retoque)"
-                      value={tier.name}
-                      onChange={e => updateServicePriceTier(index, 'name', e.target.value)}
-                      className="flex-1 px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-bold text-slate-900 dark:text-white focus:outline-none"
-                    />
-                    <div className="flex items-center gap-1 w-24">
-                      <span className="text-slate-400 font-bold">$</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={tier.price}
-                        onChange={e => {
-                          const val = Number(e.target.value);
-                          updateServicePriceTier(index, 'price', val);
-                          if (index === 0) setServiceForm(prev => ({ ...prev, price: val }));
-                        }}
-                        className="w-full px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-black text-slate-900 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                    {serviceForm.priceTiers.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeServicePriceTier(index)}
-                        className="text-slate-400 hover:text-rose-500 p-1"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Detalles de la variante (opcional, ej. hasta 21 días)"
-                    value={tier.description || ''}
-                    onChange={e => updateServicePriceTier(index, 'description', e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[10px] text-slate-600 dark:text-neutral-400 focus:outline-none"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* AI Available Toggle */}
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-            <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              <div>
-                <span className="font-bold text-[11px] text-slate-900 dark:text-white block">
-                  Ofrecer con Bot IA
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-neutral-400">
-                  Permite que el bot ofrezca este servicio en chats
-                </span>
+            {serviceApiError && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[11px] font-medium">
+                <span className="mt-0.5 shrink-0">⚠️</span>
+                <span>{serviceApiError}</span>
               </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={serviceForm.aiAvailable}
-              onChange={e => setServiceForm({ ...serviceForm, aiAvailable: e.target.checked })}
-              className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-            />
-          </div>
-
-          {/* Emoji Icon Picker */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Ícono del Servicio
-              <span className="ml-1 font-normal text-slate-400">(selecciona un emoji)</span>
-            </label>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-neutral-800 border-2 border-[var(--primary)] flex items-center justify-center text-xl shrink-0">
-                {serviceForm.icon || '✨'}
-              </div>
-              <span className="text-[10px] text-slate-500 dark:text-neutral-400">Seleccionado: <strong>{serviceForm.icon || '✨'}</strong></span>
-            </div>
-            <div className="grid grid-cols-10 gap-1">
-              {['💅','💇‍♀️','💆‍♀️','🦶','✨','💎','🌸','🪷','🌺','🧖‍♀️','💄','👄','💋','🌹','🍃','🌿','🪻','🧴','🪨','🕯️','🛁','🧼','💫','⭐','🌟','🎀','🎁','🌙','☀️','🦋'].map(emoji => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setServiceForm(prev => ({ ...prev, icon: emoji }))}
-                  className={`h-8 w-full rounded-lg text-base flex items-center justify-center transition ios-touch cursor-pointer ${
-                    serviceForm.icon === emoji
-                      ? 'bg-[var(--primary)]/20 ring-1 ring-[var(--primary)]'
-                      : 'hover:bg-slate-100 dark:hover:bg-neutral-800'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {serviceApiError && (
-            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[11px] font-medium">
-              <span className="mt-0.5 shrink-0">⚠️</span>
-              <span>{serviceApiError}</span>
-            </div>
-          )}
+            )}
 
           </div>{/* end config tab */}
 
           <button
             type="submit"
             disabled={isSavingService}
-            className={`w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition ${editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : ''}`}
+            className={`w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition mt-5 ${editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : ''}`}
           >
             {isSavingService ? (
               <>
@@ -1285,6 +1380,7 @@ export const CatalogScreen: React.FC = () => {
             )}
           </button>
         </form>
+
       </IOSModal>
 
       {/* PRODUCT MODAL (Add / Edit + Dynamic Price Table) */}
@@ -1294,47 +1390,86 @@ export const CatalogScreen: React.FC = () => {
         title={editingProductId ? 'Editar Producto' : 'Nuevo Producto en Boutique'}
         subtitle="Inventario y Precios de Venta"
       >
-        <form onSubmit={handleSaveProduct} className="space-y-3.5 text-xs select-none">
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Nombre del Producto *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Ej: Olaplex Nº 4 Bond Maintenance Shampoo (250ml)"
-              value={productForm.name}
-              onChange={e => setProductForm({ ...productForm, name: e.target.value })}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-            />
-          </div>
+        <form onSubmit={handleSaveProduct} className="space-y-0 text-xs select-none">
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Categoría
-              </label>
-              <select
-                value={productForm.category}
-                onChange={e =>
-                  setProductForm({
-                    ...productForm,
-                    category: e.target.value as ProductCategory,
-                    categoryName: productCategoryNames[e.target.value as ProductCategory],
-                  })
-                }
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-              >
-                <option value="haircare">🧴 Cuidado Capilar</option>
-                <option value="nailcare">💅 Cuidado de Uñas</option>
-                <option value="spa_body">🌿 Spa & Corporal</option>
-                <option value="skincare">✨ Skincare</option>
-              </select>
+          {/* SECTION: Información básica */}
+          <div className="space-y-3 mb-5">
+            <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+              <div className="w-6 h-6 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
+                <ShoppingBag className="w-3.5 h-3.5" />
+              </div>
+              <span className="font-bold text-xs text-slate-800 dark:text-white">Información del Producto</span>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Stock &amp; Unidad de medida
+              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                Nombre *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ej: Olaplex Nº 4 Bond Maintenance Shampoo"
+                value={productForm.name}
+                onChange={e => setProductForm({ ...productForm, name: e.target.value })}
+                className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-semibold text-[13px] placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                Categoría
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { id: 'nailcare', label: 'Cuidado de Uñas', emoji: '💅' },
+                  { id: 'haircare', label: 'Cuidado Capilar', emoji: '🧴' },
+                  { id: 'spa_body', label: 'Spa & Corporal', emoji: '🌿' },
+                  { id: 'skincare', label: 'Skincare', emoji: '✨' },
+                ] as const).map(cat => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setProductForm({ ...productForm, category: cat.id, categoryName: productCategoryNames[cat.id] })}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ios-touch cursor-pointer ${
+                      productForm.category === cat.id
+                        ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)] font-bold'
+                        : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 hover:border-slate-300 dark:hover:border-neutral-600'
+                    }`}
+                  >
+                    <span className="text-base shrink-0">{cat.emoji}</span>
+                    <span className="text-[11px] leading-tight flex-1">{cat.label}</span>
+                    {productForm.category === cat.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                Descripción <span className="normal-case font-normal opacity-60 text-[10px]">(el bot la usa para recomendar)</span>
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Descripción que el bot utilizará para responder a clientas interesadas..."
+                value={productForm.description}
+                onChange={e => setProductForm({ ...productForm, description: e.target.value })}
+                className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
+              />
+            </div>
+          </div>
+
+          {/* SECTION: Stock & Medidas */}
+          <div className="space-y-3 mb-5">
+            <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+              <div className="w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                <Package className="w-3.5 h-3.5" />
+              </div>
+              <span className="font-bold text-xs text-slate-800 dark:text-white">Stock & Medidas</span>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                Cantidad en stock
               </label>
               <div className="flex gap-2">
                 <input
@@ -1344,14 +1479,14 @@ export const CatalogScreen: React.FC = () => {
                   placeholder="0"
                   value={productForm.stock}
                   onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
-                  className="flex-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  className="flex-1 px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-bold text-[13px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition"
                 />
                 <select
                   value={productForm.unit}
                   onChange={e => setProductForm({ ...productForm, unit: e.target.value })}
-                  className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
+                  className="px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
                 >
-                  <option value="unit">unid.</option>
+                  <option value="unit">unidades</option>
                   <option value="ml">ml</option>
                   <option value="L">L</option>
                   <option value="g">g</option>
@@ -1360,17 +1495,15 @@ export const CatalogScreen: React.FC = () => {
                   <option value="cl">cl</option>
                 </select>
               </div>
-              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">
-                El stock se expresa en la unidad seleccionada (ej: 450 ml, 3 unid., 200 g)
+              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1.5 px-1">
+                Ej: 100 ml, 5 unidades, 200 g
               </p>
             </div>
 
-            {/* Contenido por unidad — solo visible cuando unit === 'unit' */}
             {productForm.unit === 'unit' && (
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Contenido por unidad <span className="font-normal text-slate-400">(opcional)</span>
-                </label>
+              <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800/40 space-y-2.5">
+                <p className="text-[11px] font-bold text-sky-700 dark:text-sky-400">📦 ¿Cuánto contiene cada unidad?</p>
+                <p className="text-[10px] text-slate-500 dark:text-neutral-400 leading-relaxed">Si cada botella tiene 15 ml, escríbelo aquí para que el sistema calcule bien cuánto se usa en las recetas de tus servicios.</p>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -1379,12 +1512,12 @@ export const CatalogScreen: React.FC = () => {
                     placeholder="ej: 15"
                     value={productForm.unitQty}
                     onChange={e => setProductForm({ ...productForm, unitQty: e.target.value })}
-                    className="flex-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    className="flex-1 px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400 transition"
                   />
                   <select
                     value={productForm.unitQtyUnit}
                     onChange={e => setProductForm({ ...productForm, unitQtyUnit: e.target.value })}
-                    className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
+                    className="px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400 text-xs font-semibold transition"
                   >
                     <option value="ml">ml</option>
                     <option value="cl">cl</option>
@@ -1394,59 +1527,54 @@ export const CatalogScreen: React.FC = () => {
                     <option value="oz">oz</option>
                   </select>
                 </div>
-                <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">
-                  Indica cuánto contiene cada unidad (ej: 1 botella = 15 ml). Se usa para calcular consumos en recetas.
-                </p>
               </div>
             )}
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Descripción & Modo de Uso
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Descripción que el bot utilizará para responder a clientas interesadas..."
-              value={productForm.description}
-              onChange={e => setProductForm({ ...productForm, description: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-            />
-          </div>
-
-          {/* DYNAMIC PRODUCT PRICE TIERS */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-200 dark:border-neutral-700 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-[11px] text-slate-800 dark:text-white flex items-center gap-1">
-                <Tag className="w-3.5 h-3.5 text-[var(--primary)]" />
-                Tabla de Precios de Venta
-              </span>
+          {/* SECTION: Precios de Venta */}
+          <div className="space-y-3 mb-5">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Tag className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">Precios de Venta</span>
+              </div>
               <button
                 type="button"
                 onClick={addProductPriceTier}
-                className="px-2 py-1 rounded-lg bg-[var(--primary)] text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer ios-touch"
+                className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer ios-touch"
               >
                 <Plus className="w-3 h-3" />
-                <span>Agregar Tarifa</span>
+                <span>+ Tarifa</span>
               </button>
             </div>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto hide-scrollbar pt-1">
+            <div className="space-y-2 max-h-52 overflow-y-auto">
               {productForm.priceTiers.map((tier, index) => (
                 <div
                   key={tier.id}
-                  className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700/80 space-y-1.5"
+                  className={`p-3 rounded-xl border space-y-2 ${
+                    index === 0
+                      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40'
+                      : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700/80'
+                  }`}
                 >
+                  {index === 0 && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                      <CheckCircle2 className="w-2.5 h-2.5" /> Precio PVP (requerido)
+                    </span>
+                  )}
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
-                      placeholder="Tipo de precio (ej. PVP, Descuento Post-Cita)"
+                      placeholder={index === 0 ? 'Ej: Precio al Público' : 'Ej: Descuento post-cita, Mayorista'}
                       value={tier.name}
                       onChange={e => updateProductPriceTier(index, 'name', e.target.value)}
-                      className="flex-1 px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-bold text-slate-900 dark:text-white focus:outline-none"
+                      className="flex-1 px-2.5 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
                     />
-                    <div className="flex items-center gap-1 w-24">
-                      <span className="text-slate-400 font-bold">$</span>
+                    <div className="flex items-center gap-1 bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-2.5 py-2 w-24">
+                      <DollarSign className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       <input
                         type="number"
                         min="0"
@@ -1456,14 +1584,14 @@ export const CatalogScreen: React.FC = () => {
                           updateProductPriceTier(index, 'price', val);
                           if (index === 0) setProductForm(prev => ({ ...prev, basePrice: val }));
                         }}
-                        className="w-full px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-black text-slate-900 dark:text-white focus:outline-none"
+                        className="w-full bg-transparent text-[12px] font-black text-slate-900 dark:text-white focus:outline-none"
                       />
                     </div>
                     {productForm.priceTiers.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeProductPriceTier(index)}
-                        className="text-slate-400 hover:text-rose-500 p-1"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -1471,44 +1599,188 @@ export const CatalogScreen: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Detalle o condición (opcional)"
+                    placeholder="Condición o detalle opcional"
                     value={tier.description || ''}
                     onChange={e => updateProductPriceTier(index, 'description', e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[10px] text-slate-600 dark:text-neutral-400 focus:outline-none"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200/60 dark:border-neutral-700/60 text-[10px] text-slate-500 dark:text-neutral-400 placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none"
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* AI Available Toggle */}
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-            <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          {/* SECTION: Costo & Rentabilidad */}
+          <div className="space-y-3 mb-5">
+            <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+              <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <DollarSign className="w-3.5 h-3.5" />
+              </div>
+              <span className="font-bold text-xs text-slate-800 dark:text-white">Costo & Rentabilidad</span>
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-neutral-400 leading-relaxed">
+              ¿Cuánto te costó comprar este producto? Con ese dato calculamos automáticamente tu ganancia real por servicio y por venta.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="font-bold text-[11px] text-slate-900 dark:text-white block">
+                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Costo de compra
+                </label>
+                <div className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-800/50 focus-within:ring-2 focus-within:ring-amber-400 transition">
+                  <DollarSign className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={productForm.costPrice}
+                    onChange={e => setProductForm({ ...productForm, costPrice: e.target.value })}
+                    className="flex-1 bg-transparent text-[13px] font-bold text-slate-900 dark:text-white focus:outline-none"
+                  />
+                </div>
+                {productForm.costPrice !== '' && productForm.basePrice > 0 && Number(productForm.costPrice) > 0 && (() => {
+                  const margin = Math.round(((productForm.basePrice - Number(productForm.costPrice)) / productForm.basePrice) * 100);
+                  const isGood = margin >= 35;
+                  const isOk = margin >= 15;
+                  return (
+                    <p className={`text-[10px] mt-1.5 px-0.5 font-bold ${isGood ? 'text-emerald-600 dark:text-emerald-400' : isOk ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {isGood ? '✓' : isOk ? '⚠' : '↓'} Ganancia: {margin}% {isGood ? '(Excelente)' : isOk ? '(Ajustado)' : '(Bajo)'}
+                    </p>
+                  );
+                })()}
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Stock mínimo (alerta)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="ej: 5"
+                  value={productForm.minStock}
+                  onChange={e => setProductForm({ ...productForm, minStock: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[13px] font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                />
+                <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1.5 px-0.5 leading-relaxed">
+                  Te avisamos cuando quede menos de este número
+                </p>
+              </div>
+            </div>
+
+            {/* Lot tracking toggle */}
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-200 dark:border-neutral-700">
+              <div className="pr-4">
+                <span className="text-[12px] font-bold text-slate-800 dark:text-white block">
+                  Control por Lotes
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-neutral-400">
+                  Registra fechas de vencimiento para desechar primero lo que vence antes
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProductForm(prev => ({ ...prev, hasLotTracking: !prev.hasLotTracking }))}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 focus:outline-none ${
+                  productForm.hasLotTracking ? 'bg-amber-500' : 'bg-slate-300 dark:bg-neutral-700'
+                }`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200 ${
+                  productForm.hasLotTracking ? 'left-6' : 'left-0.5'
+                }`} />
+              </button>
+            </div>
+
+            {productForm.hasLotTracking && (
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Orden de salida de lotes
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setProductForm(prev => ({ ...prev, lotStrategy: 'FEFO' }))}
+                    className={`p-3 rounded-xl border text-left transition ios-touch cursor-pointer ${
+                      productForm.lotStrategy === 'FEFO'
+                        ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700'
+                        : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                    }`}
+                  >
+                    <span className={`block text-[11px] font-bold mb-0.5 ${productForm.lotStrategy === 'FEFO' ? 'text-amber-700 dark:text-amber-400' : 'text-slate-800 dark:text-white'}`}>Primero el que vence antes</span>
+                    <span className="block text-[9px] text-slate-500 dark:text-neutral-400">Recomendado para cosméticos</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductForm(prev => ({ ...prev, lotStrategy: 'FIFO' }))}
+                    className={`p-3 rounded-xl border text-left transition ios-touch cursor-pointer ${
+                      productForm.lotStrategy === 'FIFO'
+                        ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700'
+                        : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                    }`}
+                  >
+                    <span className={`block text-[11px] font-bold mb-0.5 ${productForm.lotStrategy === 'FIFO' ? 'text-amber-700 dark:text-amber-400' : 'text-slate-800 dark:text-white'}`}>Primero el que entró antes</span>
+                    <span className="block text-[9px] text-slate-500 dark:text-neutral-400">Por orden de compra</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION: Bot IA */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-500/8 dark:bg-purple-500/10 border border-purple-500/20 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <Bot className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="font-bold text-[12px] text-slate-900 dark:text-white block">
                   Recomendar con Bot IA
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-neutral-400">
-                  El bot sugerirá este producto cuando pregunten por cuidados
+                  El bot lo sugiere cuando clientas preguntan por cuidados
                 </span>
               </div>
             </div>
-            <input
-              type="checkbox"
-              checked={productForm.aiAvailable}
-              onChange={e => setProductForm({ ...productForm, aiAvailable: e.target.checked })}
-              className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-            />
+            <button
+              type="button"
+              onClick={() => setProductForm(prev => ({ ...prev, aiAvailable: !prev.aiAvailable }))}
+              className={`relative w-12 h-6 rounded-full transition-colors duration-200 shrink-0 focus:outline-none ${
+                productForm.aiAvailable ? 'bg-purple-500' : 'bg-slate-300 dark:bg-neutral-700'
+              }`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200 ${
+                productForm.aiAvailable ? 'left-6' : 'left-0.5'
+              }`} />
+            </button>
           </div>
+
+          {productApiError && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[11px] font-medium mb-4">
+              <span className="mt-0.5 shrink-0">⚠️</span>
+              <span>{productApiError}</span>
+            </div>
+          )}
 
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer"
+            disabled={isSavingProduct}
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition"
           >
-            {editingProductId ? 'Guardar Cambios del Producto' : 'Guardar Producto en Catálogo'}
+            {isSavingProduct ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                {editingProductId ? 'Guardando…' : 'Creando…'}
+              </>
+            ) : (
+              editingProductId ? '✓ Guardar Cambios del Producto' : '🛍️ Guardar Producto en Catálogo'
+            )}
           </button>
         </form>
+     
       </IOSModal>
     </div>
   );
