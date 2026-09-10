@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { IPhoneFrame } from './components/ui/IPhoneFrame';
 import { IOSTabBar } from './components/ui/IOSTabBar';
+import { GlobalYouTubePlayer } from './components/ui/GlobalYouTubePlayer';
 import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -129,6 +130,9 @@ const MainAppContent: React.FC = () => {
 
             {/* ── Sidebar / Tab bar (IOSTabBar handles both via lg:order-first) ── */}
             {!activeConversationId && <IOSTabBar />}
+
+            {/* ── Reproductor YouTube persistente (fuera del switch de pantallas) ── */}
+            <GlobalYouTubePlayer />
           </div>
         )
       )}

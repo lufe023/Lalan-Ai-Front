@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   TrendingUp,
@@ -45,6 +45,100 @@ export const DashboardScreen: React.FC = () => {
     api.get<any[]>('/inventory/alerts').then(setStockAlerts).catch(() => {});
     api.get<any[]>('/inventory/margins').then(setServiceMargins).catch(() => {});
   }, []);
+
+  // ── Métricas locales calculadas desde appointments ───────────────────
+  const aptDate = (a: typeof appointments[0]) =>
+    new Date(a.completedAt ?? `${a.date}T${a.time}`);
+
+  const filteredApts = useMemo(() => {
+    const now = new Date();
+    return appointments.filter(a => {
+      if (a.status !== 'completed') return false;
+      const d = aptDate(a);
+      if (metricsPeriod === 'day') {
+        return d.toDateString() === now.toDateString();
+      } else if (metricsPeriod === 'week') {
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        return d >= weekStart && d <= weekEnd;
+      } else {
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }
+    });
+  }, [appointments, metricsPeriod]);
+
+  const localPeakHours = useMemo(() => {
+    const hourCounts: Record<number, number> = {};
+    filteredApts.forEach(a => {
+      const h = aptDate(a).getHours();
+      hourCounts[h] = (hourCounts[h] ?? 0) + 1;
+    });
+    const maxCount = Math.max(...Object.values(hourCounts), 1);
+    return Array.from({ length: 13 }, (_, i) => {
+      const h = 8 + i;
+      const count = hourCounts[h] ?? 0;
+      return { hour: `${h}:00`, busynessScore: Math.round((count / maxCount) * 100) };
+    });
+  }, [filteredApts]);
+
+  const localTopServices = useMemo(() => {
+    const map = new Map<string, { name: string; count: number; revenue: number }>();
+    filteredApts.forEach(a => {
+      if (!map.has(a.serviceName)) map.set(a.serviceName, { name: a.serviceName, count: 0, revenue: 0 });
+      const cur = map.get(a.serviceName)!;
+      cur.count++;
+      cur.revenue += a.price;
+    });
+    const totalRevenue = filteredApts.reduce((s, a) => s + a.price, 0);
+    const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    return Array.from(map.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 6)
+      .map((s, i) => ({
+        ...s,
+        percentage: totalRevenue > 0 ? Math.round((s.revenue / totalRevenue) * 100) : 0,
+        color: colors[i % colors.length],
+      }));
+  }, [filteredApts]);
+
+  const localChannelDistribution = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredApts.forEach(a => {
+      const ch = (a as any).channel ?? 'whatsapp';
+      map[ch] = (map[ch] ?? 0) + 1;
+    });
+    const total = filteredApts.length || 1;
+    const channelColors: Record<string, string> = { whatsapp: '#25D366', instagram: '#E1306C', messenger: '#0084FF' };
+    const channelNames: Record<string, string> = { whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger' };
+    return Object.entries(map)
+      .map(([ch, count]) => ({
+        name: channelNames[ch] ?? ch,
+        percentage: Math.round((count / total) * 100),
+        color: channelColors[ch] ?? '#64748b',
+        count,
+      }))
+      .sort((a, b) => b.percentage - a.percentage);
+  }, [filteredApts]);
+
+  // Usar datos locales cuando la API devuelve arrays vacíos
+  const peakHoursData    = currentMetrics.peakHours.length > 0         ? currentMetrics.peakHours         : localPeakHours;
+  const topServicesData  = currentMetrics.topServices.length > 0        ? currentMetrics.topServices        : localTopServices;
+  const channelDistData  = currentMetrics.channelDistribution.length > 0 ? currentMetrics.channelDistribution : localChannelDistribution;
+
+  // Pico real de actividad
+  const peakHour = peakHoursData.length > 0
+    ? peakHoursData.reduce((a, b) => a.busynessScore >= b.busynessScore ? a : b)
+    : null;
+  const peakLabel = peakHour
+    ? (() => {
+        const h = parseInt(peakHour.hour.split(':')[0]);
+        return h === 0 ? '12:00 am' : h < 12 ? `${h}:00 am` : h === 12 ? '12:00 pm' : `${h - 12}:00 pm`;
+      })()
+    : '—';
 
   // Helper for period title
   const getPeriodLabel = () => {
@@ -170,13 +264,15 @@ export const DashboardScreen: React.FC = () => {
               </h3>
             </div>
             <span className="text-[11px] font-medium text-slate-400">
-              Pico: 5:00 PM
+              Pico: {peakLabel}
             </span>
           </div>
 
           {/* Minimalist Bar Chart */}
           <div className="pt-2 pb-1 flex items-end justify-between gap-2.5 h-24 lg:h-36">
-            {currentMetrics.peakHours.map((item, idx) => {
+            {peakHoursData.length === 0 ? (
+              <p className="text-[11px] text-slate-400 dark:text-neutral-500 w-full text-center py-4">Sin citas completadas en este período</p>
+            ) : peakHoursData.map((item, idx) => {
               const isPeak = item.busynessScore >= 85;
               return (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
@@ -211,7 +307,9 @@ export const DashboardScreen: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {currentMetrics.topServices.map((srv, idx) => (
+            {topServicesData.length === 0 ? (
+              <p className="text-[11px] text-slate-400 dark:text-neutral-500 text-center py-4">Sin servicios en este período</p>
+            ) : topServicesData.map((srv, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
@@ -252,7 +350,9 @@ export const DashboardScreen: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            {currentMetrics.channelDistribution.map((ch, idx) => (
+            {channelDistData.length === 0 ? (
+              <p className="col-span-3 text-[11px] text-slate-400 dark:text-neutral-500 text-center py-4">Sin datos de canales en este período</p>
+            ) : channelDistData.map((ch, idx) => (
               <div
                 key={idx}
                 className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 flex flex-col items-center text-center"

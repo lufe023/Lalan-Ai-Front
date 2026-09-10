@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Play,
@@ -26,6 +26,7 @@ import {
   Smile,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { api, apiFetch } from '../services/api';
 import { LoungeTrack } from '../types';
 import { MUSIC_VIBES, POPULAR_BEVERAGES, POPULAR_SNACKS } from '../data/mockData';
 import { PageContent } from '../components/ui/PageContent';
@@ -48,6 +49,12 @@ export const LoungePlayerScreen: React.FC = () => {
     serveHospitalityItem,
     clients,
     showToast,
+    // El ancla le dice al reproductor global dónde acoplarse
+    setYoutubeAnchorEl,
+    // Cola de YouTube controlable (IFrame Player API)
+    ytQueue, ytIndex, ytPlaying, ytShuffle, ytRepeat, ytMuted, ytVolume,
+    ytTime, ytDuration, setYtQueue, ytPlayIndex, ytToggle, ytNext, ytPrev,
+    ytSeek, ytSetVolume, ytToggleMute, toggleYtShuffle, toggleYtRepeat,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'player' | 'hospitality' | 'explore'>('player');
@@ -62,8 +69,58 @@ export const LoungePlayerScreen: React.FC = () => {
   const [searchSource, setSearchSource] = useState<'all' | 'youtube' | 'spotify'>('all');
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
+  // YouTube iframe player state (el embed vive en AppContext — ver GlobalYouTubePlayer)
+  const [youtubeUrl, setYoutubeUrl] = useState<string>('');
+  const [youtubeError, setYoutubeError] = useState<string | null>(null);
+  const [loadingUrl, setLoadingUrl] = useState(false);
+  const urlInputRef = useRef<HTMLInputElement>(null);
+
   // Client dropdown modal/popover
   const [showClientSelector, setShowClientSelector] = useState<boolean>(false);
+
+  // El parseo de enlaces vive ahora en el backend (/lounge/youtube/resolve),
+  // porque además de extraer el ID necesita traer título, canal y duración.
+
+  /**
+   * Carga lo que el salón pegue en el reproductor controlable.
+   * El backend resuelve videos y playlists a pistas con título y duración
+   * (1 unidad de cuota), así la cola queda navegable como cualquier otra.
+   */
+  const loadIntoQueue = useCallback(async (input: string) => {
+    setYoutubeError(null);
+    if (!input.trim()) return;
+    setLoadingUrl(true);
+    try {
+      const res = await api.get<{ configured: boolean; tracks: any[] }>(
+        `/lounge/youtube/resolve?url=${encodeURIComponent(input.trim())}`,
+      );
+      if (res.tracks?.length) {
+        setYtQueue(res.tracks);
+        setSource('youtube');
+        setYoutubeUrl('');
+      } else if (!res.configured) {
+        setYoutubeError('Falta YOUTUBE_API_KEY en el backend.');
+      } else {
+        setYoutubeError('No se pudo reconocer el enlace. Pega una URL de YouTube (video o playlist).');
+      }
+    } catch (e: any) {
+      setYoutubeError(`No se pudo cargar: ${e?.message ?? 'error desconocido'}`);
+    } finally {
+      setLoadingUrl(false);
+    }
+  }, [setYtQueue]);
+
+  const handleLoadYoutube = useCallback(() => { loadIntoQueue(youtubeUrl); }, [loadIntoQueue, youtubeUrl]);
+
+  // Genre tiles with curated YouTube playlist/video IDs
+  const GENRE_TILES = [
+    { emoji: '🎵', label: 'Lofi Chill', desc: 'Ambiente relajado y productivo', videoId: 'jfKfPfyJRdk' },
+    { emoji: '☕', label: 'Jazz & Bossa', desc: 'Clásico para salones premium', videoId: 'Dx5qFachd3A' },
+    { emoji: '💆', label: 'Spa & Zen', desc: 'Meditación y bienestar', videoId: 'lFcSrYw-ARY' },
+    { emoji: '🌺', label: 'Pop Suave', desc: 'Hits populares en versión chill', videoId: '36YnV9STBqc' },
+    { emoji: '🔥', label: 'Reggaetón', desc: 'Energía latina para el salón', videoId: 'wnJ6LuUFpMo' },
+    { emoji: '🎸', label: 'Indie & Acoustic', desc: 'Alternativo y folk relajado', videoId: 'tRcPA7Fzebw' },
+  ] as const;
 
   // Mock songs pool for search simulation
   const EXTERNAL_SEARCH_MOCKS = [
@@ -116,6 +173,174 @@ export const LoungePlayerScreen: React.FC = () => {
       source: 'youtube' as const,
     },
   ];
+
+  // Al salir del Lounge soltamos el ancla → el iframe global pasa a mini
+  useEffect(() => () => setYoutubeAnchorEl(null), [setYoutubeAnchorEl]);
+
+  // ── Preferencias REALES de la clienta (sistema /preferences) ──────────
+  // Antes esto leía activeLoungeClient.hospitality.musicVibe (campo mock),
+  // por eso siempre sugería "Lofi Chill" sin importar lo que registraras.
+  const [prefMusic, setPrefMusic] = useState<string[]>([]);
+  const [prefDrinks, setPrefDrinks] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!activeLoungeClient) { setPrefMusic([]); setPrefDrinks([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.get<any[]>(`/preferences/clients/${activeLoungeClient.id}`);
+        if (cancelled) return;
+        const pick = (type: string) =>
+          data
+            .filter(g => g?.category?.type === type)
+            .flatMap(g => (g.items ?? []).map((i: any) => i?.preference?.value))
+            .filter(Boolean) as string[];
+        setPrefMusic(pick('music'));
+        setPrefDrinks(pick('drink'));
+      } catch {
+        if (!cancelled) { setPrefMusic([]); setPrefDrinks([]); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeLoungeClient?.id]);
+
+  // Texto de la sugerencia: preferencias reales primero, mock como respaldo
+  const suggestedMusic = prefMusic[0] ?? activeLoungeClient?.hospitality?.musicVibe ?? 'Lofi Chill';
+  const suggestedDrink = prefDrinks[0] ?? activeLoungeClient?.hospitality?.favoriteDrinks?.[0] ?? 'Café';
+
+  // ── COLA AUTOMÁTICA ───────────────────────────────────────────────────
+  // Al elegir una clienta el backend resuelve sus preferencias musicales a
+  // pistas reales de YouTube (con título, canal, miniatura y duración) y las
+  // cargamos en el reproductor global, que las encadena solo.
+  const [queueInfo, setQueueInfo] = useState<{
+    loading: boolean; items: { value: string; tracks: any[] }[];
+    total: number; reason?: string; configured: boolean;
+  }>({ loading: false, items: [], total: 0, configured: true });
+
+  // Canal activo del reproductor. Spotify entra aquí cuando se integre.
+  const [source, setSource] = useState<'radio' | 'youtube'>('radio');
+
+  // OJO: nada de un ref "ya lo hice para esta clienta" aquí. Con StrictMode
+  // React monta → limpia → vuelve a montar: el primer pase quedaba cancelado y
+  // el segundo salía por el guard, así que loading nunca volvía a false y el
+  // panel se quedaba en "Armando la lista…" para siempre.
+  useEffect(() => {
+    const clientId = activeLoungeClient?.id;
+    if (!clientId) {
+      setQueueInfo({ loading: false, items: [], total: 0, configured: true });
+      return;
+    }
+
+    let cancelled = false;
+    let timedOut = false;
+    // Sin esto la UI queda a merced del backend: si la petición se cuelga
+    // (p.ej. la llamada a YouTube no responde) el await nunca vuelve y el
+    // panel se queda en "Armando la lista…" para siempre.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, 20000);
+
+    setQueueInfo(q => ({ ...q, loading: true }));
+
+    (async () => {
+      try {
+        const res = await apiFetch<{
+          configured: boolean;
+          items: { preferenceId: string; value: string; tracks: any[] }[];
+          tracks: any[];
+          videoIds: string[];
+          reason?: string;
+        }>(`/lounge/queue/${clientId}`, { method: 'GET', signal: ctrl.signal });
+        if (cancelled) return;
+
+        const tracks = res.tracks ?? [];
+        setQueueInfo({
+          loading: false,
+          items: res.items ?? [],
+          total: tracks.length,
+          reason: res.reason,
+          configured: res.configured,
+        });
+
+        if (tracks.length) {
+          setYtQueue(tracks);      // el player global la reproduce en orden
+          setSource('youtube');    // el Reproductor pasa al canal de YouTube
+        }
+      } catch (e: any) {
+        if (cancelled) return; // desmontado / cliente cambiado: no tocar estado
+        const msg = String(e?.message ?? '');
+        const routeMissing = /cannot get/i.test(msg) || /404/.test(msg);
+        setQueueInfo({
+          loading: false,
+          items: [],
+          total: 0,
+          configured: true,
+          reason: timedOut
+            ? 'El backend tardó más de 20s en responder. Revisa su consola.'
+            : routeMissing
+            ? 'El backend todavía no expone /lounge/queue — reinícialo para cargar la ruta nueva.'
+            : `No se pudo armar la cola: ${msg || 'error desconocido'}`,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+    })();
+
+    // Al limpiar abortamos: así el pase descartado de StrictMode no deja una
+    // petición huérfana buscando en YouTube por duplicado.
+    return () => { cancelled = true; clearTimeout(timer); ctrl.abort(); };
+  }, [activeLoungeClient?.id, setYtQueue]);
+
+  // ── Vista unificada del reproductor ───────────────────────────────────
+  // Mismos controles y mismo diseño para cualquier canal; solo cambia de
+  // dónde salen los datos. Spotify se enchufa aquí añadiendo su rama.
+  const ytTrack = ytQueue[ytIndex];
+  const isYt = source === 'youtube' && !!ytTrack;
+
+  const view = isYt
+    ? {
+        title: ytTrack.title,
+        artist: ytTrack.channel || 'YouTube',
+        cover: ytTrack.thumbnail ?? currentTrack.coverUrl,
+        sourceLabel: 'YouTube',
+        vibe: queueInfo.items[0]?.value ?? 'Gustos de la clienta',
+        duration: Math.round(ytDuration || ytTrack.durationSeconds || 0),
+        time: Math.round(ytTime),
+        playing: ytPlaying,
+        shuffle: ytShuffle,
+        repeat: ytRepeat,
+        muted: ytMuted,
+        volume: ytVolume,
+        toggle: ytToggle,
+        next: ytNext,
+        prev: ytPrev,
+        seek: ytSeek,
+        setVolume: ytSetVolume,
+        toggleMute: ytToggleMute,
+        toggleShuffle: toggleYtShuffle,
+        toggleRepeat: toggleYtRepeat,
+      }
+    : {
+        title: currentTrack.title,
+        artist: `${currentTrack.artist}${currentTrack.album ? ` • ${currentTrack.album}` : ''}`,
+        cover: currentTrack.coverUrl,
+        sourceLabel: 'Lalan Radio',
+        vibe: currentTrack.vibe,
+        duration: currentTrack.durationSeconds,
+        time: progressSec,
+        playing: isPlayingLounge,
+        shuffle: isShuffle,
+        repeat: isRepeat,
+        muted: isMuted,
+        volume,
+        toggle: togglePlayLounge,
+        next: nextLoungeTrack,
+        prev: prevLoungeTrack,
+        seek: (s: number) => setProgressSec(s),
+        setVolume: (v: number) => { setVolume(v); if (isMuted) setIsMuted(false); },
+        toggleMute: () => setIsMuted(m => !m),
+        toggleShuffle: () => setIsShuffle(s => !s),
+        toggleRepeat: () => setIsRepeat(r => !r),
+      };
 
   // Progress timer simulation
   useEffect(() => {
@@ -274,7 +499,7 @@ export const LoungePlayerScreen: React.FC = () => {
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
-            YouTube / Spotify
+            YouTube
           </button>
         </div>
       </div>
@@ -323,6 +548,37 @@ export const LoungePlayerScreen: React.FC = () => {
               </div>
             )}
 
+            {/* Selector de canal — aquí entra Spotify cuando se integre */}
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-neutral-800/70 w-fit mx-auto">
+              {([
+                ['radio', 'Lalan Radio', true],
+                ['youtube', 'YouTube', ytQueue.length > 0],
+              ] as [typeof source, string, boolean][]).map(([key, label, enabled]) => (
+                <button
+                  key={key}
+                  disabled={!enabled}
+                  onClick={() => setSource(key)}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    source === key
+                      ? 'bg-white dark:bg-neutral-900 text-[var(--primary)] shadow-xs'
+                      : 'text-slate-500 dark:text-neutral-400 hover:text-slate-700'
+                  }`}
+                >
+                  {label}
+                  {key === 'youtube' && ytQueue.length > 0 && (
+                    <span className="ml-1 opacity-60">({ytQueue.length})</span>
+                  )}
+                </button>
+              ))}
+              <button
+                disabled
+                title="Próximamente"
+                className="px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 opacity-40 cursor-not-allowed"
+              >
+                Spotify
+              </button>
+            </div>
+
             {/* Apple Music Style Player Card */}
             <div className="p-5 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
               {/* Subtle ambient gradient halo */}
@@ -332,22 +588,22 @@ export const LoungePlayerScreen: React.FC = () => {
               <div className="relative my-2">
                 <motion.div
                   animate={{
-                    scale: isPlayingLounge ? [1, 1.015, 1] : 1,
+                    scale: view.playing ? [1, 1.015, 1] : 1,
                   }}
                   transition={{
-                    repeat: isPlayingLounge ? Infinity : 0,
+                    repeat: view.playing ? Infinity : 0,
                     duration: 3.5,
                     ease: 'easeInOut',
                   }}
                   className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-xl border border-slate-100 dark:border-neutral-800 relative group"
                 >
                   <img
-                    src={currentTrack.coverUrl}
-                    alt={currentTrack.title}
+                    src={view.cover}
+                    alt={view.title}
                     className="w-full h-full object-cover"
                   />
                   {/* Visualizer overlay */}
-                  {isPlayingLounge && (
+                  {view.playing && (
                     <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md flex items-end gap-1 h-5">
                       <motion.div
                         animate={{ height: ['30%', '90%', '40%'] }}
@@ -373,21 +629,26 @@ export const LoungePlayerScreen: React.FC = () => {
               <div className="mt-4 w-full px-2">
                 <div className="flex items-center justify-center gap-2">
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-                    {currentTrack.title}
+                    {view.title}
                   </h2>
                 </div>
                 <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 mt-0.5 truncate">
-                  {currentTrack.artist} {currentTrack.album && `• ${currentTrack.album}`}
+                  {view.artist}
                 </p>
 
                 {/* Source badge */}
                 <div className="mt-2 flex items-center justify-center gap-2">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300">
-                    {currentTrack.source === 'youtube' ? 'YouTube Music' : currentTrack.source === 'spotify' ? 'Spotify Sync' : 'Lalan Radio'}
+                    {view.sourceLabel}
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10">
-                    {currentTrack.vibe}
+                    {view.vibe}
                   </span>
+                  {isYt && (
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      {ytIndex + 1}/{ytQueue.length}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -397,24 +658,24 @@ export const LoungePlayerScreen: React.FC = () => {
                   <input
                     type="range"
                     min={0}
-                    max={currentTrack.durationSeconds}
-                    value={progressSec}
-                    onChange={e => setProgressSec(Number(e.target.value))}
+                    max={Math.max(1, view.duration)}
+                    value={Math.min(view.time, Math.max(1, view.duration))}
+                    onChange={e => view.seek(Number(e.target.value))}
                     className="w-full h-1.5 bg-slate-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[var(--primary)]"
                   />
                 </div>
                 <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 dark:text-neutral-500 mt-1.5 px-0.5">
-                  <span>{formatTime(progressSec)}</span>
-                  <span>-{formatTime(Math.max(0, currentTrack.durationSeconds - progressSec))}</span>
+                  <span>{formatTime(view.time)}</span>
+                  <span>-{formatTime(Math.max(0, view.duration - view.time))}</span>
                 </div>
               </div>
 
               {/* iOS Playback Controls */}
               <div className="w-full flex items-center justify-between max-w-xs mt-3 px-2">
                 <button
-                  onClick={() => setIsShuffle(!isShuffle)}
+                  onClick={view.toggleShuffle}
                   className={`p-2 rounded-full transition cursor-pointer ${
-                    isShuffle ? 'text-[var(--primary)]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300'
+                    view.shuffle ? 'text-[var(--primary)]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300'
                   }`}
                   title="Aleatorio"
                 >
@@ -422,7 +683,7 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={prevLoungeTrack}
+                  onClick={view.prev}
                   className="p-2.5 rounded-full text-slate-700 dark:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800 transition ios-touch cursor-pointer"
                   title="Anterior"
                 >
@@ -430,11 +691,11 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={togglePlayLounge}
+                  onClick={view.toggle}
                   className="w-14 h-14 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition ios-touch cursor-pointer"
-                  title={isPlayingLounge ? 'Pausar' : 'Reproducir'}
+                  title={view.playing ? 'Pausar' : 'Reproducir'}
                 >
-                  {isPlayingLounge ? (
+                  {view.playing ? (
                     <Pause className="w-7 h-7 fill-current" />
                   ) : (
                     <Play className="w-7 h-7 fill-current ml-0.5" />
@@ -442,7 +703,7 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={nextLoungeTrack}
+                  onClick={view.next}
                   className="p-2.5 rounded-full text-slate-700 dark:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800 transition ios-touch cursor-pointer"
                   title="Siguiente"
                 >
@@ -450,9 +711,9 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setIsRepeat(!isRepeat)}
+                  onClick={view.toggleRepeat}
                   className={`p-2 rounded-full transition cursor-pointer ${
-                    isRepeat ? 'text-[var(--primary)]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300'
+                    view.repeat ? 'text-[var(--primary)]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300'
                   }`}
                   title="Repetir"
                 >
@@ -463,10 +724,10 @@ export const LoungePlayerScreen: React.FC = () => {
               {/* Volume Slider */}
               <div className="w-full max-w-xs flex items-center gap-2.5 mt-4 px-3">
                 <button
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300"
+                  onClick={view.toggleMute}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300 cursor-pointer"
                 >
-                  {isMuted || volume === 0 ? (
+                  {view.muted || view.volume === 0 ? (
                     <VolumeX className="w-4 h-4" />
                   ) : (
                     <Volume2 className="w-4 h-4" />
@@ -476,11 +737,8 @@ export const LoungePlayerScreen: React.FC = () => {
                   type="range"
                   min={0}
                   max={100}
-                  value={isMuted ? 0 : volume}
-                  onChange={e => {
-                    setVolume(Number(e.target.value));
-                    if (isMuted) setIsMuted(false);
-                  }}
+                  value={view.muted ? 0 : view.volume}
+                  onChange={e => view.setVolume(Number(e.target.value))}
                   className="w-full h-1 bg-slate-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[var(--primary)]"
                 />
               </div>
@@ -490,13 +748,57 @@ export const LoungePlayerScreen: React.FC = () => {
             <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-2">
               <div className="flex items-center justify-between pb-1">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
-                  A continuación en el salón ({loungeTracks.length})
+                  A continuación en el salón ({isYt ? ytQueue.length : loungeTracks.length})
                 </h3>
                 <span className="text-[11px] font-semibold text-[var(--primary)]">
-                  Sonido ambiental activo
+                  {isYt ? 'Cola de la clienta' : 'Sonido ambiental activo'}
                 </span>
               </div>
 
+              {isYt ? (
+                <div className="divide-y divide-slate-100 dark:divide-neutral-800/80">
+                  {ytQueue.map((t, idx) => {
+                    const isCurrent = idx === ytIndex;
+                    return (
+                      <div
+                        key={`${t.videoId}-${idx}`}
+                        onClick={() => ytPlayIndex(idx)}
+                        className={`py-2.5 px-2 rounded-xl flex items-center justify-between transition cursor-pointer ${
+                          isCurrent
+                            ? 'bg-slate-50 dark:bg-neutral-800/50 font-bold'
+                            : 'hover:bg-slate-50 dark:hover:bg-neutral-800/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {t.thumbnail ? (
+                            <img src={t.thumbnail} alt={t.title} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-red-600/10 flex items-center justify-center shrink-0 text-sm">▶</div>
+                          )}
+                          <div className="min-w-0">
+                            <div className={`text-xs truncate ${isCurrent ? 'text-[var(--primary)] font-bold' : 'text-slate-800 dark:text-neutral-200'}`}>
+                              {t.title}
+                            </div>
+                            <div className="text-[11px] text-slate-400 dark:text-neutral-500 truncate">
+                              {t.channel || 'YouTube'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isCurrent && view.playing && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold">
+                              Sonando
+                            </span>
+                          )}
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {t.durationSeconds ? formatTime(t.durationSeconds) : '—'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
               <div className="divide-y divide-slate-100 dark:divide-neutral-800/80">
                 {loungeTracks.map((track, idx) => {
                   const isCurrent = idx === currentTrackIndex;
@@ -544,6 +846,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   );
                 })}
               </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -757,7 +1060,7 @@ export const LoungePlayerScreen: React.FC = () => {
           </motion.div>
         )}
 
-        {/* TAB 3: EXPLORAR YOUTUBE & SPOTIFY */}
+        {/* TAB 3: YOUTUBE PLAYER */}
         {activeTab === 'explore' && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
@@ -765,164 +1068,174 @@ export const LoungePlayerScreen: React.FC = () => {
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
-            {/* Search and API Connection Box */}
-            <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                    Conexión YouTube & Spotify API
-                  </h3>
+            {/* YouTube player.
+                El <iframe> real vive en <GlobalYouTubePlayer /> (App.tsx) para que
+                la reproducción sobreviva al cambio de pantalla. Aquí solo publicamos
+                este hueco como ancla; el iframe se posiciona encima. */}
+            <div className="rounded-3xl overflow-hidden bg-black border border-slate-200/80 dark:border-neutral-800 shadow-sm">
+              {ytQueue.length > 0 ? (
+                <div
+                  ref={setYoutubeAnchorEl}
+                  className="relative w-full"
+                  style={{ paddingTop: '56.25%' }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center gap-3">
+                  <div className="w-14 h-14 rounded-2xl bg-red-600/10 flex items-center justify-center">
+                    <span className="text-2xl">▶️</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white/80">YouTube Lounge</p>
+                    <p className="text-[11px] text-white/40 mt-0.5">
+                      Pega un enlace o elige un género abajo para empezar
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Cola automática de la clienta ── */}
+            {activeLoungeClient && (
+              <div className="p-3.5 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-[var(--primary)]" />
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                      Cola automática · {activeLoungeClient.name.split(' ')[0]}
+                    </h3>
+                  </div>
+                  {queueInfo.total > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/25">
+                      {queueInfo.total} temas en fila
+                    </span>
+                  )}
+                </div>
+
+                {queueInfo.loading ? (
+                  <p className="text-[11px] text-slate-400 italic">Armando la lista desde sus gustos…</p>
+                ) : queueInfo.items.length > 0 ? (
+                  <>
+                    <div className="flex flex-wrap gap-1.5">
+                      {queueInfo.items.map(it => (
+                        <span
+                          key={it.value}
+                          className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/25"
+                        >
+                          🎵 {it.value} <span className="opacity-60">×{it.videoIds.length}</span>
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Se reproducen una tras otra y la lista se repite sola. No hay que tocar nada.
+                    </p>
+                  </>
+                ) : !queueInfo.configured ? (
+                  <p className="text-[11px] text-amber-500">
+                    Falta <b>YOUTUBE_API_KEY</b> en el backend para que el sistema busque la música solo.
+                  </p>
+                ) : (
                   <p className="text-[11px] text-slate-400">
-                    Busca canciones afines al gusto del cliente y agrégalas a su cola
+                    {queueInfo.reason ?? 'Sin música registrada para esta clienta.'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* URL Paste Input */}
+            <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-red-500/10 text-red-600 flex items-center justify-center shrink-0">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">Pegar enlace de YouTube</h3>
+                  <p className="text-[11px] text-slate-400">Video, playlist o ID directo</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  ref={urlInputRef}
+                  type="text"
+                  placeholder="https://youtube.com/watch?v=... o pegar playlist"
+                  value={youtubeUrl}
+                  onChange={e => { setYoutubeUrl(e.target.value); setYoutubeError(null); }}
+                  onKeyDown={e => e.key === 'Enter' && handleLoadYoutube()}
+                  className="flex-1 px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-800/80 border border-transparent focus:border-red-400 dark:focus:border-red-500 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition"
+                />
+                <button
+                  onClick={handleLoadYoutube}
+                  disabled={loadingUrl || !youtubeUrl.trim()}
+                  className="px-4 py-2.5 rounded-2xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 active:scale-95 transition shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingUrl ? 'Cargando…' : 'Cargar'}
+                </button>
+              </div>
+
+              {youtubeError && (
+                <p className="text-[11px] text-red-500 font-medium px-1">{youtubeError}</p>
+              )}
+
+              {activeLoungeClient && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/20">
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
+                  <p className="text-[11px] text-[var(--primary)] font-medium">
+                    Sugerido para {activeLoungeClient.name.split(' ')[0]}: {suggestedMusic} · {suggestedDrink}
+                    {prefMusic.length > 1 && (
+                      <span className="opacity-70"> · +{prefMusic.length - 1} más</span>
+                    )}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
-                    API Ready
-                  </span>
-                </div>
-              </div>
-
-              {/* Search Bar Input */}
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar artista, canción o pegar enlace de YouTube / Spotify..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-800/80 border border-transparent focus:border-[var(--primary)] text-xs text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition"
-                />
-              </div>
-
-              {/* Source Filter Chips */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSearchSource('all')}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
-                    searchSource === 'all'
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                      : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400'
-                  }`}
-                >
-                  Todos
-                </button>
-                <button
-                  onClick={() => setSearchSource('spotify')}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
-                    searchSource === 'spotify'
-                      ? 'bg-emerald-600 text-white font-bold'
-                      : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400'
-                  }`}
-                >
-                  <span>Spotify</span>
-                </button>
-                <button
-                  onClick={() => setSearchSource('youtube')}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
-                    searchSource === 'youtube'
-                      ? 'bg-red-600 text-white font-bold'
-                      : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400'
-                  }`}
-                >
-                  <span>YouTube</span>
-                </button>
-              </div>
+              )}
             </div>
 
-            {/* Curated Vibe Quick Filters */}
+            {/* Genre Quick-Load Tiles */}
             <div className="space-y-2">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
-                Playlists Recomendadas para el Salón
+                Géneros Rápidos para el Salón
               </h4>
-              <div className="grid grid-cols-2 gap-2">
-                {MUSIC_VIBES.map(vibe => (
-                  <button
-                    key={vibe.id}
-                    onClick={() => {
-                      setSearchQuery(vibe.label.split(' ')[0]);
-                    }}
-                    className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 text-left transition shadow-2xs cursor-pointer group"
-                  >
-                    <div className="text-xl mb-1">{vibe.icon}</div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-[var(--primary)] transition">
-                      {vibe.label}
-                    </div>
-                    <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
-                      {vibe.description}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Search Results List */}
-            <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Canciones Encontradas ({filteredSearchResults.length})
-              </h4>
-
-              <div className="divide-y divide-slate-100 dark:divide-neutral-800">
-                {filteredSearchResults.map(item => (
-                  <div
-                    key={item.title}
-                    className="py-3 flex items-center justify-between gap-3 group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={item.coverUrl}
-                        alt={item.title}
-                        className="w-11 h-11 rounded-xl object-cover shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                          {item.title}
-                        </div>
-                        <div className="text-[11px] text-slate-500 dark:text-neutral-400 truncate">
-                          {item.artist}
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded-sm ${
-                              item.source === 'spotify'
-                                ? 'bg-emerald-500/10 text-emerald-600'
-                                : 'bg-red-500/10 text-red-600'
-                            }`}
-                          >
-                            {item.source.toUpperCase()}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {formatTime(item.durationSeconds)}
-                          </span>
-                        </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                {GENRE_TILES.map(genre => {
+                  const isActive = ytQueue[ytIndex]?.videoId === genre.videoId;
+                  return (
+                    <button
+                      key={genre.label}
+                      onClick={() => loadIntoQueue(genre.videoId)}
+                      className={`p-3.5 rounded-2xl border text-left transition shadow-2xs cursor-pointer group ${
+                        isActive
+                          ? 'bg-red-600 border-red-600 text-white'
+                          : 'bg-white dark:bg-neutral-900 border-slate-200/80 dark:border-neutral-800 hover:border-red-300 dark:hover:border-red-800'
+                      }`}
+                    >
+                      <div className="text-xl mb-1">{genre.emoji}</div>
+                      <div className={`text-xs font-bold ${isActive ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                        {genre.label}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={() => {
-                          addTrackToLounge({
-                            title: item.title,
-                            artist: item.artist,
-                            album: item.album,
-                            durationSeconds: item.durationSeconds,
-                            coverUrl: item.coverUrl,
-                            vibe: item.vibe,
-                            source: item.source,
-                            dedicatedForClientName: activeLoungeClient?.name,
-                          });
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 hover:bg-[var(--primary)] hover:text-white text-xs font-bold text-slate-700 dark:text-neutral-300 transition flex items-center gap-1 cursor-pointer"
-                        title="Añadir a la cola"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Añadir</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                      <div className={`text-[10px] mt-0.5 line-clamp-1 ${isActive ? 'text-white/70' : 'text-slate-400'}`}>
+                        {genre.desc}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Open in YouTube CTA */}
+            {ytQueue[ytIndex] && (
+              <button
+                onClick={() => {
+                  window.open(
+                    `https://www.youtube.com/watch?v=${ytQueue[ytIndex].videoId}`,
+                    '_blank',
+                    'noopener',
+                  );
+                }}
+                className="w-full py-3 rounded-2xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-xs font-semibold text-slate-600 dark:text-neutral-400 hover:text-red-600 hover:border-red-300 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Abrir en YouTube
+              </button>
+            )}
           </motion.div>
         )}
       </div>

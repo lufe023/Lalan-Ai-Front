@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -21,10 +21,14 @@ import {
   Trash2,
   Edit3,
   Music,
-  Coffee,
+  Plus,
+  X,
+  Star,
+  Settings,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import { Client, ClientTag, CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
@@ -51,6 +55,47 @@ export const ClientsScreen: React.FC = () => {
   const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string }>({});
   const [formApiError, setFormApiError] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+
+  // ── Preferences state ────────────────────────────────────────────
+  // NOTE: el backend agrupa así → [{ category: {...}, items: [...] }]
+  type PrefCategory = {
+    category: { id: string; name: string; type: string; icon: string | null; color: string | null };
+    items: { id: string; clientId: string; preferenceId: string; intensity: number | null; notes: string | null; source: string;
+      preference: { id: string; value: string; category?: { id: string; name: string; type: string; icon: string | null; color: string | null } } }[];
+  };
+  type PrefCatalogItem = {
+    id: string; value: string; categoryId: string;
+    category: { id: string; name: string; type: string; icon: string | null; color: string | null };
+  };
+
+  const [clientPrefs, setClientPrefs] = useState<PrefCategory[]>([]);
+  const [prefCatalog, setPrefCatalog] = useState<PrefCatalogItem[]>([]);
+  const [prefCatalogLoaded, setPrefCatalogLoaded] = useState(false);
+  const [showPrefPanel, setShowPrefPanel] = useState(false);
+  const [loadingPrefs, setLoadingPrefs] = useState(false);
+  const [addingPrefId, setAddingPrefId] = useState<string | null>(null);
+
+  // ── Catalog Manager state ─────────────────────────────────────────
+  type MgCategory = {
+    id: string; name: string; type: string; icon: string | null; color: string | null;
+    preferences: { id: string; value: string }[];
+  };
+  const [showCatalogMgr, setShowCatalogMgr] = useState(false);
+  const [mgCategories, setMgCategories] = useState<MgCategory[]>([]);
+  const [mgLoading, setMgLoading] = useState(false);
+  const [mgExpandedCatId, setMgExpandedCatId] = useState<string | null>(null);
+  const [mgDeletingId, setMgDeletingId] = useState<string | null>(null);
+  const [mgCatForm, setMgCatForm] = useState({ name: '', type: 'other', icon: '', color: '#6366f1' });
+  const [mgAddingCat, setMgAddingCat] = useState(false);
+  const [mgPrefInputs, setMgPrefInputs] = useState<Record<string, string>>({});
+  const [mgAddingPrefCatId, setMgAddingPrefCatId] = useState<string | null>(null);
+
+  // ── Quick-add: crear preferencia y asignarla sin salir del panel ──
+  const [quickValue, setQuickValue] = useState('');
+  const [quickCatId, setQuickCatId] = useState('');
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [quickNewCatName, setQuickNewCatName] = useState('');
+  const [quickNewCatType, setQuickNewCatType] = useState('other');
 
   // Form State for New / Edit Client
   const [formData, setFormData] = useState<{
@@ -196,6 +241,196 @@ export const ClientsScreen: React.FC = () => {
     }
   };
 
+  // Load client preferences when a client is selected
+  useEffect(() => {
+    if (!selectedClient) { setClientPrefs([]); setShowPrefPanel(false); return; }
+    let cancelled = false;
+    const load = async () => {
+      setLoadingPrefs(true);
+      try {
+        const data = await api.get<PrefCategory[]>(`/preferences/clients/${selectedClient.id}`);
+        if (!cancelled) setClientPrefs(data);
+      } catch { /* silent – feature is optional */ }
+      finally { if (!cancelled) setLoadingPrefs(false); }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [selectedClient?.id]);
+
+  // Load full catalog + categories once when the add panel is opened
+  const handleOpenPrefPanel = useCallback(async () => {
+    setShowPrefPanel(true);
+    if (prefCatalogLoaded) return;
+    try {
+      const [values, cats] = await Promise.all([
+        api.get<PrefCatalogItem[]>('/preferences'),
+        api.get<MgCategory[]>('/preferences/categories'),
+      ]);
+      setPrefCatalog(values);
+      setMgCategories(cats);
+      if (cats.length) setQuickCatId(prev => prev || cats[0].id);
+    } catch { /* silent */ }
+    finally { setPrefCatalogLoaded(true); }
+  }, [prefCatalogLoaded]);
+
+  const handleAddPref = useCallback(async (clientId: string, preferenceId: string) => {
+    setAddingPrefId(preferenceId);
+    try {
+      await api.post(`/preferences/clients/${clientId}`, { preferenceId });
+      const data = await api.get<PrefCategory[]>(`/preferences/clients/${clientId}`);
+      setClientPrefs(data);
+    } catch { /* silent */ }
+    finally { setAddingPrefId(null); }
+  }, []);
+
+  const handleRemovePref = useCallback(async (clientId: string, preferenceId: string) => {
+    try {
+      await api.delete(`/preferences/clients/${clientId}/${preferenceId}`);
+      setClientPrefs(prev =>
+        prev.map(cat => ({
+          ...cat,
+          items: cat.items.filter(i => i.preferenceId !== preferenceId),
+        })).filter(cat => cat.items.length > 0)
+      );
+    } catch { /* silent */ }
+  }, []);
+
+  /**
+   * Crea la preferencia (y la categoría si hace falta) y la asigna a la clienta
+   * en un solo paso, sin salir del panel.
+   */
+  const handleQuickCreatePref = useCallback(async () => {
+    const value = quickValue.trim();
+    if (!value || !selectedClient) return;
+    setQuickBusy(true);
+    try {
+      let categoryId = quickCatId;
+
+      // Sin categoría elegida → crearla al vuelo
+      if (!categoryId) {
+        const created = await api.post<{ id: string }>('/preferences/categories', {
+          name: quickNewCatName.trim() || 'General',
+          type: quickNewCatType,
+        });
+        categoryId = created.id;
+        setQuickCatId(created.id);
+        setQuickNewCatName('');
+      }
+
+      const pref = await api.post<{ id: string }>('/preferences', { value, categoryId });
+      await api.post(`/preferences/clients/${selectedClient.id}`, { preferenceId: pref.id });
+
+      const [clientData, values, cats] = await Promise.all([
+        api.get<PrefCategory[]>(`/preferences/clients/${selectedClient.id}`),
+        api.get<PrefCatalogItem[]>('/preferences'),
+        api.get<MgCategory[]>('/preferences/categories'),
+      ]);
+      setClientPrefs(clientData);
+      setPrefCatalog(values);
+      setMgCategories(cats);
+      setQuickValue('');
+    } catch { /* silent */ }
+    finally { setQuickBusy(false); }
+  }, [quickValue, quickCatId, quickNewCatName, quickNewCatType, selectedClient]);
+
+  // ── Catalog Manager CRUD ─────────────────────────────────────────
+  const loadCatalogMgr = useCallback(async () => {
+    setMgLoading(true);
+    try {
+      const data = await api.get<MgCategory[]>('/preferences/categories');
+      setMgCategories(data);
+    } catch { /* silent */ }
+    finally { setMgLoading(false); }
+  }, []);
+
+  const handleOpenCatalogMgr = useCallback(() => {
+    setShowCatalogMgr(true);
+    loadCatalogMgr();
+  }, [loadCatalogMgr]);
+
+  const invalidateCatalog = useCallback(() => {
+    setPrefCatalog([]);
+    setPrefCatalogLoaded(false);
+  }, []);
+
+  const handleMgCreateCat = useCallback(async () => {
+    if (!mgCatForm.name.trim()) return;
+    setMgAddingCat(true);
+    try {
+      await api.post('/preferences/categories', {
+        name: mgCatForm.name.trim(),
+        type: mgCatForm.type,
+        ...(mgCatForm.icon.trim() ? { icon: mgCatForm.icon.trim() } : {}),
+        ...(mgCatForm.color ? { color: mgCatForm.color } : {}),
+      });
+      setMgCatForm({ name: '', type: 'other', icon: '', color: '#6366f1' });
+      await loadCatalogMgr();
+      invalidateCatalog();
+    } catch { /* silent */ }
+    finally { setMgAddingCat(false); }
+  }, [mgCatForm, loadCatalogMgr, invalidateCatalog]);
+
+  const handleMgDeleteCat = useCallback(async (id: string) => {
+    setMgDeletingId(id);
+    try {
+      await api.delete(`/preferences/categories/${id}`);
+      setMgCategories(prev => prev.filter(c => c.id !== id));
+      invalidateCatalog();
+    } catch { /* silent */ }
+    finally { setMgDeletingId(null); }
+  }, [invalidateCatalog]);
+
+  const handleMgAddPref = useCallback(async (categoryId: string) => {
+    const value = (mgPrefInputs[categoryId] ?? '').trim();
+    if (!value) return;
+    setMgAddingPrefCatId(categoryId);
+    try {
+      await api.post('/preferences', { value, categoryId });
+      setMgPrefInputs(prev => ({ ...prev, [categoryId]: '' }));
+      await loadCatalogMgr();
+      invalidateCatalog();
+    } catch { /* silent */ }
+    finally { setMgAddingPrefCatId(null); }
+  }, [mgPrefInputs, loadCatalogMgr, invalidateCatalog]);
+
+  const handleMgDeletePref = useCallback(async (prefId: string, categoryId: string) => {
+    setMgDeletingId(prefId);
+    try {
+      await api.delete(`/preferences/${prefId}`);
+      setMgCategories(prev => prev.map(c =>
+        c.id === categoryId
+          ? { ...c, preferences: c.preferences.filter(p => p.id !== prefId) }
+          : c
+      ));
+      invalidateCatalog();
+    } catch { /* silent */ }
+    finally { setMgDeletingId(null); }
+  }, [invalidateCatalog]);
+
+  // Category type → icon/color helpers
+  const prefTypeIcon = (type: string, icon: string | null) => {
+    if (icon) return icon;
+    const map: Record<string, string> = {
+      music: '🎵', drink: '☕', food: '🍓', style: '✨', movie: '🎬', other: '⭐',
+    };
+    return map[type] ?? '⭐';
+  };
+
+  const prefTypeColor = (type: string) => {
+    const map: Record<string, string> = {
+      music: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25',
+      drink: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
+      food:  'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+      style: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25',
+      movie: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/25',
+      other: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20',
+    };
+    return map[type] ?? map.other;
+  };
+
+  // Already-added preference ids for quick lookup
+  const addedPrefIds = new Set(clientPrefs.flatMap(cat => cat.items.map(i => i.preferenceId)));
+
   const getTagBadge = (tag: ClientTag) => {
     const found = availableTags.find(t => t.id === tag);
     if (!found) return null;
@@ -232,13 +467,22 @@ export const ClientsScreen: React.FC = () => {
         title="Clientas"
         subtitle={`${clients.length} registradas en el directorio`}
         rightAction={
-          <button
-            onClick={handleOpenAdd}
-            className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:opacity-90 transition"
-            title="Registrar Nueva Clienta"
-          >
-            <UserPlus className="w-4 h-4 stroke-[2.5]" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenCatalogMgr}
+              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
+              title="Gestionar catálogo de preferencias"
+            >
+              <Sparkles className="w-4 h-4 stroke-[2.5]" />
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:opacity-90 transition"
+              title="Registrar Nueva Clienta"
+            >
+              <UserPlus className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          </div>
         }
       />
 
@@ -466,59 +710,213 @@ export const ClientsScreen: React.FC = () => {
               </div>
             )}
 
-            {/* VIP Lounge & Hospitality Preferences Card */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-[var(--primary)]/10 to-rose-500/10 border border-amber-500/30 dark:border-amber-500/20 space-y-2.5">
-              <div className="flex items-center justify-between">
+            {/* VIP Lounge & Preferences Card */}
+            <div className="rounded-2xl border border-amber-500/30 dark:border-amber-500/20 overflow-hidden">
+              {/* Header */}
+              <div className="px-3.5 py-2.5 bg-gradient-to-r from-amber-500/10 via-[var(--primary)]/10 to-rose-500/10 flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-white">
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Hospitalidad VIP & Experiencia en Sillón</span>
+                  <span>Hospitalidad & Preferencias</span>
                 </div>
-                <button
-                  onClick={() => {
-                    playMusicForClient(selectedClient);
-                    setSelectedClient(null);
-                  }}
-                  className="px-2.5 py-1 rounded-full bg-[var(--primary)] text-white text-[10px] font-bold flex items-center gap-1 hover:scale-105 active:scale-95 transition shadow-xs cursor-pointer"
-                  title="Abrir Lounge y activar ambiente musical para esta clienta"
-                >
-                  <Music className="w-3 h-3" />
-                  <span>Activar Lounge</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleOpenPrefPanel}
+                    className="px-2 py-1 rounded-full bg-white/70 dark:bg-neutral-800/70 text-slate-600 dark:text-neutral-300 text-[10px] font-bold flex items-center gap-1 border border-slate-200/60 dark:border-neutral-700/60 hover:border-slate-300 transition cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Añadir</span>
+                  </button>
+                  <button
+                    onClick={() => { playMusicForClient(selectedClient); setSelectedClient(null); }}
+                    className="px-2.5 py-1 rounded-full bg-[var(--primary)] text-white text-[10px] font-bold flex items-center gap-1 hover:scale-105 active:scale-95 transition shadow-xs cursor-pointer"
+                    title="Abrir Lounge para esta clienta"
+                  >
+                    <Music className="w-3 h-3" />
+                    <span>Lounge</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-1.5 text-[11px]">
-                <div className="flex items-start gap-1.5 text-slate-700 dark:text-neutral-300">
-                  <Coffee className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-slate-500 dark:text-neutral-400">Bebidas: </span>
-                    <span className="font-bold text-slate-800 dark:text-neutral-200">
-                      {selectedClient.hospitality?.favoriteDrinks?.join(', ') || 'Café espresso, té de menta'}
-                    </span>
+              {/* Preferences body */}
+              <div className="p-3 bg-white/60 dark:bg-neutral-900/60 space-y-2.5">
+                {loadingPrefs ? (
+                  <p className="text-[11px] text-slate-400 italic text-center py-2">Cargando preferencias…</p>
+                ) : clientPrefs.length === 0 ? (
+                  <div className="text-center py-3">
+                    <p className="text-[11px] text-slate-400 dark:text-neutral-500">Sin preferencias registradas aún.</p>
+                    <button
+                      onClick={handleOpenPrefPanel}
+                      className="mt-2 text-[11px] font-bold text-[var(--primary)] flex items-center gap-1 mx-auto cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" /> Registrar primera preferencia
+                    </button>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientPrefs.map(cat => (
+                      <div key={cat.category.id}>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-neutral-500 flex items-center gap-1 mb-1">
+                          <span>{prefTypeIcon(cat.category.type, cat.category.icon)}</span>
+                          <span>{cat.category.name}</span>
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {cat.items.map(item => (
+                            <div
+                              key={item.id}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] font-semibold ${prefTypeColor(cat.category.type)}`}
+                            >
+                              <span>{item.preference.value}</span>
+                              {item.intensity && (
+                                <span className="flex gap-0.5 ml-0.5">
+                                  {Array.from({ length: item.intensity }).map((_, i) => (
+                                    <Star key={i} className="w-2 h-2 fill-current opacity-70" />
+                                  ))}
+                                </span>
+                              )}
+                              <button
+                                onClick={() => handleRemovePref(selectedClient.id, item.preferenceId)}
+                                className="ml-0.5 opacity-50 hover:opacity-100 transition cursor-pointer"
+                                title="Quitar preferencia"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                <div className="flex items-start gap-1.5 text-slate-700 dark:text-neutral-300">
-                  <span className="text-xs shrink-0">🍓</span>
-                  <div>
-                    <span className="font-semibold text-slate-500 dark:text-neutral-400">Snacks: </span>
-                    <span className="font-bold text-slate-800 dark:text-neutral-200">
-                      {selectedClient.hospitality?.favoriteSnacks?.join(', ') || 'Macarons, galletas de avena'}
-                    </span>
-                  </div>
-                </div>
+                {/* Add-preferences inline panel */}
+                {showPrefPanel && (
+                  <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-neutral-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Catálogo de preferencias</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={handleOpenCatalogMgr}
+                          className="text-slate-400 hover:text-[var(--primary)] cursor-pointer transition"
+                          title="Gestionar catálogo"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setShowPrefPanel(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {/* ── Quick-add: escribir y crear en el momento ── */}
+                    {prefCatalogLoaded && (
+                      <div className="mb-2.5 space-y-1.5">
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            value={quickValue}
+                            onChange={e => setQuickValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQuickCreatePref(); } }}
+                            placeholder="Buscar o escribir una preferencia nueva…"
+                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-[var(--primary)] text-slate-900 dark:text-white"
+                          />
+                          <button
+                            onClick={handleQuickCreatePref}
+                            disabled={quickBusy || !quickValue.trim()}
+                            className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-40 cursor-pointer transition active:scale-95 whitespace-nowrap"
+                            title="Crear y añadir a esta clienta"
+                          >
+                            {quickBusy ? '…' : '+ Crear'}
+                          </button>
+                        </div>
 
-                <div className="flex items-start gap-1.5 text-slate-700 dark:text-neutral-300">
-                  <Music className="w-3.5 h-3.5 text-purple-500 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-slate-500 dark:text-neutral-400">Ambiente & Música: </span>
-                    <span className="font-bold text-slate-800 dark:text-neutral-200">
-                      {selectedClient.hospitality?.musicVibe || 'Lofi Chill'}
-                      {selectedClient.hospitality?.favoriteArtistsOrSongs && selectedClient.hospitality.favoriteArtistsOrSongs.length > 0 &&
-                        ` (${selectedClient.hospitality.favoriteArtistsOrSongs.join(', ')})`
-                      }
-                    </span>
+                        <div className="flex gap-1.5">
+                          <select
+                            value={quickCatId}
+                            onChange={e => setQuickCatId(e.target.value)}
+                            className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
+                          >
+                            {mgCategories.map(c => (
+                              <option key={c.id} value={c.id}>
+                                {(c.icon ?? prefTypeIcon(c.type, c.icon))} {c.name}
+                              </option>
+                            ))}
+                            <option value="">➕ Nueva categoría…</option>
+                          </select>
+                        </div>
+
+                        {/* Formulario inline solo si se eligió "nueva categoría" */}
+                        {!quickCatId && (
+                          <div className="flex gap-1.5">
+                            <input
+                              type="text"
+                              value={quickNewCatName}
+                              onChange={e => setQuickNewCatName(e.target.value)}
+                              placeholder="Nombre de la categoría (ej: Música)"
+                              className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] border border-slate-200 dark:border-neutral-700 focus:outline-none text-slate-900 dark:text-white"
+                            />
+                            <select
+                              value={quickNewCatType}
+                              onChange={e => setQuickNewCatType(e.target.value)}
+                              className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
+                            >
+                              {([['music','🎵'],['drink','☕'],['food','🍓'],['style','✨'],['movie','🎬'],['other','⭐']] as [string,string][]).map(([v,l]) => (
+                                <option key={v} value={v}>{l}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!prefCatalogLoaded ? (
+                      <p className="text-[11px] text-slate-400 italic">Cargando catálogo…</p>
+                    ) : prefCatalog.length === 0 ? (
+                      <p className="text-[11px] text-slate-400 italic">
+                        Aún no hay opciones guardadas. Escribe arriba y presiona <b>Crear</b> para añadir la primera.
+                      </p>
+                    ) : (
+                      <div className="space-y-2 max-h-48 overflow-y-auto hide-scrollbar">
+                        {/* Group catalog by category */}
+                        {Object.entries(
+                          prefCatalog.reduce<Record<string, { cat: PrefCatalogItem['category']; items: PrefCatalogItem[] }>>((acc, p) => {
+                            const key = p.category.id;
+                            if (!acc[key]) acc[key] = { cat: p.category, items: [] };
+                            acc[key].items.push(p);
+                            return acc;
+                          }, {})
+                        ).map(([catId, { cat, items }]) => (
+                          <div key={catId}>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-1">
+                              <span>{prefTypeIcon(cat.type, cat.icon)}</span>
+                              <span>{cat.name}</span>
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {items.map(p => {
+                                const already = addedPrefIds.has(p.id);
+                                return (
+                                  <button
+                                    key={p.id}
+                                    disabled={already || addingPrefId === p.id}
+                                    onClick={() => !already && handleAddPref(selectedClient.id, p.id)}
+                                    className={`px-2 py-1 rounded-full border text-[11px] font-semibold transition cursor-pointer ${
+                                      already
+                                        ? 'opacity-40 cursor-not-allowed ' + prefTypeColor(cat.type)
+                                        : addingPrefId === p.id
+                                        ? 'opacity-60 ' + prefTypeColor(cat.type)
+                                        : 'bg-slate-50 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] hover:text-[var(--primary)]'
+                                    }`}
+                                  >
+                                    {already ? '✓ ' : addingPrefId === p.id ? '…' : '+ '}
+                                    {p.value}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -764,6 +1162,163 @@ export const ClientsScreen: React.FC = () => {
             )}
           </button>
         </form>
+      </IOSModal>
+
+      {/* ── Catalog Manager Modal ──────────────────────────────────── */}
+      <IOSModal
+        id="catalog-mgr-modal"
+        isOpen={showCatalogMgr}
+        onClose={() => setShowCatalogMgr(false)}
+        title="Gestión de Catálogo"
+        subtitle="Categorías y opciones de preferencias"
+      >
+        <div className="space-y-4 text-xs">
+
+          {/* ── Nueva Categoría ─────────────────────────── */}
+          <div className="rounded-xl border border-slate-200 dark:border-neutral-700 p-3 space-y-2.5">
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-neutral-400 flex items-center gap-1">
+              <Plus className="w-3 h-3" /> Nueva Categoría
+            </span>
+
+            <input
+              type="text"
+              placeholder="Nombre (ej: Bebidas)"
+              value={mgCatForm.name}
+              onChange={e => setMgCatForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[12px] text-slate-900 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            />
+
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={mgCatForm.type}
+                onChange={e => setMgCatForm(f => ({ ...f, type: e.target.value }))}
+                className="px-2 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[12px] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
+              >
+                {([['music','🎵 Música'],['drink','☕ Bebidas'],['food','🍓 Comida'],['style','✨ Estilo'],['movie','🎬 Películas'],['other','⭐ Otro']] as [string, string][]).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Emoji ícono"
+                value={mgCatForm.icon}
+                onChange={e => setMgCatForm(f => ({ ...f, icon: e.target.value }))}
+                className="px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[14px] text-slate-900 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none text-center"
+                maxLength={4}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-slate-500 dark:text-neutral-400 shrink-0">Color:</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {['#6366f1','#f59e0b','#10b981','#f43f5e','#3b82f6','#8b5cf6','#64748b','#ec4899'].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setMgCatForm(f => ({ ...f, color: c }))}
+                    className={`w-5 h-5 rounded-full transition cursor-pointer ${mgCatForm.color === c ? 'ring-2 ring-offset-1 ring-slate-700 dark:ring-white scale-110' : ''}`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleMgCreateCat}
+              disabled={mgAddingCat || !mgCatForm.name.trim()}
+              className="w-full py-2 rounded-lg bg-[var(--primary)] text-white font-bold text-[12px] disabled:opacity-50 cursor-pointer transition active:scale-95"
+            >
+              {mgAddingCat ? 'Creando…' : '+ Crear Categoría'}
+            </button>
+          </div>
+
+          {/* ── Lista de Categorías ─────────────────────── */}
+          {mgLoading ? (
+            <p className="text-[11px] text-slate-400 italic text-center py-4">Cargando categorías…</p>
+          ) : mgCategories.length === 0 ? (
+            <p className="text-[11px] text-slate-400 italic text-center py-4">No hay categorías aún. Crea la primera arriba.</p>
+          ) : (
+            <div className="space-y-2">
+              {mgCategories.map(cat => (
+                <div key={cat.id} className="rounded-xl border border-slate-200 dark:border-neutral-700 overflow-hidden">
+                  {/* Category row */}
+                  <div
+                    className="flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-neutral-800/60 cursor-pointer select-none"
+                    onClick={() => setMgExpandedCatId(prev => prev === cat.id ? null : cat.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">{cat.icon ?? prefTypeIcon(cat.type, cat.icon)}</span>
+                      <div>
+                        <span className="text-[12px] font-bold text-slate-800 dark:text-white">{cat.name}</span>
+                        <span className="ml-1.5 text-[10px] text-slate-400">({cat.preferences.length})</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${mgExpandedCatId === cat.id ? 'rotate-90' : ''}`} />
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (confirm(`¿Eliminar la categoría "${cat.name}" y todas sus opciones?`)) {
+                            handleMgDeleteCat(cat.id);
+                          }
+                        }}
+                        disabled={mgDeletingId === cat.id}
+                        className="text-rose-400 hover:text-rose-600 cursor-pointer disabled:opacity-40 p-0.5 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded: options + add form */}
+                  {mgExpandedCatId === cat.id && (
+                    <div className="px-3 py-2.5 space-y-2 bg-white dark:bg-neutral-900">
+                      {cat.preferences.length === 0 ? (
+                        <p className="text-[11px] text-slate-400 italic">Sin opciones aún. Añade la primera abajo.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {cat.preferences.map(pref => (
+                            <span
+                              key={pref.id}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[11px] text-slate-700 dark:text-neutral-200 border border-slate-200 dark:border-neutral-700"
+                            >
+                              {pref.value}
+                              <button
+                                onClick={() => handleMgDeletePref(pref.id, cat.id)}
+                                disabled={mgDeletingId === pref.id}
+                                className="text-slate-400 hover:text-rose-500 cursor-pointer ml-0.5 disabled:opacity-40 transition"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add preference input */}
+                      <div className="flex gap-2 pt-1">
+                        <input
+                          type="text"
+                          placeholder="Nueva opción (ej: Reggaeton)"
+                          value={mgPrefInputs[cat.id] ?? ''}
+                          onChange={e => setMgPrefInputs(prev => ({ ...prev, [cat.id]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter') handleMgAddPref(cat.id); }}
+                          className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-[var(--primary)] text-slate-900 dark:text-white"
+                        />
+                        <button
+                          onClick={() => handleMgAddPref(cat.id)}
+                          disabled={mgAddingPrefCatId === cat.id || !(mgPrefInputs[cat.id] ?? '').trim()}
+                          className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-50 cursor-pointer transition active:scale-95"
+                        >
+                          {mgAddingPrefCatId === cat.id ? '…' : '+'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </IOSModal>
     </div>
   );

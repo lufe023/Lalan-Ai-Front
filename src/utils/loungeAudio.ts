@@ -34,7 +34,7 @@ class LoungeAudioEngine {
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
   }
 
@@ -42,11 +42,20 @@ class LoungeAudioEngine {
     this.init();
     if (!this.ctx) return;
     this.isRunning = true;
-    this.currentVibe = vibe.toLowerCase().includes('spa') ? 'ambient_spa' : vibe.toLowerCase().includes('bossa') ? 'bossa' : 'lofi';
+    this.currentVibe = vibe.toLowerCase().includes('spa')
+      ? 'ambient_spa'
+      : vibe.toLowerCase().includes('bossa')
+      ? 'bossa'
+      : 'lofi';
 
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
+    }
+
+    // Resume context in case it was suspended by pause()
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
     }
 
     let step = 0;
@@ -83,7 +92,7 @@ class LoungeAudioEngine {
           osc.start(now);
           osc.stop(now + 4.0);
         } catch {
-          // Ignore audio node cleanup
+          // Ignore audio node cleanup errors
         }
       });
 
@@ -91,6 +100,19 @@ class LoungeAudioEngine {
     };
 
     playChord();
+  }
+
+  /** Pause playback — suspends the AudioContext so it can be resumed later. */
+  public pause() {
+    this.isRunning = false;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    // Suspend (not close) so resume() works cleanly on next play()
+    if (this.ctx && this.ctx.state === 'running') {
+      this.ctx.suspend().catch(() => {});
+    }
   }
 
   public stop() {

@@ -114,6 +114,46 @@ interface AppContextType {
   // Ingredients
   loadIngredients: (serviceId: string) => Promise<ServiceIngredient[]>;
   saveIngredients: (serviceId: string, ingredients: Omit<ServiceIngredient, 'id' | 'product'>[]) => Promise<ServiceIngredient[]>;
+  // ── YouTube global player (sobrevive al cambio de pantalla) ──
+  youtubeEmbed: string | null;
+  setYoutubeEmbed: (url: string | null) => void;
+  youtubeAnchorEl: HTMLElement | null;
+  setYoutubeAnchorEl: (el: HTMLElement | null) => void;
+  // Cola controlable vía IFrame Player API
+  ytPlayerRef: React.MutableRefObject<any>;
+  ytQueue: YtTrack[];
+  ytIndex: number;
+  ytPlaying: boolean;
+  ytShuffle: boolean;
+  ytRepeat: boolean;
+  ytMuted: boolean;
+  ytVolume: number;
+  ytTime: number;
+  ytDuration: number;
+  ytReady: boolean;
+  setYtQueue: (tracks: YtTrack[]) => void;
+  setYtPlaying: (v: boolean) => void;
+  setYtReady: (v: boolean) => void;
+  setYtTime: (v: number) => void;
+  setYtDuration: (v: number) => void;
+  ytPlayIndex: (i: number) => void;
+  ytToggle: () => void;
+  ytNext: () => void;
+  ytPrev: () => void;
+  ytSeek: (sec: number) => void;
+  ytSetVolume: (v: number) => void;
+  ytToggleMute: () => void;
+  toggleYtShuffle: () => void;
+  toggleYtRepeat: () => void;
+}
+
+/** Pista de YouTube resuelta por el backend */
+export interface YtTrack {
+  videoId: string;
+  title: string;
+  channel: string;
+  thumbnail: string | null;
+  durationSeconds: number | null;
 }
 
 export interface ServiceIngredient {
@@ -527,6 +567,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const closeSplash = () => setShowSplash(false);
   const [isPhoneFrame, setIsPhoneFrame] = useState(false);
 
+  // ── YouTube global player state ──────────────────────────────
+  // Vive aquí (no en LoungePlayerScreen) para que el iframe no se
+  // desmonte al navegar a otra pantalla.
+  const [youtubeEmbed, setYoutubeEmbed] = useState<string | null>(null);
+  const [youtubeAnchorEl, setYoutubeAnchorEl] = useState<HTMLElement | null>(null);
+
+  // Instancia del YT.Player, creada por <GlobalYouTubePlayer />
+  const ytPlayerRef = useRef<any>(null);
+  const [ytQueue, setYtQueueState] = useState<YtTrack[]>([]);
+  const [ytIndex, setYtIndex] = useState(0);
+  const [ytPlaying, setYtPlaying] = useState(false);
+  const [ytShuffle, setYtShuffle] = useState(false);
+  const [ytRepeat, setYtRepeat] = useState(true); // el salón repite todo el día
+  const [ytMuted, setYtMuted] = useState(false);
+  const [ytVolume, setYtVolumeState] = useState(80);
+  const [ytTime, setYtTime] = useState(0);
+  const [ytDuration, setYtDuration] = useState(0);
+  const [ytReady, setYtReady] = useState(false);
+
+  const setYtQueue = useCallback((tracks: YtTrack[]) => {
+    setYtQueueState(tracks);
+    setYtIndex(0);
+  }, []);
+
+  const ytPlayIndex = useCallback((i: number) => setYtIndex(i), []);
+
+  const ytToggle = useCallback(() => {
+    const p = ytPlayerRef.current;
+    if (!p) return;
+    try {
+      if (ytPlaying) p.pauseVideo();
+      else p.playVideo();
+    } catch { /* el player aún no está listo */ }
+  }, [ytPlaying]);
+
+  const ytNext = useCallback(() => {
+    setYtIndex(i => {
+      const n = ytQueue.length;
+      if (!n) return i;
+      if (ytShuffle && n > 1) {
+        let r = i;
+        while (r === i) r = Math.floor(Math.random() * n);
+        return r;
+      }
+      const next = i + 1;
+      if (next >= n) return ytRepeat ? 0 : i;
+      return next;
+    });
+  }, [ytQueue.length, ytShuffle, ytRepeat]);
+
+  const ytPrev = useCallback(() => {
+    setYtIndex(i => {
+      const n = ytQueue.length;
+      if (!n) return i;
+      // Igual que Spotify: si ya avanzó bastante, reinicia la canción
+      const p = ytPlayerRef.current;
+      try {
+        if (p?.getCurrentTime && p.getCurrentTime() > 3) { p.seekTo(0, true); return i; }
+      } catch { /* noop */ }
+      return i - 1 < 0 ? (ytRepeat ? n - 1 : 0) : i - 1;
+    });
+  }, [ytQueue.length, ytRepeat]);
+
+  const ytSeek = useCallback((sec: number) => {
+    try { ytPlayerRef.current?.seekTo(sec, true); } catch { /* noop */ }
+    setYtTime(sec);
+  }, []);
+
+  const ytSetVolume = useCallback((v: number) => {
+    setYtVolumeState(v);
+    try {
+      ytPlayerRef.current?.setVolume(v);
+      if (v > 0) { ytPlayerRef.current?.unMute?.(); setYtMuted(false); }
+    } catch { /* noop */ }
+  }, []);
+
+  const ytToggleMute = useCallback(() => {
+    setYtMuted(m => {
+      try {
+        if (m) ytPlayerRef.current?.unMute?.();
+        else ytPlayerRef.current?.mute?.();
+      } catch { /* noop */ }
+      return !m;
+    });
+  }, []);
+
+  const toggleYtShuffle = useCallback(() => setYtShuffle(s => !s), []);
+  const toggleYtRepeat = useCallback(() => setYtRepeat(r => !r), []);
+
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlayingLounge, setIsPlayingLounge] = useState(false);
   const [activeLoungeClient, setActiveLoungeClient] = useState<Client | null>(null);
@@ -540,7 +669,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsPlayingLounge(true); loungeAudio.play();
   }, [loungeTracks]);
   const togglePlayLounge = useCallback(() => {
-    setIsPlayingLounge(p => { if (p) loungeAudio.pause(); else loungeAudio.play(); return !p; });
+    setIsPlayingLounge(p => {
+      try {
+        if (p) loungeAudio.pause();
+        else loungeAudio.play();
+      } catch (e) {
+        console.error('Lounge audio error:', e);
+      }
+      return !p;
+    });
   }, []);
   const nextLoungeTrack = useCallback(() => setCurrentTrackIndex(i => (i + 1) % loungeTracks.length), [loungeTracks.length]);
   const prevLoungeTrack = useCallback(() => setCurrentTrackIndex(i => (i - 1 + loungeTracks.length) % loungeTracks.length), [loungeTracks.length]);
@@ -643,6 +780,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createPriceList, updatePriceList, deletePriceList,
       assignPriceList, unassignPriceList,
       loadIngredients, saveIngredients,
+      youtubeEmbed, setYoutubeEmbed, youtubeAnchorEl, setYoutubeAnchorEl,
+      ytPlayerRef, ytQueue, ytIndex, ytPlaying, ytShuffle, ytRepeat,
+      ytMuted, ytVolume, ytTime, ytDuration, ytReady,
+      setYtQueue, setYtPlaying, setYtReady, setYtTime, setYtDuration,
+      ytPlayIndex, ytToggle, ytNext, ytPrev, ytSeek, ytSetVolume,
+      ytToggleMute, toggleYtShuffle, toggleYtRepeat,
     }}>
       {children}
     </AppContext.Provider>
