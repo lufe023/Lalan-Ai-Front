@@ -7,6 +7,7 @@ import {
 import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
 import { api } from '../services/api';
+import { alRecibir } from '../services/socket';
 import { useAuth } from './AuthContext';
 
 /** Moneda del salón. La base tiene rateToBase = 1 y es en la que vive la caja. */
@@ -85,7 +86,82 @@ export interface LoungeEvent {
 }
 
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'sala';
+
+// ═══════════════════════════════════════════════════════════════════
+//  SALA Y TURNOS
+// ═══════════════════════════════════════════════════════════════════
+
+export interface SalonZone {
+  id: string;
+  name: string;
+  /** Prefijo del código de turno: "G", "B" */
+  prefix: string;
+  color?: string | null;
+  sortOrder: number;
+  active: boolean;
+  staff?: { id: string; name: string; role: string; avatar?: string | null }[];
+}
+
+export interface SalonStaff {
+  id: string;
+  name: string;
+  /** La especialidad */
+  role: string;
+  avatar?: string | null;
+  phone?: string | null;
+  active: boolean;
+  zoneId?: string | null;
+  zone?: { id: string; name: string; prefix: string; color?: string | null } | null;
+}
+
+export type QueueStatus = 'waiting' | 'called' | 'serving' | 'done' | 'cancelled' | 'no_show';
+
+export interface QueueTicket {
+  id: string;
+  /** "G15", ya armado */
+  code: string;
+  prefix: string;
+  number: number;
+  /** Solo el nombre de pila: lo recorta el backend */
+  displayName: string;
+  reason?: string | null;
+  status: QueueStatus;
+  zoneId?: string | null;
+  zone?: { id: string; name: string; prefix: string; color?: string | null } | null;
+  staffId?: string | null;
+  staffName?: string | null;
+  staff?: { id: string; name: string; role: string; avatar?: string | null } | null;
+  appointmentId?: string | null;
+  clientId?: string | null;
+  createdAt: string;
+  calledAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  notes?: string | null;
+}
+
+/** Una cita de hoy que todavía no ha llegado al local */
+export interface PorLlegar {
+  id: string;
+  clientId?: string | null;
+  clientName: string;
+  serviceName: string;
+  staffId?: string | null;
+  staffName?: string | null;
+  startsAt: string;
+  status: string;
+}
+
+export interface SalaEnVivo {
+  fecha: string;
+  zonas: SalonZone[];
+  atendiendo: QueueTicket[];
+  llamando: QueueTicket[];
+  esperando: QueueTicket[];
+  terminados: QueueTicket[];
+  porLlegar: PorLlegar[];
+}
 
 export interface ToastInfo {
   id: string; title: string; message: string;
@@ -136,7 +212,10 @@ interface AppContextType {
   toggleProductAi: (id: string, aiAvailable: boolean) => Promise<void>;
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => Promise<void>;
-  updateAppointmentStatus: (id: string, status: AppointmentStatus, completedAt?: string) => Promise<void>;
+  /** Devuelve la comanda que se abrió al atender/completar y su saldo */
+  updateAppointmentStatus: (
+    id: string, status: AppointmentStatus, completedAt?: string,
+  ) => Promise<{ saleId: string | null; saldoPendiente: number | null }>;
   deleteAppointment: (id: string) => Promise<void>;
   conversations: Conversation[];
   activeConversationId: string | null;
@@ -196,6 +275,30 @@ interface AppContextType {
   /** Todas las comandas abiertas del salón, para saltar entre cuentas */
   openFolios: Sale[];
   loadOpenFolios: () => Promise<void>;
+  /** Abre (o recupera) la comanda de una cita concreta, con o sin ficha */
+  abrirComandaDeCita: (apt: { id: string; clientId?: string | null; clientName?: string }) => Promise<Sale | null>;
+  /** Le pone dueña a una cuenta de mostrador (null la devuelve a mostrador) */
+  asignarClientaAFolio: (saleId: string, clientId: string | null) => Promise<boolean>;
+
+  // ── Sala y turnos ──
+  sala: SalaEnVivo | null;
+  salaCargando: boolean;
+  loadSala: () => Promise<void>;
+  zonas: SalonZone[];
+  loadZonas: () => Promise<void>;
+  guardarZona: (dto: { id?: string; name: string; prefix: string; color?: string | null; sortOrder?: number; active?: boolean }) => Promise<boolean>;
+  eliminarZona: (id: string) => Promise<void>;
+  especialistas: SalonStaff[];
+  loadEspecialistas: () => Promise<void>;
+  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean }) => Promise<boolean>;
+  eliminarEspecialista: (id: string) => Promise<void>;
+  /** Da el turno: la persona llegó. Con appointmentId es una cita; sin él, walk-in */
+  darTurno: (dto: { appointmentId?: string | null; clientId?: string | null; clientName?: string; zoneId?: string | null; staffId?: string | null; reason?: string | null }) => Promise<QueueTicket | null>;
+  accionTurno: (id: string, accion: 'call' | 'serve' | 'finish' | 'cancel' | 'no-show', body?: any) => Promise<void>;
+  /** Reasigna zona, especialista o servicio sin cambiarle el número */
+  moverTurno: (id: string, dto: { zoneId?: string | null; staffId?: string | null; reason?: string | null }) => Promise<void>;
+  /** Cierra una comanda: la anula si está vacía, si no solo la saca de la vista */
+  cerrarFolio: (saleId: string) => Promise<void>;
   selectFolio: (saleId: string) => Promise<void>;
   newCounterFolio: (label?: string) => Promise<Sale | null>;
   moveSaleItem: (itemId: string, toSaleId: string) => Promise<void>;
@@ -717,11 +820,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     setAppointments(a => [...a, mapApiAppointment(res)]);
   }, []);
-  const updateAppointmentStatus = useCallback(async (id: string, status: AppointmentStatus, completedAt?: string) => {
+  // Puente hacia loadOpenFolios, que se define bastante más abajo (necesita
+  // el estado de ventas). Con el ref no hay que reordenar medio contexto.
+  const loadOpenFoliosRef = useRef<(() => Promise<void>) | null>(null);
+
+  /**
+   * Devuelve el saldo que quedó pendiente, porque al marcar ATENDIENDO (y
+   * también al COMPLETAR, que se puede hacer sin pasar por atendiendo) el
+   * backend le abre la comanda a la clienta con el servicio adentro. Quien
+   * llame decide si avisa; aquí solo se refresca el contador de comandas
+   * abiertas para que el aviso rojo de Caja salga al instante.
+   */
+  const updateAppointmentStatus = useCallback(async (
+    id: string, status: AppointmentStatus, completedAt?: string,
+  ): Promise<{ saleId: string | null; saldoPendiente: number | null }> => {
     const body: Record<string, string> = { status };
     if (completedAt) body.completedAt = completedAt;
-    await api.patch(`/appointments/${id}/status`, body);
+    const res = await api.patch<any>(`/appointments/${id}/status`, body);
     setAppointments(a => a.map(x => x.id === id ? { ...x, status, ...(completedAt ? { completedAt } : {}) } : x));
+    if (status === 'attending' || status === 'completed') void loadOpenFoliosRef.current?.();
+    return { saleId: res?.saleId ?? null, saldoPendiente: res?.saldoPendiente ?? null };
   }, []);
   const deleteAppointment = useCallback(async (id: string) => {
     await api.delete(`/appointments/${id}`);
@@ -1382,6 +1500,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setOpenFolios(await api.get<Sale[]>('/sales/folios/open') ?? []);
     } catch { setOpenFolios([]); }
   }, []);
+  useEffect(() => { loadOpenFoliosRef.current = loadOpenFolios; }, [loadOpenFolios]);
+
+  // El contador rojo tiene que estar vivo desde que se abre el sistema, no
+  // solo cuando alguien entra a Caja: si no, nadie se entera de la comanda
+  // olvidada hasta que ya se fue la clienta.
+  useEffect(() => { void loadOpenFolios(); }, [loadOpenFolios]);
+
+  // El aviso en vivo cierra el último agujero del contador rojo: una comanda
+  // abierta o cobrada desde OTRO dispositivo ya no espera a que alguien toque
+  // algo en este para aparecer.
+  useEffect(() => alRecibir('ventas:cambio', () => { void loadOpenFolios(); }), [loadOpenFolios]);
+
+  // Y tiene que seguir siendo cierto: cada vez que la comanda activa cambia
+  // de importe —se sirvió algo, se quitó, se abonó— la lista se recarga. Sin
+  // esto el número del menú se quedaba con el saldo de hace cinco minutos.
+  useEffect(() => {
+    if (!activeSale?.id) return;
+    void loadOpenFolios();
+  }, [activeSale?.id, activeSale?.total, activeSale?.paidTotal, loadOpenFolios]);
 
   const selectFolio = useCallback(async (saleId: string) => {
     setSaleBusy(true);
@@ -1391,6 +1528,206 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast('No se pudo abrir la comanda', 'Inténtalo de nuevo.', 'warning');
     } finally { setSaleBusy(false); }
   }, []);
+
+  /**
+   * Red de seguridad: si una cita quedó en atención sin comanda —porque se
+   * marcó antes de que existiera esta función, o porque algo falló— desde la
+   * propia cita se puede abrir. Es idempotente: si ya existe, devuelve esa.
+   */
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  SALA Y TURNOS
+  // ═══════════════════════════════════════════════════════════════════
+
+  const [sala, setSala] = useState<SalaEnVivo | null>(null);
+  const [salaCargando, setSalaCargando] = useState(false);
+  const [zonas, setZonas] = useState<SalonZone[]>([]);
+  const [especialistas, setEspecialistas] = useState<SalonStaff[]>([]);
+
+  /**
+   * `silencioso` a propósito: la pantalla de sala se refresca sola cada pocos
+   * segundos y no puede parpadear un "Cargando…" en cada vuelta. Solo la
+   * primera carga muestra el estado.
+   */
+  const salaCargadaRef = useRef(false);
+  const loadSala = useCallback(async () => {
+    // Con un ref y no leyendo `sala`: dentro de un useCallback sin
+    // dependencias, `sala` se queda congelada en null para siempre y el
+    // "Cargando…" saldría en cada vuelta del refresco.
+    if (!salaCargadaRef.current) setSalaCargando(true);
+    try {
+      setSala(await api.get<SalaEnVivo>('/salon/sala'));
+      salaCargadaRef.current = true;
+    } catch {
+      /* la sala es una vista: si falla una vuelta, se reintenta a la
+         siguiente sin molestar con un toast cada 8 segundos */
+    } finally { setSalaCargando(false); }
+  }, []);
+
+  const loadZonas = useCallback(async () => {
+    try { setZonas(await api.get<SalonZone[]>('/salon/zones?todas=true') ?? []); }
+    catch { setZonas([]); }
+  }, []);
+
+  const loadEspecialistas = useCallback(async () => {
+    try { setEspecialistas(await api.get<SalonStaff[]>('/salon/staff?todos=true') ?? []); }
+    catch { setEspecialistas([]); }
+  }, []);
+
+  const guardarZona = useCallback(async (dto: any): Promise<boolean> => {
+    try {
+      if (dto.id) await api.patch(`/salon/zones/${dto.id}`, dto);
+      else await api.post('/salon/zones', dto);
+      await loadZonas();
+      return true;
+    } catch (e: any) {
+      showToast('No se pudo guardar la zona', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      return false;
+    }
+  }, [loadZonas]);
+
+  const eliminarZona = useCallback(async (id: string) => {
+    try {
+      const r = await api.delete<any>(`/salon/zones/${id}`);
+      await loadZonas();
+      if (r?.desactivada) {
+        showToast(
+          'Zona desactivada',
+          `Tiene ${r.turnos} turno${r.turnos === 1 ? '' : 's'} en el histórico, así que no se borra: deja de usarse y ya.`,
+          'info',
+        );
+      }
+    } catch (e: any) {
+      showToast('No se pudo quitar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+  }, [loadZonas]);
+
+  const guardarEspecialista = useCallback(async (dto: any): Promise<boolean> => {
+    try {
+      if (dto.id) await api.patch(`/salon/staff/${dto.id}`, dto);
+      else await api.post('/salon/staff', dto);
+      await loadEspecialistas();
+      return true;
+    } catch (e: any) {
+      showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      return false;
+    }
+  }, [loadEspecialistas]);
+
+  const eliminarEspecialista = useCallback(async (id: string) => {
+    try {
+      const r = await api.delete<any>(`/salon/staff/${id}`);
+      await loadEspecialistas();
+      if (r?.desactivada) {
+        showToast(
+          'Especialista desactivada',
+          'Tiene citas o turnos en el histórico. Se desactiva para no dejar esos registros sin autor.',
+          'info',
+        );
+      }
+    } catch (e: any) {
+      showToast('No se pudo quitar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+  }, [loadEspecialistas]);
+
+  const darTurno = useCallback(async (dto: any): Promise<QueueTicket | null> => {
+    try {
+      const t = await api.post<QueueTicket>('/salon/tickets', dto);
+      await loadSala();
+      showToast('Turno ' + t.code, `${t.displayName}${t.zone ? ` · ${t.zone.name}` : ''}`, 'success');
+      return t;
+    } catch (e: any) {
+      showToast('No se pudo dar el turno', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      return null;
+    }
+  }, [loadSala]);
+
+  const accionTurno = useCallback(async (
+    id: string, accion: 'call' | 'serve' | 'finish' | 'cancel' | 'no-show', body?: any,
+  ) => {
+    try {
+      await api.post(`/salon/tickets/${id}/${accion}`, body ?? {});
+      await loadSala();
+    } catch (e: any) {
+      showToast('No se pudo actualizar el turno', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+  }, [loadSala]);
+
+  const moverTurno = useCallback(async (id: string, dto: any) => {
+    try {
+      await api.patch(`/salon/tickets/${id}`, dto);
+      await loadSala();
+    } catch (e: any) {
+      showToast('No se pudo mover', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+  }, [loadSala]);
+
+  const abrirComandaDeCita = useCallback(async (
+    apt: { id: string; clientId?: string | null; clientName?: string },
+  ): Promise<Sale | null> => {
+    setSaleBusy(true);
+    try {
+      const venta = await api.post<Sale>('/sales/open', {
+        clientId: apt.clientId ?? null,
+        appointmentId: apt.id,
+        ...(apt.clientId ? {} : { label: apt.clientName || 'Sin ficha' }),
+      });
+      setActiveSale(venta);
+      await loadOpenFolios();
+      return venta;
+    } catch (e: any) {
+      showToast('No se pudo abrir la comanda', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      return null;
+    } finally { setSaleBusy(false); }
+  }, [loadOpenFolios]);
+
+  const asignarClientaAFolio = useCallback(async (
+    saleId: string, clientId: string | null,
+  ): Promise<boolean> => {
+    setSaleBusy(true);
+    try {
+      const venta = await api.patch<Sale>(`/sales/${saleId}/client`, { clientId });
+      setActiveSale(venta);
+      await loadOpenFolios();
+      showToast(
+        clientId ? 'Cuenta asignada' : 'Cuenta devuelta a mostrador',
+        clientId ? 'Se aplicó su lista de precios y entraron sus citas de hoy.' : '',
+        'success',
+      );
+      return true;
+    } catch (e: any) {
+      showToast('No se pudo asignar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      return false;
+    } finally { setSaleBusy(false); }
+  }, [loadOpenFolios]);
+
+  /**
+   * Cerrar una pestaña de comanda.
+   *
+   * Vacía se anula de verdad —no hay nada que perder y si no se queda ahí
+   * colgada para siempre, que es justo lo que pasaba con las cuentas de
+   * mostrador abiertas por error. Con líneas NO se borra: solo se deja de
+   * mirar, y sigue en Comandas abiertas hasta que alguien la cobre.
+   */
+  const cerrarFolio = useCallback(async (saleId: string) => {
+    const f = (await api.get<Sale>(`/sales/${saleId}`).catch(() => null));
+    const vacia = !!f && !(f.items ?? []).length && !(f.payments ?? []).length;
+    setSaleBusy(true);
+    try {
+      if (vacia) {
+        await api.post(`/sales/${saleId}/void`, { motivo: 'Cuenta vacía, cerrada desde la caja' });
+        showToast('Cuenta cerrada', 'Estaba vacía, así que se anuló.', 'success');
+      } else {
+        // Nada de "se quitó de la vista": la pestaña sale de openFolios, así
+        // que seguiría ahí y el mensaje sería mentira. Se dice la verdad.
+        showToast('No se puede cerrar', 'Tiene consumo. Cóbrala, o quita sus líneas y ciérrala.', 'warning');
+      }
+      if (vacia) setActiveSale(a => (a?.id === saleId ? null : a));
+      await loadOpenFolios();
+    } catch (e: any) {
+      showToast('No se pudo cerrar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    } finally { setSaleBusy(false); }
+  }, [loadOpenFolios]);
 
   const newCounterFolio = useCallback(async (label?: string): Promise<Sale | null> => {
     setSaleBusy(true);
@@ -1552,7 +1889,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeLoungeClient, loungeClients, setLoungeClients, toggleLoungeClient,
       activeSale, saleBusy, openSale, addSaleItem, removeSaleItem,
       setSaleItemQty, toggleSaleItemCourtesy, setSalePriceList, paySale, closeSale,
-      openFolios, loadOpenFolios, selectFolio, newCounterFolio, moveSaleItem,
+      sala, salaCargando, loadSala,
+      zonas, loadZonas, guardarZona, eliminarZona,
+      especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista,
+      darTurno, accionTurno, moverTurno,
+      openFolios, loadOpenFolios, abrirComandaDeCita, asignarClientaAFolio, cerrarFolio,
+      selectFolio, newCounterFolio, moveSaleItem,
       currencies, baseCurrency, loadCurrencies, saveCurrency, deleteCurrency,
       addDenomination, removeDenomination,
       loungeEvents, loungeEventsLoading, loungeEventsHasMore,

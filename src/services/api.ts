@@ -75,6 +75,27 @@ export async function apiFetch<T = unknown>(
   return res.json() as Promise<T>;
 }
 
+/**
+ * Fetch SIN sesión, para la pantalla de pared.
+ *
+ * No usa `apiFetch` a propósito: aquel adjunta el JWT, y ante un 401 intenta
+ * refrescar y dispara el evento de cierre de sesión. En un televisor sin
+ * nadie delante eso no tiene sentido — y peor, si alguien dejó la sesión
+ * abierta en esa tablet, un fallo de la pantalla la cerraría.
+ */
+export async function publicFetch<T = unknown>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error(res.status === 404 ? 'Pantalla no encontrada' : 'Sin conexión');
+  return res.json() as Promise<T>;
+}
+
+/** La URL completa de la pantalla, para copiarla o meterla en un QR */
+export const urlDePantalla = (token: string) =>
+  `${window.location.origin}${window.location.pathname}#/pantalla/${token}`;
+
 export const api = {
   get:    <T>(path: string) => apiFetch<T>(path, { method: 'GET' }),
   post:   <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body) }),

@@ -21,9 +21,16 @@ import {
   Coins,
   X,
   Printer,
+  Armchair,
+  Scissors,
+  MonitorPlay,
+  Volume2,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { useApp } from '../context/AppContext';
+import { api, urlDePantalla } from '../services/api';
+import QRCode from 'qrcode';
+import { vocesDisponibles, alCargarVoces, decir, fraseDeTurno } from '../utils/campana';
 import { useAuth } from '../context/AuthContext';
 import { CommunicationChannel, ThemeMode, UserRole, ThemePalettePreset } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -63,6 +70,8 @@ export const SettingsScreen: React.FC = () => {
     deleteCurrency,
     addDenomination,
     removeDenomination,
+    zonas, loadZonas, guardarZona, eliminarZona,
+    especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista,
   } = useApp();
 
   const { currentUser, logout } = useAuth();
@@ -72,6 +81,61 @@ export const SettingsScreen: React.FC = () => {
   const [nuevaMoneda, setNuevaMoneda] = useState({ code: '', symbol: '', name: '', rateToBase: '' });
   const [nuevoBillete, setNuevoBillete] = useState<Record<string, string>>({});
   useEffect(() => { void loadCurrencies?.(); }, []);
+
+  // Zonas y especialistas: el mantenimiento que da sentido a los turnos
+  const [nuevaZona, setNuevaZona] = useState({ name: '', prefix: '', color: '#c4697d' });
+  const [nuevaPersona, setNuevaPersona] = useState({ name: '', role: '', zoneId: '' });
+  useEffect(() => { void loadZonas?.(); void loadEspecialistas?.(); }, []);
+
+  // Pantalla de pared: token, enlace y su QR
+  const [tokenPantalla, setTokenPantalla] = useState('');
+  const [qrPantalla, setQrPantalla] = useState('');
+  const [rotando, setRotando] = useState(false);
+  const urlPantalla = tokenPantalla ? urlDePantalla(tokenPantalla) : '';
+
+  const [modoAnuncio, setModoAnuncio] = useState('tono');
+  const [vozPantalla, setVozPantalla] = useState('');
+  const [voces, setVoces] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    api.get<any>('/salon/display/token')
+      .then(r => {
+        setTokenPantalla(r?.token ?? '');
+        setModoAnuncio(r?.modo ?? 'tono');
+        setVozPantalla(r?.voz ?? '');
+      })
+      .catch(() => setTokenPantalla(''));
+  }, []);
+
+  // El catálogo de voces llega tarde en varios navegadores: la primera
+  // llamada devuelve vacío y se puebla después.
+  useEffect(() => {
+    const refrescar = () => setVoces(vocesDisponibles());
+    refrescar();
+    return alCargarVoces(refrescar);
+  }, []);
+
+  const guardarAnuncio = async (modo: string, voz: string) => {
+    const antesModo = modoAnuncio, antesVoz = vozPantalla;
+    setModoAnuncio(modo); setVozPantalla(voz);   // respuesta inmediata
+    try {
+      await api.patch('/salon/display/announce', { modo, voz: voz || null });
+    } catch (e: any) {
+      // Se revierte: dejarlo pintado como guardado cuando no lo está es peor
+      // que no haber cambiado nada.
+      setModoAnuncio(antesModo); setVozPantalla(antesVoz);
+      showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+  };
+
+  useEffect(() => {
+    if (!urlPantalla) { setQrPantalla(''); return; }
+    let vivo = true;
+    QRCode.toDataURL(urlPantalla, { margin: 1, width: 256, errorCorrectionLevel: 'M' })
+      .then(d => { if (vivo) setQrPantalla(d); })
+      .catch(() => { if (vivo) setQrPantalla(''); });
+    return () => { vivo = false; };
+  }, [urlPantalla]);
   const [skipSplash, setSkipSplash] = useState(() => {
     try { return localStorage.getItem('skipSplash') === 'true'; } catch { return false; }
   });
@@ -606,6 +670,384 @@ export const SettingsScreen: React.FC = () => {
             <span>Guardar Parámetros de Negocio</span>
           </button>
         </form>
+
+        {/* SECTION 3.4: ZONAS Y ESPECIALISTAS */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Armchair className="w-4 h-4 text-[var(--primary)]" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Zonas del Salón
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            De aquí sale el código del turno: el prefijo de la zona más el
+            número del día. Una zona con prefijo <span className="font-bold">G</span> da
+            turnos <span className="font-mono font-bold">G1, G2, G3…</span> y el
+            número reinicia cada mañana.
+          </p>
+
+          <div className="space-y-2">
+            {(zonas ?? []).map(z => (
+              <div
+                key={z.id}
+                className={`p-2.5 rounded-xl border flex items-center gap-2.5 ${
+                  z.active
+                    ? 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200 dark:border-neutral-700'
+                    : 'bg-slate-50/50 dark:bg-neutral-800/20 border-dashed border-slate-200 dark:border-neutral-800 opacity-60'
+                }`}
+              >
+                {/* defaultValue + onBlur, NO onChange: con onChange se
+                    disparaba un guardado por cada tecla pulsada. */}
+                <input
+                  key={`p-${z.id}-${z.prefix}`}
+                  defaultValue={z.prefix}
+                  onBlur={e => {
+                    const v = e.target.value.trim().toUpperCase();
+                    if (v && v !== z.prefix) void guardarZona({ id: z.id, name: z.name, prefix: v });
+                  }}
+                  maxLength={3}
+                  title="Prefijo del turno"
+                  className="w-12 shrink-0 px-2 py-1.5 rounded-lg text-center text-white text-xs font-extrabold uppercase border-0 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  style={{ backgroundColor: z.color || 'var(--primary)' }}
+                />
+                <input
+                  key={`n-${z.id}-${z.name}`}
+                  defaultValue={z.name}
+                  onBlur={e => {
+                    const v = e.target.value.trim();
+                    if (v && v !== z.name) void guardarZona({ id: z.id, name: v, prefix: z.prefix });
+                  }}
+                  className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-xs font-semibold text-slate-900 dark:text-white"
+                />
+                <input
+                  type="color"
+                  key={`c-${z.id}-${z.color}`}
+                  defaultValue={z.color || '#c4697d'}
+                  onBlur={e => {
+                    if (e.target.value !== z.color) {
+                      void guardarZona({ id: z.id, name: z.name, prefix: z.prefix, color: e.target.value });
+                    }
+                  }}
+                  title="Color en la pantalla de sala"
+                  className="w-8 h-8 shrink-0 rounded-lg border border-slate-200 dark:border-neutral-700 cursor-pointer bg-transparent"
+                />
+                <span className="shrink-0 text-[10px] text-slate-400 tabular-nums hidden sm:block">
+                  {z.staff?.length ?? 0} pers.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => eliminarZona(z.id)}
+                  title={z.active ? 'Quitar esta zona' : 'Zona desactivada'}
+                  className="shrink-0 w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            {!(zonas ?? []).length && (
+              <p className="py-3 text-center text-[11px] text-slate-400">
+                Sin zonas todavía. Los turnos salen como T1, T2…
+              </p>
+            )}
+          </div>
+
+          {/* Alta */}
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              value={nuevaZona.prefix}
+              onChange={e => setNuevaZona(z => ({ ...z, prefix: e.target.value.toUpperCase() }))}
+              placeholder="G"
+              maxLength={3}
+              className="w-12 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-center text-xs font-extrabold uppercase text-slate-900 dark:text-white"
+            />
+            <input
+              value={nuevaZona.name}
+              onChange={e => setNuevaZona(z => ({ ...z, name: e.target.value }))}
+              placeholder="Nombre de la zona"
+              className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
+            />
+            <input
+              type="color"
+              value={nuevaZona.color}
+              onChange={e => setNuevaZona(z => ({ ...z, color: e.target.value }))}
+              className="w-9 h-9 shrink-0 rounded-xl border border-slate-200 dark:border-neutral-700 cursor-pointer bg-transparent"
+            />
+            <button
+              type="button"
+              disabled={!nuevaZona.name.trim() || !nuevaZona.prefix.trim()}
+              onClick={async () => {
+                const ok = await guardarZona({ ...nuevaZona });
+                if (ok) setNuevaZona({ name: '', prefix: '', color: '#c4697d' });
+              }}
+              className="shrink-0 px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Añadir
+            </button>
+          </div>
+        </div>
+
+        {/* SECTION 3.45: ESPECIALISTAS */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Scissors className="w-4 h-4 text-[var(--primary)]" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Especialistas
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Cada una con su especialidad y su zona. La zona es la que decide a
+            qué cola entra un turno cuando no se elige a mano.
+          </p>
+
+          <div className="space-y-2">
+            {(especialistas ?? []).map(e => (
+              <div
+                key={e.id}
+                className={`p-2.5 rounded-xl border flex items-center gap-2 ${
+                  e.active
+                    ? 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200 dark:border-neutral-700'
+                    : 'bg-slate-50/50 dark:bg-neutral-800/20 border-dashed border-slate-200 dark:border-neutral-800 opacity-60'
+                }`}
+              >
+                <input
+                  key={`n-${e.id}-${e.name}`}
+                  defaultValue={e.name}
+                  onBlur={ev => {
+                    const v = ev.target.value.trim();
+                    if (v && v !== e.name) void guardarEspecialista({ id: e.id, name: v });
+                  }}
+                  className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-xs font-semibold text-slate-900 dark:text-white"
+                />
+                <input
+                  key={`r-${e.id}-${e.role}`}
+                  defaultValue={e.role}
+                  onBlur={ev => {
+                    const v = ev.target.value.trim();
+                    if (v && v !== e.role) void guardarEspecialista({ id: e.id, name: e.name, role: v });
+                  }}
+                  placeholder="Especialidad"
+                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-600 dark:text-neutral-300"
+                />
+                <select
+                  value={e.zoneId ?? ''}
+                  onChange={ev => guardarEspecialista({ id: e.id, name: e.name, zoneId: ev.target.value || null })}
+                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-600 dark:text-neutral-300"
+                >
+                  <option value="">Sin zona</option>
+                  {(zonas ?? []).filter(z => z.active).map(z => (
+                    <option key={z.id} value={z.id}>{z.prefix} · {z.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => eliminarEspecialista(e.id)}
+                  className="shrink-0 w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            {!(especialistas ?? []).length && (
+              <p className="py-3 text-center text-[11px] text-slate-400">
+                Todavía no hay nadie dado de alta.
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              value={nuevaPersona.name}
+              onChange={ev => setNuevaPersona(p => ({ ...p, name: ev.target.value }))}
+              placeholder="Nombre"
+              className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
+            />
+            <input
+              value={nuevaPersona.role}
+              onChange={ev => setNuevaPersona(p => ({ ...p, role: ev.target.value }))}
+              placeholder="Especialidad"
+              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+            />
+            <select
+              value={nuevaPersona.zoneId}
+              onChange={ev => setNuevaPersona(p => ({ ...p, zoneId: ev.target.value }))}
+              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+            >
+              <option value="">Sin zona</option>
+              {(zonas ?? []).filter(z => z.active).map(z => (
+                <option key={z.id} value={z.id}>{z.prefix} · {z.name}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!nuevaPersona.name.trim()}
+              onClick={async () => {
+                const ok = await guardarEspecialista({
+                  name: nuevaPersona.name,
+                  role: nuevaPersona.role,
+                  zoneId: nuevaPersona.zoneId || null,
+                });
+                if (ok) setNuevaPersona({ name: '', role: '', zoneId: '' });
+              }}
+              className="shrink-0 px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Añadir
+            </button>
+          </div>
+        </div>
+
+        {/* SECTION 3.46: PANTALLA DE PARED */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          <div className="flex items-center gap-1.5">
+            <MonitorPlay className="w-4 h-4 text-[var(--primary)]" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Pantalla de Turnos
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Abre esta dirección en el televisor o la tablet de la sala. No pide
+            usuario ni contraseña, es de solo lectura y únicamente muestra el
+            código, el nombre de pila y a dónde va cada clienta — ni teléfonos,
+            ni precios, ni la agenda.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* El QR: apuntas con la tablet y listo, sin teclear un token
+                de treinta caracteres en un teclado en pantalla. */}
+            <div className="shrink-0 self-center sm:self-start p-2 rounded-2xl bg-white border border-slate-200">
+              {qrPantalla ? (
+                <img src={qrPantalla} alt="QR de la pantalla" className="w-32 h-32" />
+              ) : (
+                <div className="w-32 h-32 flex items-center justify-center text-[10px] text-slate-300">
+                  Generando…
+                </div>
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-mono break-all text-slate-600 dark:text-neutral-300">
+                {urlPantalla || 'Generando enlace…'}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={!urlPantalla}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(urlPantalla);
+                      showToast('Enlace copiado', 'Pégalo en el navegador del televisor.', 'success');
+                    } catch {
+                      showToast('No se pudo copiar', 'Selecciónalo y cópialo a mano.', 'warning');
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 cursor-pointer"
+                >
+                  Copiar enlace
+                </button>
+                <button
+                  type="button"
+                  disabled={!urlPantalla}
+                  onClick={() => window.open(urlPantalla, '_blank', 'noopener')}
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40 cursor-pointer"
+                >
+                  Abrir ahora
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (rotando) return;
+                    setRotando(true);
+                    try {
+                      const r = await api.post<any>('/salon/display/token/rotate', {});
+                      setTokenPantalla(r?.token ?? '');
+                      showToast(
+                        'Enlace nuevo',
+                        'El anterior dejó de funcionar. Vuelve a abrir la pantalla en el televisor.',
+                        'info',
+                      );
+                    } catch (e: any) {
+                      showToast('No se pudo cambiar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+                    } finally { setRotando(false); }
+                  }}
+                  className="px-3 py-2 rounded-xl text-[11px] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
+                >
+                  {rotando ? 'Cambiando…' : 'Cambiar enlace'}
+                </button>
+              </div>
+
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Si se pierde la tablet, cambia el enlace: el anterior deja de
+                servir en ese mismo instante.
+              </p>
+            </div>
+          </div>
+
+          {/* ── Cómo se anuncia un turno ─────────────────────────── */}
+          <div className="pt-3 mt-1 border-t border-slate-100 dark:border-neutral-800 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                Al llamar un turno
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                ['tono', '🔔', 'Tono'],
+                ['voz', '🗣️', 'Voz'],
+                ['ambos', '🔔🗣️', 'Ambos'],
+                ['mudo', '🔇', 'Nada'],
+              ] as [string, string, string][]).map(([valor, icono, etiqueta]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => guardarAnuncio(valor, vozPantalla)}
+                  className={`py-2 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-0.5 transition cursor-pointer ${
+                    modoAnuncio === valor
+                      ? 'bg-[var(--primary)]/10 border-[var(--primary)]/30 text-[var(--primary)]'
+                      : 'bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-500 dark:text-neutral-400 hover:border-[var(--primary)]/40'
+                  }`}
+                >
+                  <span className="text-sm leading-none">{icono}</span>
+                  {etiqueta}
+                </button>
+              ))}
+            </div>
+
+            {(modoAnuncio === 'voz' || modoAnuncio === 'ambos') && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={vozPantalla}
+                    onChange={e => guardarAnuncio(modoAnuncio, e.target.value)}
+                    className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                  >
+                    <option value="">Voz automática (español)</option>
+                    {voces.map(v => (
+                      <option key={v.name} value={v.name}>{v.name} · {v.lang}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => decir(fraseDeTurno('G15', 'Camila', 'Carlos M.'), { voz: vozPantalla })}
+                    className="shrink-0 px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+                  >
+                    Probar
+                  </button>
+                </div>
+                {/* Esto hay que decirlo: las voces las instala el sistema
+                    operativo, no la web. La lista de aquí es la de ESTE
+                    aparato, no la del televisor. */}
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Estas son las voces de <span className="font-semibold">este</span> dispositivo.
+                  El televisor puede tener otras: si la elegida no está allí, usará
+                  cualquier voz en español. Prueba el botón en el propio televisor
+                  para oír cómo suena de verdad.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* SECTION 3.5: MONEDAS Y DENOMINACIONES */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">

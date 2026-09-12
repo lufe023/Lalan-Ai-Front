@@ -13,6 +13,7 @@ import {
   SkipForward,
   Tag,
   Receipt,
+  Armchair,
 } from 'lucide-react';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -32,17 +33,40 @@ export const IOSTabBar: React.FC = () => {
     // Cola de YouTube: si está activa, el mini reproductor muestra el video
     // incrustado aquí en vez de la portada de la radio.
     ytQueue, ytIndex, ytPlaying, ytToggle, ytNext,
+    openFolios,
   } = useApp();
   const { currentUser } = useAuth();
 
   const unreadChats = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   const pendingApts = appointments.filter(a => a.status === 'confirmed_by_ai' || a.status === 'pending').length;
 
-  const tabs: { id: ScreenName; label: string; icon: React.FC<{ className?: string }>; badge?: number }[] = [
+  /**
+   * Comandas sin cobrar. Mismo criterio que la pestaña de Caja: una cuenta
+   * en cero no es un descuido, y si contara, el número nunca bajaría a cero
+   * — un contador que siempre tiene algo es un contador que nadie mira.
+   *
+   * Va en el menú porque el olvido no ocurre estando en Caja: ocurre estando
+   * en la Agenda o en el Lounge, mientras la clienta se va por la puerta.
+   */
+  const comandasPendientes = (openFolios ?? []).filter(
+    (f: any) => Number(f.total ?? 0) - Number(f.paidTotal ?? 0) > 0.009,
+  ).length;
+
+  const tabs: {
+    id: ScreenName; label: string; icon: React.FC<{ className?: string }>;
+    badge?: number;
+    /** En rojo: no es una notificación, es plata que se puede ir por la puerta */
+    urgente?: boolean;
+  }[] = [
     { id: 'calendar', label: 'Agenda', icon: Calendar, badge: pendingApts > 0 ? pendingApts : undefined },
+    { id: 'sala', label: 'Sala', icon: Armchair },
     { id: 'clients', label: 'Clientas', icon: Users },
     { id: 'lounge', label: 'Lounge', icon: Music },
-    { id: 'caja', label: 'Caja', icon: Receipt },
+    {
+      id: 'caja', label: 'Caja', icon: Receipt,
+      badge: comandasPendientes > 0 ? comandasPendientes : undefined,
+      urgente: true,
+    },
     { id: 'chats', label: 'Chats', icon: MessageSquareText, badge: unreadChats > 0 ? unreadChats : undefined },
     { id: 'catalog', label: 'Catálogo', icon: Sparkles },
     { id: 'dashboard', label: 'Métricas', icon: LayoutDashboard },
@@ -232,7 +256,9 @@ export const IOSTabBar: React.FC = () => {
                 <Icon className={`w-5 h-5 shrink-0 transition-transform ${isActive ? 'stroke-[2.2] scale-110' : 'stroke-[1.8]'}`} />
                 <span className="text-sm font-medium flex-1 truncate">{tab.label}</span>
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--primary)] text-white text-[9px] font-extrabold flex items-center justify-center shrink-0">
+                  <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-white text-[9px] font-extrabold flex items-center justify-center shrink-0 tabular-nums ${
+                    tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
+                  }`}>
                     {tab.badge}
                   </span>
                 )}
@@ -321,7 +347,9 @@ export const IOSTabBar: React.FC = () => {
                     {tab.badge !== undefined && tab.badge > 0 && (
                       <span
                         style={{ fontSize: tab.id === 'chats' ? '7px' : tab.id === 'calendar' ? '7.5px' : undefined }}
-                        className="absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full bg-[var(--primary)] text-white text-[8.5px] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 shadow-xs"
+                        className={`absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full text-white text-[8.5px] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 shadow-xs tabular-nums ${
+                          tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
+                        }`}
                       >
                         {tab.badge}
                       </span>

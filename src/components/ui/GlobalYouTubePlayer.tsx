@@ -141,8 +141,10 @@ export const GlobalYouTubePlayer: React.FC = () => {
   const fadeRef = useRef<number | null>(null);
   const volRef = useRef(ytVolume);
   const mutedRef = useRef(ytMuted);
+  const playingRef = useRef(ytPlaying);
   useEffect(() => { volRef.current = ytVolume; }, [ytVolume]);
   useEffect(() => { mutedRef.current = ytMuted; }, [ytMuted]);
+  useEffect(() => { playingRef.current = ytPlaying; }, [ytPlaying]);
 
   const cancelFade = () => {
     if (fadeRef.current) { cancelAnimationFrame(fadeRef.current); fadeRef.current = null; }
@@ -193,7 +195,20 @@ export const GlobalYouTubePlayer: React.FC = () => {
         // Fade OUT de lo anterior (en el primer arranque no hay nada que bajar)
         if (!first) await fadeVolume(p, target, 0, 350);
         if (cancelled) return;
-        p.loadVideoById(track.videoId);
+
+        // NADA DE AUTOPLAY.
+        //
+        // `loadVideoById` arranca el video solo: al entrar al Lounge la
+        // música empezaba sin que nadie la pidiera, y encima el navegador
+        // suele bloquear ese primer play con sonido. `cueVideoById` deja la
+        // canción cargada y quieta, esperando que le den al play.
+        //
+        // Solo se usa loadVideoById cuando la música YA venía sonando: ahí sí
+        // hay que encadenar sin pausa, que es el caso de la canción que
+        // termina y pasa a la siguiente.
+        if (playingRef.current) p.loadVideoById(track.videoId);
+        else p.cueVideoById(track.videoId);
+
         setYtDuration(track.durationSeconds ?? 0);
         // Fade IN de la nueva
         await fadeVolume(p, 0, target, 700);

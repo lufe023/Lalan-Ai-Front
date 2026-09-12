@@ -18,15 +18,29 @@ import { BotsControlScreen } from './screens/BotsControlScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LoungePlayerScreen } from './screens/LoungePlayerScreen';
 import { CajaScreen } from './screens/CajaScreen';
+import { SalaScreen } from './screens/SalaScreen';
 import { CitasReportScreen } from './screens/CitasReportScreen';
 import { PriceListsScreen } from './screens/PriceListsScreen';
 import { GananciasScreen } from './screens/GananciasScreen';
+import { PantallaTurnos } from './screens/PantallaTurnos';
+import { conectarComoUsuario, desconectar } from './services/socket';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const MainAppContent: React.FC = () => {
   const { currentScreen, showSplash, activeConversationId } = useApp();
   const { isAuthenticated, isLoading } = useAuth();
+
+  /**
+   * El socket se ata a la sesión, no al arranque de la aplicación: antes de
+   * iniciar sesión no hay token que mandar, y al cerrarla hay que soltarlo o
+   * el servidor seguiría empujando avisos a alguien que ya se fue.
+   */
+  React.useEffect(() => {
+    if (isAuthenticated) conectarComoUsuario();
+    else desconectar();
+    return () => { if (!isAuthenticated) desconectar(); };
+  }, [isAuthenticated]);
 
   const renderCurrentScreen = () => {
     switch (currentScreen) {
@@ -39,6 +53,7 @@ const MainAppContent: React.FC = () => {
       case 'bots':      return <BotsControlScreen key="bots"    />;
       case 'settings':  return <SettingsScreen  key="settings"  />;
       case 'caja':      return <CajaScreen      key="caja"      />;
+      case 'sala':      return <SalaScreen      key="sala"      />;
       case 'citas-report': return <CitasReportScreen key="citas-report" />;
       case 'price-lists': return <PriceListsScreen key="price-lists" />;
       case 'ganancias':   return <GananciasScreen   key="ganancias"   />;
@@ -144,7 +159,40 @@ const MainAppContent: React.FC = () => {
   );
 };
 
+/**
+ * La pantalla de pared, si la URL la pide.
+ *
+ * Se mira ANTES de montar AuthProvider y AppProvider: el televisor no tiene
+ * sesión ni debe tenerla, y montar el contexto entero significaría que la
+ * pantalla pública arrastra el estado y las llamadas con token de toda la
+ * aplicación. Aquí solo hay un fetch público y nada más.
+ *
+ * Se usa el hash (#/pantalla/…) y no una ruta normal para que funcione en
+ * cualquier hosting estático sin configurar reescrituras.
+ */
+function tokenDePantalla(): string | null {
+  const m = /^#\/pantalla\/([A-Za-z0-9_-]{8,})$/.exec(window.location.hash || '');
+  return m ? m[1] : null;
+}
+
 export default function App() {
+  // Se lee una vez y se escucha el cambio de hash: si alguien pega la URL de
+  // la pantalla en la misma pestaña, cambia sin recargar.
+  const [tokenPantalla, setTokenPantalla] = React.useState<string | null>(tokenDePantalla);
+  React.useEffect(() => {
+    const alCambiar = () => setTokenPantalla(tokenDePantalla());
+    window.addEventListener('hashchange', alCambiar);
+    return () => window.removeEventListener('hashchange', alCambiar);
+  }, []);
+
+  if (tokenPantalla) {
+    return (
+      <ThemeProvider>
+        <PantallaTurnos token={tokenPantalla} />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
       <AuthProvider>

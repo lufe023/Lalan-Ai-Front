@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import {
   Receipt, Printer, UserPlus, Search, RotateCcw, Users,
   Wallet, LockOpen, Lock, ArrowDownLeft, ArrowUpRight, Plus,
+  ClipboardList, Clock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -26,7 +27,7 @@ export const CajaScreen: React.FC = () => {
     baseCurrency, loadCurrencies,
   } = useApp();
 
-  const [vista, setVista] = useState<'cobrar' | 'recibos' | 'turno'>('cobrar');
+  const [vista, setVista] = useState<'cobrar' | 'comandas' | 'recibos' | 'turno'>('cobrar');
   const [turno, setTurno] = useState<any>(null);
   const [historial, setHistorial] = useState<any[]>([]);
   const [fondo, setFondo] = useState('');
@@ -161,6 +162,25 @@ export const CajaScreen: React.FC = () => {
     );
   }, [recibos, busca]);
 
+  /**
+   * Comandas abiertas, la de mayor saldo primero.
+   *
+   * `openFolios` trae TODO lo que está en estado open, incluidas cuentas de
+   * mostrador recién creadas y vacías; una comanda en cero no es un descuido,
+   * así que no cuenta para el aviso rojo — si contara, el número nunca
+   * bajaría a cero y la gente dejaría de mirarlo.
+   */
+  const abiertas = useMemo(() => {
+    return (openFolios ?? [])
+      .map((f: any) => ({ f, saldo: Number(f.total ?? 0) - Number(f.paidTotal ?? 0) }))
+      .filter(x => x.saldo > 0.009)
+      .sort((a, b) => b.saldo - a.saldo);
+  }, [openFolios]);
+
+  // Al entrar a la pestaña se refresca: puede haber comandas que abrió otra
+  // persona desde la Agenda al marcar una cita como atendida.
+  useEffect(() => { if (vista === 'comandas') void loadOpenFolios?.(); }, [vista, loadOpenFolios]);
+
   const clientasFiltradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
     const lista = (clients ?? []);
@@ -182,16 +202,17 @@ export const CajaScreen: React.FC = () => {
         {/* Cobrar / Recibos */}
         <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-neutral-800">
           {([
-            { id: 'cobrar' as const, label: 'Cobrar', icon: Receipt },
-            { id: 'recibos' as const, label: 'Recibos', icon: Printer },
-            { id: 'turno' as const, label: 'Turno', icon: Wallet },
+            { id: 'cobrar' as const, label: 'Cobrar', icon: Receipt, pendientes: 0 },
+            { id: 'comandas' as const, label: 'Comandas', icon: ClipboardList, pendientes: abiertas.length },
+            { id: 'recibos' as const, label: 'Recibos', icon: Printer, pendientes: 0 },
+            { id: 'turno' as const, label: 'Turno', icon: Wallet, pendientes: 0 },
           ]).map(t => {
             const Icono = t.icon;
             return (
               <button
                 key={t.id}
                 onClick={() => { setVista(t.id); setBusca(''); }}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                className={`relative flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                   vista === t.id
                     ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-500 dark:text-neutral-400'
@@ -199,6 +220,13 @@ export const CajaScreen: React.FC = () => {
               >
                 <Icono className="w-3.5 h-3.5" />
                 {t.label}
+                {/* En rojo y sin pedir permiso: cada número es una clienta que
+                    se puede ir sin pagar. */}
+                {t.pendientes > 0 && (
+                  <span className="min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center tabular-nums shadow-sm">
+                    {t.pendientes}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -274,6 +302,88 @@ export const CajaScreen: React.FC = () => {
 
             {/* El POS: el mismo componente que se ve en Lounge */}
             <PosPanel />
+          </>
+        ) : vista === 'comandas' ? (
+          <>
+            <div className={`p-3 rounded-2xl border shadow-2xs ${
+              abiertas.length
+                ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50'
+                : 'bg-white dark:bg-neutral-900 border-slate-200/80 dark:border-neutral-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                <ClipboardList className={`w-4 h-4 shrink-0 ${abiertas.length ? 'text-red-500' : 'text-emerald-500'}`} />
+                <div className="min-w-0">
+                  <div className={`text-xs font-bold ${
+                    abiertas.length ? 'text-red-700 dark:text-red-300' : 'text-slate-800 dark:text-neutral-100'
+                  }`}>
+                    {abiertas.length
+                      ? `${abiertas.length} comanda${abiertas.length === 1 ? '' : 's'} sin cobrar`
+                      : 'Todo cobrado'}
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                    {abiertas.length
+                      ? `${plata(abiertas.reduce((t, x) => t + x.saldo, 0))} en la calle ahora mismo`
+                      : 'No hay ninguna cuenta abierta con saldo.'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-2 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs">
+              {abiertas.length ? (
+                <div className="divide-y divide-slate-100 dark:divide-neutral-800">
+                  {abiertas.map(({ f, saldo }) => {
+                    const abierta = new Date(f.openedAt);
+                    const minutos = Math.max(0, Math.round((Date.now() - abierta.getTime()) / 60000));
+                    // Más de tres horas abierta ya no es "está en el sillón"
+                    const vieja = minutos > 180;
+                    const lineas = (f.items ?? []).length;
+                    return (
+                      <div key={f.id} className="p-2.5 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {f.clientName ?? f.label ?? 'Mostrador'}
+                          </div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                            <span className={`inline-flex items-center gap-1 ${vieja ? 'text-red-500 font-bold' : ''}`}>
+                              <Clock className="w-2.5 h-2.5" />
+                              {minutos < 60
+                                ? `${minutos} min`
+                                : `${Math.floor(minutos / 60)} h ${minutos % 60} min`}
+                            </span>
+                            <span>·</span>
+                            <span>{lineas} línea{lineas === 1 ? '' : 's'}</span>
+                            {Number(f.paidTotal ?? 0) > 0 && (
+                              <>
+                                <span>·</span>
+                                <span className="text-emerald-600 dark:text-emerald-400">
+                                  abonó {plata(f.paidTotal)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs font-extrabold text-slate-900 dark:text-white tabular-nums">
+                            {plata(saldo)}
+                          </span>
+                          <button
+                            onClick={() => { void selectFolio(f.id); setVista('cobrar'); }}
+                            className="px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition cursor-pointer"
+                          >
+                            Cobrar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="py-8 text-center text-xs text-slate-400">
+                  Ninguna cuenta abierta con saldo pendiente.
+                </p>
+              )}
+            </div>
           </>
         ) : vista === 'turno' ? (
           <>

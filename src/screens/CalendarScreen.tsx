@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar as CalendarIcon,
@@ -12,6 +12,9 @@ import {
   Footprints,
   HeartHandshake,
   Trash2,
+  X,
+  Loader2,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +33,13 @@ export const CalendarScreen: React.FC = () => {
     services,
     clients,
     settings,
+    // Para mandar a cobrar la comanda que quedó abierta al atender
+    selectFolio,
+    navigateTo,
+    showToast,
+    openFolios,
+    loadOpenFolios,
+    abrirComandaDeCita,
   } = useApp();
   const { currentUser } = useAuth();
 
@@ -48,6 +58,81 @@ export const CalendarScreen: React.FC = () => {
     appointment: Appointment;
     type: 'past' | 'future';
   } | null>(null);
+
+  /**
+   * Aviso de cobro pendiente.
+   *
+   * Al marcar atendiendo (o completar, que se puede hacer sin pasar por
+   * atendiendo) el backend abre la comanda con el servicio adentro. Si queda
+   * saldo, aquí se pregunta qué hacer: en el bullicio del salón es justo
+   * donde se olvida cobrar, y dejarlo callado era el agujero.
+   */
+  const [cobroPendiente, setCobroPendiente] = useState<{
+    appointment: Appointment;
+    saleId: string;
+    saldo: number;
+  } | null>(null);
+
+  /**
+   * Qué acción se está ejecutando y en qué fase. Es lo único que había que
+   * mostrar: antes se pulsaba un botón, salía la llamada al servidor y en
+   * pantalla no cambiaba absolutamente nada — el modal seguía abierto igual,
+   * sin spinner, sin estado nuevo visible, sin cerrarse. Parecía roto.
+   */
+  const [accion, setAccion] = useState<{
+    clave: AppointmentStatus | 'delete' | 'folio';
+    fase: 'cargando' | 'listo';
+  } | null>(null);
+
+  // Borrar una cita no se deshace: el botón pide confirmación en el sitio
+  const [confirmarBorrar, setConfirmarBorrar] = useState(false);
+  // Si no, al abrir la siguiente cita el botón seguiría en "¿seguro?"
+  useEffect(() => {
+    setConfirmarBorrar(false);
+    setAccion(null);
+    // Al abrir una cita se refresca la lista de comandas: si no, la tira de
+    // abajo podría decir "sin comanda" con una recién abierta desde Caja.
+    if (activeAppointment?.id) void loadOpenFolios?.();
+  }, [activeAppointment?.id]);
+
+  const AVISO: Record<string, { titulo: string; detalle: string }> = {
+    attending: { titulo: 'En atención', detalle: 'Se abrió la comanda con el servicio adentro.' },
+    completed: { titulo: 'Cita completada', detalle: 'Ya cuenta en el informe de citas.' },
+    cancelled: { titulo: 'Cita cancelada', detalle: 'No cuenta para las métricas del día.' },
+  };
+
+  /**
+   * Único punto por donde pasan TODOS los cambios de estado: los cuatro
+   * botones de completar y el de en-atención. Si alguno se saltara esto, esa
+   * ruta volvería a perder el aviso y la confirmación visual.
+   */
+  const marcarEstado = useCallback(async (
+    apt: Appointment, status: AppointmentStatus, completedAt?: string,
+  ) => {
+    setAccion({ clave: status, fase: 'cargando' });
+    try {
+      const r = await updateAppointmentStatus(apt.id, status, completedAt);
+      setActiveAppointment(a =>
+        a && a.id === apt.id ? { ...a, status, ...(completedAt ? { completedAt } : {}) } : a);
+
+      // Si quedó saldo, el aviso de cobro toma el relevo y este modal estorba
+      if (r?.saleId && (r.saldoPendiente ?? 0) > 0) {
+        setAccion(null);
+        setActiveAppointment(null);
+        setCobroPendiente({ appointment: apt, saleId: r.saleId, saldo: r.saldoPendiente as number });
+        return;
+      }
+
+      // Palomita un instante —para que se vea que pasó algo— y cierra
+      setAccion({ clave: status, fase: 'listo' });
+      const a = AVISO[status];
+      if (a) showToast?.(a.titulo, a.detalle, 'success');
+      window.setTimeout(() => { setAccion(null); setActiveAppointment(null); }, 650);
+    } catch (e: any) {
+      setAccion(null);
+      showToast?.('No se pudo actualizar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+  }, [updateAppointmentStatus, showToast]);
 
   // ── New Appointment Form ─────────────────────────────────────────────────
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -85,8 +170,7 @@ export const CalendarScreen: React.FC = () => {
     const timing = getAppointmentTiming(apt);
     if (timing === 'today') {
       const completedAt = new Date().toISOString();
-      updateAppointmentStatus(apt.id, 'completed', completedAt);
-      setActiveAppointment({ ...apt, status: 'completed', completedAt });
+      void marcarEstado(apt, 'completed', completedAt);
     } else {
       setCompletionDialog({ appointment: apt, type: timing === 'past' ? 'past' : 'future' });
     }
@@ -285,64 +369,305 @@ export const CalendarScreen: React.FC = () => {
         title="Detalles de la Cita"
         subtitle={activeAppointment ? `${activeAppointment.date} a las ${activeAppointment.time}` : ''}
       >
-        {activeAppointment && (
-          <div className="space-y-4 text-xs select-none">
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/70 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={activeAppointment.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                  alt={activeAppointment.clientName} className="w-10 h-10 rounded-full object-cover border border-white/50" />
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">{activeAppointment.clientName}</h4>
-                  <p className="text-slate-500 dark:text-neutral-400 text-[11px] flex items-center gap-1">
-                    <Phone className="w-3 h-3" />{activeAppointment.clientPhone}
+        {activeAppointment && (() => {
+          const ocupado = accion !== null;
+          const timing = getAppointmentTiming(activeAppointment);
+          const total = Number(activeAppointment.price ?? 0);
+          const anticipo = Number(activeAppointment.depositPaid ?? 0);
+          const falta = Math.max(0, total - anticipo);
+
+          /**
+           * Acento por estado. Un solo color manda en toda la ficha —cabecera,
+           * chip y botón actual— en vez de cuatro cajas grises iguales donde
+           * nada destacaba.
+           */
+          const acento = ({
+            attending: { txt: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', bd: 'border-amber-500/20', solido: 'bg-amber-500' },
+            completed: { txt: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', bd: 'border-emerald-500/20', solido: 'bg-emerald-500' },
+            cancelled: { txt: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-500/10', bd: 'border-rose-500/20', solido: 'bg-rose-500' },
+          } as any)[activeAppointment.status] ?? {
+            txt: 'text-slate-500 dark:text-neutral-400',
+            bg: 'bg-slate-500/5', bd: 'border-slate-200 dark:border-neutral-800', solido: 'bg-slate-500',
+          };
+
+          /**
+           * Botón de estado.
+           *
+           * El estado actual ya NO lleva `ring` con offset: ese borde doble
+           * quedaba duro y descolocado. Ahora se marca con el color de acento
+           * relleno suave y un punto — se lee de un vistazo y no grita.
+           */
+          const Boton = ({ clave, tono, icono, children, onClick }: {
+            clave: AppointmentStatus | 'delete';
+            tono: 'amber' | 'emerald' | 'rose';
+            icono: React.ReactNode;
+            children: React.ReactNode;
+            onClick: () => void;
+          }) => {
+            const esActual = clave === activeAppointment.status;
+            const activa = accion?.clave === clave;
+            const cargando = activa && accion?.fase === 'cargando';
+            const listo = activa && accion?.fase === 'listo';
+            const c = {
+              amber:   { txt: 'text-amber-600 dark:text-amber-400', suave: 'bg-amber-500/10', hov: 'hover:bg-amber-500/10 hover:border-amber-500/30', solido: 'bg-amber-500' },
+              emerald: { txt: 'text-emerald-600 dark:text-emerald-400', suave: 'bg-emerald-500/10', hov: 'hover:bg-emerald-500/10 hover:border-emerald-500/30', solido: 'bg-emerald-500' },
+              rose:    { txt: 'text-rose-600 dark:text-rose-400', suave: 'bg-rose-500/10', hov: 'hover:bg-rose-500/10 hover:border-rose-500/30', solido: 'bg-rose-500' },
+            }[tono];
+
+            return (
+              <button
+                type="button"
+                onClick={onClick}
+                disabled={ocupado || esActual}
+                className={`h-16 px-3 rounded-2xl border text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
+                  listo
+                    ? `${c.solido} text-white border-transparent shadow-sm`
+                    : esActual
+                    ? `${c.suave} ${c.txt} border-transparent cursor-default`
+                    : `bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 ${c.hov}`
+                } ${
+                  ocupado && !activa ? 'opacity-35 cursor-not-allowed'
+                    : !esActual && !activa ? 'cursor-pointer active:scale-[0.97]' : ''
+                }`}
+              >
+                {cargando ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="opacity-80">Guardando…</span>
+                  </>
+                ) : listo ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Listo</span>
+                  </>
+                ) : (
+                  <>
+                    <span className={esActual ? c.txt : 'text-slate-400'}>{icono}</span>
+                    <span className="flex items-center gap-1">
+                      {esActual && <span className={`w-1.5 h-1.5 rounded-full ${c.solido}`} />}
+                      {children}
+                    </span>
+                  </>
+                )}
+              </button>
+            );
+          };
+
+          return (
+            /* Ancho contenido: en escritorio la hoja ocupa toda la pantalla y
+               los datos quedaban estirados de borde a borde, ilegibles. */
+            <div className="max-w-2xl mx-auto space-y-5 select-none pb-4">
+
+              {/* ── Quién ───────────────────────────────────────────────── */}
+              <div className={`p-4 rounded-3xl border ${acento.bg} ${acento.bd} flex items-center gap-4`}>
+                <img
+                  src={activeAppointment.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                  alt={activeAppointment.clientName}
+                  className="w-14 h-14 rounded-2xl object-cover shadow-sm shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-base text-slate-900 dark:text-white truncate leading-tight">
+                    {activeAppointment.clientName}
+                  </h4>
+                  <p className="text-slate-500 dark:text-neutral-400 text-[11px] flex items-center gap-1.5 mt-0.5">
+                    <Phone className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{activeAppointment.clientPhone}</span>
+                    <span className="text-slate-300 dark:text-neutral-700">·</span>
+                    <span className="uppercase font-semibold tracking-wide">{activeAppointment.channel}</span>
                   </p>
                 </div>
+                <div className="shrink-0">{getStatusBadge(activeAppointment.status)}</div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Canal</span>
-                <span className="font-bold text-[var(--primary)] uppercase">{activeAppointment.channel}</span>
+
+              {/* ── Qué ─────────────────────────────────────────────────── */}
+              <div className="rounded-3xl border border-slate-200/80 dark:border-neutral-800 overflow-hidden">
+                <div className="px-4 py-3.5">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Servicio</span>
+                  <div className="font-bold text-sm text-slate-900 dark:text-white mt-0.5">
+                    {activeAppointment.serviceName}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 mt-1">
+                    <Clock className="w-3 h-3 shrink-0" />
+                    {activeAppointment.durationMinutes} min
+                    <span className="text-slate-300 dark:text-neutral-700">·</span>
+                    {activeAppointment.staffName}
+                  </div>
+                </div>
+
+                {/* Plata. Lo que faltaba: cuánto queda por cobrar, que es la
+                    pregunta real cuando la clienta se está por ir. */}
+                <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-neutral-800 border-t border-slate-100 dark:border-neutral-800 bg-slate-50/60 dark:bg-neutral-800/30">
+                  <div className="px-4 py-3">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">${total}</span>
+                  </div>
+                  <div className="px-4 py-3">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Anticipo</span>
+                    <span className={`text-sm font-bold tabular-nums ${
+                      anticipo > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+                    }`}>${anticipo}</span>
+                  </div>
+                  <div className="px-4 py-3">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Falta</span>
+                    <span className={`text-sm font-bold tabular-nums ${
+                      falta > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'
+                    }`}>
+                      {falta > 0 ? `$${falta}` : 'Saldado'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {activeAppointment.notes && (
+                <div className="px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
+                  <span className="font-bold uppercase tracking-wider text-[10px] block mb-1 opacity-70">Notas</span>
+                  {activeAppointment.notes}
+                </div>
+              )}
+
+              {/* ── La comanda ──────────────────────────────────────────
+                  Hasta ahora la cita no decía nada de su comanda: se marcaba
+                  atendida, el folio no se abría (por ejemplo si la clienta no
+                  tiene ficha) y no había forma de enterarse ni de arreglarlo
+                  desde aquí. */}
+              {(activeAppointment.status === 'attending' || activeAppointment.status === 'completed') && (() => {
+                const folio = (openFolios ?? []).find((f: any) =>
+                  (activeAppointment.clientId && f.clientId === activeAppointment.clientId) ||
+                  (f.items ?? []).some((i: any) => i.appointmentId === activeAppointment.id),
+                ) as any;
+                const saldo = folio ? Number(folio.total ?? 0) - Number(folio.paidTotal ?? 0) : 0;
+
+                return (
+                  <div className={`px-4 py-3 rounded-2xl border flex items-center justify-between gap-3 ${
+                    folio
+                      ? 'bg-slate-50 dark:bg-neutral-800/40 border-slate-200/80 dark:border-neutral-800'
+                      : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/40'
+                  }`}>
+                    <div className="min-w-0">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                        Comanda
+                      </span>
+                      <span className={`text-xs font-bold ${
+                        folio ? 'text-slate-800 dark:text-neutral-100' : 'text-rose-600 dark:text-rose-400'
+                      }`}>
+                        {!folio
+                          ? 'Sin comanda — el servicio no está en ninguna cuenta'
+                          : saldo > 0
+                          ? `Abierta · faltan $${saldo.toFixed(2)}`
+                          : 'Abierta · sin saldo'}
+                      </span>
+                    </div>
+                    {folio ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveAppointment(null);
+                          void selectFolio(folio.id);
+                          navigateTo('caja');
+                        }}
+                        className="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 cursor-pointer transition"
+                      >
+                        Ir a cobrar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={ocupado}
+                        onClick={async () => {
+                          setAccion({ clave: 'folio', fase: 'cargando' });
+                          const v = await abrirComandaDeCita(activeAppointment);
+                          setAccion(null);
+                          if (v) showToast?.('Comanda abierta', 'El servicio ya está en la cuenta.', 'success');
+                        }}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition ${
+                          ocupado ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'
+                        }`}
+                      >
+                        {accion?.clave === 'folio'
+                          ? <><Loader2 className="w-3 h-3 animate-spin" />Abriendo…</>
+                          : 'Abrir comanda'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ── Acciones ────────────────────────────────────────────── */}
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2 px-1">
+                  Actualizar estado
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  <Boton clave="attending" tono="amber" icono={<Sparkles className="w-4 h-4" />}
+                    onClick={() => { void marcarEstado(activeAppointment, 'attending'); }}>
+                    En atención
+                  </Boton>
+                  <Boton clave="completed" tono="emerald" icono={<CheckCircle2 className="w-4 h-4" />}
+                    onClick={() => handleCompleteAppointment(activeAppointment)}>
+                    {timing === 'past' ? 'Completar' : timing === 'future' ? 'Anticipado' : 'Atendida'}
+                  </Boton>
+                  <Boton clave="cancelled" tono="rose" icono={<X className="w-4 h-4" />}
+                    onClick={() => { void marcarEstado(activeAppointment, 'cancelled'); }}>
+                    Cancelar
+                  </Boton>
+                </div>
+
+                {/* Eliminar no es un estado más: se va abajo, en gris y en
+                    pequeño, para que no compita con las tres de arriba. */}
+                <div className="flex justify-end pt-3 mt-3 border-t border-slate-100 dark:border-neutral-800/80">
+                  {confirmarBorrar ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                        ¿Borrar esta cita? No se puede deshacer.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmarBorrar(false)}
+                        className="px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer transition"
+                      >
+                        No
+                      </button>
+                      <button
+                        type="button"
+                        disabled={accion !== null}
+                        onClick={async () => {
+                          setAccion({ clave: 'delete', fase: 'cargando' });
+                          try {
+                            await deleteAppointment(activeAppointment.id);
+                            showToast?.('Cita eliminada', 'Ya no aparece en la agenda.', 'success');
+                            setActiveAppointment(null);
+                          } catch (e: any) {
+                            showToast?.('No se pudo eliminar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+                          } finally {
+                            setAccion(null);
+                            setConfirmarBorrar(false);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1.5 hover:opacity-90 cursor-pointer transition disabled:opacity-50"
+                      >
+                        {accion?.clave === 'delete'
+                          ? <><Loader2 className="w-3 h-3 animate-spin" />Borrando…</>
+                          : <><Trash2 className="w-3 h-3" />Sí, borrar</>}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmarBorrar(true)}
+                      disabled={ocupado}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold text-slate-400 flex items-center gap-1.5 transition ${
+                        ocupado ? 'opacity-35 cursor-not-allowed'
+                          : 'cursor-pointer hover:text-rose-500 hover:bg-rose-500/10'
+                      }`}
+                    >
+                      <Trash2 className="w-3 h-3" /> Eliminar cita
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/70 border border-slate-200/60 dark:border-neutral-700/60">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Servicio</span>
-                <div className="font-bold text-slate-800 dark:text-slate-100 mt-0.5">{activeAppointment.serviceName}</div>
-                <span className="text-[10px] text-slate-500">{activeAppointment.durationMinutes} min con {activeAppointment.staffName}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/70 border border-slate-200/60 dark:border-neutral-700/60">
-                <span className="text-[10px] uppercase font-bold text-slate-400">Total / Anticipo</span>
-                <div className="font-bold text-slate-800 dark:text-slate-100 mt-0.5 text-sm">${activeAppointment.price}</div>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">✓ Anticipo: ${activeAppointment.depositPaid}</span>
-              </div>
-            </div>
-            {activeAppointment.notes && (
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200 text-[11px]">
-                <span className="font-bold block mb-0.5">Notas:</span>{activeAppointment.notes}
-              </div>
-            )}
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Actualizar Estado</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => { updateAppointmentStatus(activeAppointment.id, 'attending'); setActiveAppointment({ ...activeAppointment, status: 'attending' }); }}
-                  className="py-2.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 ios-touch cursor-pointer hover:bg-amber-500/25">
-                  💆‍♀️ En Atención
-                </button>
-                <button onClick={() => handleCompleteAppointment(activeAppointment)}
-                  className="py-2.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30 ios-touch cursor-pointer hover:bg-emerald-500/25">
-                  {(() => { const t = getAppointmentTiming(activeAppointment); return t === 'past' ? '✓ Completar (pasada)' : t === 'future' ? '⚠️ Anticipado' : '✓ Atendido hoy'; })()}
-                </button>
-                <button onClick={() => { updateAppointmentStatus(activeAppointment.id, 'cancelled'); setActiveAppointment({ ...activeAppointment, status: 'cancelled' }); }}
-                  className="py-2.5 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/30 ios-touch cursor-pointer hover:bg-rose-500/25">
-                  ✕ Cancelar
-                </button>
-                <button onClick={() => { deleteAppointment(activeAppointment.id); setActiveAppointment(null); }}
-                  className="py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400 font-bold border border-slate-200 dark:border-neutral-700 ios-touch cursor-pointer hover:text-rose-500">
-                  🗑️ Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </IOSModal>
 
       {/* ── New Appointment Modal ─────────────────────────────────────────── */}
@@ -461,8 +786,7 @@ export const CalendarScreen: React.FC = () => {
                     <button onClick={() => {
                       const apt = completionDialog.appointment;
                       const completedAt = apt.startsAt ?? `${apt.date}T${apt.time}:00`;
-                      updateAppointmentStatus(apt.id, 'completed', completedAt);
-                      setActiveAppointment(a => a ? { ...a, status: 'completed', completedAt } : a);
+                      void marcarEstado(apt, 'completed', completedAt);
                       setCompletionDialog(null);
                     }} className="w-full py-3 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/30 ios-touch cursor-pointer hover:bg-emerald-500/25 text-sm">
                       ✓ Sí, fue atendida en esa fecha
@@ -470,8 +794,7 @@ export const CalendarScreen: React.FC = () => {
                     <button onClick={() => {
                       const apt = completionDialog.appointment;
                       const completedAt = new Date().toISOString();
-                      updateAppointmentStatus(apt.id, 'completed', completedAt);
-                      setActiveAppointment(a => a ? { ...a, status: 'completed', completedAt } : a);
+                      void marcarEstado(apt, 'completed', completedAt);
                       setCompletionDialog(null);
                     }} className="w-full py-3 rounded-xl bg-sky-500/15 text-sky-700 dark:text-sky-400 font-bold border border-sky-500/30 ios-touch cursor-pointer hover:bg-sky-500/25 text-sm">
                       📅 Completar hoy ({new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })})
@@ -490,8 +813,7 @@ export const CalendarScreen: React.FC = () => {
                     <button onClick={() => {
                       const apt = completionDialog.appointment;
                       const completedAt = new Date().toISOString();
-                      updateAppointmentStatus(apt.id, 'completed', completedAt);
-                      setActiveAppointment(a => a ? { ...a, status: 'completed', completedAt } : a);
+                      void marcarEstado(apt, 'completed', completedAt);
                       setCompletionDialog(null);
                     }} className="w-full py-3 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold border border-amber-500/30 ios-touch cursor-pointer hover:bg-amber-500/25 text-sm">
                       ✓ Completar hoy de todas formas
@@ -500,6 +822,63 @@ export const CalendarScreen: React.FC = () => {
                   </div>
                 </>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Cobro pendiente ────────────────────────────────────────────────
+          Sale cuando al atender/completar queda saldo. El botón grande manda
+          derecho a cobrar esa misma comanda; "dejar abierta" es legítimo
+          (la clienta sigue en el sillón), y para eso está el contador rojo
+          de Caja, que no la deja irse sin que alguien la vea. */}
+      <AnimatePresence>
+        {cobroPendiente && (
+          <motion.div className="absolute inset-0 z-[320] flex items-center justify-center bg-black/50 backdrop-blur-sm px-6"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 w-full max-w-sm shadow-2xl"
+              initial={{ scale: 0.92, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.92, y: 20, opacity: 0 }} transition={{ type: 'spring', damping: 22, stiffness: 300 }}>
+              <div className="text-2xl mb-3 text-center">🧾</div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-neutral-100 text-center mb-1">
+                Queda por cobrar
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-neutral-400 text-center mb-1">
+                La comanda de{' '}
+                <span className="font-semibold text-slate-700 dark:text-neutral-200">
+                  {cobroPendiente.appointment.clientName}
+                </span>{' '}
+                quedó abierta con {cobroPendiente.appointment.serviceName}.
+              </p>
+              <div className="text-center mb-5">
+                <span className="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+                  {cobroPendiente.saldo.toFixed(2)}
+                </span>
+                <span className="text-xs text-slate-400 ml-1">pendiente</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    const id = cobroPendiente.saleId;
+                    setCobroPendiente(null);
+                    setActiveAppointment(null);
+                    void selectFolio(id);
+                    navigateTo('caja');
+                  }}
+                  className="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-bold ios-touch cursor-pointer hover:opacity-90 text-sm"
+                >
+                  💵 Cobrar ahora
+                </button>
+                <button
+                  onClick={() => setCobroPendiente(null)}
+                  className="w-full py-2.5 rounded-xl text-slate-500 dark:text-neutral-400 text-sm font-medium ios-touch cursor-pointer hover:bg-slate-100 dark:hover:bg-neutral-800"
+                >
+                  Dejar la comanda abierta
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 text-center mt-3">
+                Si la dejas abierta va a seguir contando en el aviso rojo de Caja.
+              </p>
             </motion.div>
           </motion.div>
         )}

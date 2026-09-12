@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
   Coffee, Receipt, Search, X, Plus, Minus, Gift, Tag, Split, UserPlus,
-  ChevronDown, Printer,
+  ChevronDown, Printer, UserCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { imprimirRecibo } from '../../utils/recibo';
@@ -39,11 +39,22 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
     activeSale, saleBusy, openSale, addSaleItem, removeSaleItem,
     setSaleItemQty, toggleSaleItemCourtesy, setSalePriceList, paySale, closeSale,
     openFolios, loadOpenFolios, selectFolio, newCounterFolio, moveSaleItem,
+    asignarClientaAFolio, cerrarFolio,
     priceLists, loadPriceLists,
     currencies, baseCurrency, loadCurrencies,
   } = useApp();
 
   const reduceMotion = useReducedMotion();
+
+  // Ponerle dueña a una cuenta de mostrador: qué comanda y qué se busca
+  const [asignando, setAsignando] = useState<string | null>(null);
+  const [buscaClienta, setBuscaClienta] = useState('');
+
+  const clientasParaAsignar = useMemo(() => {
+    const q = normalizar(buscaClienta);
+    const lista = clients ?? [];
+    return (q ? lista.filter(c => normalizar(c.name).includes(q)) : lista).slice(0, 20);
+  }, [clients, buscaClienta]);
 
   useEffect(() => { void loadPriceLists?.(); void loadCurrencies?.(); }, []);
   useEffect(() => { void loadOpenFolios?.(); }, [activeSale?.id, loadOpenFolios]);
@@ -370,36 +381,115 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
           <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-3">
             {/* Cuentas abiertas. Como en un hotel: cada quien tiene su
                 folio y al final cada quien paga el suyo. */}
-            {(openFolios?.length ?? 0) > 1 && (
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 -mx-1 px-1">
-                {openFolios.map(f => {
-                  const activa = f.id === activeSale?.id;
-                  const pend = Math.max(0, Number(f.total) - Number(f.paidTotal));
-                  return (
+            {(openFolios?.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+                  {openFolios.map(f => {
+                    const activa = f.id === activeSale?.id;
+                    const pend = Math.max(0, Number(f.total) - Number(f.paidTotal));
+                    const vacia = !(f.items?.length) && !(f.payments?.length);
+                    return (
+                      /* Pestaña = botón + su propia X. Antes era un solo botón
+                         y una cuenta abierta por error se quedaba ahí para
+                         siempre, sin forma de quitarla. */
+                      <div
+                        key={f.id}
+                        className={`shrink-0 flex items-center rounded-xl text-[11px] font-bold whitespace-nowrap transition ${
+                          activa
+                            ? 'bg-[var(--primary)] text-white'
+                            : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
+                        }`}
+                      >
+                        <button
+                          onClick={() => selectFolio(f.id)}
+                          className="pl-2.5 py-1.5 cursor-pointer"
+                        >
+                          {(f.clientName ?? f.label ?? 'Cuenta').split(' ')[0]}
+                          <span className={`ml-1.5 font-mono tabular-nums ${activa ? 'opacity-80' : 'text-slate-400'}`}>
+                            {plata(pend)}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => cerrarFolio(f.id)}
+                          disabled={saleBusy}
+                          title={vacia
+                            ? 'Cerrar esta cuenta vacía'
+                            : 'Tiene consumo: se cierra cobrándola'}
+                          className={`px-1.5 py-1.5 rounded-r-xl transition disabled:opacity-40 cursor-pointer ${
+                            activa ? 'hover:bg-black/15' : 'hover:bg-slate-300/60 dark:hover:bg-neutral-600'
+                          }`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={() => newCounterFolio()}
+                    disabled={saleBusy}
+                    title="Abrir una cuenta de mostrador"
+                    className="shrink-0 w-8 h-8 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* ── Ponerle dueña a la cuenta ──────────────────────────
+                    Llega alguien, pide un café, se sienta; nadie sabe aún si
+                    es clienta del salón. Se abre mostrador y después se pasa
+                    a su nombre sin retranscribir nada. */}
+                {activeSale && !activeSale.clientId && (
+                  asignando === activeSale.id ? (
+                    <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            autoFocus
+                            value={buscaClienta}
+                            onChange={e => setBuscaClienta(e.target.value)}
+                            placeholder="¿De quién es esta cuenta?"
+                            className="w-full pl-8 pr-2 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                          />
+                        </div>
+                        <button
+                          onClick={() => { setAsignando(null); setBuscaClienta(''); }}
+                          className="px-2 py-1.5 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-neutral-700 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                        {clientasParaAsignar.map(c => (
+                          <button
+                            key={c.id}
+                            disabled={saleBusy}
+                            onClick={async () => {
+                              const ok = await asignarClientaAFolio(activeSale.id, c.id);
+                              if (ok) { setAsignando(null); setBuscaClienta(''); }
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] font-semibold text-slate-700 dark:text-neutral-200 hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-40 cursor-pointer"
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                        {!clientasParaAsignar.length && (
+                          <p className="w-full py-2 text-center text-[11px] text-slate-400">
+                            Ninguna clienta con ese nombre.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
                     <button
-                      key={f.id}
-                      onClick={() => selectFolio(f.id)}
-                      className={`shrink-0 px-2.5 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition ${
-                        activa
-                          ? 'bg-[var(--primary)] text-white'
-                          : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
-                      }`}
+                      onClick={() => { setAsignando(activeSale.id); setBuscaClienta(''); }}
+                      className="w-full py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] font-bold text-slate-500 dark:text-neutral-400 flex items-center justify-center gap-1.5 hover:border-[var(--primary)] hover:text-[var(--primary)] transition cursor-pointer"
                     >
-                      {(f.clientName ?? f.label ?? 'Cuenta').split(' ')[0]}
-                      <span className={`ml-1.5 font-mono tabular-nums ${activa ? 'opacity-80' : 'text-slate-400'}`}>
-                        {plata(pend)}
-                      </span>
+                      <UserCheck className="w-3.5 h-3.5" />
+                      Asignar esta cuenta a una clienta
                     </button>
-                  );
-                })}
-                <button
-                  onClick={() => newCounterFolio()}
-                  disabled={saleBusy}
-                  title="Abrir una cuenta de mostrador"
-                  className="shrink-0 w-8 h-8 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                </button>
+                  )
+                )}
               </div>
             )}
             <div className="flex items-center justify-between gap-2">
