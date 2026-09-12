@@ -12,6 +12,7 @@ import {
   Pause,
   SkipForward,
   Tag,
+  Receipt,
 } from 'lucide-react';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -28,6 +29,9 @@ export const IOSTabBar: React.FC = () => {
     togglePlayLounge,
     nextLoungeTrack,
     activeLoungeClient,
+    // Cola de YouTube: si está activa, el mini reproductor muestra el video
+    // incrustado aquí en vez de la portada de la radio.
+    ytQueue, ytIndex, ytPlaying, ytToggle, ytNext,
   } = useApp();
   const { currentUser } = useAuth();
 
@@ -38,6 +42,7 @@ export const IOSTabBar: React.FC = () => {
     { id: 'calendar', label: 'Agenda', icon: Calendar, badge: pendingApts > 0 ? pendingApts : undefined },
     { id: 'clients', label: 'Clientas', icon: Users },
     { id: 'lounge', label: 'Lounge', icon: Music },
+    { id: 'caja', label: 'Caja', icon: Receipt },
     { id: 'chats', label: 'Chats', icon: MessageSquareText, badge: unreadChats > 0 ? unreadChats : undefined },
     { id: 'catalog', label: 'Catálogo', icon: Sparkles },
     { id: 'dashboard', label: 'Métricas', icon: LayoutDashboard },
@@ -45,7 +50,85 @@ export const IOSTabBar: React.FC = () => {
     { id: 'price-lists', label: 'Precios', icon: Tag },
   ];
 
-  const MiniPlayer = ({ compact = false }: { compact?: boolean }) => {
+  const ytTrack = ytQueue[ytIndex];
+  const ytActive = !!ytTrack;
+
+  /**
+   * Mini reproductor de YouTube: el <div> con ref es el ancla donde
+   * <GlobalYouTubePlayer /> posiciona el iframe. Así el video queda incrustado
+   * aquí —fuera del camino de los botones— en vez de flotar sobre la barra.
+   */
+  /* OJO: función que devuelve JSX, NO un componente.
+     Si fuera `const YtMiniPlayer = () => ...` y se usara como <YtMiniPlayer />,
+     React lo trataría como un tipo nuevo en cada render, remontaría el subárbol
+     y el `ref` del ancla se dispararía con null→elemento en cada pasada,
+     actualizando el contexto en bucle ("Maximum update depth exceeded").
+     Al invocarla, su JSX se integra en el árbol de IOSTabBar y el ref es estable. */
+  const renderYtMini = (compact: boolean) => (
+    <div
+      onClick={() => navigateTo('lounge')}
+      className={`cursor-pointer ${compact
+        ? 'px-2 pb-1'
+        : 'mx-2 mb-2 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700'
+      }`}
+    >
+      <div className={compact
+        ? 'px-2.5 py-1.5 rounded-2xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg border border-slate-200/80 dark:border-neutral-800 shadow-md flex items-center gap-2.5'
+        : 'flex items-center gap-2.5'
+      }>
+        {/* Miniatura, no el video.
+            Un iframe de YouTube a 68x38 no alcanza el tamaño mínimo que el
+            player necesita y se pinta negro. Aquí mostramos la carátula —igual
+            que el mini reproductor de la radio— y el video se queda en el
+            Lounge, que es donde tiene espacio real. El audio no se interrumpe:
+            fuera del Lounge el iframe sigue vivo, solo aparcado fuera de vista. */}
+        <div className="w-[68px] h-[38px] rounded-lg overflow-hidden bg-slate-200 dark:bg-neutral-700 shrink-0 relative">
+          {ytTrack?.thumbnail ? (
+            <img
+              src={ytTrack.thumbnail}
+              alt={ytTrack.title}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-[13px]">▶</div>
+          )}
+          {ytPlaying && (
+            <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate">
+            {ytTrack?.title}
+          </div>
+          <div className="text-[10px] text-slate-500 dark:text-neutral-400 truncate">
+            {ytTrack?.channel || 'YouTube'}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={ytToggle}
+            className="w-7 h-7 rounded-full bg-white dark:bg-neutral-700 hover:bg-[var(--primary)] hover:text-white text-slate-700 dark:text-white flex items-center justify-center transition cursor-pointer"
+            title={ytPlaying ? 'Pausar' : 'Reproducir'}
+          >
+            {ytPlaying ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current ml-0.5" />}
+          </button>
+          <button
+            onClick={ytNext}
+            className="w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition cursor-pointer"
+            title="Siguiente"
+          >
+            <SkipForward className="w-3 h-3 fill-current" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMiniPlayer = (compact: boolean) => {
+    // YouTube manda: si hay cola, el mini reproductor es el suyo. Se mantiene
+    // visible incluso dentro del Lounge, porque cuando la tarjeta grande
+    // muestra la portada el video necesita seguir teniendo dónde vivir.
+    if (ytActive) return renderYtMini(compact);
     if (!currentTrack || !isPlayingLounge || currentScreen === 'lounge') return null;
     return (
       <div
@@ -160,9 +243,9 @@ export const IOSTabBar: React.FC = () => {
 
         {/* Mini player in sidebar */}
         <AnimatePresence>
-          {currentScreen !== 'lounge' && currentTrack && isPlayingLounge && (
+          {(ytActive || (currentScreen !== 'lounge' && currentTrack && isPlayingLounge)) && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
-              <MiniPlayer compact={false} />
+              {renderMiniPlayer(false)}
             </motion.div>
           )}
         </AnimatePresence>
@@ -193,13 +276,13 @@ export const IOSTabBar: React.FC = () => {
       <div className="lg:hidden flex flex-col">
         {/* Floating Mini-Player */}
         <AnimatePresence>
-          {currentScreen !== 'lounge' && currentTrack && isPlayingLounge && (
+          {(ytActive || (currentScreen !== 'lounge' && currentTrack && isPlayingLounge)) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
             >
-              <MiniPlayer compact={true} />
+              {renderMiniPlayer(true)}
             </motion.div>
           )}
         </AnimatePresence>

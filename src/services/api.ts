@@ -57,10 +57,16 @@ export async function apiFetch<T = unknown>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    // NestJS validation errors return message as string[]
-    const msg = Array.isArray(err.message)
-      ? err.message.join(' | ')
-      : (err.message ?? 'API error');
+    // El filtro de excepciones anida el error: { message: { message, error } }.
+    // Sin desanidarlo, los toasts mostraban "[object Object]" en vez del motivo.
+    const desanidar = (m: any): string => {
+      if (m == null) return 'API error';
+      if (typeof m === 'string') return m;
+      if (Array.isArray(m)) return m.map(desanidar).join(' | ');
+      if (typeof m === 'object') return desanidar(m.message ?? m.error ?? null);
+      return String(m);
+    };
+    const msg = desanidar(err.message ?? err);
     throw new Error(msg);
   }
 

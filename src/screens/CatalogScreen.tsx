@@ -158,6 +158,8 @@ export const CatalogScreen: React.FC = () => {
     haircare: 'Cuidado Capilar',
     skincare: 'Skincare',
     spa_body: 'Spa & Corporal',
+    beverage: 'Bebidas',
+    snack: 'Aperitivos',
   };
 
   // Filtered Services
@@ -557,6 +559,8 @@ export const CatalogScreen: React.FC = () => {
                 { id: 'nailcare', label: '💅 Cuidado de Uñas' },
                 { id: 'spa_body', label: '🌿 Spa & Corporal' },
                 { id: 'skincare', label: '✨ Skincare Facial' },
+                { id: 'beverage', label: '☕ Bebidas' },
+                { id: 'snack', label: '🍪 Aperitivos' },
               ].map(c => {
                 const isSelected = selectedCategory === c.id;
                 return (
@@ -1425,6 +1429,8 @@ export const CatalogScreen: React.FC = () => {
                   { id: 'haircare', label: 'Cuidado Capilar', emoji: '🧴' },
                   { id: 'spa_body', label: 'Spa & Corporal', emoji: '🌿' },
                   { id: 'skincare', label: 'Skincare', emoji: '✨' },
+                  { id: 'beverage', label: 'Bebidas', emoji: '☕' },
+                  { id: 'snack', label: 'Aperitivos', emoji: '🍪' },
                 ] as const).map(cat => (
                   <button
                     key={cat.id}

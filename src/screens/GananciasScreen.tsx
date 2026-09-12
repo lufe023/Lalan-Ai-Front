@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { TrendingUp, Info, Scissors, BarChart3, Download, Users, User } from 'lucide-react';
+import { TrendingUp, Info, Scissors, BarChart3, Download, Users, User, Package, Store } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
 import * as XLSX from 'xlsx';
@@ -10,7 +11,7 @@ import { CascadingRibbonCalendar, CalendarGranularity, MonthWeek } from '../comp
 type RevenueMode = 'bruto' | 'neto';
 
 export const GananciasScreen: React.FC = () => {
-  const { appointments, products, loadIngredients, goBack } = useApp();
+  const { appointments, products, loadIngredients, goBack, navigateTo } = useApp();
   const [mode, setMode] = useState<RevenueMode>('bruto');
   const [serviceCosts, setServiceCosts] = useState<Record<string, number>>({});
   const [loadingCosts, setLoadingCosts] = useState(false);
@@ -21,6 +22,13 @@ export const GananciasScreen: React.FC = () => {
   const [calGranularity, setCalGranularity] = useState<CalendarGranularity>('days');
   // Track when granularity drill-down just happened so next onRangeChange knows the context
   const drillDownOccurred = useRef(false);
+  /**
+   * Día elegido a mano (un chip o el botón "Hoy").
+   *
+   * "Hoy" dispara onGranularityChange('days'), que se confundía con un
+   * drill-down de semana a día: pedías hoy y salía la semana completa.
+   */
+  const diaElegido = useRef(false);
 
   const [rangeStart, setRangeStart] = useState<Date>(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
@@ -28,6 +36,64 @@ export const GananciasScreen: React.FC = () => {
   const [rangeEnd, setRangeEnd] = useState<Date>(() => {
     const d = new Date(); d.setHours(23, 59, 59, 999); return d;
   });
+
+  /**
+   * El informe viene del backend y se calcula sobre las VENTAS cerradas.
+   *
+   * Antes esta pantalla sumaba el precio agendado de las citas completadas:
+   * ignoraba productos, bebidas, ventas de mostrador, descuentos y
+   * cortesías. Por eso Caja decía 154 y esta pantalla decía 90.
+   */
+  const [informe, setInforme] = useState<any>(null);
+  const [cargandoInforme, setCargandoInforme] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    setCargandoInforme(true);
+    api.get<any>(`/sales/report/profit?desde=${rangeStart.toISOString()}&hasta=${rangeEnd.toISOString()}`)
+      .then(r => { if (!cancelado) setInforme(r); })
+      .catch(() => { if (!cancelado) setInforme(null); })
+      .finally(() => { if (!cancelado) setCargandoInforme(false); });
+    return () => { cancelado = true; };
+  }, [rangeStart, rangeEnd]);
+
+  /**
+   * Días con recaudo, para los puntitos del calendario.
+   *
+   * Antes el calendario marcaba los días con CITAS. Pero el dinero se cuenta
+   * por día de COBRO: un servicio del martes que se cobra el viernes es
+   * recaudo del viernes. El punto tiene que estar donde está la plata.
+   */
+  const [diasConRecaudo, setDiasConRecaudo] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Ventana amplia: el calendario deja navegar años hacia atrás
+    const desde = new Date(new Date().getFullYear() - 1, 0, 1).toISOString();
+    const hasta = new Date(new Date().getFullYear() + 1, 0, 1).toISOString();
+    api.get<any[]>(`/sales/report/days?desde=${desde}&hasta=${hasta}`)
+      .then(d => setDiasConRecaudo(d ?? []))
+      .catch(() => setDiasConRecaudo([]));
+  }, []);
+
+  /**
+   * El calendario cuenta un evento por punto, así que expandimos cada día a
+   * tantas entradas como ventas tuvo: así los días de más recaudo se ven
+   * más marcados, igual que antes con las citas.
+   */
+  const eventosCalendario = useMemo(
+    () => diasConRecaudo.flatMap(d =>
+      Array.from({ length: Math.max(1, Number(d.count) || 1) }, () => ({ date: d.date })),
+    ),
+    [diasConRecaudo],
+  );
+
+  /** Las ventas del período, con su hora, para poder agruparlas en el gráfico */
+  const ventas = useMemo(
+    () => (informe?.detalle ?? []).map((v: any) => ({
+      ...v, fecha: new Date(v.closedAt),
+    })),
+    [informe],
+  );
 
   const completedAppointments = useMemo(() =>
     appointments.filter(a => a.status === 'completed'),
@@ -65,28 +131,26 @@ export const GananciasScreen: React.FC = () => {
     ).then(res => { setServiceCosts(Object.fromEntries(res)); setLoadingCosts(false); });
   }, [filteredAppointments, products, loadIngredients]);
 
-  const { bruto, neto, costoTotal, count } = useMemo(() => {
-    const bruto = filteredAppointments.reduce((s, a) => s + a.price, 0);
-    const costoTotal = filteredAppointments.reduce((s, a) =>
-      s + (a.serviceId ? (serviceCosts[a.serviceId] ?? 0) : 0), 0);
-    const neto = Math.max(0, bruto - costoTotal);
-    return { bruto, neto, costoTotal, count: filteredAppointments.length };
-  }, [filteredAppointments, serviceCosts]);
+  const { bruto, neto, costoTotal, count } = useMemo(() => ({
+    bruto: Number(informe?.bruto ?? 0),
+    costoTotal: Number(informe?.costo ?? 0),
+    neto: Math.max(0, Number(informe?.neto ?? 0)),
+    count: Number(informe?.ventas ?? 0),
+  }), [informe]);
 
   const totalRevenue = mode === 'bruto' ? bruto : neto;
   const margin = bruto > 0 ? Math.round((neto / bruto) * 100) : 0;
 
-  const apptBruto = (a: typeof filteredAppointments[0]) => a.price;
-  const apptNeto = (a: typeof filteredAppointments[0]) =>
-    Math.max(0, a.price - (a.serviceId ? (serviceCosts[a.serviceId] ?? 0) : 0));
+  const apptBruto = (v: any) => Number(v.bruto ?? 0);
+  const apptNeto = (v: any) => Math.max(0, Number(v.bruto ?? 0) - Number(v.costo ?? 0));
 
   const chartData = useMemo(() => {
     if (chartGranularity === 'days') {
       // Hourly: 8h–20h
       const hr12 = (h: number) => h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`;
       const b = Array.from({ length: 24 }, (_, i) => ({ label: hr12(i), bruto: 0, neto: 0 }));
-      filteredAppointments.forEach(a => {
-        const h = aptDate(a).getHours();
+      ventas.forEach((a: any) => {
+        const h = a.fecha.getHours();
         if (h >= 0 && h < 24) { b[h].bruto += apptBruto(a); b[h].neto += apptNeto(a); }
       });
       return b.map(d => ({ ...d, value: mode === 'bruto' ? d.bruto : d.neto }));
@@ -106,8 +170,8 @@ export const GananciasScreen: React.FC = () => {
           bruto: 0, neto: 0,
         };
       });
-      filteredAppointments.forEach(a => {
-        const d = aptDate(a);
+      ventas.forEach((a: any) => {
+        const d = a.fecha;
         const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
         const idx = b.findIndex(x => x.date === key);
         if (idx >= 0) { b[idx].bruto += apptBruto(a); b[idx].neto += apptNeto(a); }
@@ -130,8 +194,8 @@ export const GananciasScreen: React.FC = () => {
         cur.setDate(cur.getDate() + 7);
         w++;
       }
-      filteredAppointments.forEach(a => {
-        const t = aptDate(a).getTime();
+      ventas.forEach((a: any) => {
+        const t = a.fecha.getTime();
         const idx = buckets.findIndex(x => t >= x.start && t <= x.end);
         if (idx >= 0) { buckets[idx].bruto += apptBruto(a); buckets[idx].neto += apptNeto(a); }
       });
@@ -144,60 +208,40 @@ export const GananciasScreen: React.FC = () => {
       label: new Date(year, i, 1).toLocaleDateString('es-MX', { month: 'short' }),
       month: i, bruto: 0, neto: 0,
     }));
-    filteredAppointments.forEach(a => {
-      const d = aptDate(a);
+    ventas.forEach((a: any) => {
+      const d = a.fecha;
       if (d.getFullYear() === year) {
         b[d.getMonth()].bruto += apptBruto(a);
         b[d.getMonth()].neto += apptNeto(a);
       }
     });
     return b.map(d => ({ ...d, value: mode === 'bruto' ? d.bruto : d.neto }));
-  }, [filteredAppointments, chartGranularity, mode, serviceCosts, rangeStart]);
+  }, [ventas, chartGranularity, mode, rangeStart, rangeEnd]);
 
-  const breakdown = useMemo(() => {
-    const map = new Map<string, { name: string; count: number; bruto: number; cost: number }>();
-    filteredAppointments.forEach(a => {
-      const key = a.serviceId || a.serviceName;
-      const cur = map.get(key) ?? { name: a.serviceName, count: 0, bruto: 0, cost: 0 };
-      cur.count++; cur.bruto += a.price;
-      cur.cost += a.serviceId ? (serviceCosts[a.serviceId] ?? 0) : 0;
-      map.set(key, cur);
-    });
-    return Array.from(map.values()).sort((a, b) => b.bruto - a.bruto);
-  }, [filteredAppointments, serviceCosts]);
+  /** Mapea lo que devuelve el backend a la forma que ya consumía la UI */
+  const aFilas = (lista: any[] = []) =>
+    lista.map(e => ({
+      name: e.nombre,
+      count: Number(e.unidades ?? 0),
+      bruto: Number(e.bruto ?? 0),
+      cost: Number(e.costo ?? 0),
+      neto: Number(e.neto ?? 0),
+      margen: Number(e.margen ?? 0),
+      esMostrador: !!e.esMostrador,
+    }));
 
-  const staffBreakdown = useMemo(() => {
-    const map = new Map<string, { name: string; count: number; bruto: number; cost: number }>();
-    filteredAppointments.forEach(a => {
-      const key = a.staffName || 'Sin especialista';
-      if (!map.has(key)) map.set(key, { name: key, count: 0, bruto: 0, cost: 0 });
-      const cur = map.get(key)!;
-      cur.count++;
-      cur.bruto += a.price;
-      cur.cost += a.serviceId ? (serviceCosts[a.serviceId] ?? 0) : 0;
-    });
-    return Array.from(map.values()).sort((a, b) => b.bruto - a.bruto);
-  }, [filteredAppointments, serviceCosts]);
+  const breakdown = useMemo(() => aFilas(informe?.porServicio), [informe]);
+  const productBreakdown = useMemo(() => aFilas(informe?.porProducto), [informe]);
+  const staffBreakdown = useMemo(() => aFilas(informe?.porEspecialista), [informe]);
 
-  const clientBreakdown = useMemo(() => {
-    const map = new Map<string, { name: string; count: number; bruto: number; services: string[]; hourCounts: Record<number, number> }>();
-    filteredAppointments.forEach(a => {
-      const key = a.clientId || a.clientName;
-      if (!map.has(key)) map.set(key, { name: a.clientName, count: 0, bruto: 0, services: [], hourCounts: {} });
-      const cur = map.get(key)!;
-      cur.count++;
-      cur.bruto += a.price;
-      if (a.serviceName && !cur.services.includes(a.serviceName)) cur.services.push(a.serviceName);
-      const h = aptDate(a).getHours();
-      cur.hourCounts[h] = (cur.hourCounts[h] ?? 0) + 1;
-    });
-    return Array.from(map.values()).map(c => {
-      const topHourEntry = Object.entries(c.hourCounts).sort((a, b) => b[1] - a[1])[0];
-      const topHour = topHourEntry ? Number(topHourEntry[0]) : null;
-      const hr12 = (h: number) => h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
-      return { name: c.name, count: c.count, bruto: c.bruto, services: c.services, preferredHour: topHour !== null ? hr12(topHour) : null };
-    }).sort((a, b) => b.bruto - a.bruto);
-  }, [filteredAppointments]);
+  const clientBreakdown = useMemo(
+    () => aFilas(informe?.porCliente).map(c => ({
+      ...c,
+      services: [] as string[],
+      preferredHour: null as string | null,
+    })),
+    [informe],
+  );
 
   const maxVal = Math.max(...chartData.map(d => d.value), 1);
   const W = 300, H = 26;
@@ -220,7 +264,11 @@ export const GananciasScreen: React.FC = () => {
     let newChart: CalendarGranularity = g;
 
     if (g === 'days') {
-      if (fromDrillDown && week) {
+      // Un día elegido a mano manda sobre cualquier drill-down
+      const eligioDia = diaElegido.current;
+      diaElegido.current = false;
+
+      if (!eligioDia && fromDrillDown && week) {
         // Drilled weeks → days by clicking a week chip: show full week daily chart
         start = new Date(week.startDate); start.setHours(0, 0, 0, 0);
         end = new Date(week.endDate); end.setHours(23, 59, 59, 999);
@@ -343,15 +391,29 @@ export const GananciasScreen: React.FC = () => {
       <IOSHeader title="Informe de Ganancias" onBack={goBack} />
       <PageContent>
 
+        {/* Los dos informes cuentan cosas distintas y conviene poder saltar */}
+        <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-neutral-800 mb-3">
+          <span className="flex-1 py-2 rounded-xl text-xs font-bold text-center bg-white dark:bg-neutral-900 text-slate-900 dark:text-white shadow-2xs">
+            Ganancias
+          </span>
+          <button
+            onClick={() => navigateTo('citas-report')}
+            className="flex-1 py-2 rounded-xl text-xs font-bold text-center text-slate-500 dark:text-neutral-400 hover:text-slate-700 transition"
+          >
+            Citas
+          </button>
+        </div>
+
         {/* Cascading ribbon calendar as period filter */}
         <CascadingRibbonCalendar
-          events={completedAppointments}
+          events={eventosCalendario}
           initialGranularity="days"
           onGranularityChange={g => {
             drillDownOccurred.current = true;
             setCalGranularity(g);
             setHoveredIdx(null);
           }}
+          onSelectDate={() => { diaElegido.current = true; }}
           onRangeChange={handleRangeChange}
         />
 
@@ -396,7 +458,8 @@ export const GananciasScreen: React.FC = () => {
                 ${totalRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <p className="text-[11px] text-slate-400 dark:text-neutral-500 mt-1">
-                {count} {count === 1 ? 'cita completada' : 'citas completadas'}
+                {count} {count === 1 ? 'venta cobrada' : 'ventas cobradas'}
+                {Number(informe?.cortesias ?? 0) > 0 && ` · ${informe.cortesias} cortesías`}
               </p>
             </div>
             <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold ${
@@ -492,7 +555,7 @@ export const GananciasScreen: React.FC = () => {
             </div>
           ) : (
             <div className="mt-3 py-3 text-center text-[11px] text-slate-400 dark:text-neutral-500">
-              Sin citas completadas en este período
+              Sin ventas cobradas en este período
             </div>
           )}
         </motion.div>
@@ -525,7 +588,7 @@ export const GananciasScreen: React.FC = () => {
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">${display.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className="text-[10px] text-slate-400 ml-1">({svc.count} citas)</span>
+                      <span className="text-[10px] text-slate-400 ml-1">({svc.count} {svc.count === 1 ? 'vez' : 'veces'})</span>
                     </div>
                   </div>
                   <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -543,6 +606,67 @@ export const GananciasScreen: React.FC = () => {
           </div>
         )}
 
+        {/* Por producto — lo que antes no existía en este informe */}
+        {productBreakdown.length > 0 && (
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden mb-6">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-neutral-800">
+              <Package className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white">Por producto</span>
+            </div>
+            {productBreakdown.map((p, idx) => {
+              const pNeto = Math.max(0, p.bruto - p.cost);
+              const display = mode === 'bruto' ? p.bruto : pNeto;
+              const pct = totalRevenue > 0 ? (display / totalRevenue) * 100 : 0;
+              return (
+                <div key={idx} className="px-4 py-3 border-b border-slate-50 dark:border-neutral-800/50 last:border-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Package className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{p.name}</span>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        ${display.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-[10px] text-slate-400 ml-1">
+                        ({p.count} {p.count === 1 ? 'unidad' : 'unidades'})
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(pct, 100)}%`, background: mode === 'bruto' ? '#f59e0b' : '#10b981' }} />
+                  </div>
+                  {mode === 'neto' && p.cost > 0 && (
+                    <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1">
+                      Costo: -${p.cost.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · Margen {p.margen}%
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Cortesías: no facturan, pero sí cuestan */}
+        {Number(informe?.cortesias ?? 0) > 0 && (
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-slate-200 dark:border-neutral-800 p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider">
+                  Cortesías
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {informe.cortesias} servidas · lo que te cuesta ser amable
+                </p>
+              </div>
+              <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400">
+                −${Number(informe.cortesiasCosto ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Por especialista */}
         {staffBreakdown.length > 0 && (
           <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-slate-200 dark:border-neutral-800 overflow-hidden mb-4">
@@ -550,34 +674,26 @@ export const GananciasScreen: React.FC = () => {
               <Users className="w-4 h-4 text-violet-500" />
               <span className="text-xs font-bold text-slate-900 dark:text-white">Por especialista</span>
             </div>
-            {(() => {
-              const maxStaffBruto = Math.max(...staffBreakdown.map(s => s.bruto));
-              const maxStaffCount = Math.max(...staffBreakdown.map(s => s.count));
-              const maxStaffNeto  = Math.max(...staffBreakdown.map(s => Math.max(0, s.bruto - s.cost)));
-              return staffBreakdown.map((staff, idx) => {
+            {staffBreakdown.map((staff, idx) => {
               const staffNeto = Math.max(0, staff.bruto - staff.cost);
               const display = mode === 'bruto' ? staff.bruto : staffNeto;
               const pct = totalRevenue > 0 ? (display / totalRevenue) * 100 : 0;
-              const isTopGanancias = staffBreakdown.length > 1 && staff.bruto === maxStaffBruto;
-              const isTopCitas     = staffBreakdown.length > 1 && staff.count === maxStaffCount && !isTopGanancias;
-              const isTopMargen    = mode === 'neto' && staffBreakdown.length > 1 && staffNeto === maxStaffNeto && !isTopGanancias;
+              const isTop = idx === 0 && staffBreakdown.length > 1;
               return (
                 <div key={idx} className="px-4 py-3 border-b border-slate-50 dark:border-neutral-800/50 last:border-0">
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center flex-shrink-0">
                         <span className="text-[9px] font-bold text-violet-600 dark:text-violet-400">
                           {staff.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </span>
                       </div>
                       <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{staff.name}</span>
-                      {isTopGanancias && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">★ Top Ganancias</span>}
-                      {isTopCitas     && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 flex-shrink-0">🏆 Top Citas</span>}
-                      {isTopMargen    && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 flex-shrink-0">💚 Mayor Margen</span>}
+                      {isTop && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">★ Top</span>}
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">${display.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className="text-[10px] text-slate-400 ml-1">({staff.count} citas)</span>
+                      <span className="text-[10px] text-slate-400 ml-1">({staff.count} {staff.count === 1 ? 'servicio' : 'servicios'})</span>
                     </div>
                   </div>
                   <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -591,8 +707,7 @@ export const GananciasScreen: React.FC = () => {
                   )}
                 </div>
               );
-            });
-            })()}
+            })}
           </div>
         )}
 
@@ -603,22 +718,10 @@ export const GananciasScreen: React.FC = () => {
               <User className="w-4 h-4 text-sky-500" />
               <span className="text-xs font-bold text-slate-900 dark:text-white">Por cliente</span>
             </div>
-            {(() => {
-              const maxClientBruto = Math.max(...clientBreakdown.map(c => c.bruto));
-              const maxClientCount = Math.max(...clientBreakdown.map(c => c.count));
-              const topSpenderId   = clientBreakdown.find(c => c.bruto === maxClientBruto);
-              const topVisitasId   = clientBreakdown.find(c => c.count === maxClientCount && c.count > 1);
-              return clientBreakdown.slice(0, 8).map((client, idx) => {
+            {clientBreakdown.slice(0, 8).map((client, idx) => {
               const pct = totalRevenue > 0 ? (client.bruto / totalRevenue) * 100 : 0;
-              const isTopSpender   = clientBreakdown.length > 1 && client.bruto === maxClientBruto;
-              const isTopVisitas   = clientBreakdown.length > 1 && client.count === maxClientCount && client.count > 1;
-              const isVIP          = isTopSpender && isTopVisitas;
-              const hourNum        = client.preferredHour
-                ? parseInt(client.preferredHour.replace(/[^0-9]/g, '')) + (client.preferredHour.includes('pm') && !client.preferredHour.startsWith('12') ? 12 : 0)
-                : null;
-              const timeLabel = hourNum !== null
-                ? hourNum < 12 ? '☀️ Matutina' : hourNum < 17 ? '🌤️ Vespertina' : '🌙 Nocturna'
-                : null;
+              const isTopSpender = idx === 0;
+              const isMostRecurring = clientBreakdown.length > 1 && client.count === Math.max(...clientBreakdown.map(c => c.count)) && client.count > 1;
               return (
                 <div key={idx} className="px-4 py-3 border-b border-slate-50 dark:border-neutral-800/50 last:border-0">
                   <div className="flex items-center justify-between mb-1">
@@ -629,12 +732,10 @@ export const GananciasScreen: React.FC = () => {
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{client.name}</span>
-                          {isVIP       && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 flex-shrink-0">💎 VIP</span>}
-                          {isTopSpender && !isVIP && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 flex-shrink-0">💰 Top Gasto</span>}
-                          {isTopVisitas && !isVIP && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 flex-shrink-0">🔁 Top Visitas</span>}
-                          {timeLabel   && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-300 flex-shrink-0">{timeLabel}</span>}
+                          {isTopSpender && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 flex-shrink-0">💰 Top gasto</span>}
+                          {isMostRecurring && !isTopSpender && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 flex-shrink-0">🔁 Más recurrente</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[10px] text-slate-400">{client.count} {client.count === 1 ? 'visita' : 'visitas'}</span>
@@ -655,8 +756,7 @@ export const GananciasScreen: React.FC = () => {
                   </div>
                 </div>
               );
-            });
-            })()}
+            })}
             {clientBreakdown.length > 8 && (
               <div className="px-4 py-2.5 text-center text-[10px] text-slate-400 dark:text-neutral-500 border-t border-slate-50 dark:border-neutral-800/50">
                 +{clientBreakdown.length - 8} clientes más · exporta a Excel para ver todos

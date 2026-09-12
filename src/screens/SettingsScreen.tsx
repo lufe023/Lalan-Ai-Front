@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Palette,
@@ -18,6 +18,9 @@ import {
   Building,
   Save,
   SlidersHorizontal,
+  Coins,
+  X,
+  Printer,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { useApp } from '../context/AppContext';
@@ -53,11 +56,22 @@ export const SettingsScreen: React.FC = () => {
     systemLogs,
     triggerSplash,
     showToast,
+    currencies,
+    baseCurrency,
+    loadCurrencies,
+    saveCurrency,
+    deleteCurrency,
+    addDenomination,
+    removeDenomination,
   } = useApp();
 
   const { currentUser, logout } = useAuth();
 
   const [showThemeModal, setShowThemeModal] = useState(false);
+  // Alta de monedas y billetes desde Ajustes
+  const [nuevaMoneda, setNuevaMoneda] = useState({ code: '', symbol: '', name: '', rateToBase: '' });
+  const [nuevoBillete, setNuevoBillete] = useState<Record<string, string>>({});
+  useEffect(() => { void loadCurrencies?.(); }, []);
   const [skipSplash, setSkipSplash] = useState(() => {
     try { return localStorage.getItem('skipSplash') === 'true'; } catch { return false; }
   });
@@ -592,6 +606,236 @@ export const SettingsScreen: React.FC = () => {
             <span>Guardar Parámetros de Negocio</span>
           </button>
         </form>
+
+        {/* SECTION 3.5: MONEDAS Y DENOMINACIONES */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Coins className="w-4 h-4 text-amber-500" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Monedas y Billetes
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            La caja vive en una sola moneda base. Las demás se registran con su
+            tasa — cuántas unidades de la base vale una de ellas — y sirven para
+            que una clienta pueda pagar en dólares un servicio en pesos.
+          </p>
+
+          <div className="space-y-2">
+            {(currencies ?? []).filter(c => c.active !== false).map(c => (
+              <div
+                key={c.id}
+                className={`p-3 rounded-xl border space-y-2 ${
+                  c.isBase
+                    ? 'border-[var(--primary)]/50 bg-[var(--primary)]/5'
+                    : 'border-slate-200 dark:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">
+                        {c.symbol} {c.code}
+                      </span>
+                      {c.isBase && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-[var(--primary)] text-white">
+                          BASE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 truncate">{c.name}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {c.isBase ? (
+                      <span className="text-[11px] text-slate-400">tasa 1.00</span>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400">1 {c.code} =</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          defaultValue={Number(c.rateToBase)}
+                          onBlur={e => {
+                            const v = Number(e.target.value);
+                            if (v > 0 && v !== Number(c.rateToBase)) {
+                              saveCurrency({ id: c.id, rateToBase: v });
+                            }
+                          }}
+                          className="w-20 px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs font-mono tabular-nums text-right text-slate-900 dark:text-white"
+                        />
+                        <span className="text-[10px] text-slate-400">
+                          {baseCurrency?.code}
+                        </span>
+                      </div>
+                    )}
+                    {!c.isBase && (
+                      <>
+                        <button
+                          onClick={() => saveCurrency({ id: c.id, isBase: true })}
+                          title="Hacerla la moneda base del salón"
+                          className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition"
+                        >
+                          Hacer base
+                        </button>
+                        <button
+                          onClick={() => deleteCurrency(c.id)}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Billetes de esta moneda */}
+                <div className="flex flex-wrap items-center gap-1 pt-1 border-t border-slate-100 dark:border-neutral-800">
+                  {(c.denominations ?? []).filter(d => d.active !== false).map(d => (
+                    <span
+                      key={d.id}
+                      className="group pl-2 pr-1 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 tabular-nums flex items-center gap-1"
+                    >
+                      {c.symbol}{Number(d.value).toLocaleString()}
+                      <button
+                        onClick={() => removeDenomination(d.id)}
+                        className="w-4 h-4 rounded-full flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-black/10 transition"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    type="number"
+                    placeholder="+ billete"
+                    value={nuevoBillete[c.id] ?? ''}
+                    onChange={e => setNuevoBillete(p => ({ ...p, [c.id]: e.target.value }))}
+                    onKeyDown={e => {
+                      if (e.key !== 'Enter') return;
+                      const v = Number(nuevoBillete[c.id]);
+                      if (v > 0) {
+                        addDenomination(c.id, v);
+                        setNuevoBillete(p => ({ ...p, [c.id]: '' }));
+                      }
+                    }}
+                    className="w-24 px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Alta de moneda */}
+          <div className="grid grid-cols-4 gap-1 pt-1">
+            <input
+              value={nuevaMoneda.code}
+              onChange={e => setNuevaMoneda(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+              placeholder="USD"
+              maxLength={4}
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-bold uppercase text-slate-900 dark:text-white"
+            />
+            <input
+              value={nuevaMoneda.symbol}
+              onChange={e => setNuevaMoneda(p => ({ ...p, symbol: e.target.value }))}
+              placeholder="US$"
+              maxLength={4}
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+            />
+            <input
+              value={nuevaMoneda.name}
+              onChange={e => setNuevaMoneda(p => ({ ...p, name: e.target.value }))}
+              placeholder="Dólar"
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+            />
+            <input
+              type="number"
+              step="0.01"
+              value={nuevaMoneda.rateToBase}
+              onChange={e => setNuevaMoneda(p => ({ ...p, rateToBase: e.target.value }))}
+              placeholder="60"
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-mono tabular-nums text-slate-900 dark:text-white"
+            />
+          </div>
+          <button
+            onClick={async () => {
+              if (!nuevaMoneda.code.trim()) return;
+              await saveCurrency({
+                code: nuevaMoneda.code.trim(),
+                symbol: nuevaMoneda.symbol.trim() || nuevaMoneda.code.trim(),
+                name: nuevaMoneda.name.trim() || nuevaMoneda.code.trim(),
+                rateToBase: Number(nuevaMoneda.rateToBase) || 1,
+              });
+              setNuevaMoneda({ code: '', symbol: '', name: '', rateToBase: '' });
+            }}
+            disabled={!nuevaMoneda.code.trim()}
+            className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40"
+          >
+            Agregar moneda
+          </button>
+        </div>
+
+        {/* SECTION 3.6: RECIBOS E IMPRESIÓN */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Printer className="w-4 h-4 text-slate-500" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Recibos e Impresión
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            El recibo se manda al diálogo de impresión del navegador, así que
+            funciona con cualquier impresora instalada en la computadora —
+            térmica o matricial — sin instalar nada aparte.
+          </p>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Ancho del papel
+            </label>
+            <div className="flex gap-2 mt-1">
+              {[58, 80].map(mm => (
+                <button
+                  key={mm}
+                  onClick={() => updateSettings({ ...settings, receiptWidthMm: mm } as any)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${
+                    Number((settings as any)?.receiptWidthMm ?? 80) === mm
+                      ? 'bg-[var(--primary)] text-white'
+                      : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'
+                  }`}
+                >
+                  {mm}mm
+                  <span className="block text-[9px] font-normal opacity-70">
+                    {mm === 58 ? 'térmica chica' : 'estándar POS'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Pie del recibo
+            </label>
+            <input
+              defaultValue={(settings as any)?.receiptFooter ?? '¡Gracias por tu visita!'}
+              onBlur={e => updateSettings({ ...settings, receiptFooter: e.target.value } as any)}
+              placeholder="¡Gracias por tu visita!"
+              className="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              RNC / Identificación fiscal
+            </label>
+            <input
+              defaultValue={(settings as any)?.rnc ?? ''}
+              onBlur={e => updateSettings({ ...settings, rnc: e.target.value } as any)}
+              placeholder="Opcional"
+              className="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
+            />
+          </div>
+        </div>
 
         {/* SECTION 4: ADVANCED SYSTEM TELEMETRY (ESPECIALLY FOR LUFE & ALANNY) */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-2">

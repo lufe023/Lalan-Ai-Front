@@ -43,7 +43,7 @@ export interface SalonService {
   priceTiers: PriceTier[]; // Multiple pricing table
 }
 
-export type ProductCategory = 'nailcare' | 'haircare' | 'skincare' | 'spa_body';
+export type ProductCategory = 'nailcare' | 'haircare' | 'skincare' | 'spa_body' | 'beverage' | 'snack';
 
 export interface SalonProduct {
   id: string;

@@ -17,6 +17,8 @@ import { ChatsScreen } from './screens/ChatsScreen';
 import { BotsControlScreen } from './screens/BotsControlScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LoungePlayerScreen } from './screens/LoungePlayerScreen';
+import { CajaScreen } from './screens/CajaScreen';
+import { CitasReportScreen } from './screens/CitasReportScreen';
 import { PriceListsScreen } from './screens/PriceListsScreen';
 import { GananciasScreen } from './screens/GananciasScreen';
 
@@ -36,6 +38,8 @@ const MainAppContent: React.FC = () => {
       case 'chats':     return <ChatsScreen     key="chats"     />;
       case 'bots':      return <BotsControlScreen key="bots"    />;
       case 'settings':  return <SettingsScreen  key="settings"  />;
+      case 'caja':      return <CajaScreen      key="caja"      />;
+      case 'citas-report': return <CitasReportScreen key="citas-report" />;
       case 'price-lists': return <PriceListsScreen key="price-lists" />;
       case 'ganancias':   return <GananciasScreen   key="ganancias"   />;
       default:          return <DashboardScreen key="default"   />;

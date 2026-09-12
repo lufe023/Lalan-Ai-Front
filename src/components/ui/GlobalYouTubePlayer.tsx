@@ -1,26 +1,51 @@
 import React, { useEffect, useRef } from 'react';
-import { X, Maximize2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 /**
  * Reproductor de YouTube global y controlable.
  *
- * Dos problemas resueltos aquí:
+ * Tres problemas resueltos aquí:
  *
  * 1. PERSISTENCIA — el <iframe> vive en este componente, montado una sola vez
  *    en App.tsx fuera del switch de pantallas, así la reproducción sobrevive al
  *    navegar. Nunca movemos el nodo en el DOM (mover un iframe lo recarga):
- *    solo cambiamos posición y tamaño por CSS sobre un contenedor `fixed`.
+ *    solo cambiamos posición y tamaño por CSS.
  *
  * 2. CONTROL — con un iframe simple no hay siguiente/anterior ni evento de
- *    "canción terminó". Por eso usamos el IFrame Player API, que expone
- *    loadVideoById / playVideo / pauseVideo / seekTo y onStateChange.
+ *    "canción terminó". Por eso usamos el IFrame Player API.
+ *
+ * 3. RECORTE — al ser `fixed`, el video ignoraba el recorte de su contenedor y
+ *    se pintaba encima de la cabecera y de los botones. Ahora calculamos la
+ *    intersección entre el ancla y su contenedor con scroll: el marco exterior
+ *    ocupa solo la parte visible y el interior se desplaza dentro. Resultado:
+ *    al hacer scroll el video se recorta como si estuviera dentro del cuadro,
+ *    en lugar de flotar sobre la interfaz.
  */
 
-const MINI_W = 208;
-const MINI_H = 117; // 16:9
-const MINI_MARGIN = 20;
-const SAMPLE_MS = 80;
+// Fuera de la pantalla: el iframe sigue vivo y sonando, pero no se ve.
+const PARKED_LEFT = -100000;
+
+/**
+ * TODOS los ancestros que recortan, no solo el primero.
+ *
+ * Importa porque hay varios anidados: la tarjeta del reproductor tiene
+ * `overflow-hidden` y por encima está el contenedor con scroll de la página.
+ * Si nos quedáramos con el primero, el video se recortaría a la tarjeta pero
+ * seguiría pintándose sobre la cabecera al hacer scroll.
+ *
+ * La lista se calcula una vez por ancla (getComputedStyle es caro); luego cada
+ * cuadro solo leemos sus rectángulos.
+ */
+function clippersOf(el: HTMLElement | null): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  let node = el?.parentElement ?? null;
+  while (node && node !== document.body) {
+    const { overflow, overflowX, overflowY } = getComputedStyle(node);
+    if (/(auto|scroll|hidden|clip)/.test(overflow + overflowX + overflowY)) out.push(node);
+    node = node.parentElement;
+  }
+  return out;
+}
 
 /** Carga https://www.youtube.com/iframe_api una sola vez para toda la app */
 function loadYouTubeApi(): Promise<any> {
@@ -43,18 +68,22 @@ function loadYouTubeApi(): Promise<any> {
 
 export const GlobalYouTubePlayer: React.FC = () => {
   const {
-    youtubeAnchorEl, navigateTo,
+    youtubeAnchorEl,
     ytPlayerRef, ytQueue, ytIndex, ytVolume, ytMuted,
-    setYtQueue, setYtPlaying, setYtReady, setYtTime, setYtDuration,
-    ytNext,
+    setYtPlaying, setYtReady, setYtTime, setYtDuration,
+    ytNext, ytOnEnded,
+    ytPlaying, recordLoungeEvent,
   } = useApp();
 
   const boxRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
-  const lastRef = useRef({ t: 0, top: -1, left: -1, w: -1, h: -1 });
 
-  // ytNext cambia de identidad al cambiar la cola; lo leemos por ref para que
-  // el listener de onStateChange (registrado una sola vez) siempre use el actual.
+  // Estos callbacks cambian de identidad al cambiar la cola o el modo de
+  // repetición; los leemos por ref para que el listener de onStateChange
+  // (registrado una sola vez) siempre use la versión actual.
+  const endedRef = useRef(ytOnEnded);
+  useEffect(() => { endedRef.current = ytOnEnded; }, [ytOnEnded]);
   const nextRef = useRef(ytNext);
   useEffect(() => { nextRef.current = ytNext; }, [ytNext]);
 
@@ -77,7 +106,8 @@ export const GlobalYouTubePlayer: React.FC = () => {
             try { e.target.setVolume(ytVolume); } catch { /* noop */ }
           },
           onStateChange: (e: any) => {
-            if (e.data === YT.PlayerState.ENDED) { nextRef.current(); return; }
+            // Fin natural: ytOnEnded decide si repite la misma o avanza
+            if (e.data === YT.PlayerState.ENDED) { endedRef.current(); return; }
             setYtPlaying(e.data === YT.PlayerState.PLAYING);
             if (e.data === YT.PlayerState.PLAYING) {
               try { setYtDuration(e.target.getDuration() || 0); } catch { /* noop */ }
@@ -94,22 +124,116 @@ export const GlobalYouTubePlayer: React.FC = () => {
       destroyed = true;
       try { ytPlayerRef.current?.destroy?.(); } catch { /* noop */ }
       ytPlayerRef.current = null;
+      loadedIdRef.current = null;
       setYtReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Cargar la pista cuando cambia el índice o la cola ────────────────
+  // ── Cargar la pista cuando REALMENTE cambia de canción ───────────────
+  //
+  // Antes este efecto dependía de [ytIndex, ytQueue] y llamaba a
+  // loadVideoById sin más. Al sumar una clienta la cola es un array nuevo, el
+  // efecto se re-ejecutaba y recargaba EL MISMO video, reiniciándolo desde
+  // cero. Por eso ahora recordamos cuál está cargado y solo actuamos si de
+  // verdad cambió: sumar o quitar gente reordena la fila sin tocar lo que suena.
+  const loadedIdRef = useRef<string | null>(null);
+  const fadeRef = useRef<number | null>(null);
+  const volRef = useRef(ytVolume);
+  const mutedRef = useRef(ytMuted);
+  useEffect(() => { volRef.current = ytVolume; }, [ytVolume]);
+  useEffect(() => { mutedRef.current = ytMuted; }, [ytMuted]);
+
+  const cancelFade = () => {
+    if (fadeRef.current) { cancelAnimationFrame(fadeRef.current); fadeRef.current = null; }
+  };
+
+  /** Rampa de volumen; se usa para que el cambio de canción no sea un corte seco */
+  const fadeVolume = (p: any, from: number, to: number, ms: number) =>
+    new Promise<void>((resolve) => {
+      cancelFade();
+      const t0 = performance.now();
+      const step = (now: number) => {
+        const k = Math.min(1, (now - t0) / ms);
+        try { p.setVolume(Math.round(from + (to - from) * k)); } catch { /* noop */ }
+        if (k < 1) fadeRef.current = requestAnimationFrame(step);
+        else { fadeRef.current = null; resolve(); }
+      };
+      fadeRef.current = requestAnimationFrame(step);
+    });
+
   useEffect(() => {
     const p = ytPlayerRef.current;
+    if (!p) return;
+
     const track = ytQueue[ytIndex];
-    if (!p || !track) return;
-    try {
-      p.loadVideoById(track.videoId);
-      setYtDuration(track.durationSeconds ?? 0);
-    } catch { /* el player aún no está listo; el onReady lo recogerá */ }
+    if (!track) {
+      // Cola vacía: quitaron todas las fuentes, así que paramos de verdad
+      // en lugar de dejar sonando la canción anterior.
+      if (loadedIdRef.current !== null) {
+        cancelFade();
+        try { p.stopVideo?.(); } catch { /* noop */ }
+        loadedIdRef.current = null;
+        setYtPlaying(false);
+        setYtTime(0);
+        setYtDuration(0);
+      }
+      return;
+    }
+
+    if (loadedIdRef.current === track.videoId) return; // ya es la que suena
+
+    const first = loadedIdRef.current === null;
+    loadedIdRef.current = track.videoId;
+
+    let cancelled = false;
+    (async () => {
+      const target = mutedRef.current ? 0 : volRef.current;
+      try {
+        // Fade OUT de lo anterior (en el primer arranque no hay nada que bajar)
+        if (!first) await fadeVolume(p, target, 0, 350);
+        if (cancelled) return;
+        p.loadVideoById(track.videoId);
+        setYtDuration(track.durationSeconds ?? 0);
+        // Fade IN de la nueva
+        await fadeVolume(p, 0, target, 700);
+      } catch { /* el player aún no está listo; el onReady lo recogerá */ }
+    })();
+
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ytIndex, ytQueue]);
+
+  useEffect(() => cancelFade, []);
+
+  // ── Bitácora: qué canción sonó de verdad ─────────────────────────────
+  // Solo registramos lo que se escuchó más de 45 s. Sin ese umbral la
+  // bitácora se llenaría de saltos y el dato no serviría para nada.
+  // El backend además descarta repeticiones del mismo video en 20 minutos.
+  const loggedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const track = ytQueue[ytIndex];
+    if (!track || !ytPlaying) return;
+    if (loggedRef.current === track.videoId) return;
+
+    const t = setTimeout(() => {
+      loggedRef.current = track.videoId;
+      // Fire and forget: si falla, la música ni se entera
+      void recordLoungeEvent?.({
+        kind: 'track_played',
+        label: track.title,
+        refId: track.videoId,
+        clientId: track.clientId ?? null,
+        clientName: track.clientName ?? null,
+        metadata: { channel: track.channel ?? null, seconds: 45 },
+      });
+    }, 45_000);
+
+    return () => clearTimeout(t);
+  }, [ytQueue, ytIndex, ytPlaying, recordLoungeEvent]);
+
+
 
   // ── Progreso ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -127,41 +251,78 @@ export const GlobalYouTubePlayer: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasQueue]);
 
-  // ── Posicionamiento: acoplado al Lounge o mini ────────────────────────
+  // ── Posición y recorte, cada cuadro ──────────────────────────────────
+  // Medimos en cada frame (no cada 80ms): así el video viaja EXACTAMENTE
+  // sincronizado con el scroll y no da los saltos que se veían antes.
   useEffect(() => {
-    if (!hasQueue) return;
     let raf = 0;
+    const last = { top: -1, left: -1, w: -1, h: -1, ox: -1, oy: -1, iw: -1, ih: -1 };
 
-    const apply = (now: number) => {
+    // Calculado una sola vez por ancla
+    const clippers = clippersOf(youtubeAnchorEl);
+    const radius = youtubeAnchorEl
+      ? getComputedStyle(youtubeAnchorEl).borderRadius || '0px'
+      : '0px';
+    if (boxRef.current) boxRef.current.style.borderRadius = radius;
+
+    const park = (box: HTMLDivElement) => {
+      if (last.left === PARKED_LEFT) return;
+      box.style.left = `${PARKED_LEFT}px`;
+      box.style.top = '0px';
+      last.left = PARKED_LEFT;
+      last.top = 0;
+    };
+
+    const apply = () => {
       raf = requestAnimationFrame(apply);
       const box = boxRef.current;
-      if (!box) return;
-
-      const last = lastRef.current;
-      if (now - last.t < SAMPLE_MS) return;
-      last.t = now;
+      const inner = innerRef.current;
+      if (!box || !inner) return;
 
       const el = youtubeAnchorEl;
-      const docked = !!(el && el.isConnected && el.offsetParent !== null);
-
-      let top: number, left: number, w: number, h: number;
-      if (docked) {
-        const r = el!.getBoundingClientRect();
-        top = r.top; left = r.left; w = r.width; h = r.height;
-      } else {
-        w = MINI_W;
-        h = MINI_H;
-        top = window.innerHeight - MINI_H - MINI_MARGIN;
-        left = window.innerWidth - MINI_W - MINI_MARGIN;
+      if (!hasQueue || !el || !el.isConnected || el.offsetParent === null) {
+        park(box);
+        return;
       }
+
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) { park(box); return; }
+
+      // Ventana visible = ancla ∩ cada ancestro que recorta ∩ pantalla
+      let top = Math.max(r.top, 0);
+      let left = Math.max(r.left, 0);
+      let right = Math.min(r.right, window.innerWidth);
+      let bottom = Math.min(r.bottom, window.innerHeight);
+      for (const c of clippers) {
+        const cr = c.getBoundingClientRect();
+        if (cr.top > top) top = cr.top;
+        if (cr.left > left) left = cr.left;
+        if (cr.right < right) right = cr.right;
+        if (cr.bottom < bottom) bottom = cr.bottom;
+      }
+      const w = right - left;
+      const h = bottom - top;
+
+      // Totalmente fuera de la zona visible → escondemos, no tapamos nada
+      if (w < 2 || h < 2) { park(box); return; }
 
       if (top !== last.top || left !== last.left || w !== last.w || h !== last.h) {
         box.style.top = `${top}px`;
         box.style.left = `${left}px`;
         box.style.width = `${w}px`;
         box.style.height = `${h}px`;
-        box.style.borderRadius = docked ? '16px' : '12px';
         last.top = top; last.left = left; last.w = w; last.h = h;
+      }
+
+      // El interior conserva el tamaño completo del ancla y se desplaza
+      // dentro del marco recortado.
+      const ox = r.left - left;
+      const oy = r.top - top;
+      if (ox !== last.ox || oy !== last.oy || r.width !== last.iw || r.height !== last.ih) {
+        inner.style.transform = `translate(${ox}px, ${oy}px)`;
+        inner.style.width = `${r.width}px`;
+        inner.style.height = `${r.height}px`;
+        last.ox = ox; last.oy = oy; last.iw = r.width; last.ih = r.height;
       }
     };
 
@@ -173,6 +334,8 @@ export const GlobalYouTubePlayer: React.FC = () => {
   useEffect(() => {
     const p = ytPlayerRef.current;
     if (!p) return;
+    // Si el salón mueve el volumen a mitad de un fundido, manda el salón
+    cancelFade();
     try {
       p.setVolume?.(ytVolume);
       if (ytMuted) p.mute?.(); else p.unMute?.();
@@ -180,43 +343,17 @@ export const GlobalYouTubePlayer: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ytVolume, ytMuted]);
 
-  const isDocked = !!(youtubeAnchorEl && youtubeAnchorEl.isConnected);
-
   return (
+    // z-30: por debajo de cabeceras, barras y modales (z-50), de modo que la
+    // interfaz siempre queda por encima del video.
     <div
       ref={boxRef}
-      // Se mantiene montado siempre (el player no puede recrearse sin cortar
-      // la reproducción); cuando no hay cola simplemente se esconde.
-      className={`fixed z-[60] overflow-hidden bg-black shadow-2xl ring-1 ring-white/10 ${hasQueue ? '' : 'opacity-0 pointer-events-none'}`}
-      style={{
-        top: window.innerHeight - MINI_H - MINI_MARGIN,
-        left: window.innerWidth - MINI_W - MINI_MARGIN,
-        width: MINI_W,
-        height: MINI_H,
-        borderRadius: 12,
-      }}
-      aria-hidden={!hasQueue}
+      className="fixed z-30 overflow-hidden bg-black pointer-events-auto"
+      style={{ top: 0, left: PARKED_LEFT, width: 1, height: 1 }}
     >
-      <div ref={hostRef} className="w-full h-full" />
-
-      {hasQueue && !isDocked && (
-        <div className="absolute top-1 right-1 flex gap-1">
-          <button
-            onClick={() => navigateTo('lounge')}
-            title="Volver al Lounge"
-            className="w-6 h-6 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center backdrop-blur-sm transition cursor-pointer"
-          >
-            <Maximize2 className="w-3 h-3" />
-          </button>
-          <button
-            onClick={() => setYtQueue([])}
-            title="Cerrar reproductor"
-            className="w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 text-white flex items-center justify-center backdrop-blur-sm transition cursor-pointer"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
-      )}
+      <div ref={innerRef} className="absolute top-0 left-0 will-change-transform">
+        <div ref={hostRef} className="w-full h-full" />
+      </div>
     </div>
   );
 };
