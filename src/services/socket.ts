@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { tokenStore } from './api';
+import { tokenStore, refrescarSesion } from './api';
 
 /**
  * Tiempo real, un socket para toda la aplicación.
@@ -57,13 +57,17 @@ const EVENTOS = [
   'musica:cambio', 'musica:orden', 'musica:permiso',
 ];
 
-function conectar(auth: Record<string, any>, modo: string) {
+function conectar(auth: () => Record<string, any>, modo: string) {
   if (socket && modoActual === modo) return socket;
   desconectar();
   modoActual = modo;
 
   socket = io(origenDelServidor(), {
-    auth,
+    /* El token se lee EN CADA intento de conexión, no una sola vez al
+       arrancar. Si se guardara aquí el de ahora, tras renovar la sesión el
+       socket seguiría reintentando con el caducado para siempre: la app
+       funcionaría y el tiempo real estaría muerto sin que nadie lo note. */
+    auth: (cb: (datos: Record<string, any>) => void) => cb(auth()),
     path: RUTA,
     transports: ['websocket', 'polling'],
     reconnection: true,
@@ -81,19 +85,31 @@ function conectar(auth: Record<string, any>, modo: string) {
   /* Perder el enlace importa tanto como recuperarlo: mientras no lo haya,
      lo que esta pantalla cree saber del salón puede ser mentira. */
   socket.on('disconnect', () => reenviar('socket:desconectado', {}));
+
+  /* El servidor nos cerró la puerta: casi siempre es el access token
+     caducado. Se renueva una vez y se vuelve a intentar — con el `auth` de
+     arriba, la reconexión ya manda el token nuevo. */
+  socket.on('rechazado', () => {
+    if (modoActual.startsWith('app')) {
+      void refrescarSesion().then(nuevo => { if (nuevo) socket?.connect(); });
+    }
+  });
   return socket;
 }
 
 /** La app: se identifica con el JWT que ya tiene guardado */
 export function conectarComoUsuario() {
-  const token = tokenStore.get();
-  if (!token) return null;
-  return conectar({ tipo: 'app', token }, `app:${token.slice(-12)}`);
+  if (!tokenStore.get()) return null;
+  /* El modo no lleva el token dentro a propósito: si lo llevara, renovar la
+     sesión contaría como "otro modo" y tiraría el socket para levantar uno
+     idéntico. Se suelta al cerrar sesión, que es cuando de verdad cambia
+     quién está conectado. */
+  return conectar(() => ({ tipo: 'app', token: tokenStore.get() ?? '' }), 'app');
 }
 
 /** La pantalla de pared: su token público, y solo para escuchar */
 export function conectarComoPantalla(token: string) {
-  return conectar({ tipo: 'pantalla', token }, `pantalla:${token}`);
+  return conectar(() => ({ tipo: 'pantalla', token }), `pantalla:${token}`);
 }
 
 export function desconectar() {

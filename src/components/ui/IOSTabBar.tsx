@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -58,6 +58,7 @@ export const IOSTabBar: React.FC = () => {
     /** En rojo: no es una notificación, es plata que se puede ir por la puerta */
     urgente?: boolean;
   }[] = [
+    { id: 'dashboard', label: 'Métricas', icon: LayoutDashboard },
     { id: 'calendar', label: 'Agenda', icon: Calendar, badge: pendingApts > 0 ? pendingApts : undefined },
     { id: 'sala', label: 'Sala', icon: Armchair },
     { id: 'clients', label: 'Clientas', icon: Users },
@@ -69,7 +70,6 @@ export const IOSTabBar: React.FC = () => {
     },
     { id: 'chats', label: 'Chats', icon: MessageSquareText, badge: unreadChats > 0 ? unreadChats : undefined },
     { id: 'catalog', label: 'Catálogo', icon: Sparkles },
-    { id: 'dashboard', label: 'Métricas', icon: LayoutDashboard },
     { id: 'settings', label: 'Ajustes', icon: Sliders },
     { id: 'price-lists', label: 'Precios', icon: Tag },
   ];
@@ -84,6 +84,58 @@ export const IOSTabBar: React.FC = () => {
     const el = document.getElementById(`tab-btn-${currentScreen}`);
     el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [currentScreen]);
+
+  /**
+   * Que la barra se pueda mover con el ratón, no solo con el dedo.
+   *
+   * En un PC con la ventana estrecha sale la barra de móvil, y ahí el ratón
+   * no tiene forma de llegar a los iconos de la derecha: la rueda desplaza
+   * la PÁGINA en vertical, no la barra en horizontal, y sin dedo no hay
+   * arrastre. Quedaban escondidos la mitad de los botones.
+   *
+   * Dos gestos, los dos sobre el mismo contenedor:
+   *   · la rueda mueve la barra en horizontal;
+   *   · se puede arrastrar con el botón izquierdo.
+   */
+  const barraRef = useRef<HTMLDivElement>(null);
+  const arrastre = useRef({ activo: false, desdeX: 0, desdeScroll: 0, movido: 0 });
+
+  const alRodar = (e: React.WheelEvent) => {
+    const el = barraRef.current;
+    if (!el) return;
+    // Un ratón normal solo manda deltaY; un trackpad manda los dos.
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (!delta) return;
+    const antes = el.scrollLeft;
+    el.scrollLeft += delta;
+    // Solo se traga el evento si de verdad movió algo: en los extremos, que
+    // siga desplazando la página como espera cualquiera.
+    if (el.scrollLeft !== antes) e.preventDefault();
+  };
+
+  const alBajarPuntero = (e: React.PointerEvent) => {
+    // Solo ratón: con el dedo ya funciona el desplazamiento nativo, y
+    // capturarlo aquí lo estropearía.
+    if (e.pointerType !== 'mouse' || !barraRef.current) return;
+    arrastre.current = {
+      activo: true, desdeX: e.clientX,
+      desdeScroll: barraRef.current.scrollLeft, movido: 0,
+    };
+  };
+
+  const alMoverPuntero = (e: React.PointerEvent) => {
+    const el = barraRef.current;
+    if (!arrastre.current.activo || !el) return;
+    const avance = e.clientX - arrastre.current.desdeX;
+    arrastre.current.movido = Math.max(arrastre.current.movido, Math.abs(avance));
+    el.scrollLeft = arrastre.current.desdeScroll - avance;
+  };
+
+  const alSoltarPuntero = () => { arrastre.current.activo = false; };
+
+  /* Arrastrar no debe abrir la pantalla sobre la que se soltó el botón: si
+     el puntero recorrió más de unos píxeles, el clic era un arrastre. */
+  const fueArrastre = () => arrastre.current.movido > 6;
 
   const ytTrack = ytQueue[ytIndex];
   const ytActive = !!ytTrack;
@@ -327,6 +379,12 @@ export const IOSTabBar: React.FC = () => {
         {/* Tab bar */}
         <div
           id="ios-bottom-tab-bar"
+          ref={barraRef}
+          onWheel={alRodar}
+          onPointerDown={alBajarPuntero}
+          onPointerMove={alMoverPuntero}
+          onPointerUp={alSoltarPuntero}
+          onPointerLeave={alSoltarPuntero}
           className="w-full pt-1.5 pb-safe-tab glass-nav border-t border-slate-200/70 dark:border-neutral-800/80 overflow-x-auto hide-scrollbar overscroll-x-contain"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
@@ -341,7 +399,7 @@ export const IOSTabBar: React.FC = () => {
                 <button
                   key={tab.id}
                   id={`tab-btn-${tab.id}`}
-                  onClick={() => navigateTo(tab.id)}
+                  onClick={() => { if (!fueArrastre()) navigateTo(tab.id); }}
                   className="relative flex flex-col items-center justify-center shrink-0 w-[72px] min-h-[44px] rounded-xl py-1 group ios-touch cursor-pointer active:bg-slate-100 dark:active:bg-neutral-800/60 transition-colors"
                 >
                   {isActive && (

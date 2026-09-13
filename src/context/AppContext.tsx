@@ -11,6 +11,7 @@ import { alRecibir } from '../services/socket';
 import {
   estadoMusica, soyElAnfitrion, ordenar, cuandoSepamos, useMusicaSala,
 } from '../services/musica';
+import { encenderMandoSistema } from '../utils/mandoSistema';
 import { useAuth } from './AuthContext';
 
 /** Moneda del salón. La base tiene rateToBase = 1 y es en la que vive la caja. */
@@ -676,6 +677,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     load();
   }, [isAuthenticated]);
 
+  /**
+   * Los parámetros del salón vienen del servidor, no de los valores de
+   * fábrica.
+   *
+   * Hasta ahora Ajustes arrancaba con la plantilla de ejemplo y su botón de
+   * guardar solo escribía en memoria: al recargar volvía todo atrás. Un
+   * botón que dice "Guardar" y no guarda es peor que uno que falla, porque
+   * nadie lo descubre hasta que confía en él.
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api.get<any>('/salon/sede')
+      .then(d => setSettings(s => {
+        const limpio: any = {};
+        // Lo que el servidor no sepa —o venga en null— conserva lo que ya
+        // había: así un campo que aún no existe en la base no borra el valor
+        // que la pantalla estaba enseñando.
+        for (const [k, v] of Object.entries(d ?? {})) {
+          if (v !== null && v !== undefined && k in s) limpio[k] = v;
+        }
+        return { ...s, ...limpio };
+      }))
+      .catch(() => { /* sin conexión se sigue con lo que hay */ });
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     setIsLoadingMetrics(true);
@@ -885,8 +911,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, [field]: text } : x));
   }, []);
 
+  /**
+   * Guarda los parámetros del salón.
+   *
+   * Se pinta primero y se manda después: el formulario tiene que responder
+   * al instante. Si el servidor lo rechaza se revierte — dejarlo pintado
+   * como guardado cuando no lo está es exactamente el fallo que esto viene
+   * a arreglar.
+   */
   const updateSettings = useCallback((newSettings: Partial<SalonBusinessSettings>) => {
-    setSettings(s => ({ ...s, ...newSettings }));
+    let anteriores: SalonBusinessSettings | null = null;
+    setSettings(s => { anteriores = s; return { ...s, ...newSettings }; });
+
+    api.patch<any>('/salon/sede', newSettings).catch((e: any) => {
+      if (anteriores) setSettings(anteriores);
+      showToast(
+        'No se pudo guardar',
+        e?.message ?? 'Revisa la conexión e inténtalo de nuevo.',
+        'warning',
+      );
+    });
   }, []);
 
   const addSystemLog = useCallback((log: Omit<SystemLog, 'id' | 'timestamp'>) => {
@@ -1168,7 +1212,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * en el televisor. `cuandoSepamos` retiene la acción hasta que la respuesta
    * llega —un parpadeo— y entonces la manda adonde toca.
    */
-  const conMando = (accion: () => void) => cuandoSepamos(accion);
+  const conMando = (accion: () => void) => {
+    /* Cualquier botón del reproductor vale como el gesto que hace falta para
+       publicar los controles en la pantalla de bloqueo del teléfono. Antes
+       ese gesto solo lo daban los botones del mando, que ya no existen: el
+       reproductor grande es ahora el único mando. */
+    if (mandoRemoto()) { try { encenderMandoSistema(); } catch { /* noop */ } }
+    cuandoSepamos(accion);
+  };
 
   /**
    * Seguir a la canción que suena en el salón.

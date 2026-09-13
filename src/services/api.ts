@@ -13,6 +13,28 @@ export const tokenStore = {
   clear: () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); },
 };
 
+/**
+ * Renovar la sesión sin molestar a nadie.
+ *
+ * Se exporta porque el socket también la necesita: cuando el servidor le
+ * rechaza la conexión por token caducado, renueva y vuelve a entrar. Si no,
+ * el tiempo real se quedaba muerto aunque la parte HTTP siguiera viva.
+ *
+ * Las llamadas simultáneas comparten UNA sola petición: al volver el
+ * teléfono de la pantalla de bloqueo se disparan cinco peticiones a la vez,
+ * las cinco dan 401, y sin esto se pedirían cinco refrescos — y como el
+ * servidor ROTA el token en cada refresco, cuatro de ellos invalidarían al
+ * quinto y la sesión se caería justo al intentar salvarla.
+ */
+let refrescoEnCurso: Promise<string | null> | null = null;
+
+export function refrescarSesion(): Promise<string | null> {
+  if (!refrescoEnCurso) {
+    refrescoEnCurso = refreshAccessToken().finally(() => { refrescoEnCurso = null; });
+  }
+  return refrescoEnCurso;
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = tokenStore.getRefresh();
   if (!refreshToken) return null;
@@ -48,7 +70,7 @@ export async function apiFetch<T = unknown>(
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
   if (res.status === 401 && retry) {
-    const newToken = await refreshAccessToken();
+    const newToken = await refrescarSesion();
     if (newToken) return apiFetch<T>(path, options, false);
     tokenStore.clear();
     window.dispatchEvent(new Event('lalan:logout'));

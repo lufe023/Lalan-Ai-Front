@@ -28,6 +28,7 @@ import {
   Disc3,
   Youtube,
   Maximize2,
+  Minimize2,
   BookmarkPlus,
   X,
   Pencil,
@@ -47,6 +48,7 @@ import { api, apiFetch } from '../services/api';
 import { LoungeTrack } from '../types';
 import { MUSIC_VIBES, POPULAR_BEVERAGES, POPULAR_SNACKS } from '../data/mockData';
 import { MandoSala } from '../components/ui/MandoSala';
+import { useMusicaSala, ordenar } from '../services/musica';
 import { PageContent } from '../components/ui/PageContent';
 import { PosPanel } from '../components/pos/PosPanel';
 
@@ -141,6 +143,18 @@ export const LoungePlayerScreen: React.FC = () => {
     ytTime, ytDuration, setYtQueue, ytPlayIndex, ytToggle, ytNext, ytPrev,
     ytSeek, ytSetVolume, ytToggleMute, toggleYtShuffle, cycleYtRepeat,
   } = useApp();
+
+  /**
+   * ¿La música suena en la pantalla del salón?
+   *
+   * Si suena allí, este reproductor no reproduce nada: está pausado y mudo.
+   * Enseñar aquí su vídeo sería enseñar un vídeo congelado que no es el que
+   * la clienta está viendo — dos reproductores a la vista y uno de ellos
+   * mintiendo. Con la pantalla puesta, aquí solo va la portada; el vídeo se
+   * pide desde el mando, que es quien puede ponerlo en la pared.
+   */
+  const musicaSala = useMusicaSala();
+  const sonandoEnPantalla = musicaSala.hayAnfitrion && !musicaSala.soyAnfitrion;
 
   const [activeTab, setActiveTab] = useState<'player' | 'hospitality' | 'explore'>('player');
   const [progressSec, setProgressSec] = useState<number>(34);
@@ -766,6 +780,182 @@ export const LoungePlayerScreen: React.FC = () => {
         toggleRepeat: () => setIsRepeat(r => !r),
       };
 
+  /**
+   * Cuando suena en la pared, lo que se pinta viene DE LA PARED.
+   *
+   * Antes esta pantalla se pintaba con su propia cola local, que al entrar
+   * está en la primera canción y en pausa: durante el instante que tarda en
+   * llegar el estado del salón se veía la canción equivocada, parada. No es
+   * un parpadeo feo, es información falsa sobre lo que están oyendo las
+   * clientas — y quien lo mira empieza a tocar botones para "arreglarlo".
+   *
+   * El título, el artista, la portada, el segundero y el play/pausa salen
+   * del salón; los botones siguen siendo los mismos, porque ya viajan por el
+   * socket. Los modos que son de este aparato —aleatorio, repetición— se
+   * dejan como están.
+   */
+  const pistaSalon = musicaSala.sala.pista;
+  const vista = sonandoEnPantalla
+    ? {
+        ...view,
+        title: pistaSalon?.titulo ?? view.title,
+        artist: pistaSalon?.artista ?? view.artist,
+        cover: pistaSalon?.portada ?? view.cover,
+        duration: Math.round(musicaSala.sala.duracion || view.duration),
+        time: Math.round(musicaSala.sala.posicion || 0),
+        playing: musicaSala.sala.sonando,
+        volume: musicaSala.sala.volumen,
+      }
+    : view;
+
+  /**
+   * Todavía no sabemos qué suena en el salón.
+   *
+   * Dos casos distintos con la misma cara: no ha llegado el primer estado, o
+   * ha llegado y dice que hay altavoz pero aún sin canción. En los dos, lo
+   * honesto es decir que se está mirando, no enseñar algo que puede ser
+   * mentira.
+   */
+  const alineando = musicaSala.sincronizando
+    || (sonandoEnPantalla && !pistaSalon);
+
+  /**
+   * El volumen tiene que moverse con el dedo, no con el televisor.
+   *
+   * Mandar la orden y esperar a que la pared conteste hace que la barra se
+   * quede clavada dos décimas: el usuario arrastra, no pasa nada, y la
+   * aplicación se siente rota. Se pinta aquí al instante y la orden viaja
+   * por detrás.
+   *
+   * Pero el optimismo CADUCA: en cuanto la pared confirma —o pasan dos
+   * segundos sin confirmar— se suelta y vuelve a mandar el valor real. Si la
+   * orden se perdió, la barra tiene que volver a donde está de verdad el
+   * volumen, no quedarse mintiendo donde la dejó el dedo.
+   */
+  const [volumenOptimista, setVolumenOptimista] = useState<number | null>(null);
+  const relojVolumen = useRef(0);
+  const ultimoEnvioVol = useRef(0);
+  const envioPendienteVol = useRef(0);
+
+  useEffect(() => {
+    if (volumenOptimista !== null
+        && Math.abs(musicaSala.sala.volumen - volumenOptimista) <= 2) {
+      setVolumenOptimista(null);
+    }
+  }, [musicaSala.sala.volumen]);
+
+  useEffect(() => () => {
+    window.clearTimeout(relojVolumen.current);
+    window.clearTimeout(envioPendienteVol.current);
+  }, []);
+
+  /* Arrastrar dispara decenas de cambios por segundo: se pintan todos, pero
+     al socket sale uno cada 120 ms MÁS SIEMPRE EL ÚLTIMO. Sin ese último, al
+     soltar el dedo el salón se quedaría en el volumen de hace un instante. */
+  const ponerVolumen = (v: number) => {
+    if (!sonandoEnPantalla) { vista.setVolume(v); return; }
+
+    setVolumenOptimista(v);
+    window.clearTimeout(relojVolumen.current);
+    relojVolumen.current = window.setTimeout(() => setVolumenOptimista(null), 2000);
+
+    const ahora = Date.now();
+    window.clearTimeout(envioPendienteVol.current);
+    if (ahora - ultimoEnvioVol.current >= 120) {
+      ultimoEnvioVol.current = ahora;
+      ordenar('volumen', v);
+    } else {
+      envioPendienteVol.current = window.setTimeout(() => {
+        ultimoEnvioVol.current = Date.now();
+        ordenar('volumen', v);
+      }, 120);
+    }
+  };
+
+  const volumenAPintar = volumenOptimista ?? vista.volume;
+
+  /**
+   * La canción también tiene que cambiar con el dedo.
+   *
+   * Al pulsar "siguiente" o tocar una de la lista, la orden va al salón y el
+   * salón contesta un instante después. Durante ese instante la portada y el
+   * título seguían siendo los de la canción anterior: parecía que el botón no
+   * había hecho nada, y la reacción normal es volver a pulsarlo.
+   *
+   * Se pinta ya la canción que se pidió —sacada de la cola local, que es la
+   * misma que tiene la pared— y cuando el salón confirma se suelta. Si no
+   * confirma en cuatro segundos también se suelta: el sonido de verdad manda
+   * sobre lo que creemos haber pedido, y si la orden se perdió es mejor
+   * volver a la verdad que quedarse enseñando una canción que no suena.
+   */
+  const [videoOptimista, setVideoOptimista] = useState<string | null>(null);
+  const relojVideo = useRef(0);
+
+  useEffect(() => {
+    if (videoOptimista && pistaSalon?.videoId === videoOptimista) {
+      setVideoOptimista(null);
+    }
+  }, [pistaSalon?.videoId]);
+
+  useEffect(() => () => window.clearTimeout(relojVideo.current), []);
+
+  const pedirCancion = (videoId?: string | null) => {
+    if (!sonandoEnPantalla || !videoId) return;
+    setVideoOptimista(videoId);
+    window.clearTimeout(relojVideo.current);
+    relojVideo.current = window.setTimeout(() => setVideoOptimista(null), 4000);
+  };
+
+  /* La cola de la pared lleva el mismo orden que ésta —se la empuja este
+     mismo aparato—, así que el siguiente de aquí es el siguiente de allá. */
+  const aLaVuelta = (paso: number) => {
+    const n = ytQueue.length;
+    if (!n) return null;
+    return ytQueue[((ytIndex + paso) % n + n) % n]?.videoId ?? null;
+  };
+
+  const siguiente = () => { pedirCancion(aLaVuelta(1)); vista.next(); };
+  const anterior = () => { pedirCancion(aLaVuelta(-1)); vista.prev(); };
+  const irAPista = (i: number) => { pedirCancion(ytQueue[i]?.videoId); ytPlayIndex(i); };
+
+  /** Play/pausa, con la misma cortesía: el icono cambia al tocarlo */
+  const [sonandoOptimista, setSonandoOptimista] = useState<boolean | null>(null);
+  const relojSonando = useRef(0);
+
+  useEffect(() => {
+    if (sonandoOptimista !== null && musicaSala.sala.sonando === sonandoOptimista) {
+      setSonandoOptimista(null);
+    }
+  }, [musicaSala.sala.sonando]);
+
+  useEffect(() => () => window.clearTimeout(relojSonando.current), []);
+
+  const alternarSonido = () => {
+    if (sonandoEnPantalla) {
+      const queremos = !(sonandoOptimista ?? vista.playing);
+      setSonandoOptimista(queremos);
+      window.clearTimeout(relojSonando.current);
+      relojSonando.current = window.setTimeout(() => setSonandoOptimista(null), 3000);
+    }
+    vista.toggle();
+  };
+
+  /* Lo que de verdad se pinta: la intención si la hay, y si no, el salón. */
+  const pistaOptimista = videoOptimista
+    ? ytQueue.find((t: any) => t.videoId === videoOptimista)
+    : null;
+
+  const enPantalla = {
+    ...vista,
+    title: pistaOptimista?.title ?? vista.title,
+    artist: pistaOptimista?.channel ?? vista.artist,
+    cover: (pistaOptimista as any)?.thumbnail ?? vista.cover,
+    playing: sonandoOptimista ?? vista.playing,
+    // El segundero de la canción anterior no significa nada en la nueva
+    time: pistaOptimista ? 0 : vista.time,
+    duration: pistaOptimista?.durationSeconds ?? vista.duration,
+  };
+
   // Progress timer simulation
   useEffect(() => {
     let interval: number;
@@ -1152,16 +1342,16 @@ export const LoungePlayerScreen: React.FC = () => {
               <div className="relative my-2">
                 <motion.div
                   animate={{
-                    scale: view.playing ? [1, 1.015, 1] : 1,
+                    scale: enPantalla.playing ? [1, 1.015, 1] : 1,
                   }}
                   transition={{
-                    repeat: view.playing ? Infinity : 0,
+                    repeat: enPantalla.playing ? Infinity : 0,
                     duration: 3.5,
                     ease: 'easeInOut',
                   }}
                   className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-xl border border-slate-100 dark:border-neutral-800 relative group"
                 >
-                  {isYt && ytShowVideo ? (
+                  {isYt && ytShowVideo && !sonandoEnPantalla ? (
                     // El iframe no se monta aquí: este hueco 16:9 es solo el
                     // ancla donde <GlobalYouTubePlayer /> lo posiciona encima.
                     <div className="w-full h-full bg-black flex items-center justify-center">
@@ -1169,13 +1359,24 @@ export const LoungePlayerScreen: React.FC = () => {
                     </div>
                   ) : (
                     <img
-                      src={view.cover}
-                      alt={view.title}
+                      src={enPantalla.cover}
+                      alt={enPantalla.title}
                       className="w-full h-full object-cover"
                     />
                   )}
+                  {/* Mientras no sepamos qué suena en el salón, no se enseña
+                      una canción cualquiera: se dice que se está mirando. */}
+                  {alineando && (
+                    <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-center px-4">
+                      <span className="w-6 h-6 rounded-full border-2 border-white/20 border-t-white/80 animate-spin" />
+                      <span className="text-[11px] font-semibold text-white/80">
+                        Sincronizando con el salón…
+                      </span>
+                    </div>
+                  )}
+
                   {/* Visualizer overlay */}
-                  {view.playing && !(isYt && ytShowVideo) && (
+                  {enPantalla.playing && !(isYt && ytShowVideo && !sonandoEnPantalla) && (
                     <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md flex items-end gap-1 h-5">
                       <motion.div
                         animate={{ height: ['30%', '90%', '40%'] }}
@@ -1198,7 +1399,14 @@ export const LoungePlayerScreen: React.FC = () => {
 
                 {/* Portada ⇄ Video. El iframe nunca se desmonta: en modo
                     portada baja al mini reproductor de la barra y sigue sonando. */}
-                {isYt && (
+                {isYt && sonandoEnPantalla && (
+                  <div className="mt-2.5 text-center text-[10px] text-slate-400 dark:text-neutral-500">
+                    El vídeo está en la pantalla del salón — ponlo en grande
+                    desde el mando de arriba
+                  </div>
+                )}
+
+                {isYt && !sonandoEnPantalla && (
                   // `relative` + `w-fit mx-auto`: el par Portada/Video queda
                   // siempre centrado y el botón de pantalla completa cuelga
                   // por fuera, así aparecer o desaparecer no descentra nada.
@@ -1258,20 +1466,20 @@ export const LoungePlayerScreen: React.FC = () => {
               <div className="mt-4 w-full px-2">
                 <div className="flex items-center justify-center gap-2">
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-                    {view.title}
+                    {alineando ? 'Sincronizando con el salón…' : enPantalla.title}
                   </h2>
                 </div>
                 <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 mt-0.5 truncate">
-                  {view.artist}
+                  {enPantalla.artist}
                 </p>
 
                 {/* Source badge */}
                 <div className="mt-2 flex items-center justify-center gap-2">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300">
-                    {view.sourceLabel}
+                    {enPantalla.sourceLabel}
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10">
-                    {view.vibe}
+                    {enPantalla.vibe}
                   </span>
                   {isYt && (
                     <span className="text-[10px] font-semibold text-slate-400">
@@ -1287,24 +1495,24 @@ export const LoungePlayerScreen: React.FC = () => {
                   <input
                     type="range"
                     min={0}
-                    max={Math.max(1, view.duration)}
-                    value={Math.min(view.time, Math.max(1, view.duration))}
-                    onChange={e => view.seek(Number(e.target.value))}
+                    max={Math.max(1, enPantalla.duration)}
+                    value={Math.min(enPantalla.time, Math.max(1, enPantalla.duration))}
+                    onChange={e => enPantalla.seek(Number(e.target.value))}
                     className="w-full h-1.5 bg-slate-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[var(--primary)]"
                   />
                 </div>
                 <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 dark:text-neutral-500 mt-1.5 px-0.5">
-                  <span>{formatTime(view.time)}</span>
-                  <span>-{formatTime(Math.max(0, view.duration - view.time))}</span>
+                  <span>{formatTime(enPantalla.time)}</span>
+                  <span>-{formatTime(Math.max(0, enPantalla.duration - enPantalla.time))}</span>
                 </div>
               </div>
 
               {/* iOS Playback Controls */}
               <div className="w-full flex items-center justify-between max-w-xs mt-3 px-2">
                 <button
-                  onClick={view.toggleShuffle}
+                  onClick={enPantalla.toggleShuffle}
                   className={`p-2 rounded-full transition cursor-pointer ${
-                    view.shuffle ? 'text-[var(--primary)]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300'
+                    enPantalla.shuffle ? 'text-[var(--primary)]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300'
                   }`}
                   title="Aleatorio"
                 >
@@ -1312,7 +1520,7 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={view.prev}
+                  onClick={anterior}
                   className="p-2.5 rounded-full text-slate-700 dark:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800 transition ios-touch cursor-pointer"
                   title="Anterior"
                 >
@@ -1320,11 +1528,11 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={view.toggle}
+                  onClick={alternarSonido}
                   className="w-14 h-14 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition ios-touch cursor-pointer"
-                  title={view.playing ? 'Pausar' : 'Reproducir'}
+                  title={enPantalla.playing ? 'Pausar' : 'Reproducir'}
                 >
-                  {view.playing ? (
+                  {enPantalla.playing ? (
                     <Pause className="w-7 h-7 fill-current" />
                   ) : (
                     <Play className="w-7 h-7 fill-current ml-0.5" />
@@ -1332,7 +1540,7 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={view.next}
+                  onClick={siguiente}
                   className="p-2.5 rounded-full text-slate-700 dark:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800 transition ios-touch cursor-pointer"
                   title="Siguiente"
                 >
@@ -1340,33 +1548,78 @@ export const LoungePlayerScreen: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={view.toggleRepeat}
+                  onClick={enPantalla.toggleRepeat}
                   className={`p-2 rounded-full transition cursor-pointer ${
-                    view.repeatMode !== 'off'
+                    enPantalla.repeatMode !== 'off'
                       ? 'text-[var(--primary)]'
                       : 'text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300'
                   }`}
                   title={
-                    view.repeatMode === 'one'
+                    enPantalla.repeatMode === 'one'
                       ? 'Repetir solo esta canción'
-                      : view.repeatMode === 'all'
+                      : enPantalla.repeatMode === 'all'
                       ? 'Repetir toda la lista'
                       : 'Sin repetición'
                   }
                 >
-                  {view.repeatMode === 'one'
+                  {enPantalla.repeatMode === 'one'
                     ? <Repeat1 className="w-4 h-4" />
                     : <Repeat className="w-4 h-4" />}
                 </button>
               </div>
 
+              {/* ── Cómo se ve en la pared ───────────────────────────
+                  Van aquí, pegados al transporte, y no en otra tarjeta: quien
+                  acaba de elegir la canción y ajustar el volumen es el mismo
+                  que quiere ponerla en grande. Mandarlo a buscar el botón a
+                  otro sitio es pedirle que recuerde dónde estaba. */}
+              {sonandoEnPantalla && (
+                <div className="w-full max-w-xs flex items-center justify-center gap-1.5 mt-3 px-3">
+                  <button
+                    onClick={() => ordenar('video', true)}
+                    className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer flex items-center justify-center gap-1"
+                    title="Poner el vídeo en grande en la pantalla del salón"
+                  >
+                    <Maximize2 className="w-3 h-3" /> Vídeo
+                  </button>
+                  <button
+                    onClick={() => ordenar('video', false)}
+                    className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer flex items-center justify-center gap-1"
+                    title="Quitar el vídeo y volver a los turnos"
+                  >
+                    <Minimize2 className="w-3 h-3" /> Turnos
+                  </button>
+                  {/* Se enciende según lo que el televisor DICE que pasó, no
+                      según lo que se pidió: la pantalla completa se solicita
+                      y el navegador puede negarla. */}
+                  <button
+                    onClick={() => ordenar('pantalla', true)}
+                    className={`px-2.5 py-1.5 rounded-lg text-[12px] font-bold transition cursor-pointer ${
+                      musicaSala.sala.completa
+                        ? 'bg-[var(--primary)] text-white'
+                        : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
+                    }`}
+                    title="Pantalla completa del navegador en el televisor"
+                  >
+                    ⛶
+                  </button>
+                  <button
+                    onClick={() => ordenar('pantalla', false)}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[12px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+                    title="Salir de la pantalla completa del navegador"
+                  >
+                    ⤢
+                  </button>
+                </div>
+              )}
+
               {/* Volume Slider */}
               <div className="w-full max-w-xs flex items-center gap-2.5 mt-4 px-3">
                 <button
-                  onClick={view.toggleMute}
+                  onClick={enPantalla.toggleMute}
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300 cursor-pointer"
                 >
-                  {view.muted || view.volume === 0 ? (
+                  {enPantalla.muted || volumenAPintar === 0 ? (
                     <VolumeX className="w-4 h-4" />
                   ) : (
                     <Volume2 className="w-4 h-4" />
@@ -1376,8 +1629,8 @@ export const LoungePlayerScreen: React.FC = () => {
                   type="range"
                   min={0}
                   max={100}
-                  value={view.muted ? 0 : view.volume}
-                  onChange={e => view.setVolume(Number(e.target.value))}
+                  value={enPantalla.muted ? 0 : volumenAPintar}
+                  onChange={e => ponerVolumen(Number(e.target.value))}
                   className="w-full h-1 bg-slate-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[var(--primary)]"
                 />
               </div>
@@ -1521,7 +1774,7 @@ export const LoungePlayerScreen: React.FC = () => {
                             ? { duration: 0 }
                             : { type: 'spring', stiffness: 480, damping: 38, mass: 0.7, opacity: { duration: 0.18 } }
                         }
-                        onClick={() => pickMode ? togglePicked(t.videoId) : ytPlayIndex(qi)}
+                        onClick={() => pickMode ? togglePicked(t.videoId) : irAPista(qi)}
                         className={`py-2.5 px-2 rounded-xl flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-neutral-800/80 last:border-b-0 ${
                           pickMode && picked.includes(t.videoId)
                             ? 'bg-[var(--primary)]/10'
@@ -1570,7 +1823,7 @@ export const LoungePlayerScreen: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {isCurrent && view.playing && (
+                          {isCurrent && enPantalla.playing && (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold">
                               Sonando
                             </span>

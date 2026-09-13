@@ -85,6 +85,19 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean } = {}) {
   const moverRef = useRef(mover);
   moverRef.current = mover;
 
+  /**
+   * Freno para una cola entera de vídeos que no se pueden reproducir.
+   *
+   * Cuando YouTube rechaza uno, saltamos al siguiente. Si TODOS están
+   * bloqueados —pasa con las listas llenas de vídeos de sello discográfico—,
+   * ese salto se vuelve un bucle a toda velocidad: la pared parpadeando y la
+   * cuota de la API ardiendo, sin que suene nada. Tras dar una vuelta
+   * completa sin conseguir reproducir, se para y se queda quieto.
+   */
+  const fallosRef = useRef(0);
+  const largoRef = useRef(0);
+  largoRef.current = cola.length;
+
   // ── Obedecer a los mandos ───────────────────────────────────────────
   const aplicar = useRef<(o: any) => void>(() => {});
   aplicar.current = (orden: any) => {
@@ -185,11 +198,20 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean } = {}) {
         },
         onStateChange: (e: any) => {
           if (e.data === YT.PlayerState.ENDED) { moverRef.current(1); return; }
-          // Los subtítulos vuelven con cada vídeo nuevo
-          if (e.data === YT.PlayerState.PLAYING) sinSubtitulos(e.target);
+          if (e.data === YT.PlayerState.PLAYING) {
+            // Sonó algo: la racha de fallos se acabó
+            fallosRef.current = 0;
+            // Los subtítulos vuelven con cada vídeo nuevo
+            sinSubtitulos(e.target);
+          }
         },
-        // Vídeo bloqueado o borrado: saltar en vez de quedarse trabado
-        onError: () => moverRef.current(1),
+        // Vídeo bloqueado o borrado: saltar en vez de quedarse trabado,
+        // pero solo mientras quede alguno por probar.
+        onError: () => {
+          fallosRef.current += 1;
+          if (fallosRef.current > Math.max(3, largoRef.current)) return;
+          moverRef.current(1);
+        },
       },
     });
   };
