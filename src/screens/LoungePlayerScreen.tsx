@@ -46,6 +46,7 @@ import { useApp } from '../context/AppContext';
 import { api, apiFetch } from '../services/api';
 import { LoungeTrack } from '../types';
 import { MUSIC_VIBES, POPULAR_BEVERAGES, POPULAR_SNACKS } from '../data/mockData';
+import { MandoSala } from '../components/ui/MandoSala';
 import { PageContent } from '../components/ui/PageContent';
 import { PosPanel } from '../components/pos/PosPanel';
 
@@ -917,6 +918,14 @@ export const LoungePlayerScreen: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Quién es el altavoz del salón. Va ARRIBA del selector de
+            pestañas a propósito: si la música suena en otro aparato, eso
+            cambia el significado de todos los botones de abajo y hay que
+            saberlo antes de tocarlos. */}
+        <div className="mt-3">
+          <MandoSala />
+        </div>
 
         {/* Apple-Style Segmented Control */}
         <div className="mt-3 p-0.5 rounded-xl bg-slate-200/60 dark:bg-neutral-900 border border-slate-300/40 dark:border-neutral-800 flex items-center">

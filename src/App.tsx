@@ -7,6 +7,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { IPhoneFrame } from './components/ui/IPhoneFrame';
 import { IOSTabBar } from './components/ui/IOSTabBar';
 import { GlobalYouTubePlayer } from './components/ui/GlobalYouTubePlayer';
+import { PuenteMusica } from './components/PuenteMusica';
 import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -23,6 +24,8 @@ import { CitasReportScreen } from './screens/CitasReportScreen';
 import { PriceListsScreen } from './screens/PriceListsScreen';
 import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
+import { ReproductorSala } from './screens/ReproductorSala';
+import { pantallaRecordada, esAplicacionInstalada } from './utils/pantallaRecordada';
 import { conectarComoUsuario, desconectar } from './services/socket';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -152,6 +155,11 @@ const MainAppContent: React.FC = () => {
 
             {/* ── Reproductor YouTube persistente (fuera del switch de pantallas) ── */}
             <GlobalYouTubePlayer />
+            {/* No pinta nada: conecta el reproductor de ESTE aparato con la
+                música de la sede. Va junto al player global porque los dos
+                tienen que vivir mientras la sesión viva, no mientras una
+                pantalla esté abierta. */}
+            <PuenteMusica />
           </div>
         )
       )}
@@ -175,12 +183,43 @@ function tokenDePantalla(): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * El reproductor del salón, con el mismo token público y la misma razón de
+ * ser: es un aparato que se queda encendido todo el día a la vista de
+ * cualquiera. Dejar ahí una sesión abierta es dejar abierta la agenda y la
+ * caja en un televisor que nadie supervisa.
+ */
+function tokenDeReproductor(): string | null {
+  const m = /^#\/reproductor\/([A-Za-z0-9_-]{8,})$/.exec(window.location.hash || '');
+  return m ? m[1] : null;
+}
+
 export default function App() {
   // Se lee una vez y se escucha el cambio de hash: si alguien pega la URL de
   // la pantalla en la misma pestaña, cambia sin recargar.
-  const [tokenPantalla, setTokenPantalla] = React.useState<string | null>(tokenDePantalla);
+  /**
+   * La aplicación instalada arranca sin la parte del `#`.
+   *
+   * El manifiesto tiene una sola dirección de arranque para todo el sistema
+   * y no puede llevar dentro el token de una sede, así que el televisor
+   * instalado abriría la pantalla de login. Si esta ventana es la aplicación
+   * instalada y este aparato ya había abierto una pantalla pública, se
+   * vuelve a ella y se corrige la dirección.
+   */
   React.useEffect(() => {
-    const alCambiar = () => setTokenPantalla(tokenDePantalla());
+    if (window.location.hash) return;
+    if (!esAplicacionInstalada()) return;
+    const r = pantallaRecordada();
+    if (r) window.location.hash = `#/${r.tipo}/${r.token}`;
+  }, []);
+
+  const [tokenPantalla, setTokenPantalla] = React.useState<string | null>(tokenDePantalla);
+  const [tokenReproductor, setTokenReproductor] = React.useState<string | null>(tokenDeReproductor);
+  React.useEffect(() => {
+    const alCambiar = () => {
+      setTokenPantalla(tokenDePantalla());
+      setTokenReproductor(tokenDeReproductor());
+    };
     window.addEventListener('hashchange', alCambiar);
     return () => window.removeEventListener('hashchange', alCambiar);
   }, []);
@@ -189,6 +228,14 @@ export default function App() {
     return (
       <ThemeProvider>
         <PantallaTurnos token={tokenPantalla} />
+      </ThemeProvider>
+    );
+  }
+
+  if (tokenReproductor) {
+    return (
+      <ThemeProvider>
+        <ReproductorSala token={tokenReproductor} />
       </ThemeProvider>
     );
   }

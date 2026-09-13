@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { useApp } from '../context/AppContext';
-import { api, urlDePantalla } from '../services/api';
+import { api, urlDePantalla, urlDeReproductor } from '../services/api';
 import QRCode from 'qrcode';
 import { vocesDisponibles, alCargarVoces, decir, fraseDeTurno } from '../utils/campana';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +38,7 @@ import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { IOSModal } from '../components/ui/IOSModal';
 import { ThemeCustomizerModal } from '../components/ui/ThemeCustomizerModal';
 import { PageContent } from '../components/ui/PageContent';
+import { EditorPizarra } from '../components/ui/EditorPizarra';
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -92,8 +93,13 @@ export const SettingsScreen: React.FC = () => {
   const [qrPantalla, setQrPantalla] = useState('');
   const [rotando, setRotando] = useState(false);
   const urlPantalla = tokenPantalla ? urlDePantalla(tokenPantalla) : '';
+  const urlReproductor = tokenPantalla ? urlDeReproductor(tokenPantalla) : '';
 
   const [modoAnuncio, setModoAnuncio] = useState('tono');
+  /** La pizarra pone también la música (para el salón de un solo televisor) */
+  const [pantallaSuena, setPantallaSuena] = useState(false);
+  /** Bajar la música mientras se anuncia un turno */
+  const [bajarAlLlamar, setBajarAlLlamar] = useState(true);
   const [vozPantalla, setVozPantalla] = useState('');
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>([]);
 
@@ -103,6 +109,8 @@ export const SettingsScreen: React.FC = () => {
         setTokenPantalla(r?.token ?? '');
         setModoAnuncio(r?.modo ?? 'tono');
         setVozPantalla(r?.voz ?? '');
+        setPantallaSuena(!!r?.suena);
+        setBajarAlLlamar(r?.bajar !== false);
       })
       .catch(() => setTokenPantalla(''));
   }, []);
@@ -124,6 +132,34 @@ export const SettingsScreen: React.FC = () => {
       // Se revierte: dejarlo pintado como guardado cuando no lo está es peor
       // que no haber cambiado nada.
       setModoAnuncio(antesModo); setVozPantalla(antesVoz);
+      showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+  };
+
+  /**
+   * Los dos interruptores de la pared. Se manda solo el que cambió: el
+   * servidor deja en paz lo que no venga en la petición, así que encender
+   * uno no puede apagar el otro sin querer.
+   */
+  const guardarInterruptor = async (campo: 'suena' | 'bajar', valor: boolean) => {
+    const poner = campo === 'suena' ? setPantallaSuena : setBajarAlLlamar;
+    const antes = campo === 'suena' ? pantallaSuena : bajarAlLlamar;
+    poner(valor);
+    try {
+      await api.patch('/salon/display/announce', {
+        modo: modoAnuncio, voz: vozPantalla || null, [campo]: valor,
+      });
+      if (campo === 'suena') {
+        showToast(
+          valor ? 'La pantalla pondrá la música' : 'La pantalla ya no pone música',
+          valor
+            ? 'Vuelve a abrir la pantalla en el televisor y toca "Activar sonido y música".'
+            : 'La música vuelve a salir del aparato que la esté poniendo.',
+          'info',
+        );
+      }
+    } catch (e: any) {
+      poner(antes);
       showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
     }
   };
@@ -910,7 +946,12 @@ export const SettingsScreen: React.FC = () => {
             ni precios, ni la agenda.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          {/* ── Composición de la pared ───────────────────────────
+              Va antes del enlace a propósito: primero se decide qué muestra
+              la pantalla, y solo después se cuelga en la pared. */}
+          <EditorPizarra />
+
+          <div className="pt-3 mt-1 border-t border-slate-100 dark:border-neutral-800 flex flex-col sm:flex-row gap-3">
             {/* El QR: apuntas con la tablet y listo, sin teclear un token
                 de treinta caracteres en un teclado en pantalla. */}
             <div className="shrink-0 self-center sm:self-start p-2 rounded-2xl bg-white border border-slate-200">
@@ -979,6 +1020,50 @@ export const SettingsScreen: React.FC = () => {
                 Si se pierde la tablet, cambia el enlace: el anterior deja de
                 servir en ese mismo instante.
               </p>
+
+              {/* ── El reproductor, en su propia ventana ───────────────
+                  Mismo token, otra pantalla. Va aquí y no en el Lounge
+                  porque el altavoz del salón es un aparato que se queda
+                  encendido todo el día a la vista de cualquiera: ahí no se
+                  deja una sesión abierta con la agenda y la caja dentro. */}
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-neutral-800">
+                <div className="text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+                  Reproductor del salón
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
+                  Abre esto en el aparato conectado a los altavoces. Suena ahí
+                  y se controla desde el Lounge de cualquier teléfono con
+                  permiso. No pide sesión y no enseña ningún dato.
+                </p>
+                <div className="mt-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[10px] font-mono text-slate-500 dark:text-neutral-400 break-all">
+                  {urlReproductor || 'Generando enlace…'}
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <button
+                    type="button"
+                    disabled={!urlReproductor}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(urlReproductor);
+                        showToast('Copiado', 'Pégalo en el navegador del aparato que va a sonar.', 'success');
+                      } catch {
+                        showToast('No se pudo copiar', 'Selecciónalo y cópialo a mano.', 'warning');
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 cursor-pointer"
+                  >
+                    Copiar enlace
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!urlReproductor}
+                    onClick={() => window.open(urlReproductor, '_blank', 'noopener')}
+                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40 cursor-pointer"
+                  >
+                    Abrir ahora
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1046,6 +1131,49 @@ export const SettingsScreen: React.FC = () => {
                 </p>
               </div>
             )}
+
+            {/* ── Los dos interruptores de la pared ──────────────────── */}
+            <div className="pt-2 space-y-2">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pantallaSuena}
+                  onChange={e => guardarInterruptor('suena', e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-[var(--primary)] cursor-pointer shrink-0"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+                    La pantalla también pone la música
+                  </span>
+                  {/* Este es el caso del salón con UN televisor: sin esto
+                      habría que elegir entre poner los turnos o poner la
+                      música, y ninguna de las dos es aceptable. */}
+                  <span className="block text-[10px] text-slate-400 leading-relaxed">
+                    Para el salón de un solo televisor. La pared se vuelve el altavoz:
+                    muestra la portada y el vídeo queda escondido detrás, con un botón
+                    para verlo en pantalla completa.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bajarAlLlamar}
+                  onChange={e => guardarInterruptor('bajar', e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-[var(--primary)] cursor-pointer shrink-0"
+                />
+                <span className="min-w-0">
+                  <span className="block text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+                    Bajar la música al llamar
+                  </span>
+                  <span className="block text-[10px] text-slate-400 leading-relaxed">
+                    La música baja unos segundos mientras se anuncia el turno y
+                    vuelve sola. Si tu música ya está baja, esto sobra.
+                  </span>
+                </span>
+              </label>
+            </div>
           </div>
         </div>
 

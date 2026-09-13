@@ -96,6 +96,14 @@ export async function publicFetch<T = unknown>(path: string): Promise<T> {
 export const urlDePantalla = (token: string) =>
   `${window.location.origin}${window.location.pathname}#/pantalla/${token}`;
 
+/**
+ * El reproductor del salón. Mismo token público que la pared, otra ventana.
+ * Va aparte porque es un aparato que se queda encendido a la vista de todos:
+ * ahí no se deja una sesión abierta con la agenda y la caja dentro.
+ */
+export const urlDeReproductor = (token: string) =>
+  `${window.location.origin}${window.location.pathname}#/reproductor/${token}`;
+
 export const api = {
   get:    <T>(path: string) => apiFetch<T>(path, { method: 'GET' }),
   post:   <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body) }),

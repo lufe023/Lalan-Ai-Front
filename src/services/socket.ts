@@ -45,7 +45,17 @@ function reenviar(evento: string, carga: any) {
   });
 }
 
-const EVENTOS = ['sala:cambio', 'turno:llamado', 'ventas:cambio'];
+/**
+ * `musica:cambio` y `musica:orden` son la excepción a lo de arriba: sí traen
+ * datos. Qué suena no está en la base de datos —cambia cada segundo y no
+ * significa nada mañana—, así que no hay endpoint al que ir a pedirlo. Y no
+ * hace falta filtrar nada: es un título, una portada y un segundero, lo mismo
+ * que ya se ve escrito en la pared.
+ */
+const EVENTOS = [
+  'sala:cambio', 'turno:llamado', 'ventas:cambio',
+  'musica:cambio', 'musica:orden', 'musica:permiso',
+];
 
 function conectar(auth: Record<string, any>, modo: string) {
   if (socket && modoActual === modo) return socket;
@@ -64,7 +74,13 @@ function conectar(auth: Record<string, any>, modo: string) {
 
   for (const ev of EVENTOS) socket.on(ev, (carga: any) => reenviar(ev, carga));
   // Al reconectar puede haber pasado de todo mientras no estábamos
-  socket.on('connect', () => reenviar('sala:cambio', { motivo: 'reconectado' }));
+  socket.on('connect', () => {
+    reenviar('sala:cambio', { motivo: 'reconectado' });
+    reenviar('socket:conectado', { en: new Date().toISOString() });
+  });
+  /* Perder el enlace importa tanto como recuperarlo: mientras no lo haya,
+     lo que esta pantalla cree saber del salón puede ser mentira. */
+  socket.on('disconnect', () => reenviar('socket:desconectado', {}));
   return socket;
 }
 
@@ -94,3 +110,29 @@ export function alRecibir(evento: string, fn: Escucha): () => void {
 }
 
 export const estaConectado = () => !!socket?.connected;
+
+/** Quiénes somos para el servidor. Cambia en cada reconexión. */
+export const idSocket = () => socket?.id ?? null;
+
+/**
+ * Emitir hacia el servidor. Solo lo usa la música: el resto del sistema
+ * escucha señales y pide por HTTP.
+ *
+ * Si no hay socket no pasa nada y no se lanza error a propósito — quien
+ * pulsa "siguiente" sin conexión no necesita un diálogo rojo, necesita que
+ * el botón no haga nada y que el estado de "sin enlace" ya visible se lo
+ * explique.
+ */
+export function mandar(evento: string, carga?: any) {
+  try { socket?.emit(evento, carga ?? {}); } catch { /* noop */ }
+}
+
+/** Se dispara en cada (re)conexión: sirve para volver a pedir estado */
+export function alConectar(fn: () => void): () => void {
+  return alRecibir('socket:conectado', fn);
+}
+
+/** Se cayó el enlace. Lo que sepamos del salón deja de ser fiable. */
+export function alDesconectar(fn: () => void): () => void {
+  return alRecibir('socket:desconectado', fn);
+}

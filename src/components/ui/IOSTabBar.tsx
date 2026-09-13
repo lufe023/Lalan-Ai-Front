@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -73,6 +73,17 @@ export const IOSTabBar: React.FC = () => {
     { id: 'settings', label: 'Ajustes', icon: Sliders },
     { id: 'price-lists', label: 'Precios', icon: Tag },
   ];
+
+  /**
+   * La barra de móvil ahora scrollea en horizontal, así que la pestaña activa
+   * puede quedar fuera de vista al navegar desde otro sitio (un botón de la
+   * pantalla, un badge). La traemos al centro sola: si hay que buscarla
+   * arrastrando, el scroll deja de ser una ayuda y pasa a ser un estorbo.
+   */
+  useEffect(() => {
+    const el = document.getElementById(`tab-btn-${currentScreen}`);
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [currentScreen]);
 
   const ytTrack = ytQueue[ytIndex];
   const ytActive = !!ytTrack;
@@ -316,9 +327,13 @@ export const IOSTabBar: React.FC = () => {
         {/* Tab bar */}
         <div
           id="ios-bottom-tab-bar"
-          className="w-full px-2 pt-1.5 pb-safe-tab glass-nav border-t border-slate-200/70 dark:border-neutral-800/80"
+          className="w-full pt-1.5 pb-safe-tab glass-nav border-t border-slate-200/70 dark:border-neutral-800/80 overflow-x-auto hide-scrollbar overscroll-x-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <div className="flex items-center justify-between max-w-md mx-auto">
+          {/* `w-max` es lo que permite el scroll: sin él, flex reparte diez
+              iconos en el ancho del teléfono y quedan del tamaño de una uña.
+              Cada botón tiene ancho fijo y área táctil de 44px de alto. */}
+          <div className="flex items-center gap-1 w-max px-2">
             {tabs.map(tab => {
               const isActive = currentScreen === tab.id;
               const Icon = tab.icon;
@@ -327,7 +342,7 @@ export const IOSTabBar: React.FC = () => {
                   key={tab.id}
                   id={`tab-btn-${tab.id}`}
                   onClick={() => navigateTo(tab.id)}
-                  className="relative flex flex-col items-center justify-center flex-1 py-0.5 group ios-touch cursor-pointer"
+                  className="relative flex flex-col items-center justify-center shrink-0 w-[72px] min-h-[44px] rounded-xl py-1 group ios-touch cursor-pointer active:bg-slate-100 dark:active:bg-neutral-800/60 transition-colors"
                 >
                   {isActive && (
                     <motion.div
@@ -338,7 +353,7 @@ export const IOSTabBar: React.FC = () => {
                   )}
                   <div className="relative">
                     <Icon
-                      className={`w-4.5 h-4.5 transition-transform duration-200 ${
+                      className={`w-[22px] h-[22px] transition-transform duration-200 ${
                         isActive
                           ? 'text-[var(--primary)] scale-110 stroke-[2.4]'
                           : 'text-slate-500 dark:text-slate-400 stroke-[1.8] group-hover:text-slate-800 dark:group-hover:text-white'
@@ -356,7 +371,7 @@ export const IOSTabBar: React.FC = () => {
                     )}
                   </div>
                   <span
-                    className={`text-[9px] font-semibold mt-0.5 tracking-tight transition-colors ${
+                    className={`text-[10px] font-semibold mt-1 tracking-tight transition-colors ${
                       isActive
                         ? 'text-[var(--primary)] font-bold'
                         : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200'

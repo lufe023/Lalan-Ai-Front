@@ -9,6 +9,22 @@
     <meta property="og:description" content="Lalan AI - Live Assistant for Logistics, Appointments & Networks. Gestión inteligente de salón, agenda, hospitalidad y experiencia VIP." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!--
+      La pantalla de pared, instalada como aplicación.
+
+      Sirve para lo que el botón de pantalla completa no puede garantizar: los
+      navegadores solo conceden la pantalla completa a un toque hecho en ese
+      mismo aparato, nunca a una orden que llega por la red. Instalada
+      ("Instalar aplicación" / "Añadir a la pantalla de inicio"), la pared
+      abre SIN barra de direcciones, siempre, sin que nadie toque nada.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icono-192.png" />
+    <link rel="apple-touch-icon" href="/icono-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0a0a0a" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
@@ -16,6 +32,19 @@
   <body class="bg-neutral-900 antialiased select-none font-sans overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      /*
+        Chrome solo ofrece "Instalar aplicación" si hay un service worker
+        registrado que atienda peticiones. El nuestro no cachea nada: solo
+        existe para cumplir ese requisito. Si falla el registro no pasa nada
+        —la web sigue igual—, simplemente no aparece la opción de instalar.
+      */
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+    </script>
   </body>
 </html>
 

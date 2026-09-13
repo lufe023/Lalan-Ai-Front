@@ -8,6 +8,9 @@ import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
 import { api } from '../services/api';
 import { alRecibir } from '../services/socket';
+import {
+  estadoMusica, soyElAnfitrion, ordenar, cuandoSepamos, useMusicaSala,
+} from '../services/musica';
 import { useAuth } from './AuthContext';
 
 /** Moneda del salón. La base tiene rateToBase = 1 y es en la que vive la caja. */
@@ -1141,20 +1144,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setYtIndex(nextIndex);
   }, [shuffledOrder]);
 
-  const ytPlayIndex = useCallback((i: number) => setYtIndex(i), []);
+  /**
+   * ¿La música la está poniendo OTRO aparato?
+   *
+   * Si la respuesta es sí, los controles de esta pantalla dejan de tocar el
+   * reproductor local y pasan a mandarle la orden al que suena. Se decide
+   * aquí, en un solo sitio, y no en cada botón del Lounge: repartirlo por la
+   * pantalla garantizaba que alguno se quedara controlando el silencio de
+   * este aparato —que es justo lo que pasaba al tocar una canción de la
+   * lista: adelante y atrás viajaban, y el clic en la lista no—.
+   */
+  const mandoRemoto = () => {
+    const s = estadoMusica();
+    return !!s.anfitrion && !soyElAnfitrion();
+  };
+
+  /**
+   * Nada de música antes de saber si hay un televisor sonando.
+   *
+   * Al abrir la app tarda medio segundo en llegar la respuesta del servidor,
+   * y ese es justo el medio segundo en el que alguien pulsa play: sonaba en
+   * el teléfono y un instante después se callaba y la lista volvía a empezar
+   * en el televisor. `cuandoSepamos` retiene la acción hasta que la respuesta
+   * llega —un parpadeo— y entonces la manda adonde toca.
+   */
+  const conMando = (accion: () => void) => cuandoSepamos(accion);
+
+  /**
+   * Seguir a la canción que suena en el salón.
+   *
+   * Cuando el altavoz es otro aparato, ESTE reproductor está pausado y su
+   * índice se queda donde estaba: el reproductor grande, la lista y el mini
+   * reproductor seguían enseñando la primera canción mientras el televisor
+   * iba por la quinta. No es solo feo — es información falsa sobre lo que
+   * está oyendo la clienta.
+   *
+   * Se busca por videoId y no por índice: la cola del salón y la de este
+   * teléfono pueden estar barajadas distinto, y el identificador del vídeo
+   * es lo único que significa lo mismo en los dos sitios.
+   */
+  const musicaDelSalon = useMusicaSala();
+  const videoRemoto = musicaDelSalon.sala.pista?.videoId ?? null;
+  useEffect(() => {
+    if (!musicaDelSalon.hayAnfitrion || musicaDelSalon.soyAnfitrion) return;
+    if (!videoRemoto) return;
+    const i = ytQueue.findIndex((t: any) => t.videoId === videoRemoto);
+    if (i >= 0 && i !== ytIndexRef.current) setYtIndex(i);
+  }, [videoRemoto, musicaDelSalon.hayAnfitrion, musicaDelSalon.soyAnfitrion, ytQueue]);
+
+  const ytPlayIndex = useCallback((i: number) => {
+    conMando(() => {
+      if (mandoRemoto()) { ordenar('pista', i); return; }
+      setYtIndex(i);
+    });
+  }, []);
 
   const ytToggle = useCallback(() => {
-    const p = ytPlayerRef.current;
-    if (!p) return;
-    try {
-      if (ytPlaying) p.pauseVideo();
-      else p.playVideo();
-    } catch { /* el player aún no está listo */ }
+    conMando(() => {
+      if (mandoRemoto()) {
+        ordenar(estadoMusica().sonando ? 'pause' : 'play');
+        return;
+      }
+      const p = ytPlayerRef.current;
+      if (!p) return;
+      try {
+        if (ytPlaying) p.pauseVideo();
+        else p.playVideo();
+      } catch { /* el player aún no está listo */ }
+    });
   }, [ytPlaying]);
 
   /** Avanza siguiendo ytOrder. Al terminar la vuelta, si hay aleatorio,
    *  se baraja de nuevo para que la próxima pasada tenga otro orden. */
   const ytNext = useCallback(() => {
+    if (mandoRemoto()) { ordenar('next'); return; }
     const n = ytQueue.length;
     if (!n) return;
     const order = ytOrder.length === n ? ytOrder : Array.from({ length: n }, (_, i) => i);
@@ -1186,6 +1249,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [ytRepeatMode, ytNext]);
 
   const ytPrev = useCallback(() => {
+    if (mandoRemoto()) { ordenar('prev'); return; }
     const n = ytQueue.length;
     if (!n) return;
     // Igual que Spotify: si ya avanzó bastante, reinicia la canción
@@ -1202,11 +1266,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [ytQueue.length, ytOrder, ytIndex, ytRepeatMode]);
 
   const ytSeek = useCallback((sec: number) => {
+    if (mandoRemoto()) { ordenar('seek', sec); return; }
     try { ytPlayerRef.current?.seekTo(sec, true); } catch { /* noop */ }
     setYtTime(sec);
   }, []);
 
   const ytSetVolume = useCallback((v: number) => {
+    if (mandoRemoto()) { ordenar('volumen', v); return; }
     setYtVolumeState(v);
     try {
       ytPlayerRef.current?.setVolume(v);
