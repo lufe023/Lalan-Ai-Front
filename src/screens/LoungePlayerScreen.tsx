@@ -1339,7 +1339,7 @@ export const LoungePlayerScreen: React.FC = () => {
               <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[var(--primary)]/10 to-transparent pointer-events-none" />
 
               {/* Album Art with Floating Glow */}
-              <div className="relative my-2">
+              <div className="relative my-2 w-full flex flex-col items-center">
                 <motion.div
                   animate={{
                     scale: enPantalla.playing ? [1, 1.015, 1] : 1,
@@ -1349,7 +1349,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     duration: 3.5,
                     ease: 'easeInOut',
                   }}
-                  className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-xl border border-slate-100 dark:border-neutral-800 relative group"
+                  className="mx-auto w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-xl border border-slate-100 dark:border-neutral-800 relative group"
                 >
                   {isYt && ytShowVideo && !sonandoEnPantalla ? (
                     // El iframe no se monta aquí: este hueco 16:9 es solo el
@@ -1399,12 +1399,6 @@ export const LoungePlayerScreen: React.FC = () => {
 
                 {/* Portada ⇄ Video. El iframe nunca se desmonta: en modo
                     portada baja al mini reproductor de la barra y sigue sonando. */}
-                {isYt && sonandoEnPantalla && (
-                  <div className="mt-2.5 text-center text-[10px] text-slate-400 dark:text-neutral-500">
-                    El vídeo está en la pantalla del salón — ponlo en grande
-                    desde el mando de arriba
-                  </div>
-                )}
 
                 {isYt && !sonandoEnPantalla && (
                   // `relative` + `w-fit mx-auto`: el par Portada/Video queda
@@ -1699,7 +1693,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     <span
                       key={b.clientId}
                       title={b.preferences.length ? b.preferences.join(' · ') : 'Lista guardada'}
-                      className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/25 flex items-center gap-1"
+                      className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent)]/10 text-[var(--primary)] border border-[var(--primary)]/25 flex items-center gap-1"
                     >
                       <span>{b.kind === 'playlist' ? '⭐' : ''}</span>
                       {b.clientName.split(' ')[0]}
@@ -2254,7 +2248,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         <span
                           key={b.clientId}
                           title={b.preferences.length ? b.preferences.join(' · ') : 'Lista guardada'}
-                          className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/25"
+                          className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/25"
                         >
                           {b.clientName.split(' ')[0]} <span className="opacity-60">×{b.tracks.length}</span>
                         </span>

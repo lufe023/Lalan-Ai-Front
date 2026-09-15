@@ -25,6 +25,7 @@ import { PriceListsScreen } from './screens/PriceListsScreen';
 import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
 import { ReproductorSala } from './screens/ReproductorSala';
+import { PedirCancionScreen } from './screens/PedirCancionScreen';
 import { pantallaRecordada, esAplicacionInstalada } from './utils/pantallaRecordada';
 import { conectarComoUsuario, desconectar } from './services/socket';
 
@@ -194,6 +195,15 @@ function tokenDeReproductor(): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Enlace público para clientas: sugerir canciones para la cola del salón
+ * escaneando el QR en la pantalla de turnos.
+ */
+function tokenDePedirCancion(): string | null {
+  const m = /^#\/pedir-cancion\/([A-Za-z0-9_-]{8,})$/.exec(window.location.hash || '');
+  return m ? m[1] : null;
+}
+
 export default function App() {
   // Se lee una vez y se escucha el cambio de hash: si alguien pega la URL de
   // la pantalla en la misma pestaña, cambia sin recargar.
@@ -215,10 +225,13 @@ export default function App() {
 
   const [tokenPantalla, setTokenPantalla] = React.useState<string | null>(tokenDePantalla);
   const [tokenReproductor, setTokenReproductor] = React.useState<string | null>(tokenDeReproductor);
+  const [tokenPedirCancion, setTokenPedirCancion] = React.useState<string | null>(tokenDePedirCancion);
+
   React.useEffect(() => {
     const alCambiar = () => {
       setTokenPantalla(tokenDePantalla());
       setTokenReproductor(tokenDeReproductor());
+      setTokenPedirCancion(tokenDePedirCancion());
     };
     window.addEventListener('hashchange', alCambiar);
     return () => window.removeEventListener('hashchange', alCambiar);
@@ -236,6 +249,14 @@ export default function App() {
     return (
       <ThemeProvider>
         <ReproductorSala token={tokenReproductor} />
+      </ThemeProvider>
+    );
+  }
+
+  if (tokenPedirCancion) {
+    return (
+      <ThemeProvider>
+        <PedirCancionScreen token={tokenPedirCancion} />
       </ThemeProvider>
     );
   }

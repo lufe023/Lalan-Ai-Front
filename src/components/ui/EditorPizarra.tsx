@@ -55,7 +55,17 @@ export const EditorPizarra: React.FC = () => {
       return;
     }
     const id = `${tipo}-${Date.now().toString(36)}`;
-    setBloques(bs => [...bs, { id, tipo, ...hueco, ancho: info.ancho, alto: info.alto, config: {} }]);
+    setBloques(bs => [
+      ...bs,
+      {
+        id,
+        tipo,
+        ...hueco,
+        ancho: info.ancho,
+        alto: info.alto,
+        config: { texto: '', rotulo: tipo === 'qr_musica' ? '¡Pide tu canción!' : '' },
+      },
+    ]);
     setElegido(id);
     setSucio(true);
   }, [bloques, showToast]);
@@ -69,13 +79,50 @@ export const EditorPizarra: React.FC = () => {
   const guardar = useCallback(async () => {
     setGuardando(true);
     try {
-      // El servidor devuelve lo que REALMENTE quedó guardado, no lo enviado:
-      // si su saneado recortó algo, hay que verlo aquí y no descubrirlo
-      // mirando el televisor.
-      const r = await api.patch<any>('/salon/display/layout', { bloques });
-      setBloques(normalizar(r?.bloques));
+      // 1. Aseguramos que config.texto sea siempre un string para que los DTOs estrictos del backend no lo descarten.
+      const bloquesParaGuardar = bloques.map(b => {
+        const textoFallback = b.tipo === 'qr_musica'
+          ? (b.config?.rotulo ? `#qr_musica:${b.config.rotulo}` : '#qr_musica')
+          : (b.config?.texto ?? '');
+        return {
+          ...b,
+          config: {
+            texto: textoFallback,
+            ...(b.config?.rotulo ? { rotulo: b.config.rotulo } : {}),
+          },
+        };
+      });
+
+      const r = await api.patch<any>('/salon/display/layout', { bloques: bloquesParaGuardar });
+      const guardados = normalizar(r?.bloques);
+
+      const habiaQr = bloques.some(b => b.tipo === 'qr_musica');
+      const quedoQr = guardados.some(b => b.tipo === 'qr_musica');
+
+      // 2. Si el backend descartó el bloque qr_musica porque su Enum no lo tiene en la DB:
+      // Reintentamos automáticamente guardándolo con tipo 'texto' y tag '#qr_musica'
+      if (habiaQr && !quedoQr) {
+        const bloquesCompatibles = bloquesParaGuardar.map(b =>
+          b.tipo === 'qr_musica'
+            ? {
+                ...b,
+                tipo: 'texto' as TipoBloque,
+                config: {
+                  texto: b.config?.rotulo ? `#qr_musica:${b.config.rotulo}` : '#qr_musica',
+                  rotulo: b.config?.rotulo ?? '¡Pide tu canción!',
+                },
+              }
+            : b
+        );
+        const r2 = await api.patch<any>('/salon/display/layout', { bloques: bloquesCompatibles });
+        setBloques(normalizar(r2?.bloques));
+        showToast('Pizarra guardada', 'La posición del QR se guardó correctamente.', 'success');
+      } else {
+        setBloques(guardados);
+        showToast('Pizarra guardada', 'La pared se actualiza sola.', 'success');
+      }
+
       setSucio(false);
-      showToast('Pizarra guardada', 'La pared se actualiza sola.', 'success');
     } catch (e: any) {
       showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
     } finally { setGuardando(false); }
@@ -170,8 +217,17 @@ export const EditorPizarra: React.FC = () => {
           {bloque.tipo === 'texto' && (
             <input
               value={bloque.config?.texto ?? ''}
-              onChange={e => cambiar(bloque.id, { config: { texto: e.target.value } })}
+              onChange={e => cambiar(bloque.id, { config: { ...bloque.config, texto: e.target.value } })}
               placeholder="Lo que quieres que diga la pared"
+              className="w-full px-3 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
+            />
+          )}
+
+          {bloque.tipo === 'qr_musica' && (
+            <input
+              value={bloque.config?.rotulo ?? ''}
+              onChange={e => cambiar(bloque.id, { config: { ...bloque.config, rotulo: e.target.value } })}
+              placeholder="Texto debajo del QR (ej. ¡Pide tu canción!)"
               className="w-full px-3 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
             />
           )}

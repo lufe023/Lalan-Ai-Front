@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
-import { Maximize2, Minimize2 } from 'lucide-react';
-import { publicFetch } from '../services/api';
+import { Maximize2, Minimize2, Music2 } from 'lucide-react';
+import QRCode from 'qrcode';
+import { publicFetch, urlDePedirCancion } from '../services/api';
 import { conectarComoPantalla, desconectar, alRecibir, estaConectado } from '../services/socket';
 import {
   activarSonido, sonidoListo, campanaDeLlamada, tinDeCambio, decir, fraseDeTurno, callar,
@@ -250,6 +251,97 @@ const Texto: React.FC<{ b: Bloque }> = ({ b }) => (
     </p>
   </div>
 );
+
+/**
+ * Hook para generar el DataURL de un código QR de forma reactiva y segura.
+ */
+function useQrDataUrl(url: string | null | undefined): string | null {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url) {
+      setDataUrl(null);
+      return;
+    }
+    let cancelado = false;
+    QRCode.toDataURL(url, {
+      margin: 1,
+      width: 320,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    })
+      .then(data => {
+        if (!cancelado) setDataUrl(data);
+      })
+      .catch(() => { /* fallback visual */ });
+    return () => { cancelado = true; };
+  }, [url]);
+
+  return dataUrl;
+}
+
+/**
+ * Código QR para que la clientela en el salón escanee con su teléfono y pueda
+ * sugerir canciones a la cola de música.
+ *
+ * Sin fondo ni bordes de tarjeta para respetar la armonía limpia de la pared
+ * (igual que la música, el reloj y la marca).
+ * Distribución horizontal: imagen del QR a la izquierda, y si sobra espacio,
+ * el texto a la derecha ("¡Pide tu canción!" / "Escanea y agrega música").
+ * Se adapta perfectamente tanto a un único cuadro (1x1) como a una única fila (ej. 2x1 o 3x1).
+ */
+const QrMusica: React.FC<{ token: string; b: Bloque }> = ({ token, b }) => {
+  const url = useMemo(() => urlDePedirCancion(token), [token]);
+  const qrSrc = useQrDataUrl(url);
+
+  const rotulo = b.config?.rotulo?.trim()
+    || (b.config?.texto?.startsWith('#qr_musica:') ? b.config.texto.slice(11) : '')
+    || '¡Pide tu canción!';
+
+  const soloCuadro = b.ancho <= 1;
+
+  return (
+    <div
+      className={`h-full w-full flex items-center ${soloCuadro ? 'justify-center' : 'justify-start'} gap-[0.8vw] min-w-0 min-h-0 overflow-hidden select-none`}
+    >
+      {/* Contenedor del código QR: limpio, blanco puro con padding mínimo, escala exacto al alto disponible sin cortarse */}
+      <div className="h-full max-h-full max-w-full aspect-square bg-white rounded-xl p-[0.4vh] sm:p-[0.6vh] flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+        {qrSrc ? (
+          <img
+            src={qrSrc}
+            alt="Escanear para pedir música"
+            className="w-full h-full object-contain aspect-square rounded"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-neutral-100 rounded">
+            <Music2 className="w-1/2 h-1/2 text-neutral-400 animate-pulse" />
+          </div>
+        )}
+      </div>
+
+      {/* Rótulos a la derecha si hay más de un cuadro de ancho */}
+      {!soloCuadro && (
+        <div className="min-w-0 flex-1 flex flex-col justify-center leading-tight overflow-hidden">
+          <div
+            className="text-[var(--primary)] font-bold truncate flex items-center gap-[0.35vw]"
+            style={{ fontSize: 'clamp(0.75rem, 1.1vw, 1.3rem)' }}
+          >
+            <Music2 className="w-[1vw] h-[1vw] min-w-3.5 min-h-3.5 shrink-0" />
+            <span className="truncate">{rotulo}</span>
+          </div>
+          <p
+            className="text-white/60 truncate mt-[0.2vh] font-medium"
+            style={{ fontSize: 'clamp(0.6rem, 0.8vw, 0.95rem)' }}
+          >
+            Escanea y agrega música
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Qué suena.
@@ -539,7 +631,12 @@ export const PantallaTurnos: React.FC<{ token: string }> = ({ token }) => {
       case 'esperando':   return <Esperando esperando={esperando} />;
       case 'reloj':       return <Reloj hora={hora} error={error} enVivo={enVivo} />;
       case 'marca':       return <Marca salon={datos?.salon} sede={datos?.sede} />;
-      case 'texto':       return <Texto b={b} />;
+      case 'texto':
+        if (b.config?.texto?.includes('#qr_musica')) {
+          return <QrMusica token={token} b={b} />;
+        }
+        return <Texto b={b} />;
+      case 'qr_musica':   return <QrMusica token={token} b={b} />;
       case 'musica':
         return (
           <Musica

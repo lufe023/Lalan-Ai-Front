@@ -126,6 +126,13 @@ export const urlDePantalla = (token: string) =>
 export const urlDeReproductor = (token: string) =>
   `${window.location.origin}${window.location.pathname}#/reproductor/${token}`;
 
+/**
+ * Enlace público para que las clientas pidan o sugieran canciones desde su móvil
+ * al escanear el QR en la pantalla de turnos o en la mesa.
+ */
+export const urlDePedirCancion = (token: string) =>
+  `${window.location.origin}${window.location.pathname}#/pedir-cancion/${token}`;
+
 export const api = {
   get:    <T>(path: string) => apiFetch<T>(path, { method: 'GET' }),
   post:   <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body) }),

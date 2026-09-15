@@ -12,7 +12,7 @@ export const FILAS = 8;
 
 export type TipoBloque =
   | 'llamando' | 'en_atencion' | 'esperando' | 'reloj' | 'marca' | 'texto'
-  | 'musica';
+  | 'musica' | 'qr_musica';
 
 export interface Bloque {
   id: string;
@@ -23,7 +23,7 @@ export interface Bloque {
   fila: number;
   ancho: number;
   alto: number;
-  config?: { texto?: string };
+  config?: { texto?: string; rotulo?: string };
 }
 
 /** Qué es cada bloque, para el editor */
@@ -62,6 +62,11 @@ export const CATALOGO: {
     ancho: 4, alto: 2,
   },
   {
+    tipo: 'qr_musica', nombre: 'QR Música', icono: '📱',
+    descripcion: 'Código QR para que las clientas escaneen y sugieran canciones',
+    ancho: 2, alto: 1,
+  },
+  {
     tipo: 'texto', nombre: 'Mensaje', icono: '💬',
     descripcion: 'Un texto fijo que escribes tú',
     ancho: 4, alto: 1,
@@ -90,9 +95,21 @@ export const LAYOUT_POR_DEFECTO: Bloque[] = [
 /** Lo que llega del servidor puede ser null, basura o un diseño válido */
 export function normalizar(bloques: any): Bloque[] {
   if (!Array.isArray(bloques) || !bloques.length) return LAYOUT_POR_DEFECTO;
-  const validos = bloques.filter(
-    (b: any) => b && CATALOGO.some(c => c.tipo === b.tipo),
-  );
+  const validos = bloques
+    .filter((b: any) => b && (CATALOGO.some(c => c.tipo === b.tipo) || b.tipo === 'texto'))
+    .map((b: any) => {
+      // Si el backend guardó como tipo texto pero contiene el marcador #qr_musica
+      if (b.tipo === 'texto' && typeof b.config?.texto === 'string' && b.config.texto.includes('#qr_musica')) {
+        const parts = b.config.texto.split(':');
+        const rotulo = parts.length > 1 ? parts.slice(1).join(':') : (b.config?.rotulo || '¡Pide tu canción!');
+        return {
+          ...b,
+          tipo: 'qr_musica' as TipoBloque,
+          config: { texto: b.config.texto, rotulo },
+        };
+      }
+      return b;
+    });
   return validos.length ? (validos as Bloque[]) : LAYOUT_POR_DEFECTO;
 }
 
