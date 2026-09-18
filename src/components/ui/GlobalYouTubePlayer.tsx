@@ -26,6 +26,29 @@ import { useApp } from '../../context/AppContext';
 const PARKED_LEFT = -100000;
 
 /**
+ * Cuánto duran los escombros de un fallo.
+ *
+ * Cuando YouTube rechaza un vídeo no solo avisa con `onError`: también
+ * manda el player a PAUSED, porque se rinde. Ese PAUSED parece una pausa
+ * y no lo es — nadie pulsó nada. Durante esta ventana no se le hace caso.
+ */
+const ESCOMBROS_DE_FALLO_MS = 2500;
+
+/**
+ * Los códigos de error que significan "este vídeo no va a funcionar NUNCA
+ * aquí", frente a los que pueden ser un mal momento de la red.
+ *
+ *   2   → el id no vale
+ *   100 → borrado o privado
+ *   101 y 150 → el dueño no permite incrustarlo (el caso típico: sellos)
+ *
+ * El 5 (error del reproductor HTML5) se queda fuera a propósito: puede ser
+ * pasajero, y marcar como muerta una canción buena es peor que saltarla una
+ * vez. Con el 5 se salta igual, pero sin condenar el vídeo.
+ */
+const FALLOS_DEFINITIVOS = [2, 100, 101, 150];
+
+/**
  * TODOS los ancestros que recortan, no solo el primero.
  *
  * Importa porque hay varios anidados: la tarjeta del reproductor tiene
@@ -72,7 +95,7 @@ export const GlobalYouTubePlayer: React.FC = () => {
     ytPlayerRef, ytQueue, ytIndex, ytVolume, ytMuted,
     setYtPlaying, setYtReady, setYtTime, setYtDuration,
     ytNext, ytOnEnded,
-    ytPlaying, recordLoungeEvent,
+    ytPlaying, recordLoungeEvent, reportBrokenTrack, marcarPistaRota,
   } = useApp();
 
   const boxRef = useRef<HTMLDivElement>(null);
@@ -86,6 +109,53 @@ export const GlobalYouTubePlayer: React.FC = () => {
   useEffect(() => { endedRef.current = ytOnEnded; }, [ytOnEnded]);
   const nextRef = useRef(ytNext);
   useEffect(() => { nextRef.current = ytNext; }, [ytNext]);
+  const reportBrokenRef = useRef(reportBrokenTrack);
+  useEffect(() => { reportBrokenRef.current = reportBrokenTrack; }, [reportBrokenTrack]);
+  const marcarRotaRef = useRef(marcarPistaRota);
+  useEffect(() => { marcarRotaRef.current = marcarPistaRota; }, [marcarPistaRota]);
+
+  /**
+   * Qué canción está cargada AHORA MISMO, para que onError sepa a quién
+   * reportar. No es lo mismo que `loadedIdRef` (un id): aquí hace falta el
+   * objeto completo, con su `clientId`, para poder avisar al backend.
+   */
+  const currentTrackRef = useRef<any>(null);
+
+  /**
+   * Freno para una cola entera de vídeos que no se pueden reproducir.
+   *
+   * Cada error salta al siguiente; si TODOS fallan —pasa con colas armadas
+   * a mano con enlaces rotos— ese salto se vuelve una vuelta sin fin. Tras
+   * dar una vuelta completa sin conseguir sonar nada, se para en vez de
+   * seguir golpeando la cuota de la API y el navegador.
+   */
+  const fallosRef = useRef(0);
+  const largoRef = useRef(0);
+  useEffect(() => { largoRef.current = ytQueue.length; }, [ytQueue.length]);
+
+  /**
+   * "¿Debe la próxima canción arrancar sola?" — empieza en falso (nadie
+   * pidió nada al abrir el Lounge) y solo lo confirma una reproducción
+   * REAL o lo apaga una pausa REAL.
+   */
+  const autoplayIntentRef = useRef(false);
+
+  /** Cuándo falló el último vídeo, para distinguir la pausa de verdad de
+   *  la que es solo el player rindiéndose. */
+  const ultimoFalloRef = useRef(0);
+
+  /** ¿La carga en curso pretendía sonar? Lo escribe el efecto de carga,
+   *  en seco. A diferencia del estado del player, el propio fallo no lo
+   *  puede ensuciar: por eso es lo que mira `onError` para decidir si el
+   *  salto tiene que encadenar sonando. */
+  const intentandoSonarRef = useRef(false);
+
+  /** Orden explícita: la próxima canción que se cargue TIENE que sonar.
+   *  La enciende un salto por error y la consume el efecto de carga. */
+  const forzarPlayRef = useRef(false);
+
+  /** El temporizador que comprueba que la canción de verdad arrancó */
+  const empujonRef = useRef(0);
 
   const hasQueue = ytQueue.length > 0;
 
@@ -110,11 +180,45 @@ export const GlobalYouTubePlayer: React.FC = () => {
             if (e.data === YT.PlayerState.ENDED) { endedRef.current(); return; }
             setYtPlaying(e.data === YT.PlayerState.PLAYING);
             if (e.data === YT.PlayerState.PLAYING) {
+              fallosRef.current = 0; // sonó algo: la racha de fallos se acabó
+              autoplayIntentRef.current = true;
               try { setYtDuration(e.target.getDuration() || 0); } catch { /* noop */ }
+            } else if (e.data === YT.PlayerState.PAUSED) {
+              /* CUIDADO CON ESTE PAUSED.
+                 Cuando YouTube rechaza un vídeo, el player acaba en PAUSED
+                 él solo: se rinde. Si eso contara como "el usuario pausó",
+                 la canción siguiente se cargaría en pausa — que es
+                 exactamente lo que se veía. Una pausa que llega pisándole
+                 los talones a un error no es una pausa de nadie. */
+              if (Date.now() - ultimoFalloRef.current > ESCOMBROS_DE_FALLO_MS) {
+                autoplayIntentRef.current = false;
+              }
             }
           },
-          // Video bloqueado o borrado → saltamos al siguiente en vez de trabarnos
-          onError: () => nextRef.current(),
+          // Vídeo bloqueado o borrado → saltamos al siguiente en vez de
+          // trabarnos. Si lo que se estaba intentando era SONAR, el salto
+          // lleva orden explícita de sonar: no se deduce del estado del
+          // player, que este mismo fallo acaba de ensuciar.
+          onError: (e: any) => {
+            ultimoFalloRef.current = Date.now();
+
+            const codigo = Number(e?.data);
+            const rota = currentTrackRef.current;
+
+            /* Solo se condena el vídeo cuando el código dice que está muerto
+               de verdad. Un tropiezo de red se salta, pero no se marca: una
+               canción buena tachada para siempre es peor que saltarla hoy. */
+            if (rota && FALLOS_DEFINITIVOS.includes(codigo)) {
+              marcarRotaRef.current?.(rota.videoId);
+              reportBrokenRef.current?.(rota);
+            }
+
+            fallosRef.current += 1;
+            if (fallosRef.current > Math.max(3, largoRef.current)) return; // dimos la vuelta y nada suena: paramos
+
+            if (intentandoSonarRef.current) forzarPlayRef.current = true;
+            nextRef.current();
+          },
         },
       });
       if (destroyed) { try { player.destroy(); } catch { /* noop */ } }
@@ -141,10 +245,8 @@ export const GlobalYouTubePlayer: React.FC = () => {
   const fadeRef = useRef<number | null>(null);
   const volRef = useRef(ytVolume);
   const mutedRef = useRef(ytMuted);
-  const playingRef = useRef(ytPlaying);
   useEffect(() => { volRef.current = ytVolume; }, [ytVolume]);
   useEffect(() => { mutedRef.current = ytMuted; }, [ytMuted]);
-  useEffect(() => { playingRef.current = ytPlaying; }, [ytPlaying]);
 
   const cancelFade = () => {
     if (fadeRef.current) { cancelAnimationFrame(fadeRef.current); fadeRef.current = null; }
@@ -187,39 +289,97 @@ export const GlobalYouTubePlayer: React.FC = () => {
 
     const first = loadedIdRef.current === null;
     loadedIdRef.current = track.videoId;
+    currentTrackRef.current = track;
+
+    /* La decisión de sonar se toma AQUÍ, en seco, antes de cualquier
+       espera. Leerla después del fundido era parte del problema: en esos
+       350 ms el player suelta estados —los escombros del vídeo que acaba
+       de fallar— que le daban la vuelta a la respuesta, y la canción
+       entraba en pausa. */
+    const desdeFallo = forzarPlayRef.current;
+    const debeSonar = autoplayIntentRef.current || desdeFallo;
+    forzarPlayRef.current = false;
+    intentandoSonarRef.current = debeSonar;
+
+    window.clearTimeout(empujonRef.current);
 
     let cancelled = false;
     (async () => {
       const target = mutedRef.current ? 0 : volRef.current;
       try {
-        // Fade OUT de lo anterior (en el primer arranque no hay nada que bajar)
-        if (!first) await fadeVolume(p, target, 0, 350);
+        /* Fade OUT de lo anterior. No lo hay en el primer arranque, ni
+           cuando venimos de un vídeo que nunca llegó a sonar: bajarle el
+           volumen al silencio solo retrasa la canción que sí funciona. */
+        if (!first && !desdeFallo) await fadeVolume(p, target, 0, 350);
         if (cancelled) return;
 
-        // NADA DE AUTOPLAY.
+        // NADA DE AUTOPLAY, por defecto.
         //
         // `loadVideoById` arranca el video solo: al entrar al Lounge la
         // música empezaba sin que nadie la pidiera, y encima el navegador
         // suele bloquear ese primer play con sonido. `cueVideoById` deja la
         // canción cargada y quieta, esperando que le den al play.
         //
-        // Solo se usa loadVideoById cuando la música YA venía sonando: ahí sí
-        // hay que encadenar sin pausa, que es el caso de la canción que
-        // termina y pasa a la siguiente.
-        if (playingRef.current) p.loadVideoById(track.videoId);
+        // Se usa loadVideoById en los dos casos en que la música ya venía
+        // en marcha: la canción que termina y pasa a la siguiente, y el
+        // salto por encima de un vídeo roto. Ahí hay que encadenar.
+        if (debeSonar) p.loadVideoById(track.videoId);
         else p.cueVideoById(track.videoId);
 
         setYtDuration(track.durationSeconds ?? 0);
-        // Fade IN de la nueva
-        await fadeVolume(p, 0, target, 700);
+
+        if (desdeFallo) {
+          // Saltando un vídeo muerto no hay nada que fundir: solo asegurar
+          // que el volumen no se quedó en el suelo del fundido anterior.
+          try { p.setVolume(target); } catch { /* noop */ }
+        } else {
+          await fadeVolume(p, 0, target, 700);   // Fade IN de la nueva
+        }
       } catch { /* el player aún no está listo; el onReady lo recogerá */ }
     })();
+
+    /* EL EMPUJÓN.
+     *
+     * `loadVideoById` debería arrancar solo, y casi siempre lo hace. Pero
+     * viniendo de un vídeo que YouTube acaba de rechazar, el player se
+     * queda a veces con la canción cargada y quieta — la siguiente
+     * seleccionada en la lista, esperando un play que nadie tendría que
+     * levantarse a dar. Así que no nos fiamos: un segundo después se mira
+     * el estado REAL y, si no suena, se le dice que suene. Antes hubo
+     * gesto del usuario, así que el navegador lo permite.
+     *
+     * Solo cuando la intención era sonar. Una canción puesta en cola a
+     * propósito se queda en cola.
+     */
+    if (debeSonar) {
+      empujonRef.current = window.setTimeout(() => {
+        if (cancelled || loadedIdRef.current !== track.videoId) return;
+        const pp = ytPlayerRef.current;
+        if (!pp) return;
+
+        let estado = -1;
+        try { estado = pp.getPlayerState?.() ?? -1; } catch { /* noop */ }
+        // 1 = reproduciendo, 3 = cargando. Cualquier otra cosa es "no suena".
+        if (estado !== 1 && estado !== 3) {
+          try { pp.playVideo?.(); } catch { /* noop */ }
+        }
+
+        // Y que no se quede sonando en silencio si un fundido quedó a medias
+        try {
+          const quiere = mutedRef.current ? 0 : volRef.current;
+          if (quiere >= 5 && (pp.getVolume?.() ?? quiere) < 5) pp.setVolume?.(quiere);
+        } catch { /* noop */ }
+      }, 1200);
+    }
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ytIndex, ytQueue]);
 
-  useEffect(() => cancelFade, []);
+  useEffect(() => () => {
+    cancelFade();
+    window.clearTimeout(empujonRef.current);
+  }, []);
 
   // ── Bitácora: qué canción sonó de verdad ─────────────────────────────
   // Solo registramos lo que se escuchó más de 45 s. Sin ese umbral la

@@ -42,6 +42,7 @@ import {
   Tag,
   Split,
   UserPlus,
+  Ban,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api, apiFetch } from '../services/api';
@@ -142,6 +143,7 @@ export const LoungePlayerScreen: React.FC = () => {
     ytQueue, ytOrder, ytIndex, ytPlaying, ytShuffle, ytRepeatMode, ytMuted, ytVolume,
     ytTime, ytDuration, setYtQueue, ytPlayIndex, ytToggle, ytNext, ytPrev,
     ytSeek, ytSetVolume, ytToggleMute, toggleYtShuffle, cycleYtRepeat,
+    ytRotos,
   } = useApp();
 
   /**
@@ -155,6 +157,16 @@ export const LoungePlayerScreen: React.FC = () => {
    */
   const musicaSala = useMusicaSala();
   const sonandoEnPantalla = musicaSala.hayAnfitrion && !musicaSala.soyAnfitrion;
+
+  /**
+   * Las canciones que YouTube ya rechazó en este aparato.
+   *
+   * Se pintan apagadas y tachadas, y no se dejan tocar. Antes se veían
+   * iguales que las demás: al pulsarlas el reproductor saltaba sola a otra
+   * canción, y desde fuera eso no parece "este vídeo está muerto", parece
+   * que la aplicación hace lo que le da la gana.
+   */
+  const rotas = useMemo(() => new Set(ytRotos), [ytRotos]);
 
   const [activeTab, setActiveTab] = useState<'player' | 'hospitality' | 'explore'>('player');
   const [progressSec, setProgressSec] = useState<number>(34);
@@ -1756,6 +1768,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     const t = ytQueue[qi];
                     if (!t) return null;
                     const isCurrent = qi === ytIndex;
+                    const rota = rotas.has(t.videoId);
                     return (
                       <motion.div
                         key={ytKeys[qi] ?? qi}
@@ -1768,8 +1781,30 @@ export const LoungePlayerScreen: React.FC = () => {
                             ? { duration: 0 }
                             : { type: 'spring', stiffness: 480, damping: 38, mass: 0.7, opacity: { duration: 0.18 } }
                         }
-                        onClick={() => pickMode ? togglePicked(t.videoId) : irAPista(qi)}
-                        className={`py-2.5 px-2 rounded-xl flex items-center justify-between cursor-pointer border-b border-slate-100 dark:border-neutral-800/80 last:border-b-0 ${
+                        /* Una canción muerta no lleva a ninguna parte: pulsarla
+                           solo saltaba a otra. En modo selección sí responde,
+                           que es como se quitan de la cola en bloque. */
+                        onClick={() => {
+                          if (pickMode) { togglePicked(t.videoId); return; }
+                          if (rota) {
+                            /* Y se dice POR QUÉ. Un botón que no hace nada sin
+                               explicarse es la misma frustración de antes con
+                               otra cara. */
+                            showToast(
+                              'Esta canción no se puede reproducir',
+                              t.clientName
+                                ? `YouTube no la deja sonar fuera de su página. Ya la quitamos de los gustos de ${t.clientName.split(' ')[0]}.`
+                                : 'YouTube no la deja sonar fuera de su página. Puedes quitarla de la lista con "Elegir varias".',
+                              'info',
+                            );
+                            return;
+                          }
+                          irAPista(qi);
+                        }}
+                        title={rota ? 'YouTube no deja reproducir este vídeo fuera de su página. El reproductor la salta sola.' : undefined}
+                        className={`py-2.5 px-2 rounded-xl flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/80 last:border-b-0 ${
+                          rota && !pickMode ? 'cursor-not-allowed' : 'cursor-pointer'
+                        } ${
                           pickMode && picked.includes(t.videoId)
                             ? 'bg-[var(--primary)]/10'
                             : isCurrent
@@ -1797,12 +1832,29 @@ export const LoungePlayerScreen: React.FC = () => {
                             </span>
                           )}
                           {t.thumbnail ? (
-                            <img src={t.thumbnail} alt={t.title} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                            <div className="relative w-10 h-10 shrink-0">
+                              <img
+                                src={t.thumbnail}
+                                alt={t.title}
+                                className={`w-10 h-10 rounded-lg object-cover ${rota ? 'grayscale opacity-40' : ''}`}
+                              />
+                              {rota && (
+                                <span className="absolute inset-0 flex items-center justify-center">
+                                  <Ban className="w-4 h-4 text-slate-500 dark:text-neutral-400" />
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <div className="w-10 h-10 rounded-lg bg-red-600/10 flex items-center justify-center shrink-0 text-sm">▶</div>
                           )}
                           <div className="min-w-0">
-                            <div className={`text-xs truncate ${isCurrent ? 'text-[var(--primary)] font-bold' : 'text-slate-800 dark:text-neutral-200'}`}>
+                            <div className={`text-xs truncate ${
+                              rota
+                                ? 'text-slate-400 dark:text-neutral-600 line-through'
+                                : isCurrent
+                                ? 'text-[var(--primary)] font-bold'
+                                : 'text-slate-800 dark:text-neutral-200'
+                            }`}>
                               {t.title}
                             </div>
                             <div className="text-[11px] text-slate-400 dark:text-neutral-500 truncate flex items-center gap-1.5">
@@ -1817,12 +1869,16 @@ export const LoungePlayerScreen: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          {isCurrent && enPantalla.playing && (
+                          {rota ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 font-semibold flex items-center gap-1">
+                              <Ban className="w-3 h-3" /> No disponible
+                            </span>
+                          ) : isCurrent && enPantalla.playing ? (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold">
                               Sonando
                             </span>
-                          )}
-                          <span className="text-[11px] font-mono text-slate-400">
+                          ) : null}
+                          <span className={`text-[11px] font-mono ${rota ? 'text-slate-300 dark:text-neutral-700' : 'text-slate-400'}`}>
                             {t.durationSeconds ? formatTime(t.durationSeconds) : '—'}
                           </span>
                         </div>

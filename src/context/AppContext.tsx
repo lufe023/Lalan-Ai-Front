@@ -394,6 +394,13 @@ interface AppContextType {
   ytPrev: () => void;
   /** La llama el player cuando una canción termina sola (respeta "repetir una") */
   ytOnEnded: () => void;
+  /** Un vídeo falló de verdad al sonar (no solo al buscarlo): se saca del
+   *  pozo cacheado de la clienta para que no vuelva a salir en la cola. */
+  reportBrokenTrack: (track: YtTrack) => void;
+  /** Los vídeos que YouTube ya rechazó en este aparato. Se marcan en la
+   *  lista para que nadie los toque esperando que suenen. */
+  ytRotos: string[];
+  marcarPistaRota: (videoId: string) => void;
   ytSeek: (sec: number) => void;
   ytSetVolume: (v: number) => void;
   ytToggleMute: () => void;
@@ -1469,6 +1476,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  /**
+   * El reproductor confirmó en caliente que este vídeo no suena (embed
+   * rechazado, borrado, etc.). No bloquea nada localmente: solo avisa al
+   * backend para que lo saque del pozo de esa clienta. Sin `clientId` no
+   * hay de dónde quitarlo (viene de una lista fija, no de un gusto) así
+   * que no se manda nada.
+   */
+  /**
+   * Los vídeos que este aparato ya vio fallar.
+   *
+   * Vive en localStorage y no en el servidor a propósito: el backend ya se
+   * encarga de que no vuelvan a salir en colas NUEVAS, pero la cola que ya
+   * está en pantalla sigue teniéndolos, y al recargar vuelve igual. Esto es
+   * solo para poder pintarlos como lo que son —canciones muertas— y que
+   * nadie las toque esperando que suenen.
+   */
+  const [ytRotos, setYtRotos] = useState<string[]>(() => {
+    try {
+      const crudo = localStorage.getItem('lalan.pistasRotas');
+      const lista = crudo ? JSON.parse(crudo) : [];
+      return Array.isArray(lista) ? lista.filter((x: any) => typeof x === 'string') : [];
+    } catch { return []; }
+  });
+
+  const marcarPistaRota = useCallback((videoId: string) => {
+    if (!videoId) return;
+    setYtRotos(prev => {
+      if (prev.includes(videoId)) return prev;
+      // Con tope: es una ayuda visual, no un archivo histórico
+      const siguiente = [...prev, videoId].slice(-400);
+      try { localStorage.setItem('lalan.pistasRotas', JSON.stringify(siguiente)); } catch { /* noop */ }
+      return siguiente;
+    });
+  }, []);
+
+  const reportBrokenTrack = useCallback((track: YtTrack) => {
+    if (!track?.videoId || !track?.clientId) return;
+    void api.post('/lounge/youtube/broken', {
+      clientId: track.clientId,
+      videoId: track.videoId,
+    }).catch(() => { /* best-effort: si falla, se reintentará en otro fallo */ });
+  }, []);
+
 // ── Consumo de la cita (POS) ─────────────────────────────────────────
   // Un solo ticket por clienta: el manicure, el café de cortesía y el trago
   // de whisky van a la misma cuenta. La cortesía es una línea en 0, no otra
@@ -2015,7 +2065,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currencies, baseCurrency, loadCurrencies, saveCurrency, deleteCurrency,
       addDenomination, removeDenomination,
       loungeEvents, loungeEventsLoading, loungeEventsHasMore,
-      loadLoungeEvents, recordLoungeEvent,
+      loadLoungeEvents, recordLoungeEvent, reportBrokenTrack,
+      ytRotos, marcarPistaRota,
       playTrack, togglePlayLounge, nextLoungeTrack, prevLoungeTrack,
       addTrackToLounge, removeLoungeTrack, setActiveLoungeClient,
       serveHospitalityItem, playMusicForClient,
