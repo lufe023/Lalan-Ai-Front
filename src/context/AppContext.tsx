@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Appointment, AppointmentStatus, BotChannelConfig, ChatMessage,
   Client, CommunicationChannel, Conversation, LoungeTrack,
@@ -7,7 +7,8 @@ import {
 import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
 import { api } from '../services/api';
-import { alRecibir } from '../services/socket';
+import { alRecibir, alConectar } from '../services/socket';
+import { PeticionCancion, componerCola, indicesDePeticiones } from '../utils/peticiones';
 import {
   estadoMusica, soyElAnfitrion, ordenar, cuandoSepamos, useMusicaSala,
 } from '../services/musica';
@@ -199,8 +200,17 @@ interface AppContextType {
   goBack: () => void;
   catalogDeepLink: { serviceId?: string; productId?: string; tab?: 'config' | 'recipe' } | null;
   clearCatalogDeepLink: () => void;
+  /** Todo lo que se ha cargado hasta ahora, no "todas las del salón". */
   clients: Client[];
   isLoadingClients: boolean;
+  /** ¿Queda directorio por detrás de lo que ya se trajo? */
+  clientsHasMore: boolean;
+  /** Cuántas hay en total en el salón (no cuántas se han cargado) */
+  clientsTotal: number | null;
+  /** Trae la siguiente página y la SUMA al caché */
+  cargarMasClientas: () => Promise<void>;
+  /** Busca en el servidor y suma los resultados al caché, sin quitar nada */
+  buscarClientas: (texto: string) => Promise<void>;
   addClient: (client: Omit<Client, 'id' | 'registeredDate'>) => Promise<Client>;
   updateClient: (id: string, updated: Partial<Client>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
@@ -355,6 +365,12 @@ interface AppContextType {
   setYtBlocks: (b: YtClientBlock[]) => void;
   ytMixMode: YtMixMode;
   setYtMixMode: (m: YtMixMode) => void;
+  // ── Canciones pedidas por las clientas desde el QR ──
+  /** Pendientes, más las que sonaron hace poco */
+  peticiones: PeticionCancion[];
+  loadPeticiones: () => Promise<void>;
+  /** Quitar una petición que aún no ha sonado */
+  quitarPeticion: (id: string) => Promise<void>;
   // ── Listas de reproducción ──
   playlists: Playlist[];
   selectedPlaylistIds: string[];
@@ -418,6 +434,9 @@ export interface YtTrack {
   /** De quién es este gusto (en colas compartidas) */
   clientId?: string;
   clientName?: string;
+  /** Si la pidió una clienta desde el QR: id de la petición y nombre con que la dedicó */
+  peticionId?: string;
+  pidio?: string | null;
 }
 
 /** Bloque de canciones de una fuente (clienta o lista), tal como llega del backend */
@@ -511,9 +530,40 @@ export interface ServiceIngredient {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+/**
+ * Sumar clientas al caché sin perder las que ya estaban.
+ *
+ * El directorio local es un montón que solo crece: lo que se trajo al
+ * arrancar, lo que se fue cargando al bajar por la lista y lo que apareció
+ * al buscar. Buscar NO reemplaza la lista — si tienes quince cargadas y
+ * buscas a alguien que no está entre ellas, acabas con dieciséis.
+ *
+ * Se reordena igual que el servidor (las más recientes arriba) para que al
+ * borrar el texto del buscador la lista no quede en un orden caprichoso.
+ * El id desempata porque es un uuidv7: lleva la hora dentro, así que
+ * ordenar por id es ordenar por antigüedad.
+ */
+/**
+ * Cuántas clientas por tanda.
+ *
+ * Está aquí suelto y no escrito dentro de cada petición para poder bajarlo
+ * a 2 o 3 un rato y ver el scroll infinito funcionando sin necesidad de
+ * tener cientos de clientas en la base. Para el uso normal, 20.
+ */
+const CLIENTAS_POR_PAGINA = 20;
+
+function fundirClientas(previas: Client[], nuevas: Client[]): Client[] {
+  const porId = new Map(previas.map(c => [c.id, c]));
+  for (const c of nuevas) porId.set(c.id, c);   // la versión del servidor manda
+  return [...porId.values()].sort((a, b) => {
+    if (a.registeredDate !== b.registeredDate) return a.registeredDate < b.registeredDate ? 1 : -1;
+    return a.id < b.id ? 1 : -1;
+  });
+}
+
 function mapApiClient(c: any): Client {
   return {
-    id: c.id, name: c.name, phone: c.phone, email: c.email,
+    id: c.id, name: c.name, phone: c.phone ?? '', email: c.email,
     avatar: c.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=e2e8f0&color=475569`,
     preferredChannel: c.preferredChannel ?? 'whatsapp',
     tags: c.tags ?? [], beautyNotes: c.beautyNotes,
@@ -641,6 +691,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const [clients, setClients] = useState<Client[]>([]);
+  /* Para poder mirar la lista actual desde un callback sin meterla en sus
+     dependencias (y sin rehacerlo en cada tecla que cambie una ficha). */
+  const clientsRef = useRef<Client[]>([]);
+  useEffect(() => { clientsRef.current = clients; }, [clients]);
   const [services, setServices] = useState<SalonService[]>([]);
   const [products, setProducts] = useState<SalonProduct[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -649,6 +703,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loungeTracks, setLoungeTracks] = useState<LoungeTrack[]>([FALLBACK_TRACK]);
   const [currentMetrics, setCurrentMetrics] = useState<SalonMetrics>(EMPTY_METRICS);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
+  const [clientsHasMore, setClientsHasMore] = useState(false);
+  const [clientsTotal, setClientsTotal] = useState<number | null>(null);
+
+  /* El cursor NO se saca de la última del array.
+     Al buscar se cuelan clientas de cualquier punto del directorio, así que
+     la última de la lista puede ser una que vino de una búsqueda y no el
+     punto donde se quedó la paginación. Por eso la frontera se guarda
+     aparte, y solo la mueve cargarMasClientas. */
+  const cursorClientasRef = useRef<string | null>(null);
+  const cargandoClientasRef = useRef(false);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [settings, setSettings] = useState<SalonBusinessSettings>(INITIAL_SETTINGS);
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>(INITIAL_SYSTEM_LOGS);
@@ -662,7 +726,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsLoadingClients(true);
       try {
         const [cls, svcs, prods, apts, convs, bots, tracks] = await Promise.allSettled([
-          api.get<any[]>('/clients'),
+          api.get<any>(`/clients?limit=${CLIENTAS_POR_PAGINA}`),
           api.get<any[]>('/services'),
           api.get<any[]>('/products'),
           api.get<any[]>('/appointments'),
@@ -670,7 +734,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           api.get<any[]>('/bots'),
           api.get<any[]>('/lounge/tracks'),
         ]);
-        if (cls.status === 'fulfilled') setClients(cls.value.map(mapApiClient));
+        if (cls.status === 'fulfilled') {
+          // Ya no llega un array pelado sino { items, hasMore, nextCursor }
+          const pagina = cls.value?.items ?? [];
+          setClients(pagina.map(mapApiClient));
+          setClientsHasMore(!!cls.value?.hasMore);
+          setClientsTotal(typeof cls.value?.total === 'number' ? cls.value.total : null);
+          cursorClientasRef.current = cls.value?.nextCursor ?? null;
+        }
         if (svcs.status === 'fulfilled') setServices(svcs.value.map(mapApiService));
         if (prods.status === 'fulfilled') setProducts(prods.value.map(mapApiProduct));
         if (apts.status === 'fulfilled') setAppointments(apts.value.map(mapApiAppointment));
@@ -718,6 +789,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .finally(() => setIsLoadingMetrics(false));
   }, [isAuthenticated, metricsPeriod]);
 
+  /**
+   * La siguiente página del directorio.
+   *
+   * El candado de `cargandoClientasRef` importa más de lo que parece: el
+   * scroll infinito dispara esto en cada píxel que se mueve la lista, y sin
+   * él saldrían seis peticiones para la misma página.
+   */
+  const cargarMasClientas = useCallback(async () => {
+    if (cargandoClientasRef.current) return;
+    cargandoClientasRef.current = true;
+    setIsLoadingClients(true);
+    try {
+      const cursor = cursorClientasRef.current;
+      const res = await api.get<any>(`/clients?limit=${CLIENTAS_POR_PAGINA}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+      const pagina: any[] = res?.items ?? [];
+      setClients(prev => fundirClientas(prev, pagina.map(mapApiClient)));
+      setClientsHasMore(!!res?.hasMore);
+      cursorClientasRef.current = res?.nextCursor ?? null;
+    } catch {
+      // Sin red no se inventa nada: se queda lo que ya había
+    } finally {
+      cargandoClientasRef.current = false;
+      setIsLoadingClients(false);
+    }
+  }, []);
+
+  /**
+   * Buscar en TODO el directorio, no solo en lo cargado.
+   *
+   * Lo que encuentra se suma al caché. La pantalla sigue filtrando en local
+   * sobre ese caché, así que mientras haya texto se ven las coincidencias y
+   * al borrarlo aparecen todas — incluidas las que trajo la búsqueda.
+   *
+   * No toca el cursor: esto no es avanzar por el directorio, es pescar.
+   */
+  const buscarClientas = useCallback(async (texto: string) => {
+    const q = texto.trim();
+    if (!q) return;
+    try {
+      const res = await api.get<any>(`/clients?limit=${CLIENTAS_POR_PAGINA}&q=${encodeURIComponent(q)}`);
+      const encontradas: any[] = res?.items ?? [];
+      if (encontradas.length) {
+        setClients(prev => fundirClientas(prev, encontradas.map(mapApiClient)));
+      }
+    } catch { /* la lista local sigue sirviendo */ }
+  }, []);
+
   const addClient = useCallback(async (data: Omit<Client, 'id' | 'registeredDate'>): Promise<Client> => {
     const res = await api.post<any>('/clients', {
       name: data.name, phone: data.phone,
@@ -730,6 +848,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     const client = mapApiClient(res);
     setClients(c => [client, ...c]);
+    setClientsTotal(t => (t === null ? t : t + 1));
     return client;
   }, []);
   const updateClient = useCallback(async (id: string, updated: Partial<Client>) => {
@@ -749,6 +868,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteClient = useCallback(async (id: string) => {
     await api.delete(`/clients/${id}`);
     setClients(c => c.filter(x => x.id !== id));
+    setClientsTotal(t => (t === null ? t : Math.max(0, t - 1)));
   }, []);
 
   const addService = useCallback(async (data: Omit<SalonService, 'id'>) => {
@@ -855,6 +975,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notes: data.notes || undefined,
     });
     setAppointments(a => [...a, mapApiAppointment(res)]);
+
+    /* Agendar a alguien que no estaba en el CRM le abre ficha en el
+       backend. Si la lista de clientas no se entera, la recién llegada
+       sigue sin aparecer hasta recargar — que es exactamente la sorpresa
+       que hizo falta arreglar. Se vuelve a pedir solo cuando la cita trajo
+       una ficha que aquí no teníamos. */
+    const fichaNueva = res?.clientId;
+    if (fichaNueva && !clientsRef.current.some(c => c.id === fichaNueva)) {
+      void api.get<any>(`/clients?limit=${CLIENTAS_POR_PAGINA}`)
+        .then(res => setClients(prev => fundirClientas(prev, (res?.items ?? []).map(mapApiClient))))
+        .catch(() => { /* la cita ya se guardó; esto es solo refrescar */ });
+    }
   }, []);
   // Puente hacia loadOpenFolios, que se define bastante más abajo (necesita
   // el estado de ventas). Con el ref no hay que reordenar medio contexto.
@@ -1135,14 +1267,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [ytDuration, setYtDuration] = useState(0);
   const [ytReady, setYtReady] = useState(false);
 
-  /** Baraja dejando `first` en la cabeza, para no cortar lo que ya suena */
-  const shuffledOrder = useCallback((first: number, n: number) => {
-    const rest = Array.from({ length: n }, (_, i) => i).filter(i => i !== first);
+  /**
+   * Baraja dejando `first` en la cabeza, para no cortar lo que ya suena.
+   *
+   * `prioridad` son posiciones que NO se barajan: van justo detrás de `first`,
+   * en su orden. Es para las peticiones de las clientas: con el aleatorio
+   * encendido, "pedida" tiene que seguir significando "la siguiente".
+   */
+  const shuffledOrder = useCallback((first: number, n: number, prioridad: number[] = []) => {
+    const prio = prioridad.filter(i => i !== first).sort((a, b) => a - b);
+    const enPrio = new Set(prio);
+    const rest = Array.from({ length: n }, (_, i) => i).filter(i => i !== first && !enPrio.has(i));
     for (let i = rest.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [rest[i], rest[j]] = [rest[j], rest[i]];
     }
-    return n ? [first, ...rest] : [];
+    return n ? [first, ...prio, ...rest] : [];
   }, []);
 
   // Espejo de la cola para poder compararla sin recrear el callback
@@ -1189,7 +1329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // ya suena.
     setYtOrder(
       ytShuffleRef.current && tracks.length > 1
-        ? shuffledOrder(nextIndex, tracks.length)
+        ? shuffledOrder(nextIndex, tracks.length, indicesDePeticiones(tracks))
         : tracks.map((_, i) => i),
     );
     setYtIndex(nextIndex);
@@ -1350,26 +1490,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   /** Al activarlo baraja de una vez y redibuja la lista; al apagarlo la
    *  devuelve al orden natural. En ambos casos lo que suena no se corta. */
+  /* La cola de FONDO, la de las clientas presentes. Va memoizada aparte: el
+     modo 'random' baraja cada vez que se llama, y si se recalculara con cada
+     petición que llega, todo el orden cambiaría por una canción pedida. */
+  const baseQueue = useMemo(
+    // OJO: sin el caso vacío, quitar la última clienta o lista dejaba la cola
+    // anterior sonando para siempre — no había forma de "apagar" la música.
+    () => (ytBlocks.length ? mixClientQueues(ytBlocks, ytMixMode) : []),
+    [ytBlocks, ytMixMode],
+  );
+
+  // ── Canciones pedidas por las clientas ───────────────────────────────
+  const [peticiones, setPeticiones] = useState<PeticionCancion[]>([]);
+
+  const loadPeticiones = useCallback(async () => {
+    try {
+      const r = await api.get<{ items: PeticionCancion[] }>('/lounge/requests/queue');
+      setPeticiones(Array.isArray(r?.items) ? r.items : []);
+    } catch { /* sin peticiones la cola sigue siendo la de siempre */ }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) { setPeticiones([]); return; }
+    void loadPeticiones();
+    // Aviso en vivo: llegó una, sonó, la quitaron, o se reconectó el socket
+    const quitarAviso = alRecibir('musica:peticiones', () => { void loadPeticiones(); });
+    const quitarConexion = alConectar(() => { void loadPeticiones(); });
+    // Red de seguridad por si el socket se cae sin avisar
+    const id = window.setInterval(() => { void loadPeticiones(); }, 60_000);
+    return () => { quitarAviso(); quitarConexion(); window.clearInterval(id); };
+  }, [isAuthenticated, loadPeticiones]);
+
+  const quitarPeticion = useCallback(async (id: string) => {
+    try {
+      await api.delete(`/lounge/requests/${id}`);
+      await loadPeticiones();
+    } catch (e: any) {
+      showToast('No se pudo quitar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      void loadPeticiones();
+    }
+  }, [loadPeticiones, showToast]);
+
   /**
-   * Rearma la cola cada vez que cambian los bloques o el modo de mezcla.
+   * La última canción NORMAL de la cola que sonó: el punto donde se
+   * reanuda la cola de fondo cuando terminan las peticiones.
+   */
+  const [ancla, setAncla] = useState<string | null>(null);
+  useEffect(() => {
+    const t = ytQueue[ytIndex];
+    if (t && !t.peticionId) setAncla(t.videoId);
+  }, [ytQueue, ytIndex]);
+
+  /**
+   * Rearma la cola: la de fondo más las peticiones, detrás de lo que suena.
    * `keepCurrent` evita que reordenar corte la canción que está sonando.
    */
   useEffect(() => {
-    // OJO: sin el caso vacío, quitar la última clienta o lista dejaba la cola
-    // anterior sonando para siempre — no había forma de "apagar" la música.
-    setYtQueue(ytBlocks.length ? mixClientQueues(ytBlocks, ytMixMode) : [], { keepCurrent: true });
-  }, [ytBlocks, ytMixMode, setYtQueue]);
+    const actual = ytQueueRef.current[ytIndexRef.current];
+    // Si suena en otro aparato, la petición actual se sabe por lo que él publica
+    const remota = mandoRemoto() ? (estadoMusica().pista?.peticionId ?? null) : null;
+    setYtQueue(
+      componerCola(baseQueue, peticiones, ancla, actual?.peticionId ?? remota),
+      { keepCurrent: true },
+    );
+  }, [baseQueue, peticiones, ancla, setYtQueue]);
 
   const toggleYtShuffle = useCallback(() => {
     const n = ytQueue.length;
     setYtShuffle(s => {
       const on = !s;
       setYtOrder(on
-        ? shuffledOrder(ytIndex, n)
+        ? shuffledOrder(ytIndex, n, indicesDePeticiones(ytQueue))
         : Array.from({ length: n }, (_, i) => i));
       return on;
     });
-  }, [ytQueue.length, ytIndex, shuffledOrder]);
+  }, [ytQueue, ytIndex, shuffledOrder]);
 
   // off → toda la lista → una sola → off
   const cycleYtRepeat = useCallback(() => {
@@ -2040,7 +2235,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider value={{
       currentScreen, navigateTo, navigateToCatalog, screenHistory, goBack, catalogDeepLink, clearCatalogDeepLink,
-      clients, isLoadingClients, addClient, updateClient, deleteClient,
+      clients, isLoadingClients, clientsHasMore, clientsTotal,
+      cargarMasClientas, buscarClientas,
+      addClient, updateClient, deleteClient,
       services, addService, updateService, deleteService, toggleServiceAi,
       products, addProduct, updateProduct, deleteProduct, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
@@ -2079,6 +2276,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ytAnchorKey, setYtLoungeAnchor, setYtDockAnchor, ytFullscreen,
       ytShowVideo, setYtShowVideo,
       ytBlocks, setYtBlocks, ytMixMode, setYtMixMode,
+      peticiones, loadPeticiones, quitarPeticion,
       playlists, selectedPlaylistIds, loadPlaylists, togglePlaylistSelected,
       createPlaylist, deletePlaylist, addTrackToPlaylist, addTracksToPlaylist,
       updatePlaylist, reorderPlaylistTracks, removeTrackFromPlaylist,

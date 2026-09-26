@@ -18,6 +18,7 @@ import {
   ChevronRight as BreadcrumbArrow,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { useAuth } from '../context/AuthContext';
 import { Appointment, AppointmentStatus, CommunicationChannel, ServiceCategory } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -395,6 +396,11 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
     }
   };
 
+  /* El nombre escrito busca en todo el directorio, para que una clienta
+     ya registrada aparezca en el desplegable en vez de duplicarse (ver
+     CalendarScreen) */
+  useBusquedaDeClientas(newClientName);
+
   // Handle service change
   const handleServiceChange = (serviceId: string) => {
     setNewServiceId(serviceId);
@@ -418,8 +424,9 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
 
     addAppointment({
       clientId: selectedClientId || undefined,
-      clientName: newClientName,
-      clientPhone: newClientPhone || '+52 55 0000 0000',
+      clientName: newClientName.trim(),
+      // Vacío antes que inventado (ver CalendarScreen)
+      clientPhone: newClientPhone.trim(),
       serviceId: srv.id,
       serviceName: srv.name,
       serviceCategory: srv.category,

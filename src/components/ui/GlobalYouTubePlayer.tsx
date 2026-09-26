@@ -1,5 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { estadoMusica, soyElAnfitrion } from '../../services/musica';
+
+/** Otro aparato es el líder: este, si suena, solo lo SIGUE y no mueve la cola */
+const sigoAOtro = () => !!estadoMusica().anfitrion && !soyElAnfitrion();
 
 /**
  * Reproductor de YouTube global y controlable.
@@ -177,7 +181,7 @@ export const GlobalYouTubePlayer: React.FC = () => {
           },
           onStateChange: (e: any) => {
             // Fin natural: ytOnEnded decide si repite la misma o avanza
-            if (e.data === YT.PlayerState.ENDED) { endedRef.current(); return; }
+            if (e.data === YT.PlayerState.ENDED) { if (!sigoAOtro()) endedRef.current(); return; }
             setYtPlaying(e.data === YT.PlayerState.PLAYING);
             if (e.data === YT.PlayerState.PLAYING) {
               fallosRef.current = 0; // sonó algo: la racha de fallos se acabó
@@ -200,6 +204,10 @@ export const GlobalYouTubePlayer: React.FC = () => {
           // lleva orden explícita de sonar: no se deduce del estado del
           // player, que este mismo fallo acaba de ensuciar.
           onError: (e: any) => {
+            // Un seguidor con un vídeo que este aparato no puede reproducir se
+            // queda callado: saltar (o pedir "siguiente" al salón) movería la
+            // canción de todos por un problema de uno solo.
+            if (sigoAOtro()) return;
             ultimoFalloRef.current = Date.now();
 
             const codigo = Number(e?.data);

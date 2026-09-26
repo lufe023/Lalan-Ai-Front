@@ -22,7 +22,7 @@ export const ReproductorSala: React.FC<{ token: string }> = ({ token }) => {
   const {
     anclaRef, encender, intentarSolo, listo, bloqueado,
     cola, pista, sala, videoGrande, alternarVideo,
-  } = useAltavoz({ bajarAlLlamar });
+  } = useAltavoz({ bajarAlLlamar, tipo: 'reproductor' });
   /* Igual que en la pared: el vídeo grande es estado del altavoz, para que
      responda lo mismo a un toque aquí que a una orden desde el teléfono. */
   const completa = videoGrande;

@@ -51,6 +51,7 @@ import { MUSIC_VIBES, POPULAR_BEVERAGES, POPULAR_SNACKS } from '../data/mockData
 import { MandoSala } from '../components/ui/MandoSala';
 import { useMusicaSala, ordenar } from '../services/musica';
 import { PageContent } from '../components/ui/PageContent';
+import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { PosPanel } from '../components/pos/PosPanel';
 
 /** Una preferencia ya asignada a la clienta */
@@ -144,6 +145,8 @@ export const LoungePlayerScreen: React.FC = () => {
     ytTime, ytDuration, setYtQueue, ytPlayIndex, ytToggle, ytNext, ytPrev,
     ytSeek, ytSetVolume, ytToggleMute, toggleYtShuffle, cycleYtRepeat,
     ytRotos,
+    // Canciones pedidas por las clientas desde el QR
+    quitarPeticion,
   } = useApp();
 
   /**
@@ -167,6 +170,13 @@ export const LoungePlayerScreen: React.FC = () => {
    * que la aplicación hace lo que le da la gana.
    */
   const rotas = useMemo(() => new Set(ytRotos), [ytRotos]);
+
+  /* El selector de quién está en el salón recorría la lista entera de
+     clientas. Con el directorio paginado eso pasó a ser "las que estén
+     cargadas", así que necesita su propio buscador — si no, una clienta
+     antigua simplemente no aparecería y no habría forma de saber por qué. */
+  const [buscaClienta, setBuscaClienta] = useState('');
+  useBusquedaDeClientas(buscaClienta);
 
   const [activeTab, setActiveTab] = useState<'player' | 'hospitality' | 'explore'>('player');
   const [progressSec, setProgressSec] = useState<number>(34);
@@ -1067,8 +1077,21 @@ export const LoungePlayerScreen: React.FC = () => {
               <div className="text-xs font-bold text-slate-500 dark:text-neutral-400 mb-2 px-1">
                 Marca a todas las que estén en el salón. La primera es la del sillón.
               </div>
+
+              <input
+                type="text"
+                value={buscaClienta}
+                onChange={e => setBuscaClienta(e.target.value)}
+                placeholder="Buscar clienta…"
+                className="w-full mb-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              />
+
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {clients.map(c => {
+                {clients.filter(c => {
+                  const q = buscaClienta.trim().toLowerCase();
+                  if (!q) return true;
+                  return c.name.toLowerCase().includes(q) || (c.phone ?? '').includes(q);
+                }).map(c => {
                   const pos = loungeClients.findIndex(x => x.id === c.id);
                   const isSelected = pos >= 0;
                   return (
@@ -1860,9 +1883,19 @@ export const LoungePlayerScreen: React.FC = () => {
                             <div className="text-[11px] text-slate-400 dark:text-neutral-500 truncate flex items-center gap-1.5">
                               <span className="truncate">{t.channel || 'YouTube'}</span>
                               {/* De quién es este gusto, cuando el salón es compartido */}
-                              {ytBlocks.length > 1 && t.clientName && (
+                              {ytBlocks.length > 1 && t.clientName && !t.peticionId && (
                                 <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-bold">
                                   {t.clientName.split(' ')[0]}
+                                </span>
+                              )}
+                              {/* Pedida por una clienta desde el QR de la pared */}
+                              {t.peticionId && (
+                                <span
+                                  className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 font-bold flex items-center gap-1"
+                                  title="La pidió una clienta desde el código QR"
+                                >
+                                  <Heart className="w-2.5 h-2.5" />
+                                  Pedida{t.pidio ? ` · ${String(t.pidio).split(' ')[0]}` : ''}
                                 </span>
                               )}
                             </div>
@@ -1881,6 +1914,19 @@ export const LoungePlayerScreen: React.FC = () => {
                           <span className={`text-[11px] font-mono ${rota ? 'text-slate-300 dark:text-neutral-700' : 'text-slate-400'}`}>
                             {t.durationSeconds ? formatTime(t.durationSeconds) : '—'}
                           </span>
+                          {/* Quitar una petición que aún no ha sonado. stopPropagation:
+                              la fila entera salta a esa canción al pulsarla. */}
+                          {t.peticionId && !isCurrent && !pickMode && (
+                            <button
+                              type="button"
+                              onClick={ev => { ev.stopPropagation(); void quitarPeticion(t.peticionId!); }}
+                              className="w-6 h-6 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer"
+                              title="Quitar de la cola"
+                              aria-label="Quitar de la cola"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </motion.div>
                     );

@@ -25,6 +25,7 @@ import {
   Scissors,
   MonitorPlay,
   Volume2,
+  Music,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { useApp } from '../context/AppContext';
@@ -39,6 +40,7 @@ import { IOSModal } from '../components/ui/IOSModal';
 import { ThemeCustomizerModal } from '../components/ui/ThemeCustomizerModal';
 import { PageContent } from '../components/ui/PageContent';
 import { EditorPizarra } from '../components/ui/EditorPizarra';
+import { PeticionesMusica } from '../components/ui/PeticionesMusica';
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -1175,6 +1177,22 @@ export const SettingsScreen: React.FC = () => {
               </label>
             </div>
           </div>
+        </div>
+
+        {/* SECTION 3.47: CANCIONES PEDIDAS POR LAS CLIENTAS (QR) */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          <div className="flex items-center gap-1.5">
+            <Music className="w-4 h-4 text-[var(--primary)]" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Canciones pedidas por las clientas
+            </h2>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Las clientas escanean el QR de la pantalla de turnos y piden canciones
+            desde su teléfono, sin registrarse. Cada canción entra en la cola del
+            salón detrás de la que está sonando.
+          </p>
+          <PeticionesMusica />
         </div>
 
         {/* SECTION 3.5: MONEDAS Y DENOMINACIONES */}

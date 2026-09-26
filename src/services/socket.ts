@@ -55,6 +55,9 @@ function reenviar(evento: string, carga: any) {
 const EVENTOS = [
   'sala:cambio', 'turno:llamado', 'ventas:cambio',
   'musica:cambio', 'musica:orden', 'musica:permiso',
+  /* Señal, no datos: cambió la fila de peticiones de canciones (llegó una,
+     sonó, se quitó, se reinició una cuota). Cada quien vuelve a pedir lo suyo. */
+  'musica:peticiones',
 ];
 
 function conectar(auth: () => Record<string, any>, modo: string) {
@@ -112,6 +115,16 @@ export function conectarComoPantalla(token: string) {
   return conectar(() => ({ tipo: 'pantalla', token }), `pantalla:${token}`);
 }
 
+/**
+ * La clienta que abrió el QR de "pide tu canción".
+ *
+ * Token propio, distinto del de la pared: con este solo puede MIRAR qué suena
+ * y enterarse de los cambios en su cuota. No puede sonar ni mandar.
+ */
+export function conectarComoInvitada(token: string) {
+  return conectar(() => ({ tipo: 'invitada', token }), `invitada:${token}`);
+}
+
 export function desconectar() {
   try { socket?.removeAllListeners(); socket?.disconnect(); } catch { /* noop */ }
   socket = null;
@@ -141,6 +154,19 @@ export const idSocket = () => socket?.id ?? null;
  */
 export function mandar(evento: string, carga?: any) {
   try { socket?.emit(evento, carga ?? {}); } catch { /* noop */ }
+}
+
+/**
+ * Emitir y esperar la respuesta del servidor. Devuelve null si no hay
+ * conexión o no contesta a tiempo: quien lo use tiene que poder vivir sin ella.
+ */
+export function mandarConRespuesta<T = any>(evento: string, carga?: any, esperaMs = 2500): Promise<T | null> {
+  return new Promise(resolve => {
+    try {
+      if (!socket?.connected) { resolve(null); return; }
+      socket.timeout(esperaMs).emit(evento, carga ?? {}, (err: any, res: T) => resolve(err ? null : res));
+    } catch { resolve(null); }
+  });
 }
 
 /** Se dispara en cada (re)conexión: sirve para volver a pedir estado */

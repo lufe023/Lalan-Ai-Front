@@ -114,6 +114,47 @@ export async function publicFetch<T = unknown>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Petición SIN sesión que sí dice la verdad cuando falla.
+ *
+ * `publicFetch` traduce cualquier error a "Sin conexión", que sirve para una
+ * pared pero no para una clienta: si le dicen que "ya usó sus 3 canciones",
+ * el mensaje tiene que llegarle tal cual. Aquí se devuelve el motivo que
+ * manda el servidor, y se distingue "no hay red" de "el servidor dijo que no".
+ */
+export class ErrorPublico extends Error {
+  constructor(message: string, public status: number) { super(message); }
+}
+
+export async function publicRequest<T = unknown>(
+  path: string,
+  opciones: { method?: 'GET' | 'POST'; body?: unknown } = {},
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method: opciones.method ?? 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      body: opciones.body !== undefined ? JSON.stringify(opciones.body) : undefined,
+    });
+  } catch {
+    throw new ErrorPublico('No hay conexión. Revisa tu internet e inténtalo de nuevo.', 0);
+  }
+  if (!res.ok) {
+    const cuerpo = await res.json().catch(() => null);
+    const desanidar = (m: any): string => {
+      if (m == null) return '';
+      if (typeof m === 'string') return m;
+      if (Array.isArray(m)) return m.map(desanidar).filter(Boolean).join(' | ');
+      if (typeof m === 'object') return desanidar(m.message ?? m.error ?? null);
+      return String(m);
+    };
+    const motivo = desanidar(cuerpo?.message ?? cuerpo) || 'No se pudo completar. Inténtalo de nuevo.';
+    throw new ErrorPublico(motivo, res.status);
+  }
+  return res.json() as Promise<T>;
+}
+
 /** La URL completa de la pantalla, para copiarla o meterla en un QR */
 export const urlDePantalla = (token: string) =>
   `${window.location.origin}${window.location.pathname}#/pantalla/${token}`;

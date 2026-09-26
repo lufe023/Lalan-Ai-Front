@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -33,6 +33,7 @@ import { Client, ClientTag, CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { PageContent } from '../components/ui/PageContent';
+import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 
 export const ClientsScreen: React.FC = () => {
   const {
@@ -44,6 +45,13 @@ export const ClientsScreen: React.FC = () => {
     navigateTo,
     appointments,
     playMusicForClient,
+    clientsHasMore, clientsTotal, cargarMasClientas, buscarClientas,
+    /* Se usaba sin sacarlo de aquí: al registrar una clienta con éxito
+       reventaba con ReferenceError, el catch de abajo lo pintaba como un
+       fallo y el modal se quedaba abierto… con la clienta ya creada en el
+       servidor. Reintentar daba "ese teléfono ya es de alguien", que era
+       ella misma un segundo antes. */
+    showToast,
   } = useApp();
   const { currentUser } = useAuth();
 
@@ -134,6 +142,30 @@ export const ClientsScreen: React.FC = () => {
     return matchesSearch && matchesTag;
   });
 
+  // Lo que se escriba aquí se busca también en el directorio completo, no
+  // solo en lo que hay cargado (ver el enganche para el porqué)
+  useBusquedaDeClientas(searchQuery);
+
+  /**
+   * Scroll infinito: el centinela del final de la lista.
+   *
+   * Cuando este div entra en pantalla es que llegaste abajo, y se pide la
+   * siguiente página. Se usa IntersectionObserver y no el evento de scroll
+   * porque el observador no dispara en cada píxel — el navegador avisa una
+   * vez, cuando de verdad entra.
+   */
+  const centinelaRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const nodo = centinelaRef.current;
+    if (!nodo || !clientsHasMore) return;
+    const observador = new IntersectionObserver(
+      entradas => { if (entradas[0]?.isIntersecting) void cargarMasClientas(); },
+      { rootMargin: '300px' },          // un poco antes de llegar, para que no se note
+    );
+    observador.observe(nodo);
+    return () => observador.disconnect();
+  }, [clientsHasMore, cargarMasClientas, filteredClients.length]);
+
   const availableTags: { id: ClientTag; label: string; icon: string; colorClass: string }[] = [
     { id: 'vip', label: 'VIP Glamour', icon: '👑', colorClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' },
     { id: 'frecuente', label: 'Frecuente', icon: '💖', colorClass: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30' },
@@ -147,7 +179,12 @@ export const ClientsScreen: React.FC = () => {
     setIsEditing(false);
     setFormData({
       name: '',
-      phone: '+52 55 ',
+      /* Vacío, no con el prefijo puesto. Cuando esto traía '+52 55 ' de
+         serie, quien no lo sobrescribía guardaba una clienta cuyo teléfono
+         era literalmente ese prefijo — y como el teléfono es único, la
+         primera se quedaba con él y todas las siguientes rebotaban. El
+         prefijo de ejemplo va en el placeholder, que para eso está. */
+      phone: '',
       email: '',
       avatar: '',
       preferredChannel: 'whatsapp',
@@ -188,8 +225,11 @@ export const ClientsScreen: React.FC = () => {
     // Client-side validation
     const errors: { name?: string; phone?: string } = {};
     if (!formData.name.trim()) errors.name = 'El nombre es obligatorio.';
-    if (!formData.phone.trim()) errors.phone = 'El teléfono es obligatorio.';
-    else if (!/^[+\d][\d\s\-().]{5,}$/.test(formData.phone.trim())) errors.phone = 'Ingresa un teléfono válido.';
+    /* El teléfono es opcional: una clienta que pasó y no lo dejó es una
+       clienta igual. Pero si lo escribe, que esté bien escrito. */
+    if (formData.phone.trim() && !/^[+\d][\d\s\-().]{5,}$/.test(formData.phone.trim())) {
+      errors.phone = 'Ingresa un teléfono válido.';
+    }
     if (Object.keys(errors).length) { setFormErrors(errors); return; }
     setFormErrors({});
     setFormApiError('');
@@ -465,7 +505,14 @@ export const ClientsScreen: React.FC = () => {
     <div id="clients-screen" className="flex-1 w-full h-full flex flex-col overflow-hidden">
       <IOSHeader
         title="Clientas"
-        subtitle={`${clients.length} registradas en el directorio`}
+        /* Antes decía "N registradas en el directorio" contando lo que
+           había en memoria. Con páginas eso pasaría a ser falso en cuanto
+           el directorio no quepa en la primera tanda. */
+        subtitle={
+          clientsTotal !== null && clientsTotal > clients.length
+            ? `${clients.length} de ${clientsTotal} en el directorio`
+            : `${clients.length} registradas en el directorio`
+        }
         rightAction={
           <div className="flex items-center gap-2">
             <button
@@ -608,6 +655,25 @@ export const ClientsScreen: React.FC = () => {
                 </div>
               </motion.div>
             ))}
+
+            {/* El final de la lista: al asomarse, entra la siguiente tanda */}
+            <div ref={centinelaRef} />
+
+            {clientsHasMore && (
+              <div className="py-4 flex items-center justify-center gap-2 text-[11px] text-slate-400 dark:text-neutral-500">
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 dark:border-neutral-700 border-t-[var(--primary)] animate-spin" />
+                Cargando más clientas…
+              </div>
+            )}
+
+            {/* Con el buscador escrito conviene decir qué se está mirando:
+                el filtro de abajo solo ve lo cargado, y la respuesta del
+                servidor puede tardar un instante en sumarse. */}
+            {!clientsHasMore && searchQuery.trim().length >= 2 && (
+              <div className="py-4 text-center text-[11px] text-slate-400 dark:text-neutral-500">
+                Buscado en todo el directorio
+              </div>
+            )}
           </div>
         )}
       </PageContent>

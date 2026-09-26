@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { alRecibir } from '../services/socket';
 import {
-  useMusicaSala, reclamarAnfitrion, publicarEstado, PistaSala,
+  useMusicaSala, registrarAltavoz, publicarEstado, soyElAnfitrion, estadoMusica,
+  programar, miAjusteMs, miAutoMs, calibrarme, PistaSala,
 } from '../services/musica';
+import {
+  corregirSeguidor, posicionObjetivo, arrancarSincronizado, Calibrador, MemoriaSeguidor,
+} from '../utils/seguirLider';
 import { cargarApiYouTube } from '../utils/ytApi';
 import { pedirPantallaCompleta, salirPantallaCompleta } from '../utils/pantallaCompleta';
 
@@ -26,8 +30,8 @@ function sinSubtitulos(p: any) {
   try { p?.unloadModule?.('cc'); } catch { /* noop */ }
 }
 
-export function useAltavoz(opciones: { bajarAlLlamar?: boolean } = {}) {
-  const { sala } = useMusicaSala();
+export function useAltavoz(opciones: { bajarAlLlamar?: boolean; tipo?: 'pantalla' | 'reproductor' } = {}) {
+  const { sala, soyAnfitrion, soyAltavoz, silencioso } = useMusicaSala();
   const [listo, setListo] = useState(false);
 
   /**
@@ -98,18 +102,56 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean } = {}) {
   const largoRef = useRef(0);
   largoRef.current = cola.length;
 
+  /** Hasta cuándo no corregir al seguidor (justo después de una orden) */
+  const silencioHastaRef = useRef(0);
+  const memoriaSeguidorRef = useRef<MemoriaSeguidor>({ ultimoSalto: 0 });
+  const calibradorRef = useRef(new Calibrador());
+
   // ── Obedecer a los mandos ───────────────────────────────────────────
   const aplicar = useRef<(o: any) => void>(() => {});
   aplicar.current = (orden: any) => {
     const p = playerRef.current;
     const v = orden?.valor;
+    /* Play, pausa y salto llevan una HORA: todos los altavoces la reciben en
+       momentos distintos y todos esperan a esa hora para ejecutarla, así que
+       arrancan juntos. Después se deja un rato sin corregir: hasta que el
+       líder publique lo nuevo, la corrección vería un estado viejo y
+       desharía lo que se acaba de pedir. */
+    const conHora = (fn: () => void) => programar(orden?.en, () => {
+      silencioHastaRef.current = Date.now() + 1800;
+      calibradorRef.current.reiniciar();
+      try { fn(); } catch { /* el player aún no está listo */ }
+    });
+
+    /**
+     * Arrancar a la vez que los demás.
+     *
+     * `base` es la posición que debe tener a la hora convenida (la del salto,
+     * o la del líder si es un play). Sin hora —un solo altavoz encendido— no
+     * hay nada que sincronizar y se hace en el acto.
+     */
+    const arrancar = (base: number | null) => {
+      const pl = playerRef.current;
+      const en = Number(orden?.en);
+      calibradorRef.current.reiniciar();
+      if (!Number.isFinite(en) || en <= 0) {
+        if (base !== null) { try { pl?.seekTo?.(base, true); } catch { /* noop */ } }
+        try { pl?.playVideo?.(); } catch { /* noop */ }
+        return;
+      }
+      // El líder es la referencia: su ajuste es cero por definición
+      const ajuste = soyElAnfitrion() ? 0 : miAjusteMs();
+      silencioHastaRef.current = Date.now() + Math.max(0, en - Date.now()) + 2000;
+      arrancarSincronizado(pl, base ?? posicionObjetivo(estadoMusica(), 0, en), ajuste, en, programar);
+    };
+
     try {
       switch (orden?.accion) {
-        case 'play':    p?.playVideo?.(); break;
-        case 'pause':   p?.pauseVideo?.(); break;
+        case 'play':    arrancar(null); break;
+        case 'pause':   conHora(() => playerRef.current?.pauseVideo?.()); break;
         case 'next':    mover(1); break;
         case 'prev':    mover(-1); break;
-        case 'seek':    if (Number.isFinite(Number(v))) p?.seekTo?.(Number(v), true); break;
+        case 'seek':    if (Number.isFinite(Number(v))) arrancar(Number(v)); break;
         case 'volumen':
           if (Number.isFinite(Number(v))) {
             const vol = Math.max(0, Math.min(100, Number(v)));
@@ -188,16 +230,17 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean } = {}) {
           playerRef.current = e.target;
           try { e.target.setVolume(volumenRef.current); } catch { /* noop */ }
           setListo(true);
-          reclamarAnfitrion();
+          /* Se OFRECE como altavoz, no se impone: aparece en la lista de
+             altavoces y solo se enciende sola si el salón está en silencio.
+             Así quien abre esta pantalla en un teléfono no pone música ni
+             deja sin ella al salón. Hasta que el servidor no lo encienda,
+             no se carga ni se toca nada: lo hace el efecto de abajo cuando
+             `soyAltavoz`. */
+          registrarAltavoz(opciones.tipo ?? 'pantalla', { suave: true });
           sinSubtitulos(e.target);
-          const id = cola[sala.indice]?.videoId;
-          if (id) {
-            cargadoRef.current = id;
-            try { e.target.loadVideoById(id); } catch { /* noop */ }
-          }
         },
         onStateChange: (e: any) => {
-          if (e.data === YT.PlayerState.ENDED) { moverRef.current(1); return; }
+          if (e.data === YT.PlayerState.ENDED) { if (soyElAnfitrion()) moverRef.current(1); return; }
           if (e.data === YT.PlayerState.PLAYING) {
             // Sonó algo: la racha de fallos se acabó
             fallosRef.current = 0;
@@ -208,6 +251,9 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean } = {}) {
         // Vídeo bloqueado o borrado: saltar en vez de quedarse trabado,
         // pero solo mientras quede alguno por probar.
         onError: () => {
+          // Solo el líder mueve la cola; un seguidor con un vídeo que no le
+          // deja YouTube se queda callado hasta la siguiente canción
+          if (!soyElAnfitrion()) return;
           fallosRef.current += 1;
           if (fallosRef.current > Math.max(3, largoRef.current)) return;
           moverRef.current(1);
@@ -239,17 +285,76 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean } = {}) {
   // ── Poner la canción que toca ───────────────────────────────────────
   useEffect(() => {
     const p = playerRef.current;
-    const id = pista?.videoId;
-    if (!p || !id) return;
+    if (!p) return;
+    // Apagado en la lista no suena nada, y si lo apagaron (o lo encendió
+    // otro a propósito) se calla: un televisor de más sonando solo es peor
+    // que uno de menos.
+    if (!soyAltavoz) {
+      if (cargadoRef.current) {
+        cargadoRef.current = null;
+        try { p.pauseVideo?.(); } catch { /* noop */ }
+      }
+      return;
+    }
+    /* El líder carga lo que dice su cola. Un seguidor carga lo que el líder
+       dice que SUENA: es la referencia, aunque su propia cola vaya
+       desfasada un instante. */
+    const id = soyAnfitrion ? pista?.videoId : (sala.pista?.videoId ?? pista?.videoId);
+    if (!id) return;
     if (cargadoRef.current === id) return;   // ya está puesta: no reiniciarla
     cargadoRef.current = id;
     try { p.loadVideoById(id); } catch { /* noop */ }
     sinSubtitulos(p);
-  }, [pista?.videoId, listo]);
+  }, [pista?.videoId, sala.pista?.videoId, listo, soyAltavoz, soyAnfitrion]);
+
+  // ── Seguir al líder ─────────────────────────────────────────────────
+  //
+  // Cada segundo, sin red: se compara lo que hace el player con lo que dice
+  // el líder que debería estar haciendo. Ver `utils/seguirLider.ts`.
+  useEffect(() => {
+    if (!listo || !soyAltavoz || soyAnfitrion) return;
+    const id = window.setInterval(() => {
+      if (Date.now() < silencioHastaRef.current) return;
+      const s = estadoMusica();
+      const p = playerRef.current;
+      // Solo si ya está puesta la canción del líder; cambiarla es cosa del efecto de carga
+      if (!p || !s.pista?.videoId || cargadoRef.current !== s.pista.videoId) return;
+      const hecho = corregirSeguidor(p, s, miAjusteMs(), memoriaSeguidorRef.current);
+      /* Lo que queda tras la corrección gruesa es el desfase fino: se mide
+         durante unos segundos y se guarda como ajuste de este aparato. */
+      if (hecho !== 'nada') calibradorRef.current.reiniciar();
+      else if (s.sonando) {
+        try {
+          if (p.getPlayerState?.() === 1) {
+            const error = posicionObjetivo(s, miAjusteMs()) - (p.getCurrentTime?.() ?? 0);
+            const delta = calibradorRef.current.observar(error);
+            if (delta) calibrarme(miAutoMs() + delta);
+          }
+        } catch { /* noop */ }
+      }
+      // El volumen del grupo lo manda el líder; un anuncio lo baja un rato y no se pisa
+      try {
+        if (!agachadoRef.current && Math.abs((p.getVolume?.() ?? s.volumen) - s.volumen) > 2) {
+          volumenRef.current = s.volumen;
+          p.setVolume?.(s.volumen);
+        }
+      } catch { /* noop */ }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [listo, soyAltavoz, soyAnfitrion]);
+
+  // ── Solo imagen: sigue la canción pero no suena ─────────────────────
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    try { if (silencioso) p.mute?.(); else p.unMute?.(); } catch { /* noop */ }
+  }, [silencioso, listo]);
 
   // ── Contar qué suena ────────────────────────────────────────────────
   const contar = useRef<() => void>(() => {});
   contar.current = () => {
+    // Solo el altavoz cuenta qué suena; el servidor ignoraría a cualquier otro
+    if (!soyElAnfitrion()) return;
     const p = playerRef.current;
     let posicion = 0, duracion = 0, sonando = false;
     let volumen = volumenRef.current;

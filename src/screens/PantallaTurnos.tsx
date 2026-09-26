@@ -46,6 +46,12 @@ interface Pantalla {
   };
   /** Null = la pared usa el diseño de fábrica */
   bloques?: Bloque[] | null;
+  /**
+   * Token del QR de "pide tu canción". Distinto del de esta pantalla a
+   * propósito: el de la pared también sirve para hacerse pasar por el
+   * altavoz, y lo que va en un QR lo escanea cualquiera.
+   */
+  pedirToken?: string | null;
   actualizado: string;
   zonas: { id: string; name: string; prefix: string; color: string | null }[];
   llamando: TurnoPublico[];
@@ -292,8 +298,8 @@ function useQrDataUrl(url: string | null | undefined): string | null {
  * el texto a la derecha ("¡Pide tu canción!" / "Escanea y agrega música").
  * Se adapta perfectamente tanto a un único cuadro (1x1) como a una única fila (ej. 2x1 o 3x1).
  */
-const QrMusica: React.FC<{ token: string; b: Bloque }> = ({ token, b }) => {
-  const url = useMemo(() => urlDePedirCancion(token), [token]);
+const QrMusica: React.FC<{ token: string | null; b: Bloque }> = ({ token, b }) => {
+  const url = useMemo(() => (token ? urlDePedirCancion(token) : ''), [token]);
   const qrSrc = useQrDataUrl(url);
 
   const rotulo = b.config?.rotulo?.trim()
@@ -444,6 +450,13 @@ const Musica: React.FC<{
              style={{ fontSize: 'clamp(0.7rem, 1vw, 1.1rem)' }}>
           {pista?.artista ?? '—'}
         </div>
+        {/* Si la pidió una clienta desde el QR, se dice: es medio premio */}
+        {pista?.pidio && (
+          <div className="text-[var(--primary)] truncate font-semibold mt-[0.2vh]"
+               style={{ fontSize: 'clamp(0.65rem, 0.9vw, 1rem)' }}>
+            Pedida por {pista.pidio}
+          </div>
+        )}
         {sala.duracion > 0 && (
           <div className="mt-[0.6vh] h-[0.35vh] rounded-full bg-white/10 overflow-hidden">
             <div className="h-full bg-emerald-400/70 transition-[width] duration-1000 ease-linear"
@@ -633,10 +646,10 @@ export const PantallaTurnos: React.FC<{ token: string }> = ({ token }) => {
       case 'marca':       return <Marca salon={datos?.salon} sede={datos?.sede} />;
       case 'texto':
         if (b.config?.texto?.includes('#qr_musica')) {
-          return <QrMusica token={token} b={b} />;
+          return <QrMusica token={datos?.pedirToken ?? null} b={b} />;
         }
         return <Texto b={b} />;
-      case 'qr_musica':   return <QrMusica token={token} b={b} />;
+      case 'qr_musica':   return <QrMusica token={datos?.pedirToken ?? null} b={b} />;
       case 'musica':
         return (
           <Musica

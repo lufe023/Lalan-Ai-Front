@@ -9,6 +9,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useApp, PriceList, PriceListRule, PriceRuleTarget } from '../context/AppContext';
+import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
@@ -366,6 +367,10 @@ function AssignPanel({ priceList, onClose }: AssignPanelProps) {
   const { clients, assignPriceList, unassignPriceList, showToast } = useApp();
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+
+  // El buscador ya existía, pero solo miraba el caché; ahora también pide
+  // al servidor lo que falte
+  useBusquedaDeClientas(search);
 
   const filtered = clients.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||

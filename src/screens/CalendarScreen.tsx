@@ -17,6 +17,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { useAuth } from '../context/AuthContext';
 import { Appointment, AppointmentStatus, CommunicationChannel, ServiceCategory } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -152,6 +153,12 @@ export const CalendarScreen: React.FC = () => {
     if (cl) { setNewClientName(cl.name); setNewClientPhone(cl.phone); setNewChannel(cl.preferredChannel); }
   };
 
+  /* Escribir el nombre busca en TODO el directorio, no solo en lo que hay
+     cargado: si la clienta ya existe, aparece en el desplegable de arriba
+     mientras escribes. Sin esto, con el directorio paginado, una clienta
+     antigua parecería nueva y acabarías con su ficha duplicada. */
+  useBusquedaDeClientas(newClientName);
+
   const handleServiceChange = (serviceId: string) => {
     setNewServiceId(serviceId);
     const srv = services.find(s => s.id === serviceId);
@@ -184,8 +191,12 @@ export const CalendarScreen: React.FC = () => {
     const deposit = Math.round(finalPrice * ((settings.depositPercent || 30) / 100));
     const fullServiceName = selectedTierName ? `${selectedSrv.name} (${selectedTierName})` : selectedSrv.name;
     addAppointment({
-      clientName: newClientName,
-      clientPhone: newClientPhone || '+52 55 0000 0000',
+      // Si la eligieron de la lista, se enlaza por id y no por parecido de nombre
+      clientId: selectedClientId || undefined,
+      clientName: newClientName.trim(),
+      // Vacío antes que inventado: un número falso ensucia el CRM y
+      // manda WhatsApp a un desconocido
+      clientPhone: newClientPhone.trim(),
       clientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       serviceId: selectedSrv.id,
       serviceName: fullServiceName,
