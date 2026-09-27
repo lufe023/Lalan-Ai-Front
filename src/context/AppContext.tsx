@@ -91,7 +91,7 @@ export interface LoungeEvent {
 }
 
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'sala';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'sala' | 'plataforma';
 
 // ═══════════════════════════════════════════════════════════════════
 //  SALA Y TURNOS
@@ -293,6 +293,8 @@ interface AppContextType {
   conversations: Conversation[];
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
+  /** Da un chat por leído (abrirlo en una ventana, por ejemplo) */
+  marcarLeida: (id: string) => void;
   /** Conversaciones que pidieron a una persona, llegadas en vivo */
   avisosAtencion: AvisoAtencion[];
   abrirConversacion: (id: string) => void;
@@ -697,7 +699,7 @@ const MS_MINUTO = 60_000;
 
 /** "sábado 27 de septiembre, 9:00 a. m." */
 function cuandoHablado(ms: number) {
-  return new Date(ms).toLocaleString('es', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' });
+  return new Date(ms).toLocaleString('es', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', hour12: true, minute: '2-digit' });
 }
 
 /** Las citas que venían pegadas detrás de esta, para la misma clienta (el mismo bloque) */
@@ -736,7 +738,7 @@ function mapApiConversation(c: any): Conversation {
     clientHandle: c.clientHandle, clientPhone: c.clientPhone,
     clientAvatar: c.clientAvatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.clientName)}&background=e2e8f0&color=475569`,
     channel: c.channel, status: c.status, lastMessage: c.lastMessage ?? '',
-    lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '',
+    lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' }) : '',
     unreadCount: c.unreadCount ?? 0, serviceInterest: c.serviceInterest,
     lastMessageAt: c.lastMessageAt ?? undefined,
     windowExpiresAt: c.windowExpiresAt ?? null,
@@ -1296,12 +1298,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   /* Abrir un chat lo da por leído, y mientras está abierto lo que llega
      también cuenta como leído. Antes nunca se marcaba y el contador del
      menú solo podía crecer. */
+  const marcarLeida = useCallback((id: string) => {
+    if (id.startsWith('temp_')) return;
+    setConversations(c => c.map(x => x.id === id ? { ...x, unreadCount: 0 } : x));
+    api.patch(`/conversations/${id}/read`, {}).catch(() => undefined);
+  }, []);
   const noLeidosDelActivo = conversations.find(c => c.id === activeConversationId)?.unreadCount ?? 0;
   useEffect(() => {
-    if (!activeConversationId || activeConversationId.startsWith('temp_') || noLeidosDelActivo === 0) return;
-    setConversations(c => c.map(x => x.id === activeConversationId ? { ...x, unreadCount: 0 } : x));
-    api.patch(`/conversations/${activeConversationId}/read`, {}).catch(() => undefined);
-  }, [activeConversationId, noLeidosDelActivo]);
+    if (!activeConversationId || noLeidosDelActivo === 0) return;
+    marcarLeida(activeConversationId);
+  }, [activeConversationId, noLeidosDelActivo, marcarLeida]);
 
   /* El botón del WhatsApp de aviso abre la app en ?chat=<id> o ?cita=<id>.
      Se atiende una sola vez, cuando ya hay sesión y bandeja, y se limpia la
@@ -1314,7 +1320,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cita = q.get('cita');
     if (!chat && !cita) { enlaceAtendido.current = true; return; }
     enlaceAtendido.current = true;
-    if (chat) { setActiveConversationId(chat); navigateTo('chats'); }
+    // La plantilla de "chat necesita atención" se aprobó con ?cita=: si el id es de un chat, se abre el chat
+    const idChat = chat ?? (cita && conversations.some(c => c.id === cita) ? cita : null);
+    if (idChat) { setActiveConversationId(idChat); navigateTo('chats'); }
     else navigateTo('calendar');
     window.history.replaceState(null, '', window.location.pathname + window.location.hash);
   }, [isAuthenticated, conversations.length, navigateTo]);
@@ -1377,7 +1385,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const cita = lista?.find(c => c.id === citaId);
       if (!cita) return;
       const cuando = new Date(cita.startsAt ?? `${cita.date}T${cita.time}`)
-        .toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        .toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', hour12: true, minute: '2-digit' });
       const motivo = `${cita.serviceName}, ${cuando}: la agendó la asistente y no hay especialista libre o asignado para ese servicio.`;
       setAvisosAtencion(a => a.some(x => x.conversacionId === citaId) ? a : [
         ...a, { tipo: 'cita', conversacionId: citaId, cliente: cita.clientName, canal: cita.channel, motivo, en: new Date().toISOString() },
@@ -1408,7 +1416,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConversations(c => c.map(x => x.id === conversationId
       ? {
           ...x, messages: [...x.messages, msg], lastMessage: text, lastMessageAt: res.createdAt,
-          lastMessageTime: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+          lastMessageTime: new Date().toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' }),
           // Escribió una persona: la asistente se calla en este chat (igual que en el backend)
           status: sender === 'agent' && x.status === 'ai_active' ? 'manual_control' as const : x.status,
         }
@@ -2662,7 +2670,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       products, addProduct, updateProduct, deleteProduct, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
       preguntar, consulta,
-      conversations, activeConversationId, setActiveConversationId,
+      conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,
       toggleChatAiStatus, sendMessageToConversation, startChatWithClient,
       botConfigs, toggleBotChannel, updateBotMessage,

@@ -1,4 +1,5 @@
-export type UserRole = 'admin' | 'assistant' | 'support';
+/** super_admin: el dueño de la plataforma Lalan (ve la landing y el piloto; puede todo lo de un admin) */
+export type UserRole = 'admin' | 'assistant' | 'support' | 'super_admin';
 
 export interface UserProfile {
   id: string;
@@ -8,6 +9,10 @@ export interface UserProfile {
   avatar: string;
   badgeColor: string;
   description: string;
+  /** Entró con una clave temporal: antes de usar la app, pone la suya */
+  debeCambiarClave?: boolean;
+  /** Sesión de soporte de Lalan dentro de este salón */
+  soporte?: { negocio: string };
   permissions: {
     canViewMetrics: boolean;
     canManageBots: boolean;
@@ -333,6 +338,12 @@ export interface SalonBusinessSettings {
   alertsEnabled: boolean;
   alertPhone: string | null;
   alertContactName: string | null;
+  /** Recordatorios de cita a la clienta por WhatsApp (si el plan los incluye) */
+  remindersEnabled: boolean;
+  /** Uno el día antes, a la hora de la cita */
+  reminderDayBefore: boolean;
+  /** Otro unas horas antes (0 = no) */
+  reminderHoursBefore: number;
   instagramHandle: string;
   facebookPage: string;
 }

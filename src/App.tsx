@@ -26,14 +26,35 @@ import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
 import { ReproductorSala } from './screens/ReproductorSala';
 import { PedirCancionScreen } from './screens/PedirCancionScreen';
+import { PlataformaScreen } from './screens/PlataformaScreen';
+import { CambiarClaveScreen } from './screens/CambiarClaveScreen';
+import { PlanProvider } from './context/PlanContext';
+import { BarraSoporte } from './components/ui/BarraSoporte';
+import { AvisoMensajes } from './components/ui/AvisoMensajes';
+import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
+import { useUsoApp } from './hooks/useUsoApp';
+import { CalorApp } from './components/plataforma/CalorApp';
+import type { ScreenName } from './context/AppContext';
+
+/** El panel de plataforma abre la app con ?calor=app&pantalla=… para ver su mapa de calor */
+const MODO_CALOR = (() => {
+  const q = new URLSearchParams(window.location.search);
+  return q.get('calor') === 'app' ? { pantalla: q.get('pantalla') || 'dashboard', dispositivo: q.get('dispositivo') || 'pc', desde: q.get('desde') || undefined, negocio: q.get('negocio') || undefined } : null;
+})();
 import { pantallaRecordada, esAplicacionInstalada } from './utils/pantallaRecordada';
 import { conectarComoUsuario, desconectar } from './services/socket';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const MainAppContent: React.FC = () => {
-  const { currentScreen, showSplash, activeConversationId } = useApp();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { currentScreen, showSplash, activeConversationId, navigateTo } = useApp();
+  const { isAuthenticated, isLoading, currentUser } = useAuth();
+  // Se mide el uso de los salones; no el de Lalan (super admin, soporte) ni el modo mapa de calor
+  const medir = isAuthenticated && !MODO_CALOR && !currentUser?.soporte && currentUser?.role !== 'super_admin' && currentUser?.role !== 'support';
+  useUsoApp(currentScreen, medir);
+  React.useEffect(() => {
+    if (MODO_CALOR && isAuthenticated) navigateTo(MODO_CALOR.pantalla as ScreenName);
+  }, [isAuthenticated, navigateTo]);
 
   /**
    * El socket se ata a la sesión, no al arranque de la aplicación: antes de
@@ -61,6 +82,7 @@ const MainAppContent: React.FC = () => {
       case 'citas-report': return <CitasReportScreen key="citas-report" />;
       case 'price-lists': return <PriceListsScreen key="price-lists" />;
       case 'ganancias':   return <GananciasScreen   key="ganancias"   />;
+      case 'plataforma':  return <PlataformaScreen  key="plataforma"  />;
       default:          return <DashboardScreen key="default"   />;
     }
   };
@@ -105,7 +127,9 @@ const MainAppContent: React.FC = () => {
 
       {/* ── Login vs Authenticated ──────────────────────── */}
       {!isLoading && (
-        !isAuthenticated ? (
+        isAuthenticated && currentUser?.debeCambiarClave ? (
+          <CambiarClaveScreen />
+        ) : !isAuthenticated ? (
           <motion.div
             key="login-view"
             initial={{ opacity: 0, scale: 0.96 }}
@@ -120,15 +144,20 @@ const MainAppContent: React.FC = () => {
           // On mobile  → flex-col  (sidebar at bottom = tab bar)
           // On desktop → flex-row  (sidebar on left via lg:order-first)
           <div className="flex-1 w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
+            {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} />}
+            <ChatsFlotantes />
+            {MODO_CALOR && currentUser?.role === 'super_admin' && <CalorApp key={currentScreen} {...MODO_CALOR} pantalla={currentScreen} />}
 
             {/* ── Main content column ── */}
             <div className="flex-1 overflow-hidden flex flex-col relative min-w-0">
+              <AvisoMensajes />
 
               {/* Screen transitions */}
               <div className="flex-1 overflow-hidden flex flex-col relative">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentScreen}
+                    data-pantalla={currentScreen}
                     initial={{ opacity: 0, x: 12 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -12 }}
@@ -141,7 +170,7 @@ const MainAppContent: React.FC = () => {
               </div>
 
               {/* ── Desktop footer (hidden on mobile) ── */}
-              <footer className="hidden lg:flex shrink-0 items-center justify-between px-8 py-2.5 border-t border-slate-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50">
+              <footer id="pie-app" className="hidden lg:flex shrink-0 items-center justify-between px-8 py-2.5 border-t border-slate-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50">
                 <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-600 tracking-wide">
                   © {CURRENT_YEAR} Gomez Santana Solutions Group SRL
                 </span>
@@ -264,9 +293,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <PlanProvider>
         <AppProvider>
           <MainAppContent />
         </AppProvider>
+        </PlanProvider>
       </AuthProvider>
     </ThemeProvider>
   );

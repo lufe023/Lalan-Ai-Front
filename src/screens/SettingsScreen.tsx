@@ -44,6 +44,9 @@ import { ThemeCustomizerModal } from '../components/ui/ThemeCustomizerModal';
 import { PageContent } from '../components/ui/PageContent';
 import { EditorPizarra } from '../components/ui/EditorPizarra';
 import { PeticionesMusica } from '../components/ui/PeticionesMusica';
+import { TuPlan } from '../components/ajustes/TuPlan';
+import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
+import { SelectorHora } from '../components/ui/SelectorHora';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
 const ESTILO_ACTIVIDAD: Record<EventoActividad['tipo'], { titulo: string; clase: string }> = {
@@ -268,6 +271,10 @@ export const SettingsScreen: React.FC = () => {
       />
 
       <PageContent className="space-y-4 text-xs">
+        {/* Su plan y su gente: lo primero que una dueña busca en Ajustes */}
+        <TuPlan />
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <UsuariosSalon />}
+
         {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
@@ -579,25 +586,15 @@ export const SettingsScreen: React.FC = () => {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Hora Apertura
+                Abre a las
               </label>
-              <input
-                type="time"
-                value={openingTime}
-                onChange={e => setOpeningTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-              />
+              <SelectorHora value={openingTime} onChange={setOpeningTime} paso={15} />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Hora Cierre
+                Cierra a las
               </label>
-              <input
-                type="time"
-                value={closingTime}
-                onChange={e => setClosingTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
-              />
+              <SelectorHora value={closingTime} onChange={setClosingTime} paso={15} />
             </div>
           </div>
 
@@ -1591,7 +1588,7 @@ export const SettingsScreen: React.FC = () => {
           )}
           {actividad?.map(ev => {
             const estilo = ESTILO_ACTIVIDAD[ev.tipo];
-            const cuando = new Date(ev.en).toLocaleString('es', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+            const cuando = new Date(ev.en).toLocaleString('es', { day: 'numeric', month: 'short', hour: 'numeric', hour12: true, minute: '2-digit' });
             const abrible = !!ev.conversacionId;
             return (
               <button
@@ -1608,7 +1605,7 @@ export const SettingsScreen: React.FC = () => {
                 <div className="mt-1 text-slate-800 dark:text-neutral-200">
                   <span className="font-semibold">{ev.cliente}</span>
                   {ev.tipo === 'cita' && ev.citaInicio
-                    ? <> · {ev.texto} el {new Date(ev.citaInicio).toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</>
+                    ? <> · {ev.texto} el {new Date(ev.citaInicio).toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', hour12: true, minute: '2-digit' })}</>
                     : <> · {ev.texto}</>}
                 </div>
               </button>

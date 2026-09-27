@@ -25,6 +25,8 @@ import { useAuth } from '../context/AuthContext';
 import { Appointment, AppointmentStatus, CommunicationChannel, ServiceCategory } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
+import { hora12 } from '../utils/hora';
+import { SelectorHora } from '../components/ui/SelectorHora';
 
 export type CalendarGranularity = 'years' | 'months' | 'weeks' | 'days';
 
@@ -1017,7 +1019,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-neutral-800 flex flex-col items-center justify-center shrink-0 border border-slate-200/60 dark:border-neutral-700/60">
                               <span className="text-[11px] font-black text-slate-800 dark:text-white leading-none">
-                                {apt.time}
+                                {hora12(apt.time)}
                               </span>
                               <span className="text-[9px] text-slate-400 font-semibold mt-0.5">
                                 {apt.durationMinutes}m
@@ -1060,7 +1062,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-neutral-800 flex flex-col items-center justify-center shrink-0 border border-slate-200/60 dark:border-neutral-700/60">
                       <span className="text-xs font-black text-slate-800 dark:text-white">
-                        {apt.time}
+                        {hora12(apt.time)}
                       </span>
                       <span className="text-[10px] text-slate-400 font-semibold">
                         {apt.durationMinutes}m
@@ -1143,7 +1145,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Fecha y Hora</span>
                 <p className="font-bold text-slate-800 dark:text-white mt-0.5">
-                  {activeAppointment.date} • {activeAppointment.time}
+                  {activeAppointment.date} • {hora12(activeAppointment.time)}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">
                   Duración: {activeAppointment.durationMinutes} min
@@ -1338,12 +1340,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                 <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                   Hora
                 </label>
-                <input
-                  type="time"
-                  value={newTime}
-                  onChange={e => setNewTime(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs font-semibold focus:outline-none"
-                />
+                <SelectorHora value={newTime} onChange={setNewTime} />
               </div>
 
               <div>

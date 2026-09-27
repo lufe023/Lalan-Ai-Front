@@ -2279,7 +2279,7 @@ export const LoungePlayerScreen: React.FC = () => {
                                     ) : null}
                                     <span className="text-[11px] font-mono text-slate-400">
                                       {new Date(ev.createdAt).toLocaleTimeString('es', {
-                                        hour: '2-digit', minute: '2-digit',
+                                        hour: 'numeric', hour12: true, minute: '2-digit',
                                       })}
                                     </span>
                                   </div>

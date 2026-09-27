@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { RecuperarClave } from '../components/ui/RecuperarClave';
 import { motion } from 'motion/react';
 import { Sparkles, Flower2, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { LogoLalan } from '../components/ui/LogoLalan';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 
@@ -11,6 +13,7 @@ export const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [recuperando, setRecuperando] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,13 +60,16 @@ export const LoginScreen: React.FC = () => {
         <div className="flex flex-col items-center text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-indigo-500 p-0.5 shadow-lg mb-4 flex items-center justify-center">
             <div className="w-full h-full rounded-[14px] bg-white dark:bg-neutral-900 flex items-center justify-center">
-              <Flower2 className="w-7 h-7 text-[var(--primary)]" />
+              <LogoLalan className="w-9 h-9 text-[var(--primary)]" titulo="Lalan AI" />
             </div>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Lalan AI</h1>
           <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">Studio & Lounge · Gestión inteligente</p>
         </div>
 
+        {recuperando ? (
+          <RecuperarClave emailInicial={email} onVolver={(e) => { setRecuperando(false); if (e) setEmail(e); setPassword(''); setError(''); }} />
+        ) : (<>
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email */}
@@ -129,15 +135,20 @@ export const LoginScreen: React.FC = () => {
           </button>
         </form>
 
-        {/* Dev quick-login */}
-        <button
+        <button type="button" onClick={() => setRecuperando(true)} className="w-full mt-3 text-[12px] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] cursor-pointer">
+          ¿Olvidaste tu clave?
+        </button>
+
+        {/* Entrada rápida de prueba: SOLO en desarrollo (en producción sería una puerta abierta) */}
+        {import.meta.env.DEV && <button
           type="button"
           onClick={handleQuickLogin}
           disabled={loading}
           className="w-full mt-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] text-slate-400 dark:text-neutral-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-40 cursor-pointer"
         >
           ⚡ Admin rápido
-        </button>
+        </button>}
+        </>)}
 
         <p className="text-center text-[11px] text-slate-400 dark:text-neutral-600 mt-4">
           Gomez Santana Solutions Group SRL · Lalan AI v2.0

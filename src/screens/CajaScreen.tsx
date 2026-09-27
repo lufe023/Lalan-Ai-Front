@@ -404,7 +404,7 @@ export const CajaScreen: React.FC = () => {
                           {turno.openedByName ?? 'Sin nombre'} ·{' '}
                           {new Date(turno.openedAt).toLocaleString('es', {
                             day: '2-digit', month: 'short',
-                            hour: '2-digit', minute: '2-digit',
+                            hour: 'numeric', hour12: true, minute: '2-digit',
                           })}
                         </div>
                       </div>
@@ -679,7 +679,7 @@ export const CajaScreen: React.FC = () => {
                           <div className="text-xs font-semibold text-slate-800 dark:text-neutral-100">
                             {new Date(h.closedAt).toLocaleString('es', {
                               day: '2-digit', month: 'short',
-                              hour: '2-digit', minute: '2-digit',
+                              hour: 'numeric', hour12: true, minute: '2-digit',
                             })}
                           </div>
                           <div className="text-[10px] text-slate-400 truncate">
@@ -736,7 +736,7 @@ export const CajaScreen: React.FC = () => {
                           <div className="text-[10px] text-slate-400 font-mono">
                             #{String(r.id).slice(-8).toUpperCase()} ·{' '}
                             {f.toLocaleDateString('es')}{' '}
-                            {f.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })} ·{' '}
+                            {f.toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' })} ·{' '}
                             {r.items?.length ?? 0} líneas
                           </div>
                         </div>

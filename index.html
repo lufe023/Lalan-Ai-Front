@@ -1,50 +1,756 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Lalan AI - Live Assistant for Logistics, Appointments & Networks</title>
-    <meta name="description" content="Lalan AI - Live Assistant for Logistics, Appointments & Networks. Gestión inteligente de salón, agenda, hospitalidad y experiencia VIP." />
-    <meta property="og:title" content="Lalan AI - Live Assistant for Logistics, Appointments & Networks" />
-    <meta property="og:description" content="Lalan AI - Live Assistant for Logistics, Appointments & Networks. Gestión inteligente de salón, agenda, hospitalidad y experiencia VIP." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <!--
-      La pantalla de pared, instalada como aplicación.
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script>
+    /*
+      Esta es la portada pública. Las pantallas del salón (pared, reproductor,
+      pedir canción) y la aplicación instalada viven en /app/: si alguien llega
+      aquí con uno de esos enlaces viejos, se le lleva allá sin que lo note.
+    */
+    (function () {
+      var h = location.hash || '';
+      var instalada = window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches);
+      // El botón de los avisos de WhatsApp trae ?chat=<id> o ?cita=<id>: eso es de la app
+      var aviso = /[?&](chat|cita)=/.test(location.search);
+      if (/^#\/(pantalla|reproductor|pedir-cancion)\//.test(h) || instalada || aviso) location.replace('/app/' + location.search + h);
+    })();
+  </script>
+  <title>Lalan AI · La asistente de WhatsApp para tu salón</title>
+  <meta name="description" content="Lalan atiende el WhatsApp de tu salón, agenda citas con notas de voz, recibe a cada clienta con lo que le gusta y te dice cuánto ganas de verdad. Aplica al piloto gratis." />
+  <meta name="theme-color" content="#C46B7C" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icono-192.png" />
+  <link rel="apple-touch-icon" href="/icono-192.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_DO" />
+  <meta property="og:title" content="Lalan AI · La asistente de WhatsApp para tu salón" />
+  <meta property="og:description" content="Agenda de noche, recibe a cada clienta con lo que le gusta y ve tu ganancia real. Aplica al piloto gratis." />
+  <meta property="og:image" content="%VITE_SITIO_URL%/landing/compartir.jpg" />
+  <meta property="og:url" content="%VITE_SITIO_URL%/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+  <!--
+    Los estilos van aquí, en la cabeza, y no importados desde el JavaScript:
+    así el navegador los aplica ANTES de pintar y nunca se ve la página sin
+    diseño mientras carga (en desarrollo Vite los metía con JS, tarde).
+  -->
+  <link rel="stylesheet" href="/src/landing/estilos.css" />
+</head>
+<body>
+<header class="barra">
+  <div class="envoltura">
+    <a class="marca" href="#inicio" aria-label="Lalan AI, inicio">
+      <span class="marca-logo"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><path d="M52 18V74H94" fill="none" stroke="currentColor" stroke-opacity=".62" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 42V98H72" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>Lalan AI<small>Studio &amp; Lounge</small></span>
+    </a>
+    <nav aria-label="Secciones">
+      <a href="#dia">Cómo trabaja</a>
+      <a href="#app">La app</a>
+      <a href="#historia">La historia</a>
+      <a href="#lounge">Lounge</a>
+      <a href="#planes">Planes</a>
+      <a href="#preguntas">Preguntas</a>
+    </nav>
+    <div class="acciones-barra">
+      <div class="tema">
+        <button type="button" class="tema-boton" id="tema-boton" aria-expanded="false" aria-controls="tema-panel" title="Colores y modo">
+          <span class="tema-punto" aria-hidden="true"></span><span class="tema-texto">Colores</span>
+        </button>
+        <div class="tema-panel" id="tema-panel" role="dialog" aria-label="Colores y modo" hidden>
+          <p class="tema-titulo">Color de tu marca</p>
+          <div class="tema-colores" id="tema-colores"></div>
+          <p class="tema-titulo">Modo</p>
+          <div class="tema-modos" role="radiogroup" aria-label="Modo">
+            <button type="button" role="radio" data-modo="sistema">Sistema</button>
+            <button type="button" role="radio" data-modo="light">Claro</button>
+            <button type="button" role="radio" data-modo="dark">Oscuro</button>
+          </div>
+          <p class="tema-nota">Igual que en la app: cada salón pone sus colores.</p>
+        </div>
+      </div>
+      <a class="entrar" href="/app/" id="enlace-entrar">Entrar</a>
+      <a class="boton chico" href="#piloto">Aplicar al piloto</a>
+    </div>
+  </div>
+</header>
 
-      Sirve para lo que el botón de pantalla completa no puede garantizar: los
-      navegadores solo conceden la pantalla completa a un toque hecho en ese
-      mismo aparato, nunca a una orden que llega por la red. Instalada
-      ("Instalar aplicación" / "Añadir a la pantalla de inicio"), la pared
-      abre SIN barra de direcciones, siempre, sin que nadie toque nada.
-    -->
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icono-192.png" />
-    <link rel="apple-touch-icon" href="/icono-192.png" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#0a0a0a" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-neutral-900 antialiased font-sans overflow-x-hidden">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <script>
-      /*
-        Chrome solo ofrece "Instalar aplicación" si hay un service worker
-        registrado que atienda peticiones. El nuestro no cachea nada: solo
-        existe para cumplir ese requisito. Si falla el registro no pasa nada
-        —la web sigue igual—, simplemente no aparece la opción de instalar.
-      */
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js').catch(function () {});
-        });
-      }
-    </script>
-  </body>
+<main class="envoltura">
+  <!-- ── Portada: la demo es la tesis ───────────────────────── -->
+  <section class="portada" id="inicio">
+    <div class="texto">
+      <span class="ceja">La asistente de WhatsApp para salones</span>
+      <h1>Son las 11 de la noche. Tu salón <em class="acento">sigue agendando.</em></h1>
+      <p class="bajada">
+        Lalan contesta el WhatsApp de tu salón, entiende notas de voz, busca la hora libre con la especialista correcta
+        y deja la cita en tu agenda. Cuando algo necesita a una persona, te avisa a ti.
+      </p>
+      <div class="acciones">
+        <a class="boton" href="#piloto">Aplicar al piloto gratis</a>
+        <a class="boton claro" href="#dia">Ver cómo trabaja</a>
+      </div>
+      <div class="sellos">
+        <span>Responde en segundos</span>
+        <span>Notas de voz</span>
+        <span>Tu agenda al día</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="telefono" aria-label="Demostración de una conversación con Lalan">
+        <div class="pantalla">
+          <div class="cabecera-chat">
+            <span class="avatar">L</span>
+            <div><b>Tu Salón</b><small>en línea · responde Lalan</small></div>
+            <button type="button" class="sonido" id="sonido" aria-pressed="true" title="Sonido de los mensajes">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="ondas" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="tachado" d="M16 9l6 6M22 9l-6 6"/></svg>
+              <span class="sr">Sonido</span>
+            </button>
+          </div>
+          <div class="hilo" id="hilo" aria-live="polite"></div>
+          <div class="escenarios" role="group" aria-label="Elegir una conversación de ejemplo">
+            <button type="button" data-escena="noche" aria-pressed="true">Agendar de noche</button>
+            <button type="button" data-escena="cambio" aria-pressed="false">Cambiar la cita</button>
+            <button type="button" data-escena="duena" aria-pressed="false">Un día especial</button>
+          </div>
+        </div>
+      </div>
+      <p class="pie-demo">Conversaciones de ejemplo. Toca otra para verla.</p>
+    </div>
+  </section>
+
+  <!-- ── Un día con Lalan ──────────────────────────────────── -->
+  <section class="bloque" id="dia">
+    <div class="encabezado">
+      <span class="ceja">Un día cualquiera</span>
+      <h2>Lo que pasa en tu salón mientras tú trabajas</h2>
+      <p>Lalan no reemplaza a tu equipo. Se encarga de los mensajes para que ustedes se encarguen de las clientas.</p>
+    </div>
+    <div class="dia">
+      <article>
+        <span class="reloj">7:40 <small>de la mañana</small></span>
+        <h3>Antes de abrir</h3>
+        <p>Tres clientas escribieron de madrugada. Ya tienen su cita y tú lo ves en la agenda al llegar.</p>
+      </article>
+      <article>
+        <span class="reloj">11:15 <small>de la mañana</small></span>
+        <h3>Con las manos ocupadas</h3>
+        <p>Una clienta manda una nota de voz. Lalan la entiende, le ofrece la tarde con su manicurista de siempre y agenda.</p>
+      </article>
+      <article>
+        <span class="reloj">3:30 <small>de la tarde</small></span>
+        <h3>Llega Carmen</h3>
+        <p>Su café con leche ya está listo y suena Romeo Santos. Lalan se lo preguntó cuando agendó.</p>
+      </article>
+      <article>
+        <span class="reloj">9:05 <small>de la noche</small></span>
+        <h3>Algo delicado</h3>
+        <p>Una clienta está molesta. Lalan la calma, pasa el chat a una persona y te llega un aviso con el motivo.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ── Lo que hace ───────────────────────────────────────── -->
+  <!-- ── Recorrido por la app ─────────────────────────────── -->
+  <section class="bloque" id="app">
+    <div class="encabezado">
+      <span class="ceja">Por dentro</span>
+      <h2>Así se ve tu salón en Lalan</h2>
+      <p>Lo que Lalan hace por WhatsApp aparece aquí al instante: la agenda, los chats, la pizarra de turnos, el Lounge y lo que de verdad ganas. Toca cada pantalla para recorrerla.</p>
+    </div>
+    <div class="recorrido">
+      <div class="pestanas" role="tablist" aria-label="Pantallas de la app">
+        <button type="button" role="tab" id="tab-agenda" aria-controls="p-agenda" aria-selected="true" data-p="agenda">Agenda<span class="progreso"></span></button>
+        <button type="button" role="tab" id="tab-chats" aria-controls="p-chats" aria-selected="false" data-p="chats">Chats<span class="progreso"></span></button>
+        <button type="button" role="tab" id="tab-pizarra" aria-controls="p-pizarra" aria-selected="false" data-p="pizarra">Pizarra de turnos<span class="progreso"></span></button>
+        <button type="button" role="tab" id="tab-lounge" aria-controls="p-lounge" aria-selected="false" data-p="lounge">Lounge<span class="progreso"></span></button>
+        <button type="button" role="tab" id="tab-metricas" aria-controls="p-metricas" aria-selected="false" data-p="metricas">Métricas<span class="progreso"></span></button>
+        <button type="button" role="tab" id="tab-ganancias" aria-controls="p-ganancias" aria-selected="false" data-p="ganancias">Ganancia real<span class="progreso"></span></button>
+      </div>
+
+      <div class="equipo">
+        <div class="equipo-barra" aria-hidden="true"><i></i><i></i><i></i><span>app.lalan.ai</span></div>
+        <div class="app">
+          <nav class="app-menu" aria-label="Menú de la app de ejemplo">
+            <div class="marca-app"><span class="marca-logo"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><path d="M52 18V74H94" fill="none" stroke="currentColor" stroke-opacity=".62" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 42V98H72" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Lalan AI</div>
+            <button type="button" data-p="metricas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Métricas</button>
+            <button type="button" data-p="agenda" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>Agenda<span class="globo">3</span></button>
+            <button type="button" data-p="pizarra"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Pizarra</button>
+            <button type="button" class="quieto" tabindex="-1" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M16 4a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg>Clientas</button>
+            <button type="button" data-p="lounge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Lounge</button>
+            <button type="button" data-p="chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg>Chats<span class="globo">1</span></button>
+            <button type="button" data-p="ganancias"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19l5-6 4 3 7-9"/><path d="M15 7h5v5"/></svg>Ganancias</button>
+          </nav>
+
+          <!-- Agenda -->
+          <div class="app-contenido activa" id="p-agenda" role="tabpanel" aria-labelledby="tab-agenda">
+            <div class="app-titulo"><div><h4>Agenda</h4><small>Sábado 26 de septiembre · 6 citas</small></div><span class="etiqueta-ejemplo">Ejemplo</span></div>
+            <div class="cinta" aria-hidden="true">
+              <div>LUN<b>21</b></div><div>MAR<b>22</b></div><div>MIÉ<b>23</b></div><div>JUE<b>24</b></div><div>VIE<b>25</b></div><div class="hoy">HOY<b>26</b></div><div>DOM<b>27</b></div>
+            </div>
+            <div class="filtros" role="group" aria-label="Filtrar por categoría">
+              <button type="button" data-cat="todos" aria-pressed="true">Todos</button>
+              <button type="button" data-cat="unas" aria-pressed="false">💅 Uñas</button>
+              <button type="button" data-cat="cabello" aria-pressed="false">💇‍♀️ Peinados</button>
+              <button type="button" data-cat="masajes" aria-pressed="false">💆‍♀️ Masajes</button>
+            </div>
+            <div class="agenda-cuerpo">
+              <div class="citas" id="lista-citas"></div>
+              <aside class="detalle" id="detalle-cita" aria-live="polite"></aside>
+            </div>
+          </div>
+
+          <!-- Chats -->
+          <div class="app-contenido" id="p-chats" role="tabpanel" aria-labelledby="tab-chats">
+            <div class="app-titulo"><div><h4>Chats</h4><small>4 conversaciones de hoy</small></div><span class="etiqueta-ejemplo">Ejemplo</span></div>
+            <div class="chats">
+              <div class="app-lista">
+                <div class="conv abierta"><b>Yaneris P. <small>7:40 noche</small></b><span class="modo atencion">● Necesita atención</span><span>Graduación mañana, ¿hay cupo?…</span></div>
+                <div class="conv"><b>Carmen R. <small>8:40 noche</small></b><span class="modo bot">● Atiende Lalan</span><span>Café con leche 🥰</span></div>
+                <div class="conv"><b>Laura M. <small>6:12 tarde</small></b><span class="modo persona">● Atiende Alanny</span><span>Perfecto, allá nos vemos</span></div>
+                <div class="conv"><b>Paola G. <small>11:02 mañana</small></b><span class="modo bot">● Atiende Lalan</span><span>(Nota de voz) quería saber si…</span></div>
+              </div>
+              <div class="conv-abierta">
+                <div class="aviso-atencion"><b>Pasó a una persona.</b> Motivo: peinado y uñas para ella y su hija mañana en la mañana por una graduación; no hay cupo. Ya se le avisó a Alanny por WhatsApp.</div>
+                <div class="burbuja clienta">Hola, mañana es la graduación de mi hija y necesitamos peinado y uñas para las dos. ¿Nos pueden atender en la mañana?<span class="hora">7:40 noche</span></div>
+                <div class="burbuja lalan">¡Qué bonito, felicidades! 🎓 Mañana en la mañana la agenda está llena, pero es un día especial: le pregunto a Alanny si les puede hacer un espacio y te escribo enseguida.<span class="hora">7:40 noche</span></div>
+                <div class="escribe">Si escribes, Lalan se pausa en este chat…</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lounge -->
+          <div class="app-contenido" id="p-lounge" role="tabpanel" aria-labelledby="tab-lounge">
+            <div class="app-titulo"><div><h4>Lounge</h4><small>La música de quien está en el salón</small></div><span class="etiqueta-ejemplo">Ejemplo</span></div>
+            <div class="lounge-app">
+              <div class="reproductor">
+                <div class="portada-cancion" aria-hidden="true"></div>
+                <div><small>Suena para Carmen</small><br><b>Propuesta indecente</b><br><span style="font-size:.8rem;color:#EBCFD7">Romeo Santos</span></div>
+                <div class="barra-tiempo"><i></i></div>
+                <div class="controles" aria-hidden="true"><span>⏮</span><span class="grande">❚❚</span><span>⏭</span></div>
+              </div>
+              <div class="cola">
+                <h5>Lo que viene</h5>
+                <div class="cancion"><i></i><div>Eres mía<small>Romeo Santos · gusto de Carmen</small></div></div>
+                <div class="cancion"><i></i><div>La bachata<small>Manuel Turizo · gusto de Laura</small></div></div>
+                <div class="cancion"><i></i><div>Tití me preguntó<small>Pedida desde el QR por una clienta</small></div></div>
+                <div class="qr-peticion"><span class="qr" aria-hidden="true"></span><span>Las clientas piden canciones escaneando el QR de la pared. Tú decides cuántas puede pedir cada una.</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pizarra de turnos -->
+          <div class="app-contenido" id="p-pizarra" role="tabpanel" aria-labelledby="tab-pizarra">
+            <div class="app-titulo"><div><h4>Pizarra de turnos</h4><small>La pantalla de la pared · se mueve sola</small></div><span class="etiqueta-ejemplo">Ejemplo</span></div>
+            <div class="tele">
+              <div class="pizarra" id="pizarra">
+                <div class="pz-arriba">
+                  <span class="pz-marca"><span class="marca-logo">L</span> Studio Alanny</span>
+                  <span class="pz-reloj"><span class="pz-vivo">● en vivo</span> <b id="pz-hora">10:24</b> mañana</span>
+                </div>
+                <div class="pz-llamando" id="pz-llamando" aria-live="polite"></div>
+                <div class="pz-zonas" id="pz-zonas"></div>
+                <div class="pz-espera">
+                  <small>Esperando</small>
+                  <div class="pz-fichas" id="pz-fichas"></div>
+                </div>
+              </div>
+              <div class="tele-pie" aria-hidden="true"></div>
+            </div>
+            <p class="pz-nota">Recepción llama, sienta y termina cada turno desde la app; la pantalla cambia al instante. Cada zona ve lo suyo y la clienta sabe cuándo le toca, sin preguntar.</p>
+          </div>
+
+          <!-- Ganancia real -->
+          <div class="app-contenido" id="p-ganancias" role="tabpanel" aria-labelledby="tab-ganancias">
+            <div class="app-titulo"><div><h4>Ganancia real</h4><small>Septiembre · lo que de verdad te queda</small></div><span class="etiqueta-ejemplo">Ejemplo</span></div>
+            <div class="kpis">
+              <div class="kpi"><small>Vendiste</small><strong data-cuenta="186400" data-moneda="1">RD$ 186,400</strong><em class="neutro">servicios y Lounge</em></div>
+              <div class="kpi"><small>Gastaste en insumos</small><strong data-cuenta="31250" data-moneda="1">RD$ 31,250</strong><em class="neutro">según cada receta</em></div>
+              <div class="kpi destacado"><small>Te quedó</small><strong data-cuenta="155150" data-moneda="1">RD$ 155,150</strong><em>83 % de lo vendido</em></div>
+              <div class="kpi"><small>Cortesías del Lounge</small><strong data-cuenta="3920" data-moneda="1">RD$ 3,920</strong><em class="neutro">140 cafés y jugos</em></div>
+            </div>
+            <div class="netos">
+              <div class="netos-tabla" role="table" aria-label="Neto por servicio">
+                <div class="fila cabeza" role="row"><span role="columnheader">Servicio</span><span role="columnheader">Precio</span><span role="columnheader">Insumos</span><span role="columnheader">Te queda</span></div>
+                <div id="netos-filas"></div>
+              </div>
+              <aside class="receta" id="receta" aria-live="polite"></aside>
+            </div>
+          </div>
+
+          <!-- Métricas -->
+          <div class="app-contenido" id="p-metricas" role="tabpanel" aria-labelledby="tab-metricas">
+            <div class="app-titulo"><div><h4>Métricas</h4><small>Este mes · en vivo</small></div><span class="etiqueta-ejemplo">Ejemplo</span></div>
+            <div class="kpis">
+              <div class="kpi"><small>Citas atendidas</small><strong data-cuenta="138">138</strong><em>▲ 9 % vs. el mes pasado</em></div>
+              <div class="kpi"><small>Agendó Lalan</small><strong data-cuenta="84">84</strong><em>61 % de las citas</em></div>
+              <div class="kpi"><small>Con el salón cerrado</small><strong data-cuenta="213">213</strong><em>respuestas</em></div>
+              <div class="kpi"><small>Clientas nuevas</small><strong data-cuenta="27">27</strong><em>▲ 4</em></div>
+            </div>
+            <div class="graficas crece">
+              <div class="grafica">
+                <h5>Días de más movimiento</h5>
+                <div class="columnas">
+                  <div><span style="height:38%"></span>lun</div><div><span style="height:30%"></span>mar</div><div><span style="height:45%"></span>mié</div><div><span style="height:52%"></span>jue</div><div><span style="height:78%"></span>vie</div><div><span class="pico" style="height:100%"></span>sáb</div><div><span style="height:12%"></span>dom</div>
+                </div>
+              </div>
+              <div class="grafica">
+                <h5>Servicios más pedidos</h5>
+                <div class="barras-h">
+                  <div><p><span>Manicure semipermanente</span><span>42</span></p><i><b style="width:100%"></b></i></div>
+                  <div><p><span>Pedicure spa</span><span>31</span></p><i><b style="width:74%"></b></i></div>
+                  <div><p><span>Blower</span><span>24</span></p><i><b style="width:57%"></b></i></div>
+                  <div><p><span>Masaje relajante</span><span>15</span></p><i><b style="width:36%"></b></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pie-recorrido">
+        <p id="leyenda-recorrido"></p>
+        <button type="button" class="pausa" id="pausa-recorrido" aria-pressed="false">Pausar recorrido</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Historia animada ──────────────────────────────────── -->
+  <section class="bloque" id="historia">
+    <div class="encabezado">
+      <span class="ceja">En movimiento</span>
+      <h2>Un manicure premium, de la nota de voz a la ganancia real</h2>
+      <p>Carmen agenda de noche, el salón sabe lo que cuesta atenderla y lo descuenta del inventario, ella disfruta su música y su copa, y la dueña, desde la playa, ve lo que de verdad le quedó. Toca el 🔇 para escucharla con sonido.</p>
+    </div>
+      <div class="historia" id="historia-escena" role="img" aria-label="Animación: Carmen agenda un manicure premium con una nota de voz, se arma la receta con la medida y el costo de cada insumo y se descuenta del inventario, en el salón suenan sus canciones y la pizarra llama los turnos, y la dueña, desde la playa, ve la ganancia real de todas sus sedes.">
+        <canvas class="h-lienzo" aria-hidden="true"></canvas>
+        <svg class="h-lineas" aria-hidden="true"></svg>
+        <div class="h-capa" aria-hidden="true">
+          <div class="h-sello"><span class="marca-logo"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><path d="M52 18V74H94" fill="none" stroke="currentColor" stroke-opacity=".62" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 42V98H72" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Lalan AI</div>
+
+          <div class="h-titulo" data-v="0,4.4">
+            <small>Una historia de un minuto</small>
+            <h3>Un manicure <em>premium</em>, de principio a fin</h3>
+            <p>De la nota de voz a la ganancia real</p>
+          </div>
+
+          <div class="h-cap" data-v="4.4,15.4"><span class="ceja-h">11:04 de la noche</span><h3>Carmen agenda con una nota de voz</h3></div>
+          <div class="h-cap" data-v="15.8,25.0"><span class="ceja-h">La receta</span><h3>Cada insumo, con su medida y su costo</h3></div>
+          <div class="h-cap" data-v="25.0,29.6"><span class="ceja-h">El inventario</span><h3>Al terminar, cada insumo sale del inventario solo</h3></div>
+          <div class="h-cap" data-v="30.0,36.8"><span class="ceja-h">Al día siguiente</span><h3>Su música y su copa, sin pedirlas</h3></div>
+          <div class="h-cap" data-v="36.8,42.6"><span class="ceja-h">El salón, en orden</span><h3>La música y los turnos se mueven solos</h3></div>
+          <div class="h-cap" data-v="44.2,55.4"><span class="ceja-h">La dueña no opera: orquesta</span><h3>Desde la playa, ve lo que pasa en todas sus sedes</h3></div>
+
+          <!-- 1 · Agenda -->
+          <div class="h-tarjeta" data-v="4.8,15.4">
+            <div class="cabeza"><span class="avatar">L</span><div>Lalan<small>Studio Alanny · WhatsApp</small></div></div>
+            <div class="h-hilo">
+              <div class="h-b cli" data-e="5.4">
+                <div class="h-voz"><span class="play">▶</span><span class="h-onda" id="h-onda"></span><small>0:04</small></div>
+                <div class="h-transcrito" data-e="7.2">Lalan escuchó: «Quiero un manicure premium para mañana en la mañana, ¡que tengo una graduación!»</div>
+              </div>
+              <div class="h-escribe" data-v="9.3,10.3"><i></i><i></i><i></i></div>
+              <div class="h-b lal" data-e="10.3">¡Felicidades, Carmen! 🎓 Mañana a las 10 de la mañana con Valentina. ¿Te preparamos un café, un jugo o tu copa de vino de siempre?</div>
+              <div class="h-b cli" data-e="12.7">¡Mi copa de vino! 🍷</div>
+              <div class="h-chip" data-e="13.7">✓ Cita agendada por Lalan</div>
+            </div>
+          </div>
+
+          <!-- 2 · Receta -->
+          <div class="h-tarjeta" data-v="16.2,29.6">
+            <div class="cabeza"><span class="avatar">💅</span><div>Manicure premium<small>Receta de una porción</small></div></div>
+            <div class="h-filas">
+              <div class="h-fila" data-e="17.0"><span>Esmalte en gel <small>· 3 ml</small></span><span>RD$ 45</span></div>
+              <div class="h-fila" data-e="18.4"><span>Base y top <small>· 2 ml</small></span><span>RD$ 30</span></div>
+              <div class="h-fila" data-e="19.8"><span>Parafina <small>· 50 g</small></span><span>RD$ 35</span></div>
+              <div class="h-fila" data-e="21.2"><span>Aceite de cutícula <small>· 1 ml</small></span><span>RD$ 12</span></div>
+              <div class="h-fila" data-e="22.6"><span>Lima y palito <small>· 1 juego</small></span><span>RD$ 23</span></div>
+            </div>
+            <div class="h-total"><span>Te cuesta hacerlo</span><strong id="h-cuesta">RD$ 0</strong></div>
+            <div class="h-total cobra" data-e="23.8"><span>Lo cobras a</span><strong>RD$ 1,500</strong></div>
+            <div class="h-inv" data-e="26.8">✓ Descontado del inventario al cerrar el servicio</div>
+          </div>
+          <div class="h-ancla" data-v="17.0,29.4" data-ancla="0" data-lado="-0.2,0.0" data-lado-v="-0.2,-0.1"><b>Esmalte en gel</b><span>3 ml · RD$ 45</span><em data-e="25.2">Inventario <i data-inv="120,117,ml"></i></em></div>
+          <div class="h-ancla" data-v="18.4,29.4" data-ancla="1" data-lado="-0.14,0.16" data-lado-v="-0.18,0.1"><b>Base y top</b><span>2 ml · RD$ 30</span><em data-e="25.45">Inventario <i data-inv="60,58,ml"></i></em></div>
+          <div class="h-ancla" data-v="19.8,29.4" data-ancla="2" data-lado="0,0.2" data-lado-v="-0.04,0.17"><b>Parafina</b><span>50 g · RD$ 35</span><em data-e="25.7">Inventario <i data-inv="900,850,g"></i></em></div>
+          <div class="h-ancla" data-v="21.2,29.4" data-ancla="3" data-lado="0.08,-0.12" data-lado-v="0.16,-0.1"><b>Aceite de cutícula</b><span>1 ml · RD$ 12</span><em data-e="25.95">Inventario <i data-inv="30,29,ml"></i></em></div>
+          <div class="h-ancla" data-v="22.6,29.4" data-ancla="4" data-lado="0.12,0.12" data-lado-v="0.22,0.05"><b>Lima y palito</b><span>1 juego · RD$ 23</span><em data-e="26.2">Inventario <i data-inv="40,39,juegos"></i></em></div>
+
+          <!-- 3 · Experiencia -->
+          <div class="h-tarjeta" data-v="30.4,42.6">
+            <div class="h-suena">
+              <span class="disco"></span>
+              <div><small id="h-para">Suena para Carmen</small><b id="h-cancion">Su canción favorita</b><span id="h-artista">Romeo Santos · de sus favoritas</span></div>
+              <span class="h-eq" id="h-eq"><i></i><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="h-chips">
+              <div data-e="32.0">🎓 Valentina sabe que hoy es su graduación</div>
+              <div data-e="33.6">💅 Y que viene por el premium</div>
+              <div data-e="38.4">🎶 Llegó Laura: ahora suena lo suyo</div>
+            </div>
+          </div>
+          <div class="h-ancla" data-v="31.2,42.4" data-ancla="copa" data-lado="-0.14,0.16" data-lado-v="-0.1,0.12"><b>🍷 Lalan recordó que le gusta el vino</b><span>Su copa, servida al llegar</span></div>
+          <div class="h-ancla" data-v="33.4,37.5" data-ancla="tv" data-lado="0.06,-0.2" data-lado-v="0.1,-0.1"><b>📺 La pizarra del salón</b><span>Suena su música y se llaman los turnos</span></div>
+          <div class="h-ancla" data-v="35.2,42.4" data-ancla="mando" data-lado="0.14,0.18" data-lado-v="0.12,0.12"><b>📱 El teléfono es el mando</b><span>Controla la TV del salón</span></div>
+          <div class="h-ancla" data-v="37.6,42.4" data-ancla="laura" data-lado="0.06,0.14" data-lado-v="0.1,0.1"><b>📺 Llegó Laura</b><span>La música cambió sola y la pizarra la llama</span></div>
+
+          <!-- 4 · La dueña, en la playa -->
+          <div class="h-tarjeta" data-v="44.8,50.6">
+            <div class="cabeza"><span class="avatar">A</span><div>Alanny<small>Tus sedes hoy · te quedó</small></div></div>
+            <div class="h-sede"><span>Piantini</span><b data-c="46935" data-mas="1265" data-mas-t="46.4" data-a="45.0">RD$ 0</b><i><s data-w="100" data-a="45.0"></s></i></div>
+            <div class="h-sede"><span>Naco</span><b data-c="33350" data-mas="3400" data-mas-t="47.6" data-a="45.2">RD$ 0</b><i><s data-w="76" data-a="45.2"></s></i></div>
+            <div class="h-sede"><span>Santiago</span><b data-c="27250" data-mas="2150" data-mas-t="48.8" data-a="45.4">RD$ 0</b><i><s data-w="61" data-a="45.4"></s></i></div>
+          </div>
+          <div class="h-tarjeta" data-v="50.6,55.4">
+            <div class="cabeza"><span class="avatar">💅</span><div>Este manicure premium<small>Piantini · Carmen · Valentina</small></div></div>
+            <div class="h-fila" data-e="51.0"><span>Cobraste</span><span>RD$ 1,500</span></div>
+            <div class="h-fila" data-e="51.6"><span>Insumos, según la receta</span><span>− RD$ 145</span></div>
+            <div class="h-fila" data-e="52.2"><span>La copa de cortesía</span><span>− RD$ 90</span></div>
+            <div class="h-total queda" data-e="52.9"><span>Te quedó</span><strong>RD$ 1,265 · 84 %</strong></div>
+          </div>
+          <div class="h-ancla verde" data-v="46.4,48.2" data-ancla="telefono" data-lado="0.1,-0.12" data-lado-v="0.12,-0.08"><b>+ RD$ 1,265</b><span>Piantini · manicure premium</span></div>
+          <div class="h-ancla verde" data-v="47.6,49.4" data-ancla="telefono" data-lado="0.1,-0.12" data-lado-v="0.12,-0.08"><b>+ RD$ 3,400</b><span>Naco · color y blower</span></div>
+          <div class="h-ancla verde" data-v="48.8,50.6" data-ancla="telefono" data-lado="0.1,-0.12" data-lado-v="0.12,-0.08"><b>+ RD$ 2,150</b><span>Santiago · pedicure spa</span></div>
+
+          <div class="h-final" data-v="55.6,63">
+            <div>
+              <span class="marca-logo"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><path d="M52 18V74H94" fill="none" stroke="currentColor" stroke-opacity=".62" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 42V98H72" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <h3>Agenda, experiencia y ganancia real</h3>
+              <p>Tu salón funcionando, estés donde estés.</p>
+              <a class="wa" href="#contacto">Aplica al piloto gratis</a>
+            </div>
+          </div>
+        </div>
+        <div class="h-controles">
+          <button type="button" id="h-play" aria-pressed="false" aria-label="Ver la historia" title="Ver la historia">▶</button>
+          <button type="button" id="h-sonido" aria-pressed="false" aria-label="Activar sonido" title="Activar sonido">🔇</button>
+          <button type="button" id="h-otra" aria-label="Desde el inicio" title="Desde el inicio">↺</button>
+          <button type="button" id="h-completa" aria-pressed="false" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
+        </div>
+        <div class="h-progreso" aria-hidden="true"><i id="h-barra"></i></div>
+      </div>
+  </section>
+
+  <section class="bloque" id="que-hace">
+    <div class="encabezado">
+      <span class="ceja">Lo que hace Lalan</span>
+      <h2>Una asistente que no se cansa y no se equivoca de agenda</h2>
+    </div>
+    <div class="rasgos">
+      <div class="rasgo">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg></span>
+        <h3>Contesta todo el día</h3>
+        <p>En segundos, a cualquier hora. Si la clienta manda tres mensajes seguidos, le responde una sola vez y con todo.</p>
+      </div>
+      <div class="rasgo">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span>
+        <h3>Entiende notas de voz</h3>
+        <p>Muchas clientas prefieren hablar. Lalan escucha la nota y contesta por escrito.</p>
+      </div>
+      <div class="rasgo">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></span>
+        <h3>Agenda con la especialista correcta</h3>
+        <p>Sabe quién hace cada servicio y en qué zona. Ofrece horas reales, en la mañana, la tarde o la noche.</p>
+      </div>
+      <div class="rasgo">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg></span>
+        <h3>Recuerda la cita y la cambia si hace falta</h3>
+        <p>Le escribe a la clienta el día antes y unas horas antes. Si no puede venir, Lalan mueve la cita ahí mismo en lugar de dejar la silla vacía.</p>
+      </div>
+      <div class="rasgo">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span>
+        <h3>Recuerda a cada clienta</h3>
+        <p>Con quién se atiende siempre, qué le gusta y qué citas tiene. Le ofrece "¿Te atiende otra vez Valentina?" como lo haría tu mejor asistente.</p>
+      </div>
+      <div class="rasgo">
+        <span class="icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
+        <h3>Se hace a un lado cuando escribes</h3>
+        <p>Si alguien del salón contesta el chat, Lalan se pausa sola en esa conversación. Nadie habla encima de nadie.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Lo delicado lo decides tú ─────────────────────────── -->
+  <section class="bloque" id="consulta">
+    <div class="consulta">
+      <div class="consulta-texto">
+        <span class="ceja">Lo delicado lo decides tú</span>
+        <h2>Ante cualquier riesgo, Lalan te consulta primero</h2>
+        <p>Lalan no improvisa con lo que puede costarte una clienta. Cuando algo se sale de lo normal, le dice a la clienta con cariño que el salón le responde enseguida y te escribe por WhatsApp con el motivo. Si contestas con una nota de voz, Lalan sigue la conversación con lo que le dijiste.</p>
+      </div>
+      <ul class="riesgos">
+        <li><b>Una clienta molesta o un reclamo</b><span>Alguien que no quedó contenta: mejor que lo atiendas tú, con tu toque.</span></li>
+        <li><b>Algo fuera de tus reglas</b><span>Cancelar con menos tiempo del que pides, pedir un descuento, una excepción.</span></li>
+        <li><b>Una cita que no cabe</b><span>Quiere que la atiendan hoy y no hay hueco: tú decides si le haces espacio.</span></li>
+        <li><b>Una cita sin especialista</b><span>Nadie libre para ese servicio a esa hora: te avisa para que la asignes.</span></li>
+        <li><b>Si Lalan misma falla</b><span>Te enteras al momento y sabes por qué, y la clienta no se queda esperando.</span></li>
+        <li><b>Cuando pide una persona</b><span>Lalan se hace a un lado en ese chat y te avisa.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ── Lounge ────────────────────────────────────────────── -->
+  <section class="bloque" id="lounge">
+    <div class="lounge">
+      <div>
+        <span class="ceja">El Lounge</span>
+        <h2>Cada clienta llega y se siente esperada</h2>
+        <p style="margin-top:14px">Después de agendar, Lalan le pregunta qué le gusta tomar y escuchar, como un regalo y nunca como encuesta. Cuando llega, su música suena y quien la recibe ya sabe qué servirle.</p>
+        <ul>
+          <li>Su bebida y su snack favoritos, listos para servir con un toque.</li>
+          <li>Su música en la sala mientras la atienden.</li>
+          <li>Un QR en la pared para que pidan canciones desde su teléfono.</li>
+          <li>Alergias y notas a la vista de quien la atiende.</li>
+        </ul>
+      </div>
+      <div class="tarjeta-llegada" aria-label="Ejemplo de la tarjeta de bienvenida">
+        <div class="fila">
+          <span class="inicial">C</span>
+          <div><b>Llegó Carmen</b><br><small>Manicure semipermanente · con Valentina</small></div>
+        </div>
+        <div class="gustos">
+          <div class="gusto"><span>Bebida</span><strong>Café con leche</strong></div>
+          <div class="gusto"><span>Música</span><strong>Romeo Santos</strong></div>
+          <div class="gusto"><span>Snack</span><strong>Picadera de salchichón</strong></div>
+          <div class="gusto"><span>Atención</span><strong>Sin fragancias fuertes</strong></div>
+        </div>
+        <div class="servir">
+          <button type="button" id="servir-cafe">Servir café con leche</button>
+          <button type="button" id="servir-picadera">Servir picadera</button>
+        </div>
+        <div class="ahora-suena"><span class="barras"><i></i><i></i><i></i></span> Ahora suena: <b>Propuesta indecente</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Métricas ──────────────────────────────────────────── -->
+  <section class="bloque" id="metricas">
+    <div class="tablero">
+      <div class="encabezado" style="margin:0">
+        <span class="ceja">Métricas en vivo</span>
+        <h2>Sabes cuánto te trajo Lalan, no lo supones</h2>
+        <p>Cuántas citas agendó, cuánto valen, cuántos chats atendió con el salón cerrado, quién llegó tarde y qué clientas llevan tiempo sin venir. Todo se actualiza solo.</p>
+      </div>
+      <div class="panel">
+        <div class="titulo"><h3>Lo que hizo Lalan este mes</h3> <span class="ejemplo">Ejemplo</span></div>
+        <div class="cifras">
+          <div class="cifra"><small>Citas que agendó</small><strong data-cuenta="84">84</strong> <em>▲ 12 %</em></div>
+          <div class="cifra"><small>De todas las citas</small><strong data-cuenta="61" data-sufijo=" %">61 %</strong></div>
+          <div class="cifra"><small>Con el salón cerrado</small><strong data-cuenta="213">213</strong><small>respuestas</small></div>
+          <div class="cifra"><small>Tarda en contestar</small><strong>6 s</strong></div>
+        </div>
+        <p class="suave" style="font-size:.85rem">Y además: clientas que se están perdiendo, horas de más movimiento, el trabajo de cada especialista.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Planes por tipo de salón ──────────────────────────── -->
+  <section class="bloque" id="planes">
+    <div class="encabezado">
+      <span class="ceja">Planes</span>
+      <h2>Uno para cada tipo de salón</h2>
+      <p>Todos incluyen a Lalan en WhatsApp. Lo que cambia es cuánto conversa y qué parte de la experiencia quieres sumar.</p>
+    </div>
+    <div class="planes">
+      <article class="plan">
+        <p class="para">Para uñas y locales pequeños</p>
+        <h3>Plan Esencial</h3>
+        <ul>
+          <li>Lalan responde y agenda en WhatsApp</li>
+          <li>Entiende notas de voz</li>
+          <li>Agenda, especialistas y zonas</li>
+          <li>Ficha de cada clienta</li>
+          <li>Avisos a la dueña por WhatsApp</li>
+          <li>Métricas completas</li>
+        </ul>
+        <p class="nota">Para quien atiende sola o con una o dos personas y no quiere perder citas por no contestar a tiempo.</p>
+      </article>
+      <article class="plan destacado">
+        <p class="para">Para salones con equipo</p>
+        <h3>Plan Salón</h3>
+        <ul>
+          <li>Todo lo del Plan Esencial, con más conversaciones al mes</li>
+          <li class="nuevo">Lounge: música y gustos de cada clienta</li>
+          <li class="nuevo">Bienvenida con sus gustos al llegar</li>
+          <li class="nuevo">Caja y comandas</li>
+          <li class="nuevo">Pantalla de turnos</li>
+          <li class="nuevo">Recordatorios de cita por WhatsApp</li>
+        </ul>
+        <p class="nota">Para el salón que ya tiene recepción y quiere que cada visita se sienta atendida desde el primer mensaje.</p>
+      </article>
+      <article class="plan">
+        <p class="para">Para salones premium y spas</p>
+        <h3>Plan Lounge</h3>
+        <ul>
+          <li>Todo lo del Plan Salón, con muchas más conversaciones</li>
+          <li class="nuevo">Hasta 2 sedes</li>
+          <li class="nuevo">Equipo sin límite de usuarios</li>
+          <li class="nuevo">Soporte prioritario</li>
+          <li class="nuevo">Lo próximo primero: Instagram, Messenger y respuestas con la voz de la dueña</li>
+        </ul>
+        <p class="nota">Para el spa donde la experiencia es el producto y cada detalle cuenta.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ── Preguntas ─────────────────────────────────────────── -->
+  <section class="bloque" id="preguntas">
+    <div class="encabezado">
+      <span class="ceja">Preguntas</span>
+      <h2>Lo que nos preguntan las dueñas</h2>
+    </div>
+    <div class="preguntas">
+      <details open>
+        <summary>¿Y si la clienta quiere hablar con una persona?</summary>
+        <p>Lalan se lo dice con naturalidad, pasa el chat a tu equipo y te avisa por WhatsApp con el motivo. En ese chat no vuelve a escribir hasta que tú lo decidas.</p>
+      </details>
+      <details>
+        <summary>¿Puede ofrecer algo que no tenemos o inventar precios?</summary>
+        <p>No. Solo ofrece los servicios y precios de tu catálogo, y solo las horas que de verdad están libres en tu agenda.</p>
+      </details>
+      <details>
+        <summary>¿Qué pasa si Lalan no puede responder?</summary>
+        <p>Te enteras al momento y sabes por qué. A la clienta se le dice que alguien del salón le escribe enseguida, y el chat pasa a una persona.</p>
+      </details>
+      <details>
+        <summary>¿Tengo que estar pendiente del teléfono?</summary>
+        <p>Solo de los avisos. Lo demás lo ves cuando quieras en la agenda y en las métricas. Si contestas un aviso con una nota de voz, Lalan sigue la conversación con lo que le dijiste.</p>
+      </details>
+      <details>
+        <summary>¿Cómo empiezo?</summary>
+        <p>Te visitamos, conectamos el WhatsApp de tu salón, cargamos tus servicios y especialistas y te mostramos el panel en 15 minutos.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ── Por qué se llama Lalan ────────────────────────────── -->
+  <section class="bloque" id="nombre">
+    <div class="nombre">
+      <div class="nombre-historia">
+        <span class="ceja">Lo que significa Lalan</span>
+        <h2>Cinco letras, <em class="acento">una asistente completa.</em></h2>
+        <p>Cada letra del nombre es una parte de lo que Lalan hace por tu salón: atiende en vivo, cuida a cada clienta, pone orden, llena tu agenda y hace que vuelvan.</p>
+        <p class="firma">Hospitalaria con tus clientas. Precisa con tu negocio.</p>
+      </div>
+      <div>
+        <ul class="siglas" id="siglas" aria-label="Lo que significa cada letra de Lalan">
+          <li><span class="letra" aria-hidden="true">L</span><b>En vivo <span>Live</span></b><p>Contesta en segundos, a cualquier hora, y te avisa en el momento en que te necesita.</p></li>
+          <li><span class="letra" aria-hidden="true">A</span><b>Asistente <span>Assistant</span></b><p>Una asistente, no un robot: cálida con cada clienta y exacta con tu agenda.</p></li>
+          <li><span class="letra" aria-hidden="true">L</span><b>Logística <span>Logistics</span></b><p>El orden de tu salón: especialistas, turnos de la sala, inventario por receta y todas tus sedes.</p></li>
+          <li><span class="letra" aria-hidden="true">A</span><b>Citas <span>Appointments</span></b><p>Agenda, reagenda y cancela por WhatsApp, Instagram y Messenger, también con notas de voz.</p></li>
+          <li><span class="letra" aria-hidden="true">N</span><b>Relaciones <span>Networking</span></b><p>Recuerda los gustos, la música y la bebida de cada clienta para que siempre vuelva.</p></li>
+        </ul>
+        <p class="siglas-lema">Live Assistant for Logistics, Appointments &amp; Networking</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Aplicar al piloto ─────────────────────────────────── -->
+  <section class="bloque" id="piloto">
+    <div class="cierre">
+      <div class="encabezado" style="margin:0">
+        <span class="ceja">Piloto gratis · cupos limitados</span>
+        <h2>Prueba Lalan en tu salón, <em class="acento">100 % gratis.</em></h2>
+        <p>Estamos eligiendo los primeros salones de República Dominicana para el piloto. Te instalamos Lalan, la configuramos contigo y la usas sin pagar nada mientras dure. Solo te pedimos que nos cuentes qué te gusta y qué mejorarías.</p>
+        <ul class="piloto-lista">
+          <li>Sin tarjeta y sin contrato</li>
+          <li>Te acompañamos en la instalación</li>
+          <li>Tu información y la de tus clientas son tuyas</li>
+        </ul>
+        <p class="suave">¿Prefieres hablar primero? Escríbenos al <a href="https://wa.me/18092299444?text=Hola%2C%20quiero%20saber%20del%20piloto%20de%20Lalan%20AI" target="_blank" rel="noopener">809-229-9444</a>.</p>
+      </div>
+
+      <div class="piloto-caja">
+        <form class="contacto" id="form-piloto" novalidate>
+          <div class="fila-2">
+            <div><label for="p-nombre">Tu nombre *</label><input id="p-nombre" name="nombre" autocomplete="name" placeholder="Ej.: Alanny" required maxlength="80"></div>
+            <div><label for="p-salon">Nombre del salón *</label><input id="p-salon" name="salon" autocomplete="organization" placeholder="Ej.: Glam Studio" required maxlength="100"></div>
+          </div>
+          <div class="fila-2">
+            <div><label for="p-telefono">Tu WhatsApp *</label><input id="p-telefono" name="telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="809 555 1234" required maxlength="24"></div>
+            <div><label for="p-ciudad">Ciudad</label><input id="p-ciudad" name="ciudad" autocomplete="address-level2" placeholder="Ej.: Santo Domingo" maxlength="80"></div>
+          </div>
+          <fieldset>
+            <legend>¿Cuántas personas trabajan en el salón?</legend>
+            <div class="chips" id="p-tamano" data-tipo="radio"></div>
+          </fieldset>
+          <fieldset>
+            <legend>¿Qué servicios dan?</legend>
+            <div class="chips" id="p-servicios" data-tipo="checkbox"></div>
+          </fieldset>
+          <div class="fila-2">
+            <div><label for="p-plan">¿Qué plan te llama más?</label><select id="p-plan"><option value="">Elige uno</option></select></div>
+            <div><label for="p-como">¿Cómo nos conociste?</label><select id="p-como"><option value="">Elige uno</option></select></div>
+          </div>
+          <label for="p-mensaje">¿Algo que quieras contarnos?</label>
+          <textarea id="p-mensaje" rows="3" maxlength="600" placeholder="Ej.: tenemos dos sucursales y mucha gente escribe de noche"></textarea>
+          <div class="trampa" aria-hidden="true"><label for="p-web">No llenar</label><input id="p-web" name="web" tabindex="-1" autocomplete="off"></div>
+          <label class="acepto"><input type="checkbox" id="p-acepto" required> Acepto que Lalan AI me escriba por WhatsApp sobre el piloto.</label>
+          <button class="boton" type="submit" id="p-enviar">Aplicar al piloto</button>
+          <p class="aviso" id="p-aviso" role="status" aria-live="polite"></p>
+        </form>
+        <div class="piloto-listo" id="piloto-listo" hidden tabindex="-1">
+          <span class="sello-ok" aria-hidden="true">✓</span>
+          <h3 id="piloto-gracias">¡Recibimos tu aplicación!</h3>
+          <p>Te escribimos por WhatsApp muy pronto para conocer tu salón y coordinar la instalación.</p>
+          <a class="boton claro" id="piloto-wa" href="https://wa.me/18092299444" target="_blank" rel="noopener">Escribirnos ya por WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── No tengo salón ─────────────────────────────────────── -->
+  <section class="bloque" id="otro-negocio">
+    <div class="cierre">
+      <div class="encabezado" style="margin:0">
+        <span class="ceja">¿No tienes un salón?</span>
+        <h2>Tu negocio también puede tener <em class="acento">su propia asistente.</em></h2>
+        <p>Consultorios médicos que llenan su agenda y recuerdan cada cita, colmados que toman pedidos por WhatsApp, talleres que dan turnos, dealers que responden a cada interesado, tiendas en línea que no duermen. Si tu negocio vive en el teléfono, podemos automatizarlo por WhatsApp, Instagram y Messenger.</p>
+        <p class="suave">Cuéntanos qué haces. Si muchos negocios como el tuyo lo piden, lo construimos, y tú serías de los primeros en probarlo.</p>
+      </div>
+      <div class="piloto-caja">
+        <form class="contacto" id="form-otro" novalidate>
+          <fieldset>
+            <legend>¿Qué negocio tienes? *</legend>
+            <div class="chips" id="o-tipo" data-tipo="radio"></div>
+          </fieldset>
+          <fieldset>
+            <legend>¿Qué te gustaría que hiciera tu asistente?</legend>
+            <div class="chips" id="o-que" data-tipo="checkbox"></div>
+          </fieldset>
+          <div class="fila-2">
+            <div><label for="o-telefono">Tu WhatsApp *</label><input id="o-telefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="809 555 1234" required maxlength="24"></div>
+            <div><label for="o-negocio">Nombre del negocio</label><input id="o-negocio" autocomplete="organization" placeholder="Ej.: Colmado La Esquina" maxlength="100"></div>
+          </div>
+          <label for="o-detalle">¿Algo más?</label>
+          <textarea id="o-detalle" rows="2" maxlength="400" placeholder="Ej.: recibimos 50 pedidos al día por WhatsApp y se nos pierden"></textarea>
+          <div class="trampa" aria-hidden="true"><label for="o-web">No llenar</label><input id="o-web" tabindex="-1" autocomplete="off"></div>
+          <button class="boton" type="submit" id="o-enviar">Quiero mi asistente</button>
+          <p class="aviso" id="o-aviso" role="status" aria-live="polite"></p>
+        </form>
+        <div class="piloto-listo" id="otro-listo" hidden tabindex="-1">
+          <span class="sello-ok" aria-hidden="true">✓</span>
+          <h3>¡Anotado!</h3>
+          <p>Te escribimos por WhatsApp cuando tengamos la asistente para tu tipo de negocio. Si quieres adelantar la conversación, escríbenos.</p>
+          <a class="boton claro" href="https://wa.me/18092299444?text=Hola%2C%20quiero%20una%20asistente%20para%20mi%20negocio" target="_blank" rel="noopener">Escribirnos por WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="envoltura" id="pie">
+  <span>© 2026 Gomez Santana Solutions Group SRL · Lalan AI Studio &amp; Lounge</span>
+  <span>Medimos las visitas de forma anónima, sin cookies, para mejorar esta página.</span>
+  <span><a href="/app/">Entrar a Lalan</a> · <a href="#otro-negocio">¿Otro tipo de negocio?</a> · Hecho en República Dominicana</span>
+</footer>
+
+
+  <!-- Three.js (r128) para la historia en 3D: va antes del módulo, que lo usa como global -->
+  <script src="/landing/three.min.js"></script>
+  <script type="module" src="/src/landing/main.ts"></script>
+</body>
 </html>
-

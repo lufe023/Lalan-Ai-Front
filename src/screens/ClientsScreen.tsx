@@ -35,6 +35,7 @@ import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { PageContent } from '../components/ui/PageContent';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
+import { hora12 } from '../utils/hora';
 
 export const ClientsScreen: React.FC = () => {
   const { dinero } = useDinero();
@@ -1029,7 +1030,7 @@ export const ClientsScreen: React.FC = () => {
                     >
                       <div>
                         <span className="font-bold text-slate-800 dark:text-white block">{apt.serviceName}</span>
-                        <span className="text-[10px] text-slate-400">{apt.date} • {apt.time} ({apt.staffName})</span>
+                        <span className="text-[10px] text-slate-400">{apt.date} • {hora12(apt.time)} ({apt.staffName})</span>
                       </div>
                       <span className="font-extrabold text-slate-700 dark:text-neutral-300">{dinero(apt.price, apt.currencyCode)}</span>
                     </div>

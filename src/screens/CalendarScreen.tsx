@@ -26,6 +26,8 @@ import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { PageContent } from '../components/ui/PageContent';
 import { CascadingRibbonCalendar, CalendarGranularity } from '../components/ui/CascadingRibbonCalendar';
+import { hora12 } from '../utils/hora';
+import { SelectorHora } from '../components/ui/SelectorHora';
 
 export const CalendarScreen: React.FC = () => {
   const { dinero } = useDinero();
@@ -356,7 +358,7 @@ export const CalendarScreen: React.FC = () => {
                         className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer ios-touch flex items-start gap-3"
                       >
                         <div className="flex flex-col items-center justify-center min-w-[50px] pt-0.5">
-                          <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">{apt.time}</span>
+                          <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">{hora12(apt.time)}</span>
                           {granularity !== 'days' && (
                             <span className="text-[9px] text-slate-400 font-medium">
                               {new Date(apt.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
@@ -394,7 +396,7 @@ export const CalendarScreen: React.FC = () => {
         isOpen={!!activeAppointment}
         onClose={() => setActiveAppointment(null)}
         title="Detalles de la Cita"
-        subtitle={activeAppointment ? `${activeAppointment.date} a las ${activeAppointment.time}` : ''}
+        subtitle={activeAppointment ? `${activeAppointment.date} a las ${hora12(activeAppointment.time)}` : ''}
       >
         {activeAppointment && (() => {
           const ocupado = accion !== null;
@@ -727,8 +729,7 @@ export const CalendarScreen: React.FC = () => {
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Hora</label>
-              <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none" />
+              <SelectorHora value={newTime} onChange={setNewTime} />
             </div>
           </div>
           <div>

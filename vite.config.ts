@@ -11,6 +11,19 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    /*
+     * Dos páginas en el mismo proyecto:
+     *   /      → la landing pública (sin sesión, sin React)
+     *   /app/  → la aplicación del salón (y sus pantallas públicas #/pantalla…)
+     */
+    build: {
+      rollupOptions: {
+        input: {
+          landing: path.resolve(__dirname, 'index.html'),
+          app: path.resolve(__dirname, 'app/index.html'),
+        },
+      },
+    },
     server: {
       port: 5173,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

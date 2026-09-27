@@ -23,10 +23,12 @@ export function IOSSegmentedControl<T extends string>({
   id,
   size = 'md',
 }: IOSSegmentedControlProps<T>) {
+  // Cada control tiene su propia "pastilla": si dos comparten nombre, la animación salta de uno a otro
+  const propio = React.useId();
   return (
     <div
       id={id}
-      className={`relative flex items-center p-1 rounded-xl bg-slate-200/80 dark:bg-neutral-800/90 border border-slate-300/40 dark:border-neutral-700/50 select-none ${
+      className={`relative flex items-center max-w-full overflow-x-auto hide-scrollbar p-1 rounded-xl bg-slate-200/80 dark:bg-neutral-800/90 border border-slate-300/40 dark:border-neutral-700/50 select-none ${
         size === 'sm' ? 'h-8 text-xs' : 'h-10 text-xs'
       }`}
     >
@@ -38,7 +40,7 @@ export function IOSSegmentedControl<T extends string>({
             key={option.id}
             type="button"
             onClick={() => onChange(option.id)}
-            className={`relative flex-1 flex items-center justify-center gap-1.5 font-semibold transition-colors duration-150 z-10 rounded-lg h-full ios-touch cursor-pointer ${
+            className={`relative flex-1 shrink-0 flex items-center justify-center gap-1.5 px-3 whitespace-nowrap font-semibold transition-colors duration-150 z-10 rounded-lg h-full ios-touch cursor-pointer ${
               isSelected
                 ? 'text-slate-900 dark:text-white font-bold'
                 : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white'
@@ -46,14 +48,14 @@ export function IOSSegmentedControl<T extends string>({
           >
             {isSelected && (
               <motion.div
-                layoutId={`segmented-active-pill-${id || 'default'}`}
+                layoutId={`segmented-active-pill-${id || propio}`}
                 className="absolute inset-0 bg-white dark:bg-neutral-700 rounded-lg shadow-sm -z-10"
                 transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
             )}
 
             {option.icon && <span className="shrink-0">{option.icon}</span>}
-            <span className="truncate">{option.label}</span>
+            <span>{option.label}</span>
 
             {option.badge !== undefined && option.badge > 0 && (
               <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[var(--primary)] text-white">

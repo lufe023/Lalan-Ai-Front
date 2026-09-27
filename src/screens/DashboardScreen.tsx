@@ -226,7 +226,7 @@ export const DashboardScreen: React.FC = () => {
 
   const dinero = useMemo(() => formateadorDeDinero(datos?.moneda ?? 'USD'), [datos?.moneda]);
   const actualizado = datos
-    ? new Date(datos.generadoEn).toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit', second: '2-digit' })
+    ? new Date(datos.generadoEn).toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit', second: '2-digit' })
     : null;
 
   return (

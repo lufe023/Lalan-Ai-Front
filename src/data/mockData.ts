@@ -949,6 +949,9 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   alertsEnabled: false,
   alertPhone: null,
   alertContactName: null,
+  remindersEnabled: true,
+  reminderDayBefore: true,
+  reminderHoursBefore: 2,
   instagramHandle: '@lalan.ai',
   facebookPage: 'Lalan AI Studio Oficial',
 };

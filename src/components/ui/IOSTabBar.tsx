@@ -14,9 +14,22 @@ import {
   Tag,
   Receipt,
   Armchair,
+  Globe2,
 } from 'lucide-react';
+import { LogoLalan } from './LogoLalan';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAplicacionesNuevas } from '../../hooks/useAplicacionesNuevas';
+import { usePlan } from '../../context/PlanContext';
+import type { ClaveModulo } from '../../types/plataforma';
+
+/** Las pestañas que son de un módulo: si el plan no lo incluye, no aparecen */
+const MODULO_DE_PESTANA: Partial<Record<ScreenName, ClaveModulo>> = {
+  sala: 'sala_turnos',
+  lounge: 'lounge_musica',
+  caja: 'caja',
+  'price-lists': 'listas_precios',
+};
 
 export const IOSTabBar: React.FC = () => {
   const {
@@ -36,6 +49,8 @@ export const IOSTabBar: React.FC = () => {
     openFolios,
   } = useApp();
   const { currentUser } = useAuth();
+  const { tieneModulo } = usePlan();
+  const aplicacionesNuevas = useAplicacionesNuevas(currentUser?.role === 'super_admin');
 
   const unreadChats = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
   /* Citas por revisar: las que vienen (no las pasadas) y que agendó la
@@ -59,7 +74,7 @@ export const IOSTabBar: React.FC = () => {
     (f: any) => Number(f.total ?? 0) - Number(f.paidTotal ?? 0) > 0.009,
   ).length;
 
-  const tabs: {
+  const todasLasPestanas: {
     id: ScreenName; label: string; icon: React.FC<{ className?: string }>;
     badge?: number;
     /** En rojo: no es una notificación, es plata que se puede ir por la puerta */
@@ -79,7 +94,12 @@ export const IOSTabBar: React.FC = () => {
     { id: 'catalog', label: 'Catálogo', icon: Sparkles },
     { id: 'settings', label: 'Ajustes', icon: Sliders },
     { id: 'price-lists', label: 'Precios', icon: Tag },
+    // Solo el dueño de la plataforma: la landing y el libro del piloto
+    ...(currentUser?.role === 'super_admin' || currentUser?.role === 'support'
+      ? [{ id: 'plataforma' as ScreenName, label: currentUser?.role === 'support' ? 'Clientes' : 'Plataforma', icon: Globe2, badge: aplicacionesNuevas > 0 ? aplicacionesNuevas : undefined }]
+      : []),
   ];
+  const tabs = todasLasPestanas.filter((t) => { const m = MODULO_DE_PESTANA[t.id]; return !m || tieneModulo(m); });
 
   /**
    * La barra de móvil ahora scrollea en horizontal, así que la pestaña activa
@@ -288,7 +308,7 @@ export const IOSTabBar: React.FC = () => {
   return (
     // On mobile: w-full shrink-0 at bottom of flex-col
     // On desktop: lg:order-first moves it LEFT in flex-row, fixed sidebar width
-    <div className="w-full shrink-0 z-30 flex flex-col select-none lg:order-first lg:w-64 xl:w-72 lg:h-full">
+    <div data-menu className="w-full shrink-0 z-30 flex flex-col select-none lg:order-first lg:w-64 xl:w-72 lg:h-full">
 
       {/* ═══════════════════════════════════════
           DESKTOP SIDEBAR — hidden on mobile
@@ -299,7 +319,7 @@ export const IOSTabBar: React.FC = () => {
         <div className="px-4 pt-5 pb-4 border-b border-slate-100 dark:border-neutral-800/80 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[var(--primary)] flex items-center justify-center shadow-sm shrink-0">
-              <Sparkles className="w-4 h-4 text-white" />
+              <LogoLalan className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Lalan AI</div>
@@ -316,6 +336,7 @@ export const IOSTabBar: React.FC = () => {
             return (
               <button
                 key={tab.id}
+                  data-medir={`Menú: ${tab.label}`}
                 onClick={() => navigateTo(tab.id)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left cursor-pointer ios-touch group
                   ${isActive
@@ -405,6 +426,7 @@ export const IOSTabBar: React.FC = () => {
               return (
                 <button
                   key={tab.id}
+                  data-medir={`Menú: ${tab.label}`}
                   id={`tab-btn-${tab.id}`}
                   onClick={() => { if (!fueArrastre()) navigateTo(tab.id); }}
                   className="relative flex flex-col items-center justify-center shrink-0 w-[72px] min-h-[44px] rounded-xl py-1 group ios-touch cursor-pointer active:bg-slate-100 dark:active:bg-neutral-800/60 transition-colors"

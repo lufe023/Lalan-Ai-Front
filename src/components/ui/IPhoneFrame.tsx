@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Sparkles, Bell, AlertTriangle, BellRing, Coffee, Music2, HeartHandshake, X } from 'lucide-react';
+import { LogoLalan } from './LogoLalan';
 import { useTheme } from '../../theme/ThemeContext';
 import { useDinero } from '../../hooks/useDinero';
 import { useApp } from '../../context/AppContext';
@@ -79,7 +80,7 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white shrink-0 shadow-sm">
-                  <Sparkles className="w-4 h-4" />
+                  <LogoLalan className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-white truncate">{toast.title}</div>
@@ -331,7 +332,7 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
                   {appt.serviceName}
                 </p>
                 <p className="text-xs text-slate-400 dark:text-neutral-500 text-center mb-5">
-                  {new Date(appt.startsAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} · {appt.staffName}
+                  {new Date(appt.startsAt).toLocaleTimeString('es-MX', { hour: 'numeric', hour12: true, minute: '2-digit' })} · {appt.staffName}
                 </p>
 
                 <div className="flex flex-col gap-2">

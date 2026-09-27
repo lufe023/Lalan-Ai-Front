@@ -60,7 +60,7 @@ const hace = (iso: string) => {
 export const PeticionesMusica: React.FC = () => {
   const { showToast } = useApp();
   const { currentUser } = useAuth();
-  const esAdmin = currentUser?.role === 'admin';
+  const esAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   const [r, setR] = useState<Resumen | null>(null);
   const [error, setError] = useState(false);

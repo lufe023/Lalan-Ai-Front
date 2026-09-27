@@ -17,6 +17,16 @@ import {
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../context/PlanContext';
+
+/** Cuántas horas antes va el segundo recordatorio (0 = no se manda) */
+const HORAS_RECORDATORIO = [
+  { valor: 0, texto: 'No mandar' },
+  { valor: 1, texto: '1 hora antes' },
+  { valor: 2, texto: '2 horas antes' },
+  { valor: 3, texto: '3 horas antes' },
+  { valor: 4, texto: '4 horas antes' },
+];
 import { CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSToggle } from '../components/ui/IOSToggle';
@@ -41,7 +51,7 @@ export const BotsControlScreen: React.FC = () => {
     settings.depositPercent, settings.requireDeposit, settings.aiAutoBooking, settings.aiAgentName,
     settings.cancellationNoticeHours, settings.gracePeriodMinutes, settings.maxAdvanceBookingDays,
   ]);
-  const esDireccion = currentUser?.role === 'admin';
+  const esDireccion = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   /* Aviso a la dueña por WhatsApp: se editan en local y se guardan al salir del campo */
   const [nombreAviso, setNombreAviso] = useState(settings.alertContactName ?? '');
@@ -116,6 +126,8 @@ export const BotsControlScreen: React.FC = () => {
   useEffect(() => { setNombreAgente(settings.aiAgentName); }, [settings.aiAgentName]);
   useEffect(() => { setInstrucciones(settings.aiPrompt ?? ''); }, [settings.aiPrompt]);
   const agente = settings.aiAgentName || 'la asistente';
+  const { tieneModulo } = usePlan();
+  const conRecordatorios = tieneModulo('recordatorios');
 
   const getChannelIcon = (id: CommunicationChannel) => {
     switch (id) {
@@ -379,6 +391,45 @@ export const BotsControlScreen: React.FC = () => {
             >
               {probandoAviso ? 'Enviando…' : 'Enviar aviso de prueba'}
             </button>
+          </div>
+
+          {/* Recordatorios de cita a la clienta */}
+          <div className="py-1.5 border-b border-slate-100 dark:border-neutral-800/80 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white">Recordatorios de cita</div>
+                <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                  {conRecordatorios
+                    ? `${agente} le recuerda la cita a la clienta por WhatsApp. Si ella contesta que necesita cambiarla, ${agente} la reagenda. Cada recordatorio que sale fuera de una conversación abierta tiene un costo pequeño en Meta.`
+                    : 'Incluidos en el Plan Salón y en el Plan Lounge. Escríbenos para activarlos.'}
+                </div>
+              </div>
+              <IOSToggle
+                id="toggle-recordatorios"
+                checked={conRecordatorios && settings.remindersEnabled}
+                disabled={!conRecordatorios}
+                onChange={val => updateSettings({ remindersEnabled: val })}
+                activeColor="#9333ea"
+              />
+            </div>
+            {conRecordatorios && settings.remindersEnabled && (
+              <div className="grid sm:grid-cols-2 gap-2">
+                <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[11px] font-semibold text-slate-700 dark:text-neutral-200">
+                  <span>El día antes, a la hora de la cita</span>
+                  <IOSToggle id="toggle-recordatorio-dia" checked={settings.reminderDayBefore} onChange={val => updateSettings({ reminderDayBefore: val })} activeColor="#9333ea" />
+                </label>
+                <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[11px] font-semibold text-slate-700 dark:text-neutral-200">
+                  <span>Unas horas antes</span>
+                  <select
+                    value={settings.reminderHoursBefore}
+                    onChange={e => updateSettings({ reminderHoursBefore: Number(e.target.value) })}
+                    className="px-2 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] dark:[color-scheme:dark]"
+                  >
+                    {HORAS_RECORDATORIO.map(o => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Instrucciones para todo el salón (todas las sedes) */}

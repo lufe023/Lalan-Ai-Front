@@ -47,6 +47,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
       case 'admin':     return <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />;
       case 'assistant': return <UserCheck   className="w-3.5 h-3.5 text-sky-500"  />;
       case 'support':   return <Headphones  className="w-3.5 h-3.5 text-purple-500" />;
+      case 'super_admin': return <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />;
       default:          return <Sparkles    className="w-3.5 h-3.5 text-amber-500" />;
     }
   };
@@ -55,6 +56,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
     admin:     'Administradora',
     assistant: 'Asistente',
     support:   'Soporte',
+    super_admin: 'Super admin',
   };
 
   return (

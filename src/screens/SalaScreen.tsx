@@ -27,7 +27,7 @@ const laHora = (iso?: string | null) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? ''
-    : d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    : d.toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' });
 };
 
 /**
