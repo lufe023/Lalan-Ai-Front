@@ -38,7 +38,14 @@ export const IOSTabBar: React.FC = () => {
   const { currentUser } = useAuth();
 
   const unreadChats = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
-  const pendingApts = appointments.filter(a => a.status === 'confirmed_by_ai' || a.status === 'pending').length;
+  /* Citas por revisar: las que vienen (no las pasadas) y que agendó la
+     asistente o esperan confirmación. Las que confirmó una persona ya están
+     revisadas; las de ayer ya no se pueden revisar. */
+  const ahora = Date.now();
+  const pendingApts = appointments.filter(a =>
+    (a.status === 'confirmed_by_ai' || a.status === 'pending') &&
+    new Date(a.startsAt ?? `${a.date}T${a.time}`).getTime() >= ahora,
+  ).length;
 
   /**
    * Comandas sin cobrar. Mismo criterio que la pestaña de Caja: una cuenta

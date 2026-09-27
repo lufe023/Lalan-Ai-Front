@@ -198,7 +198,7 @@ export const CajaScreen: React.FC = () => {
         subtitle="PUNTO DE VENTA & COBROS"
       />
 
-      <PageContent className="space-y-4 text-xs select-none">
+      <PageContent className="space-y-4 text-xs">
         {/* Cobrar / Recibos */}
         <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-neutral-800">
           {([

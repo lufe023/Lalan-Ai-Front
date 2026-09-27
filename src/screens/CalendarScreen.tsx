@@ -15,7 +15,9 @@ import {
   X,
   Loader2,
   Check,
+  UserCheck,
 } from 'lucide-react';
+import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +28,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { CascadingRibbonCalendar, CalendarGranularity } from '../components/ui/CascadingRibbonCalendar';
 
 export const CalendarScreen: React.FC = () => {
+  const { dinero } = useDinero();
   const {
     appointments,
     addAppointment,
@@ -41,6 +44,8 @@ export const CalendarScreen: React.FC = () => {
     openFolios,
     loadOpenFolios,
     abrirComandaDeCita,
+    categoriasDe,
+    categoriaPorClave,
   } = useApp();
   const { currentUser } = useAuth();
 
@@ -113,6 +118,8 @@ export const CalendarScreen: React.FC = () => {
     setAccion({ clave: status, fase: 'cargando' });
     try {
       const r = await updateAppointmentStatus(apt.id, status, completedAt);
+      // Se echó atrás al preguntarle si reprogramaba la llegada: nada cambió
+      if (r?.cancelado) { setAccion(null); return; }
       setActiveAppointment(a =>
         a && a.id === apt.id ? { ...a, status, ...(completedAt ? { completedAt } : {}) } : a);
 
@@ -188,7 +195,8 @@ export const CalendarScreen: React.FC = () => {
     if (!newClientName) return;
     const selectedSrv = services.find(s => s.id === newServiceId) || services[0];
     const finalPrice = customPrice !== null ? customPrice : (selectedSrv.priceTiers?.[0]?.price ?? selectedSrv.price ?? 0);
-    const deposit = Math.round(finalPrice * ((settings.depositPercent || 30) / 100));
+    // El anticipo que dice Ajustes: si no se pide o es 0 %, no hay anticipo
+    const deposit = settings.requireDeposit ? Math.round(finalPrice * ((settings.depositPercent || 0) / 100)) : 0;
     const fullServiceName = selectedTierName ? `${selectedSrv.name} (${selectedTierName})` : selectedSrv.name;
     addAppointment({
       // Si la eligieron de la lista, se enlaza por id y no por parecido de nombre
@@ -205,9 +213,12 @@ export const CalendarScreen: React.FC = () => {
       time: newTime,
       durationMinutes: selectedSrv.durationMinutes || settings.defaultAppointmentDurationMinutes || 60,
       price: finalPrice,
+      // El precio va en la moneda del servicio; el sistema lo convierte al cobrar
+      currencyCode: selectedSrv.currencyCode,
       depositPaid: deposit,
       staffName: newStaff,
-      status: 'confirmed_by_ai',
+      // La confirma quien la agenda; el backend la guarda a su nombre
+      status: 'confirmed',
       channel: newChannel,
       notes: newNotes,
     });
@@ -216,11 +227,23 @@ export const CalendarScreen: React.FC = () => {
     setShowNewAptModal(false);
   };
 
-  const getStatusBadge = (status: AppointmentStatus) => {
+  /**
+   * El estado, y QUIÉN la agendó: la asistente o la persona del equipo. Las
+   * estadísticas tienen que reflejar lo que pasó; antes todo salía como "IA".
+   */
+  const getStatusBadge = (status: AppointmentStatus, apt?: Appointment) => {
+    const quien = apt?.bookedByAssistant
+      ? (settings.aiAgentName || 'IA')
+      : apt?.createdByName?.split(' ')[0] ?? null;
     switch (status) {
+      case 'confirmed': return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+          <UserCheck className="w-3 h-3" />Confirmada{quien ? ` · ${quien}` : ''}
+        </span>
+      );
       case 'confirmed_by_ai': return (
         <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center gap-1">
-          <Bot className="w-3 h-3" />IA Confirmada
+          <Bot className="w-3 h-3" />Confirmada · {settings.aiAgentName || 'IA'}
         </span>
       );
       case 'attending': return (
@@ -244,14 +267,9 @@ export const CalendarScreen: React.FC = () => {
     }
   };
 
-  const getServiceCategoryIcon = (category: ServiceCategory) => {
-    switch (category) {
-      case 'nails': return <Sparkles className="w-4 h-4 text-rose-500" />;
-      case 'hair': return <Scissors className="w-4 h-4 text-purple-500" />;
-      case 'massage': return <HeartHandshake className="w-4 h-4 text-emerald-500" />;
-      case 'pedi_spa': return <Footprints className="w-4 h-4 text-sky-500" />;
-    }
-  };
+  const getServiceCategoryIcon = (category: ServiceCategory) => (
+    <span className="text-base leading-none">{categoriaPorClave('service', category)?.icon ?? '✨'}</span>
+  );
 
   // Map appointments to CalendarEventBase shape (id + date are already there)
   const calendarEvents = useMemo(() =>
@@ -294,10 +312,8 @@ export const CalendarScreen: React.FC = () => {
                 <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
                   {[
                     { id: 'all', label: 'Todos' },
-                    { id: 'nails', label: '💅 Uñas' },
-                    { id: 'hair', label: '💇‍♀️ Peinados' },
-                    { id: 'massage', label: '💆‍♀️ Masajes' },
-                    { id: 'pedi_spa', label: '🦶 Spa Pies' },
+                    // Las categorías del salón (las crea la dueña en Catálogo)
+                    ...categoriasDe('service').map(c => ({ id: c.key, label: `${c.icon ?? ''} ${c.name}`.trim() })),
                   ].map(cat => (
                     <button
                       key={cat.id}
@@ -352,7 +368,7 @@ export const CalendarScreen: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">{apt.clientName}</h4>
-                            {getStatusBadge(apt.status)}
+                            {getStatusBadge(apt.status, apt)}
                           </div>
                           <p className="text-[11px] font-medium text-slate-600 dark:text-neutral-300 truncate mt-0.5 flex items-center gap-1">
                             {getServiceCategoryIcon(apt.serviceCategory)}
@@ -360,7 +376,7 @@ export const CalendarScreen: React.FC = () => {
                           </p>
                           <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 pt-1 border-t border-slate-100 dark:border-neutral-800/60">
                             <span>{apt.staffName}</span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">${apt.price}</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">{dinero(apt.price, apt.currencyCode)}</span>
                           </div>
                         </div>
                       </motion.div>
@@ -467,7 +483,7 @@ export const CalendarScreen: React.FC = () => {
           return (
             /* Ancho contenido: en escritorio la hoja ocupa toda la pantalla y
                los datos quedaban estirados de borde a borde, ilegibles. */
-            <div className="max-w-2xl mx-auto space-y-5 select-none pb-4">
+            <div className="max-w-2xl mx-auto space-y-5 pb-4">
 
               {/* ── Quién ───────────────────────────────────────────────── */}
               <div className={`p-4 rounded-3xl border ${acento.bg} ${acento.bd} flex items-center gap-4`}>
@@ -487,7 +503,7 @@ export const CalendarScreen: React.FC = () => {
                     <span className="uppercase font-semibold tracking-wide">{activeAppointment.channel}</span>
                   </p>
                 </div>
-                <div className="shrink-0">{getStatusBadge(activeAppointment.status)}</div>
+                <div className="shrink-0">{getStatusBadge(activeAppointment.status, activeAppointment)}</div>
               </div>
 
               {/* ── Qué ─────────────────────────────────────────────────── */}
@@ -510,20 +526,20 @@ export const CalendarScreen: React.FC = () => {
                 <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-neutral-800 border-t border-slate-100 dark:border-neutral-800 bg-slate-50/60 dark:bg-neutral-800/30">
                   <div className="px-4 py-3">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total</span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">${total}</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{dinero(total, activeAppointment.currencyCode)}</span>
                   </div>
                   <div className="px-4 py-3">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Anticipo</span>
                     <span className={`text-sm font-bold tabular-nums ${
                       anticipo > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
-                    }`}>${anticipo}</span>
+                    }`}>{dinero(anticipo, activeAppointment.currencyCode)}</span>
                   </div>
                   <div className="px-4 py-3">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Falta</span>
                     <span className={`text-sm font-bold tabular-nums ${
                       falta > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'
                     }`}>
-                      {falta > 0 ? `$${falta}` : 'Saldado'}
+                      {falta > 0 ? dinero(falta, activeAppointment.currencyCode) : 'Saldado'}
                     </span>
                   </div>
                 </div>
@@ -564,7 +580,7 @@ export const CalendarScreen: React.FC = () => {
                         {!folio
                           ? 'Sin comanda — el servicio no está en ninguna cuenta'
                           : saldo > 0
-                          ? `Abierta · faltan $${saldo.toFixed(2)}`
+                          ? `Abierta · faltan ${dinero(saldo)}`
                           : 'Abierta · sin saldo'}
                       </span>
                     </div>
@@ -688,7 +704,7 @@ export const CalendarScreen: React.FC = () => {
         title="Nueva Cita en Salón"
         subtitle={`Agendando para el ${currentDateStr}`}
       >
-        <form onSubmit={handleCreateAppointment} className="space-y-3 text-xs select-none">
+        <form onSubmit={handleCreateAppointment} className="space-y-3 text-xs">
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Cliente del CRM (opcional)</label>
             <select value={selectedClientId} onChange={e => handleSelectClient(e.target.value)}
@@ -719,7 +735,7 @@ export const CalendarScreen: React.FC = () => {
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Servicio</label>
             <select value={newServiceId} onChange={e => handleServiceChange(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none">
-              {services.map(s => <option key={s.id} value={s.id}>{s.name} (${s.price} - {s.durationMinutes} min)</option>)}
+              {services.map(s => <option key={s.id} value={s.id}>{s.name} ({dinero(s.price, s.currencyCode)} · {s.durationMinutes} min)</option>)}
             </select>
           </div>
           {(() => {
@@ -732,7 +748,7 @@ export const CalendarScreen: React.FC = () => {
                     <button key={i} type="button" onClick={() => { setSelectedTierName(tier.name); setCustomPrice(tier.price); }}
                       className={`p-2 rounded-lg text-left border transition ios-touch cursor-pointer ${selectedTierName === tier.name || (!selectedTierName && i === 0) ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-slate-300'}`}>
                       <div className="font-bold text-[11px] truncate">{tier.name}</div>
-                      <div className="text-[10px] opacity-90">${tier.price}</div>
+                      <div className="text-[10px] opacity-90">{dinero(tier.price, srv.currencyCode)}</div>
                     </button>
                   ))}
                 </div>

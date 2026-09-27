@@ -14,7 +14,8 @@ import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 // ─── Utility ─────────────────────────────────────────────────────────────────
 
 function formatModifier(rule: PriceListRule): string {
-  if (rule.fixedPrice !== undefined) return `Precio fijo: $${rule.fixedPrice.toFixed(2)}`;
+  // El precio fijo de una lista va en la moneda del salón (se aplica sobre el precio ya convertido)
+  if (rule.fixedPrice !== undefined) return `Precio fijo: ${rule.fixedPrice.toFixed(2)} (moneda del salón)`;
   if (rule.discountPercent !== undefined) return `${rule.discountPercent}% descuento`;
   if (rule.priceMultiplier !== undefined) {
     const pct = Math.round((1 - rule.priceMultiplier) * 100);
@@ -68,9 +69,10 @@ function RuleRow({ rule, index, services, products, onChange, onRemove }: RuleRo
     productId: undefined,
   });
 
-  // Collect unique category keys from services/products
-  const serviceCategories = [...new Set(services.map(s => s.category))];
-  const productCategories = [...new Set(products.map(p => p.category))];
+  // Las categorías del salón, con su nombre (antes se enseñaba la clave: "nails")
+  const { categoriasDe } = useApp();
+  const serviceCategories = categoriasDe('service');
+  const productCategories = categoriasDe('product');
 
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -94,13 +96,13 @@ function RuleRow({ rule, index, services, products, onChange, onRemove }: RuleRo
         {rule.target === 'service_category' && (
           <select value={rule.serviceCategoryKey ?? ''} onChange={e => set({ serviceCategoryKey: e.target.value })} style={selectStyle}>
             <option value="">— seleccionar —</option>
-            {serviceCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            {serviceCategories.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}
           </select>
         )}
         {rule.target === 'product_category' && (
           <select value={rule.productCategoryKey ?? ''} onChange={e => set({ productCategoryKey: e.target.value })} style={selectStyle}>
             <option value="">— seleccionar —</option>
-            {productCategories.map(c => <option key={c} value={c}>{c}</option>)}
+            {productCategories.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}
           </select>
         )}
         {rule.target === 'specific_service' && (

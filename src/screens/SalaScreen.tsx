@@ -362,7 +362,7 @@ export const SalaScreen: React.FC = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full">
       <IOSHeader title="Sala" subtitle="QUIÉN ESTÁ EN EL SALÓN AHORA" />
 
-      <PageContent className="space-y-5 text-xs select-none">
+      <PageContent className="space-y-5 text-xs">
         <div className="max-w-4xl mx-auto w-full space-y-5">
 
           {/* ── Resumen ──────────────────────────────────────────── */}

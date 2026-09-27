@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MessageSquareText,
@@ -15,13 +15,37 @@ import {
   CheckCheck,
   Smile,
   Zap,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { CommunicationChannel, ChatStatus, Conversation } from '../types';
+import { CommunicationChannel, ChatStatus, Conversation, ChatMessage } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSToggle } from '../components/ui/IOSToggle';
 import { PageContent } from '../components/ui/PageContent';
+
+/** "1:22 a. m." si es de hoy; "26 sep, 1:22 a. m." si no. Nunca el ISO crudo. */
+function horaDeMensaje(iso?: string) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const hora = d.toLocaleTimeString('es', { hour: 'numeric', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString()
+    ? hora
+    : `${d.toLocaleDateString('es', { day: 'numeric', month: 'short' })}, ${hora}`;
+}
+
+/** El check de cada mensaje que salió del salón, como en WhatsApp */
+function EstadoDeEnvio({ estado }: { estado?: ChatMessage['deliveryStatus'] }) {
+  switch (estado) {
+    case 'pendiente': return <Clock className="w-3 h-3" aria-label="Enviando" />;
+    case 'enviado': return <Check className="w-3 h-3" aria-label="Enviado" />;
+    case 'entregado': return <CheckCheck className="w-3 h-3" aria-label="Entregado" />;
+    case 'leido': return <CheckCheck className="w-3 h-3 text-sky-300" aria-label="Leído" />;
+    case 'fallido': return <AlertTriangle className="w-3 h-3 text-amber-200" aria-label="No se envió" />;
+    default: return <CheckCheck className="w-3 h-3" />;
+  }
+}
 
 export const ChatsScreen: React.FC = () => {
   const {
@@ -31,7 +55,10 @@ export const ChatsScreen: React.FC = () => {
     toggleChatAiStatus,
     sendMessageToConversation,
     showToast,
+    settings,
+    descartarAviso,
   } = useApp();
+  const agente = settings.aiAgentName || 'Lalan';
   const { currentUser } = useAuth();
 
   const [selectedChannel, setSelectedChannel] = useState<CommunicationChannel | 'all'>('all');
@@ -41,6 +68,13 @@ export const ChatsScreen: React.FC = () => {
 
   // Active Conversation Object
   const activeConversation = conversations.find(c => c.id === activeConversationId);
+  // Esc cierra el chat, como las demás hojas
+  useEffect(() => {
+    if (!activeConversationId) return;
+    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveConversationId(null); };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [activeConversationId, setActiveConversationId]);
 
   // Filter conversations
   const filteredConversations = conversations.filter(c => {
@@ -109,15 +143,29 @@ export const ChatsScreen: React.FC = () => {
     setInputText('');
   };
 
-  const handleSendQuickPrompt = (text: string) => {
-    if (!activeConversationId) return;
-    sendMessageToConversation(activeConversationId, text, 'agent');
-  };
+  /* Lo que se ve en el hilo: lo que de verdad se dijo. Las sugerencias de la
+     asistente no se le enviaron a nadie, van aparte en su barra. */
+  const hilo = activeConversation?.messages.filter(m => !m.isSuggestion) ?? [];
+  const ventanaCerrada = !!activeConversation?.windowExpiresAt
+    && new Date(activeConversation.windowExpiresAt).getTime() < Date.now();
+  const ultimaDeLaClienta = [...hilo].reverse().find(m => m.sender === 'client');
+  // La sugerencia vigente: la última, y solo si es posterior a lo último que escribió la clienta
+  const sugerencia = [...(activeConversation?.messages ?? [])].reverse().find(m => m.isSuggestion);
+  // …y ya nadie respondió después (si la usaron o contestaron otra cosa, ya no aplica)
+  const yaRespondida = !!sugerencia && hilo.some(m => (m.sender === 'agent' || m.sender === 'bot') && m.timestamp > sugerencia.timestamp);
+  const sugerenciaVigente = sugerencia && !yaRespondida && (!ultimaDeLaClienta || sugerencia.timestamp >= ultimaDeLaClienta.timestamp)
+    ? sugerencia : undefined;
 
-  // If in active conversation view, show full iOS chat interface
-  if (activeConversation) {
-    return (
-      <div id="active-chat-screen" className="flex-1 w-full h-full flex flex-col bg-white dark:bg-neutral-950 select-none">
+  /*
+   * El chat abierto. En el teléfono ocupa toda la pantalla, como una app de
+   * mensajes. En la computadora se abre como las demás hojas (servicio,
+   * producto…): sobre la lista, que se sigue viendo atrás, y se cierra
+   * tocando fuera o con Esc.
+   */
+  const chatAbierto = activeConversation ? (
+    <div className="absolute inset-0 z-40 flex flex-col lg:justify-end">
+      <div className="hidden lg:block absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setActiveConversationId(null)} />
+      <div id="active-chat-screen" className="relative z-10 w-full h-full lg:h-[88%] flex flex-col bg-white dark:bg-neutral-950 lg:rounded-t-[28px] lg:shadow-2xl lg:overflow-hidden lg:border-t lg:border-white/20 lg:dark:border-neutral-800">
         {/* Custom iOS Chat Header */}
         <div className="p-3 px-4 glass-nav border-b border-slate-200/70 dark:border-neutral-800/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -149,7 +197,7 @@ export const ChatsScreen: React.FC = () => {
               </h4>
               <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                 {getChannelBadge(activeConversation.channel)}
-                <span>• {activeConversation.serviceInterest || 'Consulta'}</span>
+                {getStatusIndicator(activeConversation.status)}
               </div>
             </div>
           </div>
@@ -161,13 +209,16 @@ export const ChatsScreen: React.FC = () => {
                 Modo Bot IA
               </span>
               <span className="text-[10px] font-extrabold text-slate-800 dark:text-slate-200">
-                {activeConversation.status === 'ai_active' ? '🤖 Activado' : '👤 Manual'}
+                {activeConversation.status === 'ai_active' ? `🤖 ${agente}` : '👤 Una persona'}
               </span>
             </div>
             <IOSToggle
               id="toggle-chat-ai"
               checked={activeConversation.status === 'ai_active'}
-              onChange={checked => toggleChatAiStatus(activeConversation.id, checked)}
+              onChange={checked => {
+                void toggleChatAiStatus(activeConversation.id, checked);
+                if (checked) descartarAviso(activeConversation.id);
+              }}
               activeColor="#9333ea"
             />
           </div>
@@ -175,17 +226,22 @@ export const ChatsScreen: React.FC = () => {
 
         {/* Chat Messages Body */}
         <div className="flex-1 overflow-y-auto hide-scrollbar p-4 space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]">
-          {/* AI Notice Pill */}
-          <div className="flex justify-center">
-            <div className="px-3 py-1 rounded-full bg-slate-200/70 dark:bg-neutral-800 text-[10px] text-slate-600 dark:text-neutral-300 flex items-center gap-1.5 shadow-xs font-medium">
-              <Sparkles className="w-3 h-3 text-[var(--primary)]" />
-              <span>Conexión Meta Graph API v20.0 • Confianza IA: {activeConversation.confidenceScore || 95}%</span>
-            </div>
-          </div>
-
-          {activeConversation.messages.map((msg, idx) => {
+          {hilo.map((msg, idx) => {
             const isClient = msg.sender === 'client';
             const isBot = msg.sender === 'bot';
+
+            // Avisos del sistema ("pasó a una persona"): al centro, no son de nadie
+            if (msg.sender === 'system') {
+              return (
+                <div key={msg.id || idx} className="flex justify-center">
+                  <div className="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-[11px] text-amber-800 dark:text-amber-200 flex items-center gap-1.5 max-w-[90%]">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    <span>{msg.text}</span>
+                    <span className="opacity-60 shrink-0">· {horaDeMensaje(msg.timestamp)}</span>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <motion.div
@@ -209,11 +265,11 @@ export const ChatsScreen: React.FC = () => {
                       <span>{activeConversation.clientName}</span>
                     ) : isBot ? (
                       <span className="flex items-center gap-0.5">
-                        <Bot className="w-2.5 h-2.5" /> Lalan Bot IA (Automático)
+                        <Bot className="w-2.5 h-2.5" /> {agente}
                       </span>
                     ) : (
                       <span className="flex items-center gap-0.5">
-                        <UserCheck className="w-2.5 h-2.5" /> {currentUser?.name || 'Agente'} (Manual)
+                        <UserCheck className="w-2.5 h-2.5" /> Equipo del salón
                       </span>
                     )}
                   </div>
@@ -221,35 +277,36 @@ export const ChatsScreen: React.FC = () => {
                   <p className="whitespace-pre-wrap">{msg.text}</p>
 
                   <div className="flex items-center justify-end gap-1 text-[9px] opacity-70 mt-1">
-                    <span>{msg.timestamp}</span>
-                    {!isClient && <CheckCheck className="w-3 h-3" />}
+                    <span>{horaDeMensaje(msg.timestamp)}</span>
+                    {!isClient && <EstadoDeEnvio estado={msg.deliveryStatus} />}
                   </div>
+                  {msg.deliveryStatus === 'fallido' && (
+                    <div className="mt-1 text-[10px] font-semibold bg-black/20 rounded-lg px-2 py-1">
+                      No se envió{msg.failureReason ? `: ${msg.failureReason}` : ''}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             );
           })}
         </div>
 
-        {/* Quick Quick-Reply Suggestion Bar */}
-        <div className="px-3 py-1.5 bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800/80 flex items-center gap-1.5 overflow-x-auto hide-scrollbar shrink-0">
-          <span className="text-[10px] font-bold text-slate-400 shrink-0 flex items-center gap-1">
-            <Zap className="w-3 h-3 text-amber-500" /> Respuestas:
-          </span>
-          {[
-            '✨ Hola, te confirmamos tu turno con gusto.',
-            '💅 ¿Deseas Uñas Acrílicas o Kapping Gel?',
-            '🦶 Tenemos espacio hoy para Jelly Spa a las 4:30 PM.',
-            '💳 Te envío el link para registrar tu 30% de anticipo.',
-          ].map((quickText, qIdx) => (
+        {/* La respuesta que propone la asistente mientras atiende una persona */}
+        {sugerenciaVigente && (
+          <div className="px-3 py-2 bg-purple-50 dark:bg-purple-950/40 border-t border-purple-200/70 dark:border-purple-900 flex items-start gap-2 shrink-0">
+            <Sparkles className="w-3.5 h-3.5 text-purple-500 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-bold text-purple-700 dark:text-purple-300">{agente} sugiere responder:</div>
+              <p className="text-[11px] text-slate-700 dark:text-neutral-200 whitespace-pre-wrap line-clamp-3">{sugerenciaVigente.text}</p>
+            </div>
             <button
-              key={qIdx}
-              onClick={() => handleSendQuickPrompt(quickText)}
-              className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-[10px] text-slate-700 dark:text-neutral-300 whitespace-nowrap transition ios-touch cursor-pointer font-medium"
+              onClick={() => setInputText(sugerenciaVigente.text)}
+              className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold shrink-0 cursor-pointer"
             >
-              {quickText}
+              Usar
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
         {/* Input Bar */}
         <form
@@ -260,10 +317,11 @@ export const ChatsScreen: React.FC = () => {
             type="text"
             placeholder={
               activeConversation.status === 'ai_active'
-                ? 'Escribe para responder manualmente...'
+                ? `Si escribes, ${agente} se pausa en este chat…`
                 : 'Escribe un mensaje...'
             }
             value={inputText}
+            disabled={ventanaCerrada}
             onChange={e => setInputText(e.target.value)}
             className="flex-1 px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
           />
@@ -276,13 +334,18 @@ export const ChatsScreen: React.FC = () => {
             <Send className="w-4 h-4" />
           </button>
         </form>
+        {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
+        {ventanaCerrada && (
+          <p className="px-4 pb-2 text-[10px] text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-950">
+            Pasaron más de 24 horas desde su último mensaje: WhatsApp no deja escribirle hasta que ella vuelva a escribir.
+          </p>
+        )}
       </div>
-    );
-  }
+    </div>
+  ) : null;
 
-  // Otherwise show conversations list
   return (
-    <div id="chats-list-screen" className="flex-1 w-full h-full flex flex-col overflow-hidden">
+    <div id="chats-list-screen" className="relative flex-1 w-full h-full flex flex-col overflow-hidden">
       <IOSHeader
         title="Mensajes"
         subtitle={`${conversations.length} conversaciones activas`}
@@ -358,7 +421,7 @@ export const ChatsScreen: React.FC = () => {
                     {conv.clientName}
                   </h4>
                   <span className="text-[10px] text-slate-400 font-medium shrink-0">
-                    {conv.lastMessageTime}
+                    {conv.lastMessageAt ? horaDeMensaje(conv.lastMessageAt) : conv.lastMessageTime}
                   </span>
                 </div>
 
@@ -383,6 +446,7 @@ export const ChatsScreen: React.FC = () => {
           ))}
         </div>
       </PageContent>
+      {chatAbierto}
     </div>
   );
 };

@@ -1,6 +1,5 @@
 import {
   Appointment,
-  BotChannelConfig,
   Client,
   ClientHospitalityPreferences,
   Conversation,
@@ -765,7 +764,6 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     lastMessageTime: 'Hace 4 min',
     unreadCount: 0,
     serviceInterest: 'Spa de Pies',
-    confidenceScore: 98,
     messages: [
       {
         id: 'm1_1',
@@ -807,7 +805,6 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     lastMessageTime: 'Hace 18 min',
     unreadCount: 1,
     serviceInterest: 'Peinados & Color',
-    confidenceScore: 94,
     messages: [
       {
         id: 'm2_1',
@@ -848,7 +845,6 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     lastMessageTime: 'Hace 35 min',
     unreadCount: 2,
     serviceInterest: 'Uñas & Manicura',
-    confidenceScore: 68,
     messages: [
       {
         id: 'm3_1',
@@ -877,7 +873,6 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     lastMessageTime: 'Hace 1 hora',
     unreadCount: 0,
     serviceInterest: 'Masajes & Spa',
-    confidenceScore: 82,
     messages: [
       {
         id: 'm4_1',
@@ -910,7 +905,6 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     lastMessageTime: 'Hace 2 horas',
     unreadCount: 0,
     serviceInterest: 'Información General',
-    confidenceScore: 99,
     messages: [
       {
         id: 'm5_1',
@@ -926,45 +920,6 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
         isAiGenerated: true,
       },
     ],
-  },
-];
-
-export const INITIAL_BOT_CONFIGS: BotChannelConfig[] = [
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp Business API Bot',
-    enabled: true,
-    model: 'Gemini 2.5 Pro Salon Assistant',
-    webhookLatencyMs: 38,
-    status: 'online',
-    messagesProcessedToday: 184,
-    appointmentsBookedToday: 14,
-    welcomeMessage: '¡Hola! 🌸 Bienvenida a Lalan AI. Soy tu asistente inteligente para consultar nuestro catálogo de servicios, productos, tablas de precios y agendar tu cita en segundos.',
-    offHoursMessage: '¡Gracias por escribirnos! 🌙 Nuestro horario es de 9:00 AM a 8:00 PM. Déjanos tu consulta y en cuanto abramos te confirmaremos tu cita.',
-  },
-  {
-    id: 'instagram',
-    name: 'Instagram Direct Automation (Meta)',
-    enabled: true,
-    model: 'Gemini 2.5 Flash Conversational',
-    webhookLatencyMs: 44,
-    status: 'online',
-    messagesProcessedToday: 129,
-    appointmentsBookedToday: 9,
-    welcomeMessage: '¡Hola! ✨ Gracias por tu mensaje. ¿Qué servicio de nuestro catálogo te gustaría consentirte hoy? (Uñas, Peinados, Masajes o Spa de Pies)',
-    offHoursMessage: '¡Hola! Te responderemos a primera hora de la mañana para darte el mejor horario disponible 💕.',
-  },
-  {
-    id: 'messenger',
-    name: 'Facebook Messenger Bot (Meta)',
-    enabled: true,
-    model: 'Gemini 2.5 Flash Lite',
-    webhookLatencyMs: 52,
-    status: 'online',
-    messagesProcessedToday: 56,
-    appointmentsBookedToday: 4,
-    welcomeMessage: '¡Hola! Bienvenido a Lalan AI en Facebook. ¿Deseas consultar servicios, productos o reservar?',
-    offHoursMessage: 'Nuestro equipo de atención está descansando pero guardamos tu solicitud para contactarte mañana temprano.',
   },
 ];
 
@@ -987,6 +942,13 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   aiAutoBooking: true,
   aiStrictSlots: true,
   aiTone: 'friendly_luxury',
+  aiAgentName: 'Lalan',
+  aiSuggestWhenPaused: true,
+  aiPrompt: null,
+  aiPromptSalon: null,
+  alertsEnabled: false,
+  alertPhone: null,
+  alertContactName: null,
   instagramHandle: '@lalan.ai',
   facebookPage: 'Lalan AI Studio Oficial',
 };

@@ -26,6 +26,7 @@ import {
   Star,
   Settings,
 } from 'lucide-react';
+import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -36,6 +37,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 
 export const ClientsScreen: React.FC = () => {
+  const { dinero } = useDinero();
   const {
     clients,
     addClient,
@@ -646,7 +648,7 @@ export const ClientsScreen: React.FC = () => {
 
                 <div className="flex flex-col items-end shrink-0 pl-2">
                   <span className="text-[11px] font-black text-slate-900 dark:text-white">
-                    ${client.totalSpent}
+                    {dinero(client.totalSpent)}
                   </span>
                   <span className="text-[10px] text-slate-400 font-medium">
                     {client.totalVisits} {client.totalVisits === 1 ? 'visita' : 'visitas'}
@@ -686,7 +688,7 @@ export const ClientsScreen: React.FC = () => {
         subtitle={selectedClient ? `Registrada el ${selectedClient.registeredDate}` : ''}
       >
         {selectedClient && (
-          <div className="space-y-4 text-xs select-none">
+          <div className="space-y-4 text-xs">
             {/* Header Profile Card */}
             <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-rose-50/40 dark:from-neutral-800/80 dark:to-neutral-900 border border-slate-200/80 dark:border-neutral-700/70 flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -733,7 +735,7 @@ export const ClientsScreen: React.FC = () => {
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 text-center">
                 <span className="text-[9px] uppercase font-bold text-slate-400 block">Consumo Total</span>
                 <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
-                  ${selectedClient.totalSpent}
+                  {dinero(selectedClient.totalSpent)}
                 </span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 text-center">
@@ -1029,7 +1031,7 @@ export const ClientsScreen: React.FC = () => {
                         <span className="font-bold text-slate-800 dark:text-white block">{apt.serviceName}</span>
                         <span className="text-[10px] text-slate-400">{apt.date} • {apt.time} ({apt.staffName})</span>
                       </div>
-                      <span className="font-extrabold text-slate-700 dark:text-neutral-300">${apt.price}</span>
+                      <span className="font-extrabold text-slate-700 dark:text-neutral-300">{dinero(apt.price, apt.currencyCode)}</span>
                     </div>
                   ))}
                 </div>
@@ -1062,7 +1064,7 @@ export const ClientsScreen: React.FC = () => {
         title={isEditing ? 'Editar Datos de Clienta' : 'Registrar Nueva Clienta'}
         subtitle="Lalan AI CRM & Ficha Personalizada"
       >
-        <form onSubmit={handleSaveClient} noValidate className="space-y-3 text-xs select-none">
+        <form onSubmit={handleSaveClient} noValidate className="space-y-3 text-xs">
 
           {/* API error banner */}
           {formApiError && (

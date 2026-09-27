@@ -58,6 +58,13 @@ const EVENTOS = [
   /* Señal, no datos: cambió la fila de peticiones de canciones (llegó una,
      sonó, se quitó, se reinició una cuota). Cada quien vuelve a pedir lo suyo. */
   'musica:peticiones',
+  /* Chats: cambió algo en la bandeja (señal), o una conversación necesita a
+     una persona (solo viaja su id; el resto se pide por HTTP) */
+  'chat:cambio', 'chat:atencion',
+  /* La asistente agendó sin especialista: solo viaja el id de la cita */
+  'agenda:sin-especialista',
+  /* Llegó (o se fue) una clienta y el Lounge ya se preparó: solo su id */
+  'lounge:llegada',
 ];
 
 function conectar(auth: () => Record<string, any>, modo: string) {

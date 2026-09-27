@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Info, Scissors, BarChart3, Download, Users, User, Package, Store } from 'lucide-react';
+import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -11,6 +12,7 @@ import { CascadingRibbonCalendar, CalendarGranularity, MonthWeek } from '../comp
 type RevenueMode = 'bruto' | 'neto';
 
 export const GananciasScreen: React.FC = () => {
+  const { dinero, base } = useDinero();
   const { appointments, products, loadIngredients, goBack, navigateTo } = useApp();
   const [mode, setMode] = useState<RevenueMode>('bruto');
   const [serviceCosts, setServiceCosts] = useState<Record<string, number>>({});
@@ -339,7 +341,7 @@ export const GananciasScreen: React.FC = () => {
     XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
 
     // Sheet 2: Por servicio (con totales)
-    const svcHeader = ['Servicio', 'Citas', 'Ingreso bruto ($)', 'Costo insumos ($)', 'Ganancia neta ($)', 'Margen (%)'];
+    const svcHeader = ['Servicio', 'Citas', `Ingreso bruto (${base})`, `Costo insumos (${base})`, `Ganancia neta (${base})`, 'Margen (%)'];
     const svcRows = breakdown.map(s => {
       const n = Math.max(0, s.bruto - s.cost);
       const m = s.bruto > 0 ? Math.round((n / s.bruto) * 100) : 0;
@@ -350,7 +352,7 @@ export const GananciasScreen: React.FC = () => {
     XLSX.utils.book_append_sheet(wb, ws2, 'Por servicio');
 
     // Sheet 3: Detalle completo de cada cita (ordenado por fecha y hora)
-    const detHeader = ['Fecha', 'Día', 'Hora', 'Especialista', 'Cliente', 'Servicio', 'Ingreso bruto ($)', 'Costo insumos ($)', 'Ganancia neta ($)'];
+    const detHeader = ['Fecha', 'Día', 'Hora', 'Especialista', 'Cliente', 'Servicio', `Ingreso bruto (${base})`, `Costo insumos (${base})`, `Ganancia neta (${base})`];
     const sorted = [...filteredAppointments].sort((a, b) => aptDate(a).getTime() - aptDate(b).getTime());
     const detRows = sorted.map(a => {
       const d = aptDate(a);
@@ -363,7 +365,7 @@ export const GananciasScreen: React.FC = () => {
     XLSX.utils.book_append_sheet(wb, ws3, 'Detalle de citas');
 
     // Sheet 4: Por especialista
-    const staffHeader = ['Especialista', 'Citas', 'Ingreso bruto ($)', 'Costo insumos ($)', 'Ganancia neta ($)', 'Margen (%)'];
+    const staffHeader = ['Especialista', 'Citas', `Ingreso bruto (${base})`, `Costo insumos (${base})`, `Ganancia neta (${base})`, 'Margen (%)'];
     const staffRows = staffBreakdown.map(s => {
       const sNeto = Math.max(0, s.bruto - s.cost);
       const sMargin = s.bruto > 0 ? Math.round((sNeto / s.bruto) * 100) : 0;
@@ -374,7 +376,7 @@ export const GananciasScreen: React.FC = () => {
     XLSX.utils.book_append_sheet(wb, ws4, 'Por especialista');
 
     // Sheet 5: Por cliente
-    const clientHeader = ['Cliente', 'Visitas', 'Total gastado ($)', 'Servicios usados', 'Hora preferida'];
+    const clientHeader = ['Cliente', 'Visitas', `Total gastado (${base})`, 'Servicios usados', 'Hora preferida'];
     const clientRows = clientBreakdown.map(c => [c.name, c.count, c.bruto, c.services.join(', '), c.preferredHour ?? '']);
     const totalClientBruto = clientBreakdown.reduce((s, c) => s + c.bruto, 0);
     const ws5 = XLSX.utils.aoa_to_sheet([clientHeader, ...clientRows, [], ['TOTAL', count, totalClientBruto, '', '']]);
@@ -455,7 +457,7 @@ export const GananciasScreen: React.FC = () => {
                 {mode === 'bruto' ? 'Ingresos brutos' : 'Ganancias netas'}
               </p>
               <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                ${totalRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {dinero(totalRevenue)}
               </div>
               <p className="text-[11px] text-slate-400 dark:text-neutral-500 mt-1">
                 {count} {count === 1 ? 'venta cobrada' : 'ventas cobradas'}
@@ -478,11 +480,11 @@ export const GananciasScreen: React.FC = () => {
             <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-neutral-800">
               <div className="text-center">
                 <p className="text-[10px] text-slate-400 dark:text-neutral-500">Ingresos brutos</p>
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">${bruto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{dinero(bruto)}</p>
               </div>
               <div className="text-center">
                 <p className="text-[10px] text-slate-400 dark:text-neutral-500">Costo de insumos</p>
-                <p className="text-sm font-bold text-red-500 dark:text-red-400">-${costoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-sm font-bold text-red-500 dark:text-red-400">-{dinero(costoTotal)}</p>
               </div>
             </div>
           )}
@@ -526,7 +528,7 @@ export const GananciasScreen: React.FC = () => {
                   const x = hoveredIdx * (W / chartData.length) + 1;
                   const cx = x + barW / 2;
                   const bh = Math.max((d.value / maxVal) * H, 2);
-                  const fmt = (v: number) => `$${v.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                  const fmt = (v: number) => dinero(v);
                   const header = sub !== undefined ? `${d.label} ${sub}` : d.label;
                   const lines = mode === 'neto'
                     ? [header, `${fmt((d as any).neto)} neto`, `${fmt((d as any).bruto)} bruto`]
@@ -587,7 +589,7 @@ export const GananciasScreen: React.FC = () => {
                       <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{svc.name}</span>
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">${display.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{dinero(display)}</span>
                       <span className="text-[10px] text-slate-400 ml-1">({svc.count} {svc.count === 1 ? 'vez' : 'veces'})</span>
                     </div>
                   </div>
@@ -597,7 +599,7 @@ export const GananciasScreen: React.FC = () => {
                   </div>
                   {mode === 'neto' && svc.cost > 0 && (
                     <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1">
-                      Insumos: -${svc.cost.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · Bruto: ${svc.bruto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Insumos: -{dinero(svc.cost)} · Bruto: {dinero(svc.bruto)}
                     </p>
                   )}
                 </div>
@@ -626,7 +628,7 @@ export const GananciasScreen: React.FC = () => {
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        ${display.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {dinero(display)}
                       </span>
                       <span className="text-[10px] text-slate-400 ml-1">
                         ({p.count} {p.count === 1 ? 'unidad' : 'unidades'})
@@ -639,7 +641,7 @@ export const GananciasScreen: React.FC = () => {
                   </div>
                   {mode === 'neto' && p.cost > 0 && (
                     <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1">
-                      Costo: -${p.cost.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · Margen {p.margen}%
+                      Costo: -{dinero(p.cost)} · Margen {p.margen}%
                     </p>
                   )}
                 </div>
@@ -661,7 +663,7 @@ export const GananciasScreen: React.FC = () => {
                 </p>
               </div>
               <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400">
-                −${Number(informe.cortesiasCosto ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                −{dinero(Number(informe.cortesiasCosto ?? 0))}
               </span>
             </div>
           </div>
@@ -692,7 +694,7 @@ export const GananciasScreen: React.FC = () => {
                       {isTop && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">★ Top</span>}
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">${display.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{dinero(display)}</span>
                       <span className="text-[10px] text-slate-400 ml-1">({staff.count} {staff.count === 1 ? 'servicio' : 'servicios'})</span>
                     </div>
                   </div>
@@ -702,7 +704,7 @@ export const GananciasScreen: React.FC = () => {
                   </div>
                   {mode === 'neto' && staff.cost > 0 && (
                     <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1">
-                      Insumos: -${staff.cost.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · Bruto: ${staff.bruto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Insumos: -{dinero(staff.cost)} · Bruto: {dinero(staff.bruto)}
                     </p>
                   )}
                 </div>
@@ -747,7 +749,7 @@ export const GananciasScreen: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">${client.bruto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{dinero(client.bruto)}</span>
                     </div>
                   </div>
                   <div className="h-1 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden mt-1.5">

@@ -99,3 +99,13 @@
   padding-bottom: max(env(safe-area-inset-bottom), 8px);
 }
 
+
+/*
+ * El texto se puede seleccionar y copiar (un teléfono, una dirección, lo que
+ * dijo una clienta). Lo que NO se selecciona son los controles: así un toque
+ * largo en un botón no pinta de azul la pantalla.
+ */
+button, [role="button"], .ios-touch, label, select {
+  -webkit-user-select: none;
+  user-select: none;
+}

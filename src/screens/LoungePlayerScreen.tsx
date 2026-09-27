@@ -43,6 +43,7 @@ import {
   Split,
   UserPlus,
   Ban,
+  Loader2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api, apiFetch } from '../services/api';
@@ -147,6 +148,7 @@ export const LoungePlayerScreen: React.FC = () => {
     ytRotos,
     // Canciones pedidas por las clientas desde el QR
     quitarPeticion,
+    categoriaPorClave,
   } = useApp();
 
   /**
@@ -361,12 +363,13 @@ export const LoungePlayerScreen: React.FC = () => {
     const palabras = (t: string) => t.split(/[^a-z0-9]+/).filter(w => w.length >= 4);
     const deA = new Set(palabras(a));
     return (products ?? []).find(p => {
-      if (p.category !== 'beverage' && p.category !== 'snack') return false;
+      // Solo lo que va en el menú del Lounge (lo dice su categoría), nunca un insumo
+      if (p.supplyOnly || (categoriaPorClave('product', p.category)?.loungeRole ?? 'none') === 'none') return false;
       const b = normalizar(p.name);
       if (a === b || a.includes(b) || b.includes(a)) return true;
       return palabras(b).some(w => deA.has(w));
     }) ?? null;
-  }, [products]);
+  }, [products, categoriaPorClave]);
 
   // ── Bitácora ──────────────────────────────────────────────────────────
   const [bitacoraRango, setBitacoraRango] = useState<'today' | 'all'>('today');
@@ -1384,7 +1387,14 @@ export const LoungePlayerScreen: React.FC = () => {
                     duration: 3.5,
                     ease: 'easeInOut',
                   }}
-                  className="mx-auto w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-xl border border-slate-100 dark:border-neutral-800 relative group"
+                  className={`mx-auto w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-xl border relative group transition ${
+                    // En modo video el iframe tapa cualquier capa encima: el aro que late
+                    // alrededor de la portada es lo que se sigue viendo mientras se sincroniza
+                    alineando
+                      ? 'border-transparent ring-4 ring-[var(--primary)]/40 animate-pulse'
+                      : 'border-slate-100 dark:border-neutral-800'
+                  }`}
+                  aria-busy={alineando}
                 >
                   {isYt && ytShowVideo && !sonandoEnPantalla ? (
                     // El iframe no se monta aquí: este hueco 16:9 es solo el
@@ -1494,13 +1504,26 @@ export const LoungePlayerScreen: React.FC = () => {
               {/* Title & Artist */}
               <div className="mt-4 w-full px-2">
                 <div className="flex items-center justify-center gap-2">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-                    {alineando ? 'Sincronizando con el salón…' : enPantalla.title}
-                  </h2>
+                  {alineando ? (
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2" role="status">
+                      <Loader2 className="w-5 h-5 animate-spin text-[var(--primary)]" />
+                      Sincronizando con el salón…
+                    </h2>
+                  ) : (
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white truncate">{enPantalla.title}</h2>
+                  )}
                 </div>
-                <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 mt-0.5 truncate">
-                  {enPantalla.artist}
-                </p>
+                {alineando ? (
+                  // Nada de artista viejo mientras no sepamos qué suena: una línea que "respira"
+                  <div className="mt-1.5 flex flex-col items-center gap-1">
+                    <span className="h-3 w-32 rounded-full bg-slate-200 dark:bg-neutral-800 animate-pulse" />
+                    <span className="text-[11px] text-slate-400">Preguntando al aparato del salón qué está sonando</span>
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 mt-0.5 truncate">
+                    {enPantalla.artist}
+                  </p>
+                )}
 
                 {/* Source badge */}
                 <div className="mt-2 flex items-center justify-center gap-2">
@@ -1520,6 +1543,18 @@ export const LoungePlayerScreen: React.FC = () => {
 
               {/* Scrubber Progress Slider */}
               <div className="w-full mt-5 px-1">
+                {alineando ? (
+                  // Barra que corre sin fin: hay trabajo en marcha, todavía no hay tiempos que enseñar
+                  <div className="relative h-1.5 w-full rounded-lg bg-slate-200 dark:bg-neutral-800 overflow-hidden" aria-hidden>
+                    <motion.div
+                      className="absolute inset-y-0 w-1/3 rounded-lg bg-[var(--primary)]"
+                      initial={{ x: '-100%' }}
+                      animate={{ x: '300%' }}
+                      transition={reduceMotion ? { duration: 0 } : { repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+                    />
+                  </div>
+                ) : (
+                <>
                 <div className="relative flex items-center">
                   <input
                     type="range"
@@ -1534,6 +1569,8 @@ export const LoungePlayerScreen: React.FC = () => {
                   <span>{formatTime(enPantalla.time)}</span>
                   <span>-{formatTime(Math.max(0, enPantalla.duration - enPantalla.time))}</span>
                 </div>
+                </>
+                )}
               </div>
 
               {/* iOS Playback Controls */}

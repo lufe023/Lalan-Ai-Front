@@ -25,11 +25,24 @@ import {
 } from 'lucide-react';
 import { useApp, ServiceIngredient } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
+import { LineaDeReceta, PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
+
+/** Cómo se maneja un producto: se vende tal cual, se prepara con receta, o es un insumo */
+type TipoDeProducto = 'venta' | 'preparado' | 'insumo';
+const TIPOS_DE_PRODUCTO: { id: TipoDeProducto; label: string; emoji: string; ayuda: string }[] = [
+  { id: 'venta', label: 'Se vende tal cual', emoji: '🛍️', ayuda: 'Tiene existencias: un champú, una botella de agua.' },
+  { id: 'preparado', label: 'Se prepara al momento', emoji: '🧑‍🍳', ayuda: 'Una picadera, un coctel, un café con leche. No tiene existencias: al servirlo salen sus ingredientes.' },
+  { id: 'insumo', label: 'Insumo', emoji: '🧺', ayuda: 'Se compra y se cuenta, pero solo entra en recetas: el salchichón, la leche, el ron. No se vende suelto ni lo ofrece Lalan.' },
+];
+const tipoDe = (f: { preparedToOrder: boolean; supplyOnly: boolean }): TipoDeProducto => (f.preparedToOrder ? 'preparado' : f.supplyOnly ? 'insumo' : 'venta');
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
+import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria';
+import { RecetaDelPreparado } from '../components/catalogo/RecetaDelPreparado';
+import { MonedaDelPrecio } from '../components/catalogo/MonedaDelPrecio';
+import { useDinero } from '../hooks/useDinero';
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -48,7 +61,16 @@ export const CatalogScreen: React.FC = () => {
     saveIngredients,
     catalogDeepLink,
     clearCatalogDeepLink,
+    categoriasDe,
+    categoriaPorClave,
+    guardarRecetaProducto,
   } = useApp();
+  const { base, dinero, enSuMoneda, esExtranjera } = useDinero();
+  const iconoCategoria = (kind: 'service' | 'product', key: string) => categoriaPorClave(kind, key)?.icon || '✨';
+  const primeraCategoria = (kind: 'service' | 'product') => {
+    const c = categoriasDe(kind)[0];
+    return { category: c?.key ?? '', categoryName: c?.name ?? '' };
+  };
   const { currentUser } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
@@ -86,6 +108,7 @@ export const CatalogScreen: React.FC = () => {
     description: string;
     aiAvailable: boolean;
     priceTiers: PriceTier[];
+    currencyCode: string;
   }>({
     name: '',
     category: 'nails',
@@ -99,6 +122,7 @@ export const CatalogScreen: React.FC = () => {
     priceTiers: [
       { id: 'tier_1', name: 'Precio Estándar / Regular', price: 35, isDefault: true, description: 'Servicio completo estándar' },
     ],
+    currencyCode: '',
   });
 
   // Form State for Product
@@ -121,6 +145,10 @@ export const CatalogScreen: React.FC = () => {
     alertThreshold: string;
     hasLotTracking: boolean;
     lotStrategy: 'FEFO' | 'FIFO';
+    preparedToOrder: boolean;
+    supplyOnly: boolean;
+    receta: LineaDeReceta[];
+    currencyCode: string;
   }>({
     name: '',
     category: 'nailcare',
@@ -142,25 +170,11 @@ export const CatalogScreen: React.FC = () => {
     alertThreshold: '',
     hasLotTracking: false,
     lotStrategy: 'FEFO',
+    preparedToOrder: false,
+    supplyOnly: false,
+    receta: [],
+    currencyCode: '',
   });
-
-  // Category names mapping
-  const serviceCategoryNames: Record<ServiceCategory, string> = {
-    nails: 'Uñas & Manicura',
-    hair: 'Peinados & Color',
-    massage: 'Masajes & Spa',
-    pedi_spa: 'Spa de Pies',
-    facial: 'Faciales & Estética',
-  };
-
-  const productCategoryNames: Record<ProductCategory, string> = {
-    nailcare: 'Cuidado de Uñas',
-    haircare: 'Cuidado Capilar',
-    skincare: 'Skincare',
-    spa_body: 'Spa & Corporal',
-    beverage: 'Bebidas',
-    snack: 'Aperitivos',
-  };
 
   // Filtered Services
   const filteredServices = services.filter(s => {
@@ -189,8 +203,8 @@ export const CatalogScreen: React.FC = () => {
     setEditingServiceId(null);
     setServiceForm({
       name: '',
-      category: 'nails',
-      categoryName: 'Uñas & Manicura',
+      ...primeraCategoria('service'),
+      currencyCode: base,
       price: 35,
       durationMinutes: 60,
       icon: 'Sparkles',
@@ -215,6 +229,7 @@ export const CatalogScreen: React.FC = () => {
     setEditingServiceId(service.id);
     setServiceForm({
       name: service.name,
+      currencyCode: service.currencyCode ?? base,
       category: service.category,
       categoryName: service.categoryName,
       price: service.price,
@@ -243,8 +258,8 @@ export const CatalogScreen: React.FC = () => {
     setEditingProductId(null);
     setProductForm({
       name: '',
-      category: 'nailcare',
-      categoryName: 'Cuidado de Uñas',
+      ...primeraCategoria('product'),
+      currencyCode: base,
       sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
       basePrice: 20,
       stock: 15,
@@ -263,6 +278,9 @@ export const CatalogScreen: React.FC = () => {
       alertThreshold: '',
       hasLotTracking: false,
       lotStrategy: 'FEFO',
+      preparedToOrder: false,
+      supplyOnly: false,
+      receta: [],
     });
     setShowProductModal(true);
   };
@@ -271,6 +289,7 @@ export const CatalogScreen: React.FC = () => {
     setEditingProductId(product.id);
     setProductForm({
       name: product.name,
+      currencyCode: product.currencyCode ?? base,
       category: product.category,
       categoryName: product.categoryName,
       sku: product.sku,
@@ -291,6 +310,9 @@ export const CatalogScreen: React.FC = () => {
       alertThreshold: product.alertThreshold != null ? String(product.alertThreshold) : '',
       hasLotTracking: product.hasLotTracking ?? false,
       lotStrategy: product.lotStrategy ?? 'FEFO',
+      preparedToOrder: !!product.preparedToOrder,
+      supplyOnly: !!product.supplyOnly,
+      receta: product.receta ?? [],
     });
     setShowProductModal(true);
   };
@@ -376,7 +398,8 @@ export const CatalogScreen: React.FC = () => {
         await updateService(editingServiceId, {
           name: serviceForm.name,
           category: serviceForm.category,
-          categoryName: serviceCategoryNames[serviceForm.category],
+          categoryName: serviceForm.categoryName,
+          currencyCode: serviceForm.currencyCode || base,
           price: serviceForm.price,
           durationMinutes: serviceForm.durationMinutes,
           description: serviceForm.description,
@@ -402,7 +425,8 @@ export const CatalogScreen: React.FC = () => {
         await addService({
           name: serviceForm.name,
           category: serviceForm.category,
-          categoryName: serviceCategoryNames[serviceForm.category],
+          categoryName: serviceForm.categoryName,
+          currencyCode: serviceForm.currencyCode || base,
           price: serviceForm.price,
           durationMinutes: serviceForm.durationMinutes,
           icon: serviceForm.icon,
@@ -430,7 +454,8 @@ export const CatalogScreen: React.FC = () => {
       const productPayload = {
         name: productForm.name,
         category: productForm.category,
-        categoryName: productCategoryNames[productForm.category],
+        categoryName: productForm.categoryName,
+        currencyCode: productForm.currencyCode || base,
         sku: productForm.sku,
         basePrice: productForm.basePrice,
         stock: productForm.stock,
@@ -446,14 +471,20 @@ export const CatalogScreen: React.FC = () => {
         alertThreshold: productForm.alertThreshold !== '' ? Number(productForm.alertThreshold) : undefined,
         hasLotTracking: productForm.hasLotTracking,
         lotStrategy: productForm.lotStrategy,
+        preparedToOrder: productForm.preparedToOrder,
+        supplyOnly: productForm.supplyOnly,
       };
+      let id = editingProductId;
       if (editingProductId) {
         await updateProduct(editingProductId, productPayload);
-        showToast('Producto actualizado', productForm.name, 'success');
       } else {
-        await addProduct(productPayload);
-        showToast('Producto creado', productForm.name, 'success');
+        id = (await addProduct(productPayload)).id;
       }
+      // La receta va aparte: necesita que el producto ya exista
+      if (productForm.preparedToOrder && id) {
+        await guardarRecetaProducto(id, productForm.receta.filter(l => l.quantity > 0));
+      }
+      showToast(editingProductId ? 'Producto actualizado' : 'Producto creado', productForm.name, 'success');
       setShowProductModal(false);
     } catch (err: any) {
       setProductApiError(err?.message ?? 'Error al guardar. Intenta de nuevo.');
@@ -462,20 +493,6 @@ export const CatalogScreen: React.FC = () => {
     }
   };
 
-  const getServiceCategoryIcon = (category: ServiceCategory) => {
-    switch (category) {
-      case 'nails':
-        return <Sparkles className="w-4 h-4 text-rose-500" />;
-      case 'hair':
-        return <Scissors className="w-4 h-4 text-purple-500" />;
-      case 'massage':
-        return <HeartHandshake className="w-4 h-4 text-emerald-500" />;
-      case 'pedi_spa':
-        return <Footprints className="w-4 h-4 text-sky-500" />;
-      default:
-        return <Sparkles className="w-4 h-4 text-amber-500" />;
-    }
-  };
 
   return (
     <div id="catalog-screen" className="flex-1 w-full h-full flex flex-col overflow-hidden">
@@ -530,53 +547,25 @@ export const CatalogScreen: React.FC = () => {
 
         {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-          {activeTab === 'services'
-            ? [
-                { id: 'all', label: 'Todos los Servicios' },
-                { id: 'nails', label: '💅 Uñas & Manicura' },
-                { id: 'hair', label: '💇‍♀️ Peinados & Color' },
-                { id: 'massage', label: '💆‍♀️ Masajes & Spa' },
-                { id: 'pedi_spa', label: '🦶 Spa de Pies' },
-              ].map(c => {
-                const isSelected = selectedCategory === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCategory(c.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ios-touch cursor-pointer ${
-                      isSelected
-                        ? 'bg-[var(--primary)] text-white shadow-xs font-bold'
-                        : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-neutral-300 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                );
-              })
-            : [
-                { id: 'all', label: 'Todos los Productos' },
-                { id: 'haircare', label: '🧴 Capilar & Olaplex' },
-                { id: 'nailcare', label: '💅 Cuidado de Uñas' },
-                { id: 'spa_body', label: '🌿 Spa & Corporal' },
-                { id: 'skincare', label: '✨ Skincare Facial' },
-                { id: 'beverage', label: '☕ Bebidas' },
-                { id: 'snack', label: '🍪 Aperitivos' },
-              ].map(c => {
-                const isSelected = selectedCategory === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCategory(c.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ios-touch cursor-pointer ${
-                      isSelected
-                        ? 'bg-[var(--primary)] text-white shadow-xs font-bold'
-                        : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-neutral-300 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                );
-              })}
+          {[
+            { id: 'all', label: activeTab === 'services' ? 'Todos los servicios' : 'Todos los productos' },
+            ...categoriasDe(activeTab === 'services' ? 'service' : 'product').map(c => ({ id: c.key, label: `${c.icon ?? ''} ${c.name}`.trim() })),
+          ].map(c => {
+            const isSelected = selectedCategory === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setSelectedCategory(c.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ios-touch cursor-pointer ${
+                  isSelected
+                    ? 'bg-[var(--primary)] text-white shadow-xs font-bold'
+                    : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-neutral-300 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
+                }`}
+              >
+                {c.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Informative AI Bot Sync Banner */}
@@ -633,7 +622,7 @@ export const CatalogScreen: React.FC = () => {
                           color: service.color || '#e11d48',
                         }}
                       >
-                        {getServiceCategoryIcon(service.category)}
+                        <span className="text-base leading-none">{iconoCategoria('service', service.category)}</span>
                       </div>
                       <div className="min-w-0">
                         <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
@@ -711,8 +700,11 @@ export const CatalogScreen: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <span className="font-black text-slate-900 dark:text-white text-xs shrink-0">
-                            ${tier.price}
+                          <span className="font-black text-slate-900 dark:text-white text-xs shrink-0 text-right">
+                            {enSuMoneda(tier.price, service.currencyCode)}
+                            {esExtranjera(service.currencyCode) && (
+                              <span className="block text-[9px] font-semibold text-slate-400">≈ {dinero(tier.price, service.currencyCode)}</span>
+                            )}
                           </span>
                         </div>
                       ))}
@@ -796,6 +788,11 @@ export const CatalogScreen: React.FC = () => {
                             {product.categoryName}
                           </span>
                           <span>•</span>
+                          {product.preparedToOrder ? (
+                            <span className="font-medium text-amber-600 dark:text-amber-400" title="Se prepara al momento: su inventario son sus insumos">
+                              🧑‍🍳 Preparado{product.porcionesPosibles != null ? ` · alcanza para ${product.porcionesPosibles}` : ' · sin receta'}
+                            </span>
+                          ) : (
                           <span className={`font-medium ${
                             product.minStock != null && product.stock <= product.minStock
                               ? 'text-amber-600 dark:text-amber-400'
@@ -809,6 +806,8 @@ export const CatalogScreen: React.FC = () => {
                               <span className="ml-1 text-amber-500">⚠️</span>
                             )}
                           </span>
+                          )}
+                          {product.supplyOnly && <span className="font-medium text-sky-600 dark:text-sky-400">🧺 Insumo</span>}
                           <span>•</span>
                           <span className="text-[9px] text-slate-400">SKU: {product.sku}</span>
                         </div>
@@ -887,8 +886,11 @@ export const CatalogScreen: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <span className="font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0">
-                            ${tier.price}
+                          <span className="font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0 text-right">
+                            {enSuMoneda(tier.price, product.currencyCode)}
+                            {esExtranjera(product.currencyCode) && (
+                              <span className="block text-[9px] font-semibold text-slate-400">≈ {dinero(tier.price, product.currencyCode)}</span>
+                            )}
                           </span>
                         </div>
                       ))}
@@ -933,7 +935,7 @@ export const CatalogScreen: React.FC = () => {
         title={editingServiceId ? 'Editar Servicio' : 'Nuevo Servicio de Belleza'}
         subtitle="Configuración y Tabla de Precios Multinivel"
       >
-        <form onSubmit={handleSaveService} className="space-y-0 text-xs select-none">
+        <form onSubmit={handleSaveService} className="space-y-0 text-xs">
           {/* Tab switcher — only show when editing */}
           {editingServiceId && (
             <div className="mb-4">
@@ -1020,7 +1022,7 @@ export const CatalogScreen: React.FC = () => {
                   className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 >
                   <option value="">— Seleccionar producto —</option>
-                  {products.filter(p => !ingredients.find(i => i.productId === p.id)).map(p => {
+                  {products.filter(p => !p.preparedToOrder && !ingredients.find(i => i.productId === p.id)).map(p => {
                     const availLabel = (p.unit === 'unit' && p.unitQty != null)
                       ? `${p.stock} unid. × ${p.unitQty}${p.unitQtyUnit ?? 'ml'} = ${+(p.stock * p.unitQty).toFixed(2)}${p.unitQtyUnit ?? 'ml'} disponibles`
                       : `stock: ${p.stock} ${p.unit}`;
@@ -1156,35 +1158,7 @@ export const CatalogScreen: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
-                  Categoría
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    { id: 'nails', label: 'Uñas & Manicura', emoji: '💅' },
-                    { id: 'hair', label: 'Peinados & Color', emoji: '💇‍♀️' },
-                    { id: 'massage', label: 'Masajes & Spa', emoji: '💆‍♀️' },
-                    { id: 'pedi_spa', label: 'Spa de Pies', emoji: '🦶' },
-                    { id: 'facial', label: 'Faciales', emoji: '✨' },
-                  ] as const).map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setServiceForm({ ...serviceForm, category: cat.id, categoryName: serviceCategoryNames[cat.id] })}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ios-touch cursor-pointer ${
-                        serviceForm.category === cat.id
-                          ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)] font-bold'
-                          : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 hover:border-slate-300 dark:hover:border-neutral-600'
-                      }`}
-                    >
-                      <span className="text-base shrink-0">{cat.emoji}</span>
-                      <span className="text-[11px] leading-tight flex-1">{cat.label}</span>
-                      {serviceForm.category === cat.id && <Check className="w-3.5 h-3.5 shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <SelectorDeCategoria kind="service" value={serviceForm.category} onChange={(key, nombre) => setServiceForm({ ...serviceForm, category: key, categoryName: nombre })} />
 
               <div>
                 <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -1240,6 +1214,7 @@ export const CatalogScreen: React.FC = () => {
                   <span>+ Variante</span>
                 </button>
               </div>
+              <MonedaDelPrecio value={serviceForm.currencyCode} onChange={c => setServiceForm({ ...serviceForm, currencyCode: c })} ejemplo={serviceForm.priceTiers[0]?.price ?? serviceForm.price} />
               <p className="text-[10px] text-slate-500 dark:text-neutral-400">
                 Agrega variantes de precio: VIP, retoque, promoción, etc.
               </p>
@@ -1268,7 +1243,7 @@ export const CatalogScreen: React.FC = () => {
                         className="flex-1 px-2.5 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
                       />
                       <div className="flex items-center gap-1 bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-2.5 py-2 w-24">
-                        <DollarSign className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="text-[9px] font-bold text-slate-400 shrink-0">{serviceForm.currencyCode || base}</span>
                         <input
                           type="number"
                           min="0"
@@ -1394,7 +1369,7 @@ export const CatalogScreen: React.FC = () => {
         title={editingProductId ? 'Editar Producto' : 'Nuevo Producto en Boutique'}
         subtitle="Inventario y Precios de Venta"
       >
-        <form onSubmit={handleSaveProduct} className="space-y-0 text-xs select-none">
+        <form onSubmit={handleSaveProduct} className="space-y-0 text-xs">
 
           {/* SECTION: Información básica */}
           <div className="space-y-3 mb-5">
@@ -1419,35 +1394,41 @@ export const CatalogScreen: React.FC = () => {
               />
             </div>
 
+            <SelectorDeCategoria kind="product" value={productForm.category} onChange={(key, nombre) => setProductForm({ ...productForm, category: key, categoryName: nombre })} />
+
             <div>
               <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
-                Categoría
+                Cómo se maneja
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  { id: 'nailcare', label: 'Cuidado de Uñas', emoji: '💅' },
-                  { id: 'haircare', label: 'Cuidado Capilar', emoji: '🧴' },
-                  { id: 'spa_body', label: 'Spa & Corporal', emoji: '🌿' },
-                  { id: 'skincare', label: 'Skincare', emoji: '✨' },
-                  { id: 'beverage', label: 'Bebidas', emoji: '☕' },
-                  { id: 'snack', label: 'Aperitivos', emoji: '🍪' },
-                ] as const).map(cat => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setProductForm({ ...productForm, category: cat.id, categoryName: productCategoryNames[cat.id] })}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ios-touch cursor-pointer ${
-                      productForm.category === cat.id
-                        ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)] font-bold'
-                        : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 hover:border-slate-300 dark:hover:border-neutral-600'
-                    }`}
-                  >
-                    <span className="text-base shrink-0">{cat.emoji}</span>
-                    <span className="text-[11px] leading-tight flex-1">{cat.label}</span>
-                    {productForm.category === cat.id && <Check className="w-3.5 h-3.5 shrink-0" />}
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 gap-2">
+                {TIPOS_DE_PRODUCTO.map(t => {
+                  const elegido = tipoDe(productForm) === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setProductForm({
+                        ...productForm,
+                        preparedToOrder: t.id === 'preparado',
+                        supplyOnly: t.id === 'insumo',
+                        // Un insumo no se ofrece a las clientas
+                        aiAvailable: t.id === 'insumo' ? false : productForm.aiAvailable,
+                      })}
+                      className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl border text-center transition ios-touch cursor-pointer ${
+                        elegido
+                          ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)] font-bold'
+                          : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className="text-base">{t.emoji}</span>
+                      <span className="text-[10px] leading-tight">{t.label}</span>
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1.5 px-1 leading-relaxed">
+                {TIPOS_DE_PRODUCTO.find(t => t.id === tipoDe(productForm))?.ayuda}
+              </p>
             </div>
 
             <div>
@@ -1464,6 +1445,25 @@ export const CatalogScreen: React.FC = () => {
             </div>
           </div>
 
+          {productForm.preparedToOrder ? (
+            <div className="space-y-3 mb-5">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Layers className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">Receta (una porción)</span>
+              </div>
+              <RecetaDelPreparado
+                productoId={editingProductId}
+                receta={productForm.receta}
+                onChange={receta => setProductForm({ ...productForm, receta })}
+                precio={productForm.basePrice}
+                moneda={productForm.currencyCode || base}
+                productos={products}
+              />
+            </div>
+          ) : (
+            <>
           {/* SECTION: Stock & Medidas */}
           <div className="space-y-3 mb-5">
             <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
@@ -1536,6 +1536,8 @@ export const CatalogScreen: React.FC = () => {
               </div>
             )}
           </div>
+            </>
+          )}
 
           {/* SECTION: Precios de Venta */}
           <div className="space-y-3 mb-5">
@@ -1555,6 +1557,7 @@ export const CatalogScreen: React.FC = () => {
                 <span>+ Tarifa</span>
               </button>
             </div>
+            <MonedaDelPrecio value={productForm.currencyCode} onChange={c => setProductForm({ ...productForm, currencyCode: c })} ejemplo={productForm.priceTiers[0]?.price ?? productForm.basePrice} />
 
             <div className="space-y-2 max-h-52 overflow-y-auto">
               {productForm.priceTiers.map((tier, index) => (
@@ -1580,7 +1583,7 @@ export const CatalogScreen: React.FC = () => {
                       className="flex-1 px-2.5 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
                     />
                     <div className="flex items-center gap-1 bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 rounded-lg px-2.5 py-2 w-24">
-                      <DollarSign className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="text-[9px] font-bold text-slate-400 shrink-0">{productForm.currencyCode || base}</span>
                       <input
                         type="number"
                         min="0"

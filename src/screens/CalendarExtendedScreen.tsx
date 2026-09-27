@@ -16,7 +16,9 @@ import {
   ArrowRight,
   Layers,
   ChevronRight as BreadcrumbArrow,
+  UserCheck,
 } from 'lucide-react';
+import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +39,7 @@ export interface MonthWeek {
 }
 
 export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> = ({ onBackToClassic }) => {
+  const { dinero } = useDinero();
   const {
     appointments,
     addAppointment,
@@ -44,6 +47,9 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
     services,
     clients,
     navigateTo,
+    settings,
+    categoriasDe,
+    categoriaPorClave,
   } = useApp();
   const { currentUser } = useAuth();
 
@@ -430,15 +436,19 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
       serviceId: srv.id,
       serviceName: srv.name,
       serviceCategory: srv.category,
+      // El precio va en la moneda del servicio; el sistema lo convierte al cobrar
+      currencyCode: srv.currencyCode,
       date: selectedDateStr,
       time: newTime,
       durationMinutes: srv.durationMinutes,
       bufferMinutes: 10,
       price: customPrice || srv.price,
       selectedPriceTierName: selectedTierName || undefined,
-      depositPaid: Math.round((customPrice || srv.price) * 0.3),
+      // El anticipo que dice Ajustes (0 si no se pide), no un 30 % fijo
+      depositPaid: settings.requireDeposit ? Math.round((customPrice || srv.price) * (settings.depositPercent || 0) / 100) : 0,
       staffName: newStaff,
-      status: 'confirmed_by_ai',
+      // La confirma quien la agenda; el backend la guarda a su nombre
+      status: 'confirmed',
       channel: newChannel,
       notes: newNotes,
     });
@@ -450,13 +460,25 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
     setShowNewAptModal(false);
   };
 
-  const getStatusBadge = (status: AppointmentStatus) => {
+  /**
+   * El estado, y QUIÉN la agendó: la asistente o la persona del equipo. Las
+   * estadísticas tienen que reflejar lo que pasó; antes todo salía como "IA".
+   */
+  const getStatusBadge = (status: AppointmentStatus, apt?: Appointment) => {
+    const quien = apt?.bookedByAssistant
+      ? (settings.aiAgentName || 'IA')
+      : apt?.createdByName?.split(' ')[0] ?? null;
     switch (status) {
+      case 'confirmed': return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+          <UserCheck className="w-3 h-3" />Confirmada{quien ? ` · ${quien}` : ''}
+        </span>
+      );
       case 'confirmed_by_ai':
         return (
           <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center gap-1">
             <Bot className="w-3 h-3" />
-            IA Confirmada
+            Confirmada · {settings.aiAgentName || 'IA'}
           </span>
         );
       case 'attending':
@@ -902,10 +924,8 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
         <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
           {[
             { id: 'all', label: 'Todos' },
-            { id: 'nails', label: '💅 Uñas' },
-            { id: 'hair', label: '💇‍♀️ Peinados' },
-            { id: 'massage', label: '💆‍♀️ Masajes' },
-            { id: 'pedi_spa', label: '🦶 Spa Pies' },
+            // Las categorías del salón (las crea la dueña en Catálogo)
+            ...categoriasDe('service').map(c => ({ id: c.key, label: `${c.icon ?? ''} ${c.name}`.trim() })),
           ].map(cat => {
             const isSelected = selectedCategory === cat.id;
             return (
@@ -1015,14 +1035,14 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                                 <span>{apt.staffName}</span>
                                 <span>•</span>
                                 <span className="font-bold text-slate-700 dark:text-neutral-200">
-                                  ${apt.price}
+                                  {dinero(apt.price, apt.currencyCode)}
                                 </span>
                               </div>
                             </div>
                           </div>
 
                           <div className="shrink-0 flex flex-col items-end gap-1.5">
-                            {getStatusBadge(apt.status)}
+                            {getStatusBadge(apt.status, apt)}
                           </div>
                         </div>
                       ))}
@@ -1060,7 +1080,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                         </span>
                         <span>•</span>
                         <span className="font-bold text-slate-800 dark:text-neutral-200">
-                          ${apt.price}
+                          {dinero(apt.price, apt.currencyCode)}
                         </span>
                         {apt.selectedPriceTierName && (
                           <span className="text-[10px] text-slate-400">
@@ -1072,7 +1092,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                   </div>
 
                   <div className="shrink-0 flex flex-col items-end gap-2">
-                    {getStatusBadge(apt.status)}
+                    {getStatusBadge(apt.status, apt)}
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                       {apt.channel}
                     </span>
@@ -1099,7 +1119,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                 <span className="font-bold text-sm text-slate-900 dark:text-white">
                   {activeAppointment.clientName}
                 </span>
-                {getStatusBadge(activeAppointment.status)}
+                {getStatusBadge(activeAppointment.status, activeAppointment)}
               </div>
               <div className="flex items-center gap-1.5 text-slate-500 dark:text-neutral-400">
                 <Phone className="w-3.5 h-3.5" />
@@ -1133,10 +1153,10 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Total & Anticipo</span>
                 <p className="font-extrabold text-slate-900 dark:text-white mt-0.5 text-sm">
-                  ${activeAppointment.price}
+                  {dinero(activeAppointment.price, activeAppointment.currencyCode)}
                 </p>
                 <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
-                  Anticipo pagado: ${activeAppointment.depositPaid}
+                  Anticipo pagado: {dinero(activeAppointment.depositPaid, activeAppointment.currencyCode)}
                 </p>
               </div>
 
@@ -1268,7 +1288,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
               >
                 {services.map(s => (
                   <option key={s.id} value={s.id}>
-                    {s.name} - ${s.price} ({s.durationMinutes} min)
+                    {s.name} · {dinero(s.price, s.currencyCode)} ({s.durationMinutes} min)
                   </option>
                 ))}
               </select>
@@ -1301,7 +1321,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                             }`}
                           >
                             <div className="text-[11px] truncate">{tier.name}</div>
-                            <div className="text-xs font-extrabold mt-0.5">${tier.price}</div>
+                            <div className="text-xs font-extrabold mt-0.5">{dinero(tier.price, srv.currencyCode)}</div>
                           </button>
                         );
                       })}

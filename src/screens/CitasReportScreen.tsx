@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
 import {
-  CalendarClock, Clock, Users, Scissors, XCircle, Coffee, TrendingUp,
+  CalendarClock, Clock, Users, Scissors, XCircle, Coffee, TrendingUp, Bot,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -308,6 +308,70 @@ export const CitasReportScreen: React.FC = () => {
                 </div>
               ))}
             </div>
+          </Tarjeta>
+        )}
+
+        {/* Quién agendó: la asistente frente a cada persona del equipo */}
+        {!!informe?.porOrigen?.length && (
+          <Tarjeta className="overflow-hidden mb-4">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-neutral-800">
+              <Bot className="w-4 h-4 text-purple-500" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white">Quién agendó</span>
+            </div>
+            {informe.porOrigen.map((o: any) => (
+              <div key={o.id} className="px-4 py-3 border-b border-slate-50 dark:border-neutral-800/50 last:border-0">
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5">
+                    {o.tipo === 'asistente'
+                      ? <Bot className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                      : <Users className="w-3.5 h-3.5 text-sky-500 shrink-0" />}
+                    {o.nombre}
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums shrink-0">
+                    {o.citas + o.canceladas}
+                    <span className="text-[10px] text-slate-400 font-normal ml-1">({o.porcentaje} %)</span>
+                  </span>
+                </div>
+                <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${o.tipo === 'asistente' ? 'bg-purple-500' : o.tipo === 'equipo' ? 'bg-sky-500' : 'bg-slate-300'}`}
+                    style={{ width: `${o.porcentaje}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {o.completadas} completada{o.completadas === 1 ? '' : 's'}
+                  {o.canceladas > 0 && ` · ${o.canceladas} cancelada${o.canceladas === 1 ? '' : 's'} (${o.tasaCancelacion} %)`}
+                  {` · facturó ${plata(o.facturado)}`}
+                </p>
+              </div>
+            ))}
+          </Tarjeta>
+        )}
+
+        {/* Puntualidad: contra la hora que tenían prometida */}
+        {!!informe?.llegadas?.total && (
+          <Tarjeta className="p-4 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white">Llegadas</span>
+              <span className="text-[10px] text-slate-400">({informe.llegadas.total} con hora de llegada registrada)</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { t: 'Antes de hora', v: informe.llegadas.antes, c: 'text-sky-600' },
+                { t: 'A tiempo', v: informe.llegadas.aTiempo, c: 'text-emerald-600' },
+                { t: 'Tarde', v: informe.llegadas.tarde, c: 'text-amber-600' },
+              ].map(x => (
+                <div key={x.t} className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
+                  <div className={`text-lg font-extrabold tabular-nums ${x.c}`}>{x.v}</div>
+                  <div className="text-[10px] text-slate-400">{x.t}</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2">
+              {informe.llegadas.tarde > 0 && `Las que llegan tarde lo hacen, en promedio, ${informe.llegadas.promedioMinutosTarde} min después. `}
+              {informe.llegadas.reprogramadas > 0 && `${informe.llegadas.reprogramadas} se atendieron en otro horario y la cita se movió a la hora real.`}
+            </p>
           </Tarjeta>
         )}
 

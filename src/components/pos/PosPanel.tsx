@@ -42,6 +42,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
     asignarClientaAFolio, cerrarFolio,
     priceLists, loadPriceLists,
     currencies, baseCurrency, loadCurrencies,
+    categoriaPorClave,
   } = useApp();
 
   const reduceMotion = useReducedMotion();
@@ -81,15 +82,20 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
 
   const vendibles = useMemo<Vendible[]>(() => {
     const deProductos: Vendible[] = (products ?? [])
-      .filter(p => p.active !== false)
-      .map(p => ({
-        id: p.id, name: p.name,
-        price: Number(p.basePrice ?? 0),
-        stock: Number(p.stock ?? 0),
-        tipo: 'product' as const,
-        grupo: (p.category === 'beverage' || p.category === 'snack'
-          ? p.category : 'product') as Vendible['grupo'],
-      }));
+      // Los insumos no se venden sueltos: solo entran en recetas
+      .filter(p => (p as { active?: boolean }).active !== false && !p.supplyOnly)
+      .map(p => {
+        // Bebida o snack lo dice la categoría (su papel en el Lounge), no su nombre
+        const papel = categoriaPorClave('product', p.category)?.loungeRole ?? 'none';
+        return {
+          id: p.id, name: p.name,
+          price: Number(p.basePrice ?? 0),
+          // Un preparado no tiene estante: se enseña cuántas porciones alcanzan (o sin límite si no tiene receta)
+          stock: p.preparedToOrder ? (p.porcionesPosibles ?? null) : Number(p.stock ?? 0),
+          tipo: 'product' as const,
+          grupo: (papel === 'drink' ? 'beverage' : papel === 'food' ? 'snack' : 'product') as Vendible['grupo'],
+        };
+      });
     const deServicios: Vendible[] = (services ?? []).map(sv => ({
       id: sv.id, name: sv.name,
       price: Number(sv.price ?? 0),

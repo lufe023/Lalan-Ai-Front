@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Appointment, AppointmentStatus, BotChannelConfig, ChatMessage,
-  Client, CommunicationChannel, Conversation, LoungeTrack,
-  SalonBusinessSettings, SalonMetrics, SalonProduct, SalonService, SystemLog,
+  Client, CommunicationChannel, Conversation, LoungeTrack, ServiceCategory,
+  SalonBusinessSettings, SalonProduct, SalonService, SystemLog, CategoriaCatalogo, TipoCategoria, PapelEnLounge, LineaDeReceta,
 } from '../types';
 import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
@@ -105,6 +105,8 @@ export interface SalonZone {
   color?: string | null;
   sortOrder: number;
   active: boolean;
+  /** Tipos de servicio que se hacen aquí. Vacío = de todo. Es lo que usa la asistente para saber quién atiende qué */
+  serviceCategories?: ServiceCategory[];
   staff?: { id: string; name: string; role: string; avatar?: string | null }[];
 }
 
@@ -168,6 +170,44 @@ export interface SalaEnVivo {
   porLlegar: PorLlegar[];
 }
 
+/** Lo que quien recibe necesita saber de la clienta que acaba de llegar */
+export interface Bienvenida {
+  clienteId: string;
+  nombre: string;
+  avatar?: string | null;
+  primeraVez: boolean;
+  visitas: number;
+  servicio: string | null;
+  especialista: string | null;
+  bebidas: string[];
+  musica: string[];
+  comida: string[];
+  alergias: string | null;
+  notas: string | null;
+  paraServir: { productoId: string; nombre: string; precio: number; cortesia: boolean }[];
+}
+
+/**
+ * Algo que necesita a una persona: un chat que la asistente pasó a alguien
+ * del salón, o una cita que agendó sin especialista. `conversacionId` es la
+ * clave de ambos (en una cita, el id de la cita).
+ */
+export interface AvisoAtencion {
+  tipo: 'chat' | 'cita';
+  conversacionId: string;
+  cliente: string;
+  canal: CommunicationChannel;
+  motivo: string;
+  en: string;
+}
+
+/** Una pregunta a quien usa la app, con sus respuestas posibles (ver `preguntar`) */
+export interface Consulta {
+  titulo: string;
+  mensaje: string;
+  opciones: { id: string; texto: string; principal?: boolean }[];
+}
+
 export interface ToastInfo {
   id: string; title: string; message: string;
   type?: 'success' | 'info' | 'warning'; icon?: string;
@@ -220,32 +260,53 @@ interface AppContextType {
   deleteService: (id: string) => Promise<void>;
   toggleServiceAi: (id: string, aiAvailable: boolean) => Promise<void>;
   products: SalonProduct[];
-  addProduct: (product: Omit<SalonProduct, 'id'>) => Promise<void>;
+  addProduct: (product: Omit<SalonProduct, 'id'>) => Promise<SalonProduct>;
+  /** Guarda la receta completa de un preparado (reemplaza la anterior) */
+  guardarRecetaProducto: (productId: string, receta: LineaDeReceta[]) => Promise<SalonProduct>;
+
+  // ── Categorías del salón (las crea cada salón; las iniciales vienen solas) ──
+  categorias: CategoriaCatalogo[];
+  cargarCategorias: () => Promise<void>;
+  /** Vuelve a pedir servicios y productos (tras pasar el catálogo a otra moneda, por ejemplo) */
+  recargarCatalogo: () => Promise<void>;
+  /** Las activas de un tipo, en su orden */
+  categoriasDe: (kind: TipoCategoria) => CategoriaCatalogo[];
+  /** La categoría de una clave (activa o no), para enseñar su nombre e ícono */
+  categoriaPorClave: (kind: TipoCategoria, key: string) => CategoriaCatalogo | undefined;
+  crearCategoria: (dto: { kind: TipoCategoria; name: string; icon?: string | null; loungeRole?: PapelEnLounge }) => Promise<CategoriaCatalogo>;
+  editarCategoria: (id: string, dto: Partial<Pick<CategoriaCatalogo, 'name' | 'icon' | 'loungeRole' | 'active' | 'sortOrder'>>) => Promise<CategoriaCatalogo>;
+  /** Borra si está vacía; si tiene cosas dentro la desactiva. Devuelve el motivo si no se pudo borrar. */
+  quitarCategoria: (id: string) => Promise<string | null>;
   updateProduct: (id: string, updated: Partial<SalonProduct>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   toggleProductAi: (id: string, aiAvailable: boolean) => Promise<void>;
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => Promise<void>;
-  /** Devuelve la comanda que se abrió al atender/completar y su saldo */
+  /** Devuelve la comanda que se abrió al atender/completar y su saldo. `cancelado`: la persona se echó atrás */
   updateAppointmentStatus: (
     id: string, status: AppointmentStatus, completedAt?: string,
-  ) => Promise<{ saleId: string | null; saldoPendiente: number | null }>;
+  ) => Promise<{ saleId: string | null; saldoPendiente: number | null; cancelado?: boolean }>;
+  /** Pregunta en pantalla y espera la respuesta: el id de la opción, o null si la cierran */
+  preguntar: (c: Consulta) => Promise<string | null>;
+  consulta: (Consulta & { responder: (id: string | null) => void }) | null;
   deleteAppointment: (id: string) => Promise<void>;
   conversations: Conversation[];
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
+  /** Conversaciones que pidieron a una persona, llegadas en vivo */
+  avisosAtencion: AvisoAtencion[];
+  abrirConversacion: (id: string) => void;
+  descartarAviso: (id: string) => void;
   toggleChatAiStatus: (conversationId: string, enableAi: boolean) => Promise<void>;
   sendMessageToConversation: (conversationId: string, text: string, sender?: 'client' | 'agent' | 'bot') => Promise<void>;
   startChatWithClient: (client: Client) => void;
   botConfigs: BotChannelConfig[];
   toggleBotChannel: (channelId: CommunicationChannel, enabled: boolean) => Promise<void>;
-  updateBotMessage: (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage', text: string) => Promise<void>;
+  updateBotMessage: (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage' | 'channelIdentifier', text: string) => Promise<void>;
   settings: SalonBusinessSettings;
   updateSettings: (newSettings: Partial<SalonBusinessSettings>) => void;
   metricsPeriod: 'day' | 'week' | 'month';
   setMetricsPeriod: (p: 'day' | 'week' | 'month') => void;
-  currentMetrics: SalonMetrics;
-  isLoadingMetrics: boolean;
   systemLogs: SystemLog[];
   addSystemLog: (log: Omit<SystemLog, 'id' | 'timestamp'>) => void;
   toast: ToastInfo | null;
@@ -263,6 +324,9 @@ interface AppContextType {
   activeLoungeClient: Client | null;
   /** Todas las clientas del salón; la primera es la del sillón */
   loungeClients: Client[];
+  /** La clienta que acaba de llegar, para darle la bienvenida con lo suyo */
+  bienvenida: Bienvenida | null;
+  cerrarBienvenida: () => void;
   setLoungeClients: (list: Client[]) => void;
   toggleLoungeClient: (c: Client) => void;
   /** Consumo de la cita en curso — cortesías y ventas en el mismo ticket */
@@ -300,7 +364,7 @@ interface AppContextType {
   loadSala: () => Promise<void>;
   zonas: SalonZone[];
   loadZonas: () => Promise<void>;
-  guardarZona: (dto: { id?: string; name: string; prefix: string; color?: string | null; sortOrder?: number; active?: boolean }) => Promise<boolean>;
+  guardarZona: (dto: { id?: string; name: string; prefix: string; color?: string | null; sortOrder?: number; active?: boolean; serviceCategories?: ServiceCategory[] }) => Promise<boolean>;
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
   loadEspecialistas: () => Promise<void>;
@@ -577,7 +641,7 @@ function mapApiClient(c: any): Client {
 function mapApiService(s: any): SalonService {
   return {
     id: s.id, name: s.name, category: s.category, categoryName: s.categoryName,
-    price: Number(s.basePrice), durationMinutes: s.durationMinutes,
+    price: Number(s.basePrice), currencyCode: s.currencyCode, durationMinutes: s.durationMinutes,
     icon: s.icon ?? 'sparkles', color: s.color ?? '#6366f1',
     popular: s.popular ?? false, description: s.description,
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
@@ -586,7 +650,7 @@ function mapApiService(s: any): SalonService {
 function mapApiProduct(p: any): SalonProduct {
   return {
     id: p.id, name: p.name, category: p.category, categoryName: p.categoryName,
-    sku: p.sku, basePrice: Number(p.basePrice), stock: Number(p.stock ?? 0), unit: p.unit ?? 'unit',
+    sku: p.sku, basePrice: Number(p.basePrice), currencyCode: p.currencyCode, stock: Number(p.stock ?? 0), unit: p.unit ?? 'unit',
     unitQty: p.unitQty != null ? Number(p.unitQty) : undefined, unitQtyUnit: p.unitQtyUnit ?? undefined,
       costPrice: p.costPrice != null ? Number(p.costPrice) : undefined,
       minStock: p.minStock != null ? Number(p.minStock) : undefined,
@@ -595,8 +659,62 @@ function mapApiProduct(p: any): SalonProduct {
       lotStrategy: (p.lotStrategy as 'FEFO' | 'FIFO') ?? 'FEFO',
     image: p.image, description: p.description ?? '',
     aiAvailable: p.aiAvailable ?? true, priceTiers: ((p.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
+    preparedToOrder: !!p.preparedToOrder,
+    supplyOnly: !!p.supplyOnly,
+    receta: (p.receta as LineaDeReceta[] | undefined) ?? [],
+    costoReceta: p.costoReceta ?? null,
+    costoRecetaCompleto: p.costoRecetaCompleto ?? null,
+    porcionesPosibles: p.porcionesPosibles ?? null,
   };
 }
+/** Varias señales de chat en este margen cuentan como una sola recarga */
+const RAFAGA_DE_CHAT_MS = 400;
+/** Si el socket se cae sin avisar, la bandeja se pone al día igual */
+const RED_DE_SEGURIDAD_CHAT_MS = 60_000;
+
+/**
+ * Aviso del sistema operativo, solo si la app está en segundo plano y la
+ * persona ya dio permiso (se pide desde el propio aviso en pantalla). Si no,
+ * basta con el aviso dentro de la app.
+ */
+function avisarAlSistema(titulo: string, cuerpo: string) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    if (document.visibilityState === 'visible') return;
+    new Notification(titulo, { body: cuerpo, tag: titulo });
+  } catch { /* algunos navegadores no dejan crearlas fuera de un service worker */ }
+}
+
+/** Citas que todavía no empezaron (confirmadas por quien sea, o por confirmar) */
+const ESTADOS_POR_ATENDER: AppointmentStatus[] = ['pending', 'confirmed', 'confirmed_by_ai'];
+/** Llegar dentro de este margen es llegar a tiempo (si la sede no dijo el suyo) */
+const TOLERANCIA_LLEGADA_MIN = 15;
+/** Una cita de hace unas horas que nadie cerró todavía cuenta como "la que tiene" */
+const HORAS_ATRAS_CITA_VIGENTE = 12;
+/** Con estos últimos dígitos iguales, es el mismo teléfono aunque cambie el prefijo */
+const DIGITOS_MINIMOS_TELEFONO = 7;
+const MS_MINUTO = 60_000;
+
+/** "sábado 27 de septiembre, 9:00 a. m." */
+function cuandoHablado(ms: number) {
+  return new Date(ms).toLocaleString('es', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' });
+}
+
+/** Las citas que venían pegadas detrás de esta, para la misma clienta (el mismo bloque) */
+function citasDetras(todas: Appointment[], cita: Appointment): Appointment[] {
+  const detras: Appointment[] = [];
+  let fin = new Date(cita.startsAt ?? `${cita.date}T${cita.time}`).getTime() + cita.durationMinutes * MS_MINUTO;
+  for (;;) {
+    const sig = todas.find(a => a.id !== cita.id && !detras.includes(a)
+      && (cita.clientId ? a.clientId === cita.clientId : a.clientName === cita.clientName)
+      && ESTADOS_POR_ATENDER.includes(a.status)
+      && new Date(a.startsAt ?? `${a.date}T${a.time}`).getTime() === fin);
+    if (!sig) return detras;
+    detras.push(sig);
+    fin += sig.durationMinutes * MS_MINUTO;
+  }
+}
+
 function mapApiAppointment(a: any): Appointment {
   const startsAt = new Date(a.startsAt);
   return {
@@ -604,10 +722,12 @@ function mapApiAppointment(a: any): Appointment {
     serviceId: a.serviceId ?? '', serviceName: a.serviceName, serviceCategory: a.serviceCategory,
     date: startsAt.toISOString().slice(0, 10), time: startsAt.toTimeString().slice(0, 5),
     durationMinutes: a.durationMinutes, bufferMinutes: a.bufferMinutes,
-    price: Number(a.price), selectedPriceTierName: a.selectedPriceTierName,
+    price: Number(a.price), currencyCode: a.currencyCode, selectedPriceTierName: a.selectedPriceTierName,
     depositPaid: Number(a.depositPaid ?? 0), staffName: a.staffName,
     status: a.status, channel: a.channel, notes: a.notes, createdAt: a.createdAt,
     startsAt: a.startsAt, completedAt: a.completedAt ?? undefined,
+    arrivedAt: a.arrivedAt ?? undefined, originalStartsAt: a.originalStartsAt ?? undefined,
+    bookedByAssistant: !!a.bookedByAssistant, createdByName: a.createdByName ?? null,
   };
 }
 function mapApiConversation(c: any): Conversation {
@@ -617,18 +737,24 @@ function mapApiConversation(c: any): Conversation {
     clientAvatar: c.clientAvatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.clientName)}&background=e2e8f0&color=475569`,
     channel: c.channel, status: c.status, lastMessage: c.lastMessage ?? '',
     lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '',
-    unreadCount: c.unreadCount ?? 0, serviceInterest: c.serviceInterest, confidenceScore: c.confidenceScore,
-    messages: (c.messages ?? []).map((m: any): ChatMessage => ({
-      id: m.id, sender: m.sender, text: m.text, timestamp: m.createdAt, isAiGenerated: m.isAiGenerated,
-    })),
+    unreadCount: c.unreadCount ?? 0, serviceInterest: c.serviceInterest,
+    lastMessageAt: c.lastMessageAt ?? undefined,
+    windowExpiresAt: c.windowExpiresAt ?? null,
+    messages: (c.messages ?? [])
+      .filter((m: any) => !m.deletedAt)
+      .map((m: any): ChatMessage => ({
+        id: m.id, sender: m.sender, text: m.text ?? '', timestamp: m.createdAt,
+        isAiGenerated: m.isAiGenerated, isSuggestion: !!m.isSuggestion,
+        deliveryStatus: m.deliveryStatus ?? null, failureReason: m.failureReason ?? null,
+      })),
   };
 }
 function mapApiBotConfig(b: any): BotChannelConfig {
   return {
-    id: b.channel as CommunicationChannel, name: b.name, enabled: b.enabled, model: b.model,
-    webhookLatencyMs: b.webhookLatencyMs ?? 120, status: b.status ?? 'online',
-    messagesProcessedToday: b.messagesProcessedToday ?? 0, appointmentsBookedToday: b.appointmentsBookedToday ?? 0,
+    id: b.channel as CommunicationChannel, name: b.name, enabled: b.enabled,
+    actividad: b.actividad ?? { respondidos: 0, sugerencias: 0, citas: 0, enAtencion: 0, ultimaRespuesta: null },
     welcomeMessage: b.welcomeMessage ?? '', offHoursMessage: b.offHoursMessage ?? '',
+    channelIdentifier: b.channelIdentifier ?? '',
   };
 }
 function mapApiTrack(t: any): LoungeTrack {
@@ -654,12 +780,6 @@ function mapApiPriceList(pl: any): PriceList {
   };
 }
 
-const EMPTY_METRICS: SalonMetrics = {
-  period: 'month', totalRevenue: 0, revenueGrowthPercent: 0,
-  clientsCount: 0, clientsGrowthPercent: 0, completedAppointments: 0,
-  aiBookedAppointments: 0, aiConversionRate: 0,
-  topServices: [], peakHours: [], busiestDays: [], channelDistribution: [],
-};
 const FALLBACK_TRACK: LoungeTrack = {
   id: 'fallback', title: 'Sin pistas', artist: 'Añade música al Lounge',
   durationSeconds: 0, coverUrl: 'https://picsum.photos/seed/lounge/300/300',
@@ -697,11 +817,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { clientsRef.current = clients; }, [clients]);
   const [services, setServices] = useState<SalonService[]>([]);
   const [products, setProducts] = useState<SalonProduct[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaCatalogo[]>([]);
+  const recargarCatalogo = useCallback(async () => {
+    const [svcs, prods] = await Promise.all([api.get<any[]>('/services').catch(() => null), api.get<any[]>('/products').catch(() => null)]);
+    if (svcs) setServices(svcs.map(mapApiService));
+    if (prods) setProducts(prods.map(mapApiProduct));
+  }, []);
+  const cargarCategorias = useCallback(async () => {
+    const l = await api.get<CategoriaCatalogo[]>('/categories').catch(() => null);
+    if (l) setCategorias(l);
+  }, []);
+  const categoriasDe = useCallback(
+    (kind: TipoCategoria) => categorias.filter(c => c.kind === kind && c.active).sort((a, b) => a.sortOrder - b.sortOrder),
+    [categorias],
+  );
+  const categoriaPorClave = useCallback(
+    (kind: TipoCategoria, key: string) => categorias.find(c => c.kind === kind && c.key === key),
+    [categorias],
+  );
+  const crearCategoria = useCallback(async (dto: { kind: TipoCategoria; name: string; icon?: string | null; loungeRole?: PapelEnLounge }) => {
+    const nueva = await api.post<CategoriaCatalogo>('/categories', { ...dto, icon: dto.icon || undefined });
+    setCategorias(l => [...l, nueva]);
+    return nueva;
+  }, []);
+  const editarCategoria = useCallback(async (id: string, dto: Partial<Pick<CategoriaCatalogo, 'name' | 'icon' | 'loungeRole' | 'active' | 'sortOrder'>>) => {
+    const c = await api.patch<CategoriaCatalogo>(`/categories/${id}`, dto);
+    setCategorias(l => l.map(x => (x.id === id ? c : x)));
+    // Renombrar cambia el nombre copiado en servicios y productos
+    if (dto.name !== undefined) {
+      setServices(l => l.map(x => (c.kind === 'service' && x.category === c.key ? { ...x, categoryName: c.name } : x)));
+      setProducts(l => l.map(x => (c.kind === 'product' && x.category === c.key ? { ...x, categoryName: c.name } : x)));
+    }
+    return c;
+  }, []);
+  const quitarCategoria = useCallback(async (id: string) => {
+    const r = await api.delete<{ borrada: boolean; desactivada: boolean; motivo: string | null }>(`/categories/${id}`);
+    if (r?.borrada) setCategorias(l => l.filter(x => x.id !== id));
+    else setCategorias(l => l.map(x => (x.id === id ? { ...x, active: false } : x)));
+    return r?.motivo ?? null;
+  }, []);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [botConfigs, setBotConfigs] = useState<BotChannelConfig[]>([]);
   const [loungeTracks, setLoungeTracks] = useState<LoungeTrack[]>([FALLBACK_TRACK]);
-  const [currentMetrics, setCurrentMetrics] = useState<SalonMetrics>(EMPTY_METRICS);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [clientsHasMore, setClientsHasMore] = useState(false);
   const [clientsTotal, setClientsTotal] = useState<number | null>(null);
@@ -713,10 +871,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
      aparte, y solo la mueve cargarMasClientas. */
   const cursorClientasRef = useRef<string | null>(null);
   const cargandoClientasRef = useRef(false);
-  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [settings, setSettings] = useState<SalonBusinessSettings>(INITIAL_SETTINGS);
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>(INITIAL_SYSTEM_LOGS);
-  const [metricsPeriod, setMetricsPeriod] = useState<'day' | 'week' | 'month'>('month');
+  const [metricsPeriod, setMetricsPeriod] = useState<'day' | 'week' | 'month'>('day');
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
   const [isLoadingPriceLists, setIsLoadingPriceLists] = useState(false);
 
@@ -725,7 +882,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const load = async () => {
       setIsLoadingClients(true);
       try {
-        const [cls, svcs, prods, apts, convs, bots, tracks] = await Promise.allSettled([
+        const [cls, svcs, prods, apts, convs, bots, tracks, cats, monedas] = await Promise.allSettled([
           api.get<any>(`/clients?limit=${CLIENTAS_POR_PAGINA}`),
           api.get<any[]>('/services'),
           api.get<any[]>('/products'),
@@ -733,7 +890,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           api.get<any[]>('/conversations'),
           api.get<any[]>('/bots'),
           api.get<any[]>('/lounge/tracks'),
+          api.get<CategoriaCatalogo[]>('/categories'),
+          // La moneda del salón y sus tasas: todos los montos se enseñan en ella
+          api.get<Currency[]>('/currencies'),
         ]);
+        if (monedas.status === 'fulfilled') setCurrencies(monedas.value ?? []);
+        if (cats.status === 'fulfilled') setCategorias(cats.value);
         if (cls.status === 'fulfilled') {
           // Ya no llega un array pelado sino { items, hasMore, nextCursor }
           const pagina = cls.value?.items ?? [];
@@ -780,14 +942,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch(() => { /* sin conexión se sigue con lo que hay */ });
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    setIsLoadingMetrics(true);
-    api.get<any>(`/metrics?period=${metricsPeriod}`)
-      .then(d => setCurrentMetrics({ ...EMPTY_METRICS, ...d }))
-      .catch(() => {})
-      .finally(() => setIsLoadingMetrics(false));
-  }, [isAuthenticated, metricsPeriod]);
+  // Las métricas las pide la propia pantalla (hooks/useMetricas): así se
+  // actualizan en vivo solo mientras alguien las está mirando.
 
   /**
    * La siguiente página del directorio.
@@ -874,7 +1030,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addService = useCallback(async (data: Omit<SalonService, 'id'>) => {
     const res = await api.post<any>('/services', {
       name: data.name, category: data.category, categoryName: data.categoryName,
-      basePrice: data.price, durationMinutes: data.durationMinutes,
+      basePrice: data.price, currencyCode: data.currencyCode || undefined, durationMinutes: data.durationMinutes,
       icon: data.icon, color: data.color, popular: data.popular,
       description: data.description, aiAvailable: data.aiAvailable, priceTiers: data.priceTiers,
     });
@@ -893,6 +1049,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.description !== undefined)     payload.description = updated.description || undefined;
     if (updated.aiAvailable !== undefined)     payload.aiAvailable = updated.aiAvailable;
     if (updated.priceTiers !== undefined)      payload.priceTiers = updated.priceTiers;
+    if (updated.currencyCode !== undefined)    payload.currencyCode = updated.currencyCode;
     const res = await api.patch<any>(`/services/${id}`, payload);
     setServices(s => s.map(x => x.id === id ? mapApiService(res) : x));
   }, []);
@@ -908,7 +1065,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addProduct = useCallback(async (data: Omit<SalonProduct, 'id'>) => {
     const res = await api.post<any>('/products', {
       name: data.name, category: data.category, categoryName: data.categoryName,
-      sku: data.sku, basePrice: data.basePrice, stock: data.stock ?? 0,
+      sku: data.sku, basePrice: data.basePrice, currencyCode: data.currencyCode || undefined, stock: data.stock ?? 0,
       unit: data.unit ?? 'unit',
       unitQty: data.unitQty ?? undefined,
       unitQtyUnit: data.unitQtyUnit ?? undefined,
@@ -919,8 +1076,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lotStrategy: data.lotStrategy ?? undefined,
       image: data.image || undefined, description: data.description || undefined,
       aiAvailable: data.aiAvailable, priceTiers: data.priceTiers ?? [],
+      preparedToOrder: data.preparedToOrder ?? false,
+      supplyOnly: data.supplyOnly ?? false,
     });
-    setProducts(p => [...p, mapApiProduct(res)]);
+    const creado = mapApiProduct(res);
+    setProducts(p => [...p, creado]);
+    return creado;
+  }, []);
+  const guardarRecetaProducto = useCallback(async (productId: string, receta: LineaDeReceta[]) => {
+    const res = await api.put<any>(`/products/${productId}/recipe`, {
+      ingredientes: receta.map(r => ({ ingredientId: r.ingredientId, quantity: r.quantity, unit: r.unit, notes: r.notes || undefined })),
+    });
+    const p = mapApiProduct(res);
+    setProducts(l => l.map(x => (x.id === productId ? p : x)));
+    return p;
   }, []);
   const updateProduct = useCallback(async (id: string, updated: Partial<SalonProduct>) => {
     const payload: Record<string, any> = {};
@@ -942,6 +1111,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.alertThreshold !== undefined) payload.alertThreshold = updated.alertThreshold;
     if (updated.hasLotTracking !== undefined) payload.hasLotTracking = updated.hasLotTracking;
     if (updated.lotStrategy !== undefined)    payload.lotStrategy = updated.lotStrategy;
+    if (updated.preparedToOrder !== undefined) payload.preparedToOrder = updated.preparedToOrder;
+    if (updated.currencyCode !== undefined)    payload.currencyCode = updated.currencyCode;
+    if (updated.supplyOnly !== undefined)      payload.supplyOnly = updated.supplyOnly;
     const res = await api.patch<any>(`/products/${id}`, payload);
     setProducts(p => p.map(x => x.id === id ? mapApiProduct(res) : x));
   }, []);
@@ -954,7 +1126,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProducts(p => p.map(x => x.id === id ? { ...x, aiAvailable } : x));
   }, []);
 
-  const addAppointment = useCallback(async (data: Omit<Appointment, 'id' | 'createdAt'>) => {
+  const crearCita = useCallback(async (data: Omit<Appointment, 'id' | 'createdAt'> & {
+    locationId?: string;
+    staffId?: string;
+    currencyCode?: string;
+    date?: string;
+    time?: string;
+  }) => {
     const res = await api.post<any>('/appointments', {
       locationId: data.locationId || undefined,
       clientId: data.clientId || undefined,
@@ -965,10 +1143,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       serviceCategory: data.serviceCategory,
       staffId: data.staffId || undefined,
       staffName: data.staffName,
-      startsAt: data.startsAt ?? `${(data as any).date}T${(data as any).time}:00`,
+      startsAt: data.startsAt ?? `${data.date ?? (data as any).date}T${data.time ?? (data as any).time}:00`,
       durationMinutes: data.durationMinutes,
       price: data.price,
-      currencyCode: (data as any).currencyCode || undefined,
+      currencyCode: data.currencyCode || undefined,
       selectedPriceTierName: data.selectedPriceTierName || undefined,
       depositPaid: data.depositPaid ?? 0,
       channel: data.channel,
@@ -999,22 +1177,222 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * llame decide si avisa; aquí solo se refresca el contador de comandas
    * abiertas para que el aviso rojo de Caja salga al instante.
    */
-  const updateAppointmentStatus = useCallback(async (
+  const cambiarEstadoCita = useCallback(async (
     id: string, status: AppointmentStatus, completedAt?: string,
   ): Promise<{ saleId: string | null; saldoPendiente: number | null }> => {
     const body: Record<string, string> = { status };
     if (completedAt) body.completedAt = completedAt;
     const res = await api.patch<any>(`/appointments/${id}/status`, body);
     setAppointments(a => a.map(x => x.id === id ? { ...x, status, ...(completedAt ? { completedAt } : {}) } : x));
+    // Llegó en otro horario: el backend movió la cita (y las que venían detrás) a la hora real
+    if (res?.reprogramada) {
+      api.get<any[]>('/appointments').then(l => setAppointments(l.map(mapApiAppointment))).catch(() => undefined);
+    }
     if (status === 'attending' || status === 'completed') void loadOpenFoliosRef.current?.();
     return { saleId: res?.saleId ?? null, saldoPendiente: res?.saldoPendiente ?? null };
   }, []);
+
+  /* ── Preguntar en pantalla ─────────────────────────────────────────
+     Un diálogo propio en vez de window.confirm: se ve como el resto de la
+     app, funciona en el teléfono y deja dar más de dos respuestas. */
+  const [consulta, setConsulta] = useState<(Consulta & { responder: (id: string | null) => void }) | null>(null);
+  const preguntar = useCallback((c: Consulta) => new Promise<string | null>(resolver => {
+    setConsulta({ ...c, responder: id => { setConsulta(null); resolver(id); } });
+  }), []);
+
+  const appointmentsRef = useRef<Appointment[]>([]);
+  useEffect(() => { appointmentsRef.current = appointments; }, [appointments]);
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+
+  /**
+   * Marcar "en atención" a alguien que llega fuera de su hora (hoy, con cita
+   * para mañana) mueve la cita a ahora. Antes de hacerlo se le dice a quien
+   * atiende qué cita tenía y qué se va a mover, para que no sea sorpresa.
+   */
+  const updateAppointmentStatus = useCallback(async (
+    id: string, status: AppointmentStatus, completedAt?: string,
+  ) => {
+    const cita = appointmentsRef.current.find(x => x.id === id);
+    if (status === 'attending' && cita && cita.status !== 'attending') {
+      const inicio = new Date(cita.startsAt ?? `${cita.date}T${cita.time}`).getTime();
+      const tolerancia = (settingsRef.current.gracePeriodMinutes || TOLERANCIA_LLEGADA_MIN) * 60_000;
+      if (Math.abs(Date.now() - inicio) > tolerancia) {
+        const detras = citasDetras(appointmentsRef.current, cita);
+        const r = await preguntar({
+          titulo: 'Llegó en otro horario',
+          mensaje: `${cita.clientName} tenía ${cita.serviceName} para ${cuandoHablado(inicio)}. ` +
+            `Se reprogramará para ahora (${cuandoHablado(Date.now())}) para atenderla` +
+            (detras.length ? `, junto con ${detras.map(d => d.serviceName).join(' y ')}, que venía${detras.length > 1 ? 'n' : ''} después.` : '.') +
+            ' La hora original queda guardada.',
+          opciones: [
+            { id: 'atender', texto: 'Atender ahora y reprogramar', principal: true },
+            { id: 'volver', texto: 'Volver' },
+          ],
+        });
+        if (r !== 'atender') return { saleId: null, saldoPendiente: null, cancelado: true };
+      }
+    }
+    return cambiarEstadoCita(id, status, completedAt);
+  }, [cambiarEstadoCita, preguntar]);
+
+  /**
+   * Antes de crear una cita, mirar si esa clienta ya tiene una por venir.
+   * El caso típico: tenía cita mañana, hoy se presentó, y quien la recibe no
+   * lo sabe y le crea otra. Se le pregunta: ¿vino antes? → se atiende la que
+   * ya tenía (y se mueve a ahora); ¿es otra? → se crea igual.
+   */
+  const addAppointment = useCallback(async (data: Parameters<typeof crearCita>[0]) => {
+    const digitos = (data.clientPhone ?? '').replace(/\D/g, '');
+    const ahora = Date.now();
+    const yaTiene = appointmentsRef.current
+      .filter(a => ESTADOS_POR_ATENDER.includes(a.status))
+      .filter(a => new Date(a.startsAt ?? `${a.date}T${a.time}`).getTime() >= ahora - HORAS_ATRAS_CITA_VIGENTE * 3_600_000)
+      .filter(a => (data.clientId && a.clientId === data.clientId)
+        || (digitos.length >= DIGITOS_MINIMOS_TELEFONO && (a.clientPhone ?? '').replace(/\D/g, '').endsWith(digitos.slice(-DIGITOS_MINIMOS_TELEFONO))))
+      .sort((x, y) => new Date(x.startsAt ?? '').getTime() - new Date(y.startsAt ?? '').getTime())[0];
+
+    if (yaTiene) {
+      const hoy = new Date().toDateString();
+      const nuevaEsHoy = new Date(data.startsAt ?? `${data.date}T${data.time}`).toDateString() === hoy;
+      const cuando = cuandoHablado(new Date(yaTiene.startsAt ?? `${yaTiene.date}T${yaTiene.time}`).getTime());
+      const r = await preguntar({
+        titulo: `${yaTiene.clientName} ya tiene una cita`,
+        mensaje: `Tiene ${yaTiene.serviceName} para ${cuando}. ` +
+          (nuevaEsHoy ? '¿Se presentó antes? Si es así, se atiende esa misma cita ahora y no se duplica.' : '¿Es la misma cita o una adicional?'),
+        opciones: [
+          ...(nuevaEsHoy ? [{ id: 'atender', texto: 'Sí, vino antes: atenderla ahora', principal: true }] : []),
+          { id: 'nueva', texto: 'Es otra cita: crearla', principal: !nuevaEsHoy },
+          { id: 'volver', texto: 'Cancelar' },
+        ],
+      });
+      if (r === 'atender') {
+        await cambiarEstadoCita(yaTiene.id, 'attending');
+        showToast('En atención', `Se atendió la cita que ya tenía ${yaTiene.clientName.split(' ')[0]}, movida a ahora.`, 'success');
+        return;
+      }
+      if (r !== 'nueva') return;
+    }
+    await crearCita(data);
+  }, [crearCita, cambiarEstadoCita, preguntar]);
+
   const deleteAppointment = useCallback(async (id: string) => {
     await api.delete(`/appointments/${id}`);
     setAppointments(a => a.filter(x => x.id !== id));
   }, []);
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [avisosAtencion, setAvisosAtencion] = useState<AvisoAtencion[]>([]);
+
+  const loadConversations = useCallback(async () => {
+    const lista = (await api.get<any[]>('/conversations')).map(mapApiConversation);
+    setConversations(lista);
+    return lista;
+  }, []);
+  const loadBots = useCallback(async () => {
+    setBotConfigs((await api.get<any[]>('/bots')).map(mapApiBotConfig));
+  }, []);
+
+  /* Abrir un chat lo da por leído, y mientras está abierto lo que llega
+     también cuenta como leído. Antes nunca se marcaba y el contador del
+     menú solo podía crecer. */
+  const noLeidosDelActivo = conversations.find(c => c.id === activeConversationId)?.unreadCount ?? 0;
+  useEffect(() => {
+    if (!activeConversationId || activeConversationId.startsWith('temp_') || noLeidosDelActivo === 0) return;
+    setConversations(c => c.map(x => x.id === activeConversationId ? { ...x, unreadCount: 0 } : x));
+    api.patch(`/conversations/${activeConversationId}/read`, {}).catch(() => undefined);
+  }, [activeConversationId, noLeidosDelActivo]);
+
+  /* El botón del WhatsApp de aviso abre la app en ?chat=<id> o ?cita=<id>.
+     Se atiende una sola vez, cuando ya hay sesión y bandeja, y se limpia la
+     URL para que recargar no vuelva a saltar al mismo chat. */
+  const enlaceAtendido = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated || enlaceAtendido.current || !conversations.length) return;
+    const q = new URLSearchParams(window.location.search);
+    const chat = q.get('chat');
+    const cita = q.get('cita');
+    if (!chat && !cita) { enlaceAtendido.current = true; return; }
+    enlaceAtendido.current = true;
+    if (chat) { setActiveConversationId(chat); navigateTo('chats'); }
+    else navigateTo('calendar');
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+  }, [isAuthenticated, conversations.length, navigateTo]);
+
+  const descartarAviso = useCallback((id: string) => {
+    setAvisosAtencion(a => a.filter(x => x.conversacionId !== id));
+  }, []);
+  const abrirConversacion = useCallback((id: string) => {
+    setActiveConversationId(id);
+    setAvisosAtencion(a => a.filter(x => x.conversacionId !== id));
+    navigateTo('chats');
+  }, [navigateTo]);
+
+  /**
+   * La bandeja en vivo. `chat:cambio` es solo una señal (entró o salió algo)
+   * y se agrupan las ráfagas: un audio transcrito + la respuesta son varias
+   * señales en un segundo. `chat:atencion` trae el id de la conversación que
+   * pidió a una persona: se busca en la bandeja recién pedida y se avisa en
+   * pantalla, y también al sistema si la app está en segundo plano.
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let espera: number | undefined;
+    const recargar = () => {
+      window.clearTimeout(espera);
+      espera = window.setTimeout(() => {
+        loadConversations().catch(() => undefined);
+        loadBots().catch(() => undefined);
+      }, RAFAGA_DE_CHAT_MS);
+    };
+    const quitarCambio = alRecibir('chat:cambio', recargar);
+    const quitarAtencion = alRecibir('chat:atencion', async (carga: any) => {
+      const id: string | undefined = carga?.motivo ?? undefined;
+      if (!id) return;
+      const lista = await loadConversations().catch(() => null);
+      loadBots().catch(() => undefined);
+      const conv = lista?.find(c => c.id === id);
+      if (!conv) return;
+      const aviso = [...conv.messages].reverse().find(m => m.sender === 'system')?.text ?? 'Necesita atención';
+      setAvisosAtencion(a => a.some(x => x.conversacionId === id) ? a : [
+        ...a, { tipo: 'chat', conversacionId: id, cliente: conv.clientName, canal: conv.channel, motivo: aviso, en: new Date().toISOString() },
+      ]);
+      avisarAlSistema(`${conv.clientName} necesita atención`, aviso);
+    });
+    /* La agenda también en vivo: la asistente agenda sola. Y si agendó sin
+       especialista, la dueña tiene que asignarla: aviso fijo en pantalla. */
+    let esperaAgenda: number | undefined;
+    const recargarAgenda = () => {
+      window.clearTimeout(esperaAgenda);
+      esperaAgenda = window.setTimeout(() => {
+        api.get<any[]>('/appointments').then(l => setAppointments(l.map(mapApiAppointment))).catch(() => undefined);
+      }, RAFAGA_DE_CHAT_MS);
+    };
+    const quitarSala = alRecibir('sala:cambio', recargarAgenda);
+    const quitarSinEspecialista = alRecibir('agenda:sin-especialista', async (carga: any) => {
+      const citaId: string | undefined = carga?.motivo ?? undefined;
+      if (!citaId) return;
+      const lista = await api.get<any[]>('/appointments').then(l => l.map(mapApiAppointment)).catch(() => null);
+      if (lista) setAppointments(lista);
+      const cita = lista?.find(c => c.id === citaId);
+      if (!cita) return;
+      const cuando = new Date(cita.startsAt ?? `${cita.date}T${cita.time}`)
+        .toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const motivo = `${cita.serviceName}, ${cuando}: la agendó la asistente y no hay especialista libre o asignado para ese servicio.`;
+      setAvisosAtencion(a => a.some(x => x.conversacionId === citaId) ? a : [
+        ...a, { tipo: 'cita', conversacionId: citaId, cliente: cita.clientName, canal: cita.channel, motivo, en: new Date().toISOString() },
+      ]);
+      avisarAlSistema(`Cita sin especialista: ${cita.clientName}`, motivo);
+    });
+    const quitarConexion = alConectar(recargar);
+    // Red de seguridad por si el socket se cae sin avisar
+    const intervalo = window.setInterval(recargar, RED_DE_SEGURIDAD_CHAT_MS);
+    return () => {
+      quitarSala(); quitarSinEspecialista(); window.clearTimeout(esperaAgenda);
+      quitarCambio(); quitarAtencion(); quitarConexion();
+      window.clearTimeout(espera); window.clearInterval(intervalo);
+    };
+  }, [isAuthenticated, loadConversations, loadBots]);
   const toggleChatAiStatus = useCallback(async (conversationId: string, enableAi: boolean) => {
     await api.patch(`/conversations/${conversationId}/ai`, { enableAi });
     setConversations(c => c.map(x => x.id === conversationId
@@ -1022,9 +1400,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
   const sendMessageToConversation = useCallback(async (conversationId: string, text: string, sender: 'client' | 'agent' | 'bot' = 'agent') => {
     const res = await api.post<any>(`/conversations/${conversationId}/messages`, { text, sender });
-    const msg: ChatMessage = { id: res.id, sender, text, timestamp: res.createdAt, isAiGenerated: res.isAiGenerated };
+    const msg: ChatMessage = {
+      id: res.id, sender, text, timestamp: res.createdAt, isAiGenerated: res.isAiGenerated,
+      deliveryStatus: res.deliveryStatus ?? null, failureReason: res.failureReason ?? null,
+    };
+    if (res.deliveryStatus === 'fallido') showToast('No se envió', res.failureReason ?? 'Meta no aceptó el mensaje.', 'warning');
     setConversations(c => c.map(x => x.id === conversationId
-      ? { ...x, messages: [...x.messages, msg], lastMessage: text, lastMessageTime: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) }
+      ? {
+          ...x, messages: [...x.messages, msg], lastMessage: text, lastMessageAt: res.createdAt,
+          lastMessageTime: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }),
+          // Escribió una persona: la asistente se calla en este chat (igual que en el backend)
+          status: sender === 'agent' && x.status === 'ai_active' ? 'manual_control' as const : x.status,
+        }
       : x));
   }, []);
   const startChatWithClient = useCallback((client: Client) => {
@@ -1045,7 +1432,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await api.patch(`/bots/${channelId}`, { enabled });
     setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, enabled } : x));
   }, []);
-  const updateBotMessage = useCallback(async (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage', text: string) => {
+  const updateBotMessage = useCallback(async (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage' | 'channelIdentifier', text: string) => {
     await api.patch(`/bots/${channelId}`, { [field]: text });
     setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, [field]: text } : x));
   }, []);
@@ -1579,6 +1966,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setActiveLoungeClient = useCallback((c: Client | null) => {
     setLoungeClients(c ? [c] : []);
   }, []);
+  /**
+   * LLEGADAS. Al marcar una cita "en atención" (o darle turno), el backend
+   * ya puso a la clienta al frente del Lounge con su música y sacó a las que
+   * no están. Aquí se trae ese estado y se muestra la bienvenida a quien la
+   * recibe: qué toma, qué escucha, alergias, y lo del menú para servirle.
+   */
+  const [bienvenida, setBienvenida] = useState<Bienvenida | null>(null);
+  const cerrarBienvenida = useCallback(() => setBienvenida(null), []);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    return alRecibir('lounge:llegada', async (carga: any) => {
+      const llegoId: string | null = carga?.motivo ?? null;
+      try {
+        const st = await api.get<{ clientIds: string[]; blocks: YtClientBlock[]; mixMode: YtMixMode }>('/lounge/state');
+        // Pueden no estar en la página de clientas cargada: se piden las que falten
+        const conocidas = new Map(clientsRef.current.map(c => [c.id, c]));
+        const lista = await Promise.all((st.clientIds ?? []).map(async id =>
+          conocidas.get(id) ?? await api.get<any>(`/clients/${id}`).then(mapApiClient).catch(() => null)));
+        setLoungeClients(lista.filter(Boolean) as Client[]);
+        setYtBlocks(st.blocks ?? []);
+        if (st.mixMode) setYtMixMode(st.mixMode);
+      } catch { /* el Lounge se pone al día en la próxima recarga */ }
+      if (!llegoId) return;
+      try {
+        const b = await api.get<Bienvenida | null>(`/lounge/bienvenida/${llegoId}`);
+        if (b) {
+          setBienvenida(b);
+          avisarAlSistema(`Llegó ${b.nombre}`, b.bebidas.length ? `Le gusta: ${b.bebidas.join(', ')}` : 'Dale la bienvenida');
+        }
+      } catch { /* sin bienvenida, pero el Lounge ya está listo */ }
+    });
+  }, [isAuthenticated, setYtBlocks]);
+
   const toggleLoungeClient = useCallback((c: Client) => {
     setLoungeClients(prev =>
       prev.some(x => x.id === c.id) ? prev.filter(x => x.id !== c.id) : [...prev, c],
@@ -2241,16 +2661,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       services, addService, updateService, deleteService, toggleServiceAi,
       products, addProduct, updateProduct, deleteProduct, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
+      preguntar, consulta,
       conversations, activeConversationId, setActiveConversationId,
+      avisosAtencion, abrirConversacion, descartarAviso,
       toggleChatAiStatus, sendMessageToConversation, startChatWithClient,
       botConfigs, toggleBotChannel, updateBotMessage,
       settings, updateSettings,
-      metricsPeriod, setMetricsPeriod, currentMetrics, isLoadingMetrics,
+      metricsPeriod, setMetricsPeriod,
+      categorias, cargarCategorias, recargarCatalogo, categoriasDe, categoriaPorClave, crearCategoria, editarCategoria, quitarCategoria,
+      guardarRecetaProducto,
       systemLogs, addSystemLog,
       toast, showToast, dismissToast,
       showSplash, triggerSplash, closeSplash, isPhoneFrame, setIsPhoneFrame,
       loungeTracks, currentTrackIndex, currentTrack, isPlayingLounge,
       activeLoungeClient, loungeClients, setLoungeClients, toggleLoungeClient,
+      bienvenida, cerrarBienvenida,
       activeSale, saleBusy, openSale, addSaleItem, removeSaleItem,
       setSaleItemQty, toggleSaleItemCourtesy, setSalePriceList, paySale, closeSale,
       sala, salaCargando, loadSala,

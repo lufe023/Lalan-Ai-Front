@@ -26,14 +26,17 @@ import {
   MonitorPlay,
   Volume2,
   Music,
+  Bot,
+  ChevronRight,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
+import { CatalogoEnOtraMoneda } from '../components/ajustes/CatalogoEnOtraMoneda';
 import { useApp } from '../context/AppContext';
 import { api, urlDePantalla, urlDeReproductor } from '../services/api';
 import QRCode from 'qrcode';
 import { vocesDisponibles, alCargarVoces, decir, fraseDeTurno } from '../utils/campana';
 import { useAuth } from '../context/AuthContext';
-import { CommunicationChannel, ThemeMode, UserRole, ThemePalettePreset } from '../types';
+import { CommunicationChannel, ThemeMode, UserRole, ThemePalettePreset, EventoActividad } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { IOSModal } from '../components/ui/IOSModal';
@@ -41,6 +44,15 @@ import { ThemeCustomizerModal } from '../components/ui/ThemeCustomizerModal';
 import { PageContent } from '../components/ui/PageContent';
 import { EditorPizarra } from '../components/ui/EditorPizarra';
 import { PeticionesMusica } from '../components/ui/PeticionesMusica';
+
+/** Cómo se ve cada tipo de evento en la actividad reciente */
+const ESTILO_ACTIVIDAD: Record<EventoActividad['tipo'], { titulo: string; clase: string }> = {
+  entrada: { titulo: 'Escribió', clase: 'bg-sky-500/15 text-sky-700 dark:text-sky-300' },
+  respuesta: { titulo: 'Respondió la asistente', clase: 'bg-purple-500/15 text-purple-700 dark:text-purple-300' },
+  persona: { titulo: 'Respondió el salón', clase: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
+  aviso: { titulo: 'Aviso', clase: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
+  cita: { titulo: 'Cita agendada', clase: 'bg-rose-500/15 text-rose-700 dark:text-rose-300' },
+};
 
 export const SettingsScreen: React.FC = () => {
   const {
@@ -63,8 +75,9 @@ export const SettingsScreen: React.FC = () => {
     updateSettings,
     botConfigs,
     updateBotMessage,
-    systemLogs,
     triggerSplash,
+    navigateTo,
+    abrirConversacion,
     showToast,
     currencies,
     baseCurrency,
@@ -75,6 +88,7 @@ export const SettingsScreen: React.FC = () => {
     removeDenomination,
     zonas, loadZonas, guardarZona, eliminarZona,
     especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista,
+    categoriasDe,
   } = useApp();
 
   const { currentUser, logout } = useAuth();
@@ -194,6 +208,15 @@ export const SettingsScreen: React.FC = () => {
   });
 
   const [showLogsModal, setShowLogsModal] = useState(false);
+  /* La actividad reciente de los chats, de la base: si aquí no aparece
+     nada, es que no está llegando nada (antes había eventos inventados) */
+  const [actividad, setActividad] = useState<EventoActividad[] | null>(null);
+  const abrirActividad = async () => {
+    setShowLogsModal(true);
+    setActividad(null);
+    try { setActividad(await api.get<EventoActividad[]>('/chat/panel/actividad')); }
+    catch { setActividad([]); showToast('No se pudo cargar la actividad', 'Inténtalo de nuevo en un momento.', 'warning'); }
+  };
 
   // Business Parameters State
   const [salonName, setSalonName] = useState(settings.salonName);
@@ -244,7 +267,7 @@ export const SettingsScreen: React.FC = () => {
         subtitle="Temas, colores de marca, mensajes automatizados y perfil"
       />
 
-      <PageContent className="space-y-4 text-xs select-none">
+      <PageContent className="space-y-4 text-xs">
         {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
@@ -718,7 +741,8 @@ export const SettingsScreen: React.FC = () => {
             </h2>
           </div>
           <p className="text-[11px] text-slate-400 leading-relaxed">
-            De aquí sale el código del turno: el prefijo de la zona más el
+            Marca qué servicios se hacen en cada zona: con eso la asistente sabe qué especialistas
+            pueden atender cada cita y a quién ofrecer. De aquí sale también el código del turno: el prefijo de la zona más el
             número del día. Una zona con prefijo <span className="font-bold">G</span> da
             turnos <span className="font-mono font-bold">G1, G2, G3…</span> y el
             número reinicia cada mañana.
@@ -728,12 +752,13 @@ export const SettingsScreen: React.FC = () => {
             {(zonas ?? []).map(z => (
               <div
                 key={z.id}
-                className={`p-2.5 rounded-xl border flex items-center gap-2.5 ${
+                className={`p-2.5 rounded-xl border space-y-2 ${
                   z.active
                     ? 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200 dark:border-neutral-700'
                     : 'bg-slate-50/50 dark:bg-neutral-800/20 border-dashed border-slate-200 dark:border-neutral-800 opacity-60'
                 }`}
               >
+              <div className="flex items-center gap-2.5">
                 {/* defaultValue + onBlur, NO onChange: con onChange se
                     disparaba un guardado por cada tecla pulsada. */}
                 <input
@@ -780,6 +805,36 @@ export const SettingsScreen: React.FC = () => {
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
+              </div>
+              {/* Qué servicios se hacen aquí: así la asistente sabe quién atiende qué */}
+              <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
+                <span className="text-[10px] text-slate-400 mr-0.5">Aquí se hace:</span>
+                {categoriasDe('service').map(c => {
+                  const cat = c.key;
+                  const marcadas = z.serviceCategories ?? [];
+                  const activa = marcadas.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => void guardarZona({
+                        id: z.id, name: z.name, prefix: z.prefix,
+                        serviceCategories: activa ? marcadas.filter(c => c !== cat) : [...marcadas, cat],
+                      })}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer ${
+                        activa
+                          ? 'bg-[var(--primary)] text-white border-transparent'
+                          : 'bg-white dark:bg-neutral-900 text-slate-500 dark:text-neutral-400 border-slate-200 dark:border-neutral-700'
+                      }`}
+                    >
+                      {c.icon ? `${c.icon} ` : ''}{c.name}
+                    </button>
+                  );
+                })}
+                {!(z.serviceCategories ?? []).length && (
+                  <span className="text-[10px] text-slate-400 italic">de todo (sin marcar)</span>
+                )}
+              </div>
               </div>
             ))}
             {!(zonas ?? []).length && (
@@ -1313,6 +1368,8 @@ export const SettingsScreen: React.FC = () => {
             ))}
           </div>
 
+          <CatalogoEnOtraMoneda />
+
           {/* Alta de moneda */}
           <div className="grid grid-cols-4 gap-1 pt-1">
             <input
@@ -1425,30 +1482,37 @@ export const SettingsScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* SECTION 4: ADVANCED SYSTEM TELEMETRY (ESPECIALLY FOR LUFE & ALANNY) */}
+        {/* SECTION 4: LA ASISTENTE EN LOS CHATS */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Terminal className="w-4 h-4 text-purple-500" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                Telemetría & Webhooks (Soporte)
-              </h3>
-            </div>
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-purple-500/15 text-purple-600 dark:text-purple-400">
-              DevOps
-            </span>
+          <div className="flex items-center gap-1.5">
+            <Bot className="w-4 h-4 text-purple-500" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+              {settings.aiAgentName || 'La asistente'} en los chats
+            </h3>
           </div>
-
-          <p className="text-[11px] text-slate-500 dark:text-neutral-400 leading-snug">
-            Visualizador de logs en tiempo real para eventos de Meta Graph API, Webhooks y encriptación.
-          </p>
-
           <button
-            onClick={() => setShowLogsModal(true)}
-            className="w-full py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold flex items-center justify-center gap-1.5 border border-purple-500/20 ios-touch cursor-pointer"
+            onClick={() => navigateTo('bots')}
+            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"
           >
-            <Terminal className="w-3.5 h-3.5" />
-            <span>Ver Logs y Eventos Meta API ({systemLogs.length})</span>
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">Canales, instrucciones y agenda</div>
+              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                Encender cada canal, sugerencias, nombre, tono e instrucciones
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+          </button>
+          <button
+            onClick={abrirActividad}
+            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"
+          >
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">Actividad reciente</div>
+              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                Lo último que entró, lo que respondió, las citas que agendó y los chats que pasó a una persona
+              </div>
+            </div>
+            <Terminal className="w-4 h-4 text-slate-400 shrink-0" />
           </button>
         </div>
 
@@ -1513,41 +1577,43 @@ export const SettingsScreen: React.FC = () => {
         </div>
       </PageContent>
 
-      {/* System Logs Bottom Sheet Modal */}
+      {/* Actividad reciente de los chats */}
       <IOSModal
         isOpen={showLogsModal}
         onClose={() => setShowLogsModal(false)}
-        title="Telemetría & Meta Webhooks"
-        subtitle="Registro de eventos del sistema en vivo"
+        title="Actividad reciente"
+        subtitle="Lo último que pasó en los chats del salón"
       >
-        <div className="space-y-2 text-[11px] font-mono select-none">
-          {systemLogs.map(log => (
-            <div
-              key={log.id}
-              className="p-2.5 rounded-xl bg-neutral-950 text-neutral-200 border border-neutral-800 space-y-1 shadow-inner"
-            >
-              <div className="flex items-center justify-between text-[9px]">
-                <span className="text-neutral-400">{log.timestamp}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded font-bold uppercase ${
-                    log.level === 'success'
-                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                      : log.level === 'warn'
-                      ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                      : 'bg-sky-950 text-sky-400 border border-sky-800'
-                  }`}
-                >
-                  {log.service}
-                </span>
-              </div>
-              <p className="text-neutral-300">{log.message}</p>
-              {log.payload && (
-                <pre className="text-[8px] text-neutral-500 overflow-x-auto p-1 bg-black/50 rounded">
-                  {JSON.stringify(log.payload, null, 2)}
-                </pre>
-              )}
-            </div>
-          ))}
+        <div className="space-y-1.5 text-[11px]">
+          {actividad === null && <p className="text-slate-400 text-center py-6">Cargando…</p>}
+          {actividad?.length === 0 && (
+            <p className="text-slate-400 text-center py-6">Todavía no hay actividad en los chats.</p>
+          )}
+          {actividad?.map(ev => {
+            const estilo = ESTILO_ACTIVIDAD[ev.tipo];
+            const cuando = new Date(ev.en).toLocaleString('es', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+            const abrible = !!ev.conversacionId;
+            return (
+              <button
+                key={`${ev.tipo}-${ev.id}`}
+                type="button"
+                disabled={!abrible}
+                onClick={() => { if (ev.conversacionId) { setShowLogsModal(false); abrirConversacion(ev.conversacionId); } }}
+                className="w-full text-left p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/70 dark:border-neutral-800 enabled:hover:border-[var(--primary)] enabled:cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-2 text-[10px]">
+                  <span className={`px-1.5 rounded font-bold ${estilo.clase}`}>{estilo.titulo}</span>
+                  <span className="text-slate-400 tabular-nums">{ev.canal.descripcion} · {cuando}</span>
+                </div>
+                <div className="mt-1 text-slate-800 dark:text-neutral-200">
+                  <span className="font-semibold">{ev.cliente}</span>
+                  {ev.tipo === 'cita' && ev.citaInicio
+                    ? <> · {ev.texto} el {new Date(ev.citaInicio).toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</>
+                    : <> · {ev.texto}</>}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </IOSModal>
 

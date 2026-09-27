@@ -18,7 +18,33 @@ export interface UserProfile {
   };
 }
 
-export type ServiceCategory = 'nails' | 'hair' | 'massage' | 'pedi_spa' | 'facial';
+/**
+ * Clave de una categoría del salón (GET /categories). Ya no es una lista
+ * fija: cada salón crea las suyas. Las iniciales conservan sus claves de
+ * siempre ("nails", "hair"…), por eso los datos viejos siguen valiendo.
+ */
+export type ServiceCategory = string;
+
+export type TipoCategoria = 'service' | 'product';
+/** Cómo se ofrece en el Lounge lo de una categoría de productos */
+export type PapelEnLounge = 'none' | 'drink' | 'food';
+
+export interface CategoriaCatalogo {
+  id: string;
+  kind: TipoCategoria;
+  key: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  description: string | null;
+  sortOrder: number;
+  active: boolean;
+  loungeRole: PapelEnLounge;
+  discountPercent: number;
+  papelEnLounge: { codigo: PapelEnLounge; id: number; descripcion: string };
+  /** Servicios o productos activos dentro */
+  usos: number;
+}
 
 export interface PriceTier {
   id: string;
@@ -34,6 +60,8 @@ export interface SalonService {
   category: ServiceCategory;
   categoryName: string;
   price: number; // Base reference price
+  /** Moneda del precio (puede no ser la del salón: se convierte al cobrar e informar) */
+  currencyCode?: string;
   durationMinutes: number;
   icon: string;
   color: string;
@@ -43,7 +71,19 @@ export interface SalonService {
   priceTiers: PriceTier[]; // Multiple pricing table
 }
 
-export type ProductCategory = 'nailcare' | 'haircare' | 'skincare' | 'spa_body' | 'beverage' | 'snack';
+/** Clave de una categoría de productos del salón (ver ServiceCategory) */
+export type ProductCategory = string;
+
+export interface LineaDeReceta {
+  id?: string;
+  ingredientId: string;
+  nombre?: string;
+  quantity: number;
+  unit: string;
+  notes?: string | null;
+  unidadDelInsumo?: string;
+  contenidoDelInsumo?: number | null;
+}
 
 export interface SalonProduct {
   id: string;
@@ -52,6 +92,8 @@ export interface SalonProduct {
   categoryName: string;
   sku: string;
   basePrice: number;
+  /** Moneda del precio (puede no ser la del salón: se convierte al cobrar e informar) */
+  currencyCode?: string;
   stock: number;
   unit: string;        // ml | g | oz | L | unit
   unitQty?: number;    // contenido por unidad (ej: 15 ml por botella)
@@ -66,6 +108,17 @@ export interface SalonProduct {
   alertThreshold?: number;  // umbral alerta predictiva
   hasLotTracking?: boolean; // control por lote/vencimiento
   lotStrategy?: 'FEFO' | 'FIFO'; // estrategia de deducción
+  /** Se prepara al momento: sin existencias propias, al servirlo salen sus ingredientes */
+  preparedToOrder?: boolean;
+  /** Insumo: solo entra en recetas; no se vende suelto ni lo ofrece Lalan */
+  supplyOnly?: boolean;
+  /** Preparados: su receta (una porción) */
+  receta?: LineaDeReceta[];
+  /** Preparados: lo que cuesta una porción según sus insumos */
+  costoReceta?: number | null;
+  costoRecetaCompleto?: boolean | null;
+  /** Preparados: porciones que alcanzan con lo que hay */
+  porcionesPosibles?: number | null;
 }
 
 export interface ClientHospitalityPreferences {
@@ -114,7 +167,8 @@ export interface Client {
   priceListId?: string;  // lista de precios asignada (undefined = default)
 }
 
-export type AppointmentStatus = 'confirmed_by_ai' | 'attending' | 'completed' | 'cancelled' | 'pending';
+/** confirmed = la confirmó una persona del salón; confirmed_by_ai = la asistente */
+export type AppointmentStatus = 'confirmed' | 'confirmed_by_ai' | 'attending' | 'completed' | 'cancelled' | 'pending';
 export type CommunicationChannel = 'whatsapp' | 'instagram' | 'messenger';
 
 export interface Appointment {
@@ -131,6 +185,8 @@ export interface Appointment {
   durationMinutes: number;
   bufferMinutes?: number; // Descanso entre citas
   price: number;
+  /** Moneda del precio de la cita (la de su servicio) */
+  currencyCode?: string;
   selectedPriceTierName?: string;
   depositPaid: number;
   staffName: string;
@@ -140,14 +196,29 @@ export interface Appointment {
   createdAt: string;
   startsAt?: string;       // ISO full datetime from backend
   completedAt?: string;    // actual service delivery time (may differ from startsAt)
+  /** Cuándo llegó de verdad */
+  arrivedAt?: string;
+  /** La agendó la asistente por chat */
+  bookedByAssistant?: boolean;
+  /** Quién del equipo la agendó desde la app */
+  createdByName?: string | null;
+  /** La hora que tenía agendada, si llegó en otro momento y la cita se movió a la hora real */
+  originalStartsAt?: string;
 }
 
 export interface ChatMessage {
   id: string;
-  sender: 'client' | 'bot' | 'agent';
+  sender: 'client' | 'bot' | 'agent' | 'system';
   text: string;
+  /** ISO: cómo se muestra lo decide la pantalla */
   timestamp: string;
   isAiGenerated?: boolean;
+  /** Respuesta que la asistente PROPUSO a una persona; no se le envió a la clienta */
+  isSuggestion?: boolean;
+  /** Cómo va el envío a Meta de lo que salió del salón */
+  deliveryStatus?: 'pendiente' | 'enviado' | 'entregado' | 'leido' | 'fallido' | null;
+  /** Por qué no salió, dicho para una persona */
+  failureReason?: string | null;
   appointmentData?: Partial<Appointment>;
 }
 
@@ -167,20 +238,42 @@ export interface Conversation {
   unreadCount: number;
   serviceInterest?: string;
   messages: ChatMessage[];
-  confidenceScore?: number; // AI confidence 0-100
+  /** ISO del último mensaje, para ordenar y para decir "hace 5 min" */
+  lastMessageAt?: string;
+  /** Hasta cuándo se le puede escribir (24 h desde su último mensaje, regla de Meta) */
+  windowExpiresAt?: string | null;
+}
+
+export interface ActividadDelCanal {
+  respondidos: number;
+  sugerencias: number;
+  citas: number;
+  enAtencion: number;
+  ultimaRespuesta: string | null;
+}
+
+/** Un evento de la actividad reciente de los chats (Ajustes › Actividad) */
+export interface EventoActividad {
+  id: string;
+  en: string;
+  tipo: 'entrada' | 'respuesta' | 'persona' | 'aviso' | 'cita';
+  canal: { id: number; codigo: CommunicationChannel; descripcion: string };
+  cliente: string;
+  texto: string;
+  citaInicio?: string;
+  conversacionId: string | null;
 }
 
 export interface BotChannelConfig {
   id: CommunicationChannel;
   name: string;
   enabled: boolean;
-  model: string;
-  webhookLatencyMs: number;
-  status: 'online' | 'degraded' | 'offline';
-  messagesProcessedToday: number;
-  appointmentsBookedToday: number;
+  /** Lo que de verdad pasó hoy en el canal, contado por el backend */
+  actividad: ActividadDelCanal;
   welcomeMessage: string;
   offHoursMessage: string;
+  /** La cuenta de Meta conectada: phone_number_id, cuenta de IG o página */
+  channelIdentifier: string;
 }
 
 export interface ColorPreset {
@@ -228,6 +321,18 @@ export interface SalonBusinessSettings {
   aiAutoBooking: boolean;
   aiStrictSlots: boolean;
   aiTone: 'friendly_luxury' | 'direct_professional' | 'chic_casual';
+  /** Cómo se presenta la asistente con las clientas */
+  aiAgentName: string;
+  /** Con la asistente pausada, ¿sigue proponiendo respuestas a la humana? */
+  aiSuggestWhenPaused: boolean;
+  /** Instrucciones propias; null = las de base del sistema */
+  aiPrompt: string | null;
+  /** Instrucciones para TODAS las sedes del salón (las de la sede mandan sobre estas) */
+  aiPromptSalon: string | null;
+  /** Aviso por WhatsApp a la dueña cuando un chat pide a una persona o una cita queda sin especialista */
+  alertsEnabled: boolean;
+  alertPhone: string | null;
+  alertContactName: string | null;
   instagramHandle: string;
   facebookPage: string;
 }
