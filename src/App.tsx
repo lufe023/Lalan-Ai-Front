@@ -35,6 +35,8 @@ import { AvisoMensajes } from './components/ui/AvisoMensajes';
 import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
 import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
+import { OfflineIndicator } from './components/ui/OfflineIndicator';
+import { PWAInstallBanner } from './components/ui/PWAInstallBanner';
 import type { ScreenName } from './context/AppContext';
 
 /** El panel de plataforma abre la app con ?calor=app&pantalla=… para ver su mapa de calor */
@@ -126,6 +128,10 @@ const MainAppContent: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Offline & PWA helpers ──────────────────────── */}
+      <OfflineIndicator />
+      <PWAInstallBanner />
 
       {/* ── Login vs Authenticated ──────────────────────── */}
       {!isLoading && (

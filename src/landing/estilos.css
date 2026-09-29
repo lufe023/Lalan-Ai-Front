@@ -158,49 +158,299 @@
   .sellos { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .86rem; color: var(--tinta-2); }
   .sellos span::before { content: "✓"; color: var(--verde); font-weight: 800; margin-right: 6px; }
 
-  /* ── Teléfono con la demo ──────────────────── */
+  /* ── Teléfono con la demo de WhatsApp ─────────────── */
   .telefono {
-    width: 100%; max-width: 360px; justify-self: center;
-    background: var(--papel); border-radius: 38px; padding: 12px;
-    box-shadow: var(--sombra), 0 0 0 1px var(--linea);
+    width: 100%; max-width: 364px; justify-self: center;
+    background: #1A1F26; border-radius: 42px; padding: 11px;
+    box-shadow: 0 28px 64px -16px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.09), inset 0 0 0 2px #2C3440;
+    position: relative;
   }
-  .pantalla { background: var(--pantalla); border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; height: 560px; }
-  .cabecera-chat { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--papel); border-bottom: 1px solid var(--linea); }
-  .cabecera-chat .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(140deg, var(--rosa), var(--rosa-hondo)); color: #fff; display: grid; place-items: center; font-family: var(--serif); }
-  .cabecera-chat b { display: block; font-size: .92rem; }
-  .cabecera-chat small { font-size: .72rem; color: var(--verde); font-weight: 600; }
-  .sonido { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--linea); background: var(--papel); color: var(--rosa); display: grid; place-items: center; cursor: pointer; }
-  .sonido svg { width: 18px; height: 18px; }
+  .telefono-bocina {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    width: 52px; height: 4.5px; background: #0E1217; border-radius: 4px; z-index: 10;
+  }
+  .pantalla {
+    border-radius: 32px; overflow: hidden; display: flex; flex-direction: column;
+    height: 570px; position: relative;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Cabecera estilo WhatsApp */
+  .cabecera-chat {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 12px 14px; background: #008069; color: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); z-index: 5;
+  }
+  :root[data-theme="dark"] .cabecera-chat,
+  :root:not([data-theme="light"]) .cabecera-chat {
+    background: #1F2C34; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .wa-cabecera-izq { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .wa-retroceder { display: flex; align-items: center; color: #FFFFFF; opacity: .9; cursor: default; }
+  .wa-avatar-wrap { position: relative; width: 38px; height: 38px; flex-shrink: 0; }
+  .cabecera-chat .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, #25D366, #128C7E); color: #FFF;
+    display: grid; place-items: center; font-family: var(--serif); font-weight: 700; font-size: 1.05rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+  .wa-punto-online {
+    position: absolute; bottom: 0; right: 0; width: 10px; height: 10px;
+    background: #25D366; border: 2px solid #008069; border-radius: 50%;
+  }
+  :root[data-theme="dark"] .wa-punto-online,
+  :root:not([data-theme="light"]) .wa-punto-online { border-color: #1F2C34; }
+  .wa-info-contacto { min-width: 0; display: flex; flex-direction: column; }
+  .wa-nombre-linea { display: flex; align-items: center; gap: 4px; }
+  .cabecera-chat b {
+    font-size: .92rem; font-weight: 700; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .wa-check-verif { display: inline-flex; align-items: center; }
+  .wa-subtitulo { font-size: .71rem; color: rgba(255, 255, 255, 0.85); font-weight: 500; }
+  .wa-cabecera-der { display: flex; align-items: center; gap: 10px; }
+  .wa-header-icon { color: rgba(255, 255, 255, 0.88); display: flex; align-items: center; opacity: .85; }
+  .sonido {
+    width: 30px; height: 30px; border-radius: 50%; border: 0;
+    background: rgba(255, 255, 255, 0.15); color: #FFFFFF; display: grid; place-items: center; cursor: pointer;
+    transition: background-color .15s ease;
+  }
+  .sonido:hover { background: rgba(255, 255, 255, 0.25); }
+  .sonido svg { width: 16px; height: 16px; }
   .sonido .tachado { display: none; }
-  .sonido[aria-pressed="false"] { color: var(--tinta-3); }
+  .sonido[aria-pressed="false"] { color: rgba(255, 255, 255, 0.6); background: rgba(0, 0, 0, 0.15); }
   .sonido[aria-pressed="false"] .ondas { display: none; }
   .sonido[aria-pressed="false"] .tachado { display: inline; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .hilo { flex: 1; overflow-y: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+
+  /* Hilo de conversación con wallpaper de WhatsApp */
+  .hilo {
+    flex: 1; overflow-y: auto; padding: 12px 10px 10px; display: flex; flex-direction: column; gap: 8px;
+    scroll-behavior: smooth;
+    background-color: #EFEAE2;
+    background-image: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c2b8a7' fill-opacity='0.22' fill-rule='evenodd'%3E%3Cpath d='M25 15a5 5 0 0 1 5 5v3h-3a5 5 0 0 1-5-5v-3h3zm0 2h-1a3 3 0 0 0-3 3v1h1a3 3 0 0 0 3-3v-1zm45 40a7 7 0 1 1-14 0 7 7 0 0 1 14 0zm-2 0a5 5 0 1 0-10 0 5 5 0 0 0 10 0zm35-25a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm-15 45a6 6 0 1 1-12 0 6 6 0 0 1 12 0zm-70 15a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm10 20a5 5 0 1 1-10 0 5 5 0 0 1 10 0zm65-5a5 5 0 1 1-10 0 5 5 0 0 1 10 0z'/%3E%3C/g%3E%3C/svg%3E");
+    position: relative;
+  }
+  :root[data-theme="dark"] .hilo,
+  :root:not([data-theme="light"]) .hilo {
+    background-color: #0B141A;
+    background-image: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.035' fill-rule='evenodd'%3E%3Cpath d='M25 15a5 5 0 0 1 5 5v3h-3a5 5 0 0 1-5-5v-3h3zm0 2h-1a3 3 0 0 0-3 3v1h1a3 3 0 0 0 3-3v-1zm45 40a7 7 0 1 1-14 0 7 7 0 0 1 14 0zm-2 0a5 5 0 1 0-10 0 5 5 0 0 0 10 0zm35-25a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm-15 45a6 6 0 1 1-12 0 6 6 0 0 1 12 0zm-70 15a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm10 20a5 5 0 1 1-10 0 5 5 0 0 1 10 0zm65-5a5 5 0 1 1-10 0 5 5 0 0 1 10 0z'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* Insignia de fecha WhatsApp ("HOY") */
+  .wa-fecha { align-self: center; margin: 4px 0 6px; }
+  .wa-fecha span {
+    display: inline-block; background: rgba(255, 255, 255, 0.94); color: #54656F;
+    font-size: .68rem; font-weight: 700; padding: 4px 11px; border-radius: 8px;
+    box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.12); letter-spacing: .05em; text-transform: uppercase;
+  }
+  :root[data-theme="dark"] .wa-fecha span,
+  :root:not([data-theme="light"]) .wa-fecha span {
+    background: #182229; color: #8696A0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Burbujas generales de WhatsApp */
   .burbuja {
-    max-width: 84%; padding: 9px 12px 7px; border-radius: 16px; font-size: .86rem; line-height: 1.45;
-    animation: entra .28s ease-out both;
+    max-width: 82%; padding: 6px 9px 5px; font-size: .84rem; line-height: 1.4;
+    animation: entra .24s ease-out both; position: relative; word-break: break-word;
   }
-  .burbuja .hora { display: block; text-align: right; font-size: .64rem; opacity: .65; margin-top: 2px; }
-  .burbuja.clienta { align-self: flex-start; background: var(--burbuja-clienta); color: var(--tinta); border-bottom-left-radius: 5px; box-shadow: 0 1px 0 var(--linea); }
-  .burbuja.lalan { align-self: flex-end; background: var(--burbuja-lalan); color: var(--burbuja-lalan-txt); border-bottom-right-radius: 5px; }
-  .burbuja.sistema { align-self: center; max-width: 92%; background: var(--rubor-2); color: var(--tinta-2); font-size: .74rem; text-align: center; border-radius: 12px; }
-  .burbuja.duena { align-self: center; max-width: 92%; background: var(--papel); color: var(--tinta); border: 1px dashed var(--rosa); font-size: .78rem; border-radius: 12px; }
-  .nota-voz { display: flex; align-items: center; gap: 8px; }
-  .nota-voz .onda { flex: 1; height: 18px; background: repeating-linear-gradient(90deg, var(--tinta-3) 0 2px, transparent 2px 5px); opacity: .45; border-radius: 4px; }
-  .transcrito { display: block; font-size: .74rem; color: var(--tinta-3); margin-top: 4px; font-style: italic; }
-  .escribiendo { align-self: flex-end; display: flex; gap: 4px; padding: 10px 12px; background: var(--burbuja-lalan); border-radius: 16px; border-bottom-right-radius: 5px; }
-  .escribiendo i { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .5; animation: punto 1s infinite; }
-  .escribiendo i:nth-child(2) { animation-delay: .15s; } .escribiendo i:nth-child(3) { animation-delay: .3s; }
-  @keyframes punto { 50% { opacity: 1; transform: translateY(-2px); } }
-  @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  .escenarios { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 10px; background: var(--papel); border-top: 1px solid var(--linea); }
+  .wa-texto { margin-bottom: 2px; }
+  .wa-meta { display: flex; align-items: center; justify-content: flex-end; gap: 3px; font-size: .62rem; color: #667781; }
+  :root[data-theme="dark"] .wa-meta,
+  :root:not([data-theme="light"]) .wa-meta { color: #8696A0; }
+  .wa-meta .hora { line-height: 1; }
+  .wa-checks { display: inline-flex; align-items: center; margin-left: 1px; }
+
+  /* Clienta (recibido): blanca a la izquierda con colita */
+  .burbuja.clienta {
+    align-self: flex-start; background: #FFFFFF; color: #111B21;
+    border-radius: 8px 8px 8px 2px; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  }
+  .burbuja.clienta::before {
+    content: ""; position: absolute; bottom: 0; left: -6px; width: 7px; height: 11px;
+    background: #FFFFFF; clip-path: polygon(100% 0, 0 100%, 100% 100%);
+  }
+  :root[data-theme="dark"] .burbuja.clienta,
+  :root:not([data-theme="light"]) .burbuja.clienta {
+    background: #202C33; color: #E9EDEF; box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.25);
+  }
+  :root[data-theme="dark"] .burbuja.clienta::before,
+  :root:not([data-theme="light"]) .burbuja.clienta::before {
+    background: #202C33;
+  }
+
+  /* Lalan (enviado por el salón): verde WhatsApp a la derecha con colita y doble check azul */
+  .burbuja.lalan {
+    align-self: flex-end; background: #D9FDD3; color: #111B21;
+    border-radius: 8px 8px 2px 8px; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  }
+  .burbuja.lalan::before {
+    content: ""; position: absolute; bottom: 0; right: -6px; width: 7px; height: 11px;
+    background: #D9FDD3; clip-path: polygon(0 0, 100% 100%, 0 100%);
+  }
+  :root[data-theme="dark"] .burbuja.lalan,
+  :root:not([data-theme="light"]) .burbuja.lalan {
+    background: #005C4B; color: #E9EDEF; box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.25);
+  }
+  :root[data-theme="dark"] .burbuja.lalan::before,
+  :root:not([data-theme="light"]) .burbuja.lalan::before {
+    background: #005C4B;
+  }
+
+  /* Nota de voz estilo WhatsApp */
+  .wa-voz-cuerpo { display: flex; align-items: center; gap: 8px; padding-block: 2px; }
+  .wa-voz-play {
+    width: 32px; height: 32px; border-radius: 50%; background: #00A884; color: #FFF;
+    display: grid; place-items: center; border: 0; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  }
+  .wa-voz-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .wa-voz-barras {
+    display: flex; align-items: center; gap: 2px; height: 22px;
+  }
+  .wa-voz-barras span {
+    width: 3px; border-radius: 2px; background: #8696A0; opacity: .8;
+  }
+  .wa-voz-barras span:nth-child(-n+6) { background: #00A884; }
+  .wa-voz-meta { display: flex; align-items: center; justify-content: space-between; font-size: .62rem; color: #667781; }
+  .wa-voz-duracion { font-weight: 600; }
+  .wa-voz-mic { flex-shrink: 0; margin-left: 2px; display: flex; align-items: center; }
+  .transcrito {
+    margin-top: 6px; padding: 4px 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.04);
+    font-size: .72rem; color: #54656F; font-style: italic; border-left: 2px solid #00A884;
+  }
+  :root[data-theme="dark"] .transcrito,
+  :root:not([data-theme="light"]) .transcrito {
+    background: rgba(255, 255, 255, 0.05); color: #8696A0;
+  }
+
+  /* Mensaje del sistema (Aviso amarillo / beige de WhatsApp) */
+  .burbuja.sistema {
+    align-self: center; max-width: 90%; background: #FFEECD; color: #54656F;
+    font-size: .72rem; font-weight: 500; text-align: center; border-radius: 8px;
+    padding: 6px 12px; box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.1);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  :root[data-theme="dark"] .burbuja.sistema,
+  :root:not([data-theme="light"]) .burbuja.sistema {
+    background: #182229; color: #8696A0; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  }
+  .wa-sistema-icono { display: inline-flex; align-items: center; flex-shrink: 0; }
+
+  /* ── CONVERSACIÓN CON LA DUEÑA (CANAL PRIVADO) ──────────── */
+  /* Se distingue para dejar claro que esta parte NO la ven las clientas */
+  .burbuja.duena {
+    align-self: center; width: 95%; max-width: 95%;
+    background: #FFFDF8; color: #2D221C;
+    border: 1.5px dashed #D97706; border-radius: 12px;
+    padding: 9px 12px; font-size: .78rem;
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.1);
+  }
+  :root[data-theme="dark"] .burbuja.duena,
+  :root:not([data-theme="light"]) .burbuja.duena {
+    background: rgba(217, 119, 6, 0.1); color: #FDF4EB;
+    border-color: #F59E0B; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  .duena-insignia {
+    display: flex; align-items: center; gap: 6px; font-size: .68rem; font-weight: 700;
+    color: #B45309; text-transform: uppercase; letter-spacing: .04em;
+    padding-bottom: 5px; margin-bottom: 6px; border-bottom: 1px dashed rgba(217, 119, 6, 0.25);
+  }
+  :root[data-theme="dark"] .duena-insignia,
+  :root:not([data-theme="light"]) .duena-insignia {
+    color: #FBBF24; border-bottom-color: rgba(245, 158, 11, 0.3);
+  }
+  .duena-remitente { font-weight: 700; font-size: .76rem; margin-bottom: 4px; color: #92400E; }
+  :root[data-theme="dark"] .duena-remitente,
+  :root:not([data-theme="light"]) .duena-remitente { color: #FCD34D; }
+  .duena-texto { margin: 0; line-height: 1.42; }
+  .duena-audio-caja {
+    display: flex; align-items: center; gap: 8px; margin: 4px 0;
+    background: rgba(217, 119, 6, 0.08); padding: 5px 8px; border-radius: 8px;
+  }
+  :root[data-theme="dark"] .duena-audio-caja,
+  :root:not([data-theme="light"]) .duena-audio-caja { background: rgba(245, 158, 11, 0.14); }
+  .duena-play-btn {
+    width: 24px; height: 24px; border-radius: 50%; background: #D97706; color: #FFF;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  :root[data-theme="dark"] .duena-play-btn,
+  :root:not([data-theme="light"]) .duena-play-btn { background: #F59E0B; }
+  .duena-onda-mini { display: flex; align-items: center; gap: 2px; flex: 1; }
+  .duena-onda-mini span {
+    width: 2.5px; height: 10px; background: #D97706; border-radius: 2px; opacity: .7;
+  }
+  .duena-onda-mini span:nth-child(2) { height: 16px; }
+  .duena-onda-mini span:nth-child(4) { height: 14px; }
+  .duena-onda-mini span:nth-child(6) { height: 18px; }
+  .duena-duracion { font-size: .65rem; font-weight: 700; color: #B45309; }
+  :root[data-theme="dark"] .duena-duracion,
+  :root:not([data-theme="light"]) .duena-duracion { color: #FBBF24; }
+  .duena-transcrito { font-style: italic; font-size: .75rem; margin-top: 4px; line-height: 1.38; }
+
+  /* Indicador de "escribiendo..." de WhatsApp */
+  .burbuja.lalan.escribiendo {
+    padding: 8px 12px; border-radius: 8px 8px 2px 8px; background: #D9FDD3;
+  }
+  :root[data-theme="dark"] .burbuja.lalan.escribiendo,
+  :root:not([data-theme="light"]) .burbuja.lalan.escribiendo { background: #005C4B; }
+  .wa-typing-dots { display: flex; align-items: center; gap: 4px; height: 12px; }
+  .wa-typing-dots span {
+    width: 5px; height: 5px; border-radius: 50%; background: #667781;
+    animation: waPunto 1.1s infinite;
+  }
+  :root[data-theme="dark"] .wa-typing-dots span,
+  :root:not([data-theme="light"]) .wa-typing-dots span { background: #8696A0; }
+  .wa-typing-dots span:nth-child(2) { animation-delay: .2s; }
+  .wa-typing-dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes waPunto {
+    0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+  @keyframes entra { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+  /* Barra inferior de escritura de WhatsApp */
+  .wa-barra-input {
+    display: flex; align-items: center; gap: 6px; padding: 7px 8px;
+    background: #F0F2F5; border-top: 1px solid rgba(0, 0, 0, 0.05); z-index: 5;
+  }
+  :root[data-theme="dark"] .wa-barra-input,
+  :root:not([data-theme="light"]) .wa-barra-input {
+    background: #1F2C34; border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .wa-caja-input {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: #FFFFFF; border-radius: 24px; padding: 7px 12px;
+    box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.06); color: #8696A0; font-size: .84rem;
+  }
+  :root[data-theme="dark"] .wa-caja-input,
+  :root:not([data-theme="light"]) .wa-caja-input {
+    background: #2A3942; color: #8696A0; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  }
+  .wa-input-emoji { display: flex; align-items: center; color: #8696A0; }
+  .wa-input-placeholder { flex: 1; }
+  .wa-input-iconos { display: flex; align-items: center; gap: 10px; color: #8696A0; }
+  .wa-boton-mic {
+    width: 38px; height: 38px; border-radius: 50%; background: #00A884; color: #FFFFFF;
+    display: grid; place-items: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Selector de escenarios interactivos debajo del teléfono */
+  .escenarios {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    margin-top: 14px;
+  }
   .escenarios button {
-    flex: 0 0 auto; border: 1px solid var(--linea); background: var(--papel); color: var(--tinta-2);
-    font: 600 .74rem/1 var(--sans); padding: 8px 11px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--linea); background: var(--papel); color: var(--tinta);
+    font: 600 .78rem/1 var(--sans); padding: 9px 14px; border-radius: 999px; cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); transition: all .16s ease;
   }
-  .escenarios button[aria-pressed="true"] { background: var(--rosa); border-color: var(--rosa); color: #fff; }
-  .pie-demo { font-size: .76rem; color: var(--tinta-3); text-align: center; margin-top: 12px; }
+  .escenarios button:hover {
+    border-color: #008069; color: #008069;
+  }
+  .escenarios button[aria-pressed="true"] {
+    background: #008069; border-color: #008069; color: #FFF;
+    box-shadow: 0 3px 10px rgba(0, 128, 105, 0.35);
+  }
+  .pie-demo { font-size: .78rem; color: var(--tinta-3); text-align: center; margin-top: 10px; }
 
   /* ── Secciones ─────────────────────────────── */
   section.bloque { padding-block: 72px; border-top: 1px solid var(--linea); }

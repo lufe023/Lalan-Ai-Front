@@ -1,15 +1,16 @@
 {
+  "id": "/app/",
   "name": "Lalan AI Studio & Lounge",
   "short_name": "Lalan AI",
   "description": "Turnos, música y gestión del salón",
   "start_url": "/app/",
-  "scope": "/",
-  "display": "fullscreen",
+  "scope": "/app/",
+  "display": "standalone",
   "display_override": [
-    "fullscreen",
-    "standalone"
+    "standalone",
+    "fullscreen"
   ],
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
   "icons": [
@@ -33,3 +34,4 @@
     }
   ]
 }
+

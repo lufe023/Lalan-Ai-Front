@@ -20,9 +20,16 @@
   <title>Lalan AI · La asistente de WhatsApp para tu salón</title>
   <meta name="description" content="Lalan atiende el WhatsApp de tu salón, agenda citas con notas de voz, recibe a cada clienta con lo que le gusta y te dice cuánto ganas de verdad. Aplica al piloto gratis." />
   <meta name="theme-color" content="#C46B7C" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lalan AI" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icono-192.png" />
-  <link rel="apple-touch-icon" href="/icono-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icono-512.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/icono-192.png" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="es_DO" />
   <meta property="og:title" content="Lalan AI · La asistente de WhatsApp para tu salón" />
@@ -100,25 +107,65 @@
     </div>
 
     <div>
-      <div class="telefono" aria-label="Demostración de una conversación con Lalan">
+      <div class="telefono" aria-label="Demostración de una conversación con Lalan en WhatsApp">
+        <div class="telefono-bocina" aria-hidden="true"></div>
         <div class="pantalla">
           <div class="cabecera-chat">
-            <span class="avatar">L</span>
-            <div><b>Tu Salón</b><small>en línea · responde Lalan</small></div>
-            <button type="button" class="sonido" id="sonido" aria-pressed="true" title="Sonido de los mensajes">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="ondas" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="tachado" d="M16 9l6 6M22 9l-6 6"/></svg>
-              <span class="sr">Sonido</span>
-            </button>
+            <div class="wa-cabecera-izq">
+              <span class="wa-retroceder" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              </span>
+              <div class="wa-avatar-wrap">
+                <span class="avatar">L</span>
+                <span class="wa-punto-online" title="En línea"></span>
+              </div>
+              <div class="wa-info-contacto">
+                <div class="wa-nombre-linea">
+                  <b>Tu Salón</b>
+                  <span class="wa-check-verif" title="Cuenta comercial verificada">
+                    <svg viewBox="0 0 16 16" width="13" height="13" fill="#25D366"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg>
+                  </span>
+                </div>
+                <small class="wa-subtitulo">en línea · Lalan responde</small>
+              </div>
+            </div>
+            <div class="wa-cabecera-der">
+              <span class="wa-header-icon" aria-hidden="true" title="Videollamada">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              </span>
+              <span class="wa-header-icon" aria-hidden="true" title="Llamada">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              </span>
+              <button type="button" class="sonido" id="sonido" aria-pressed="true" title="Sonido de los mensajes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="ondas" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="tachado" d="M16 9l6 6M22 9l-6 6"/></svg>
+                <span class="sr">Sonido</span>
+              </button>
+            </div>
           </div>
           <div class="hilo" id="hilo" aria-live="polite"></div>
-          <div class="escenarios" role="group" aria-label="Elegir una conversación de ejemplo">
-            <button type="button" data-escena="noche" aria-pressed="true">Agendar de noche</button>
-            <button type="button" data-escena="cambio" aria-pressed="false">Cambiar la cita</button>
-            <button type="button" data-escena="duena" aria-pressed="false">Un día especial</button>
+          <div class="wa-barra-input" aria-hidden="true">
+            <div class="wa-caja-input">
+              <span class="wa-input-emoji">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              </span>
+              <span class="wa-input-placeholder">Mensaje</span>
+              <div class="wa-input-iconos">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+            </div>
+            <div class="wa-boton-mic">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+            </div>
           </div>
         </div>
       </div>
-      <p class="pie-demo">Conversaciones de ejemplo. Toca otra para verla.</p>
+      <div class="escenarios" role="group" aria-label="Elegir una conversación de ejemplo">
+        <button type="button" data-escena="noche" aria-pressed="true">🌙 Agendar de noche</button>
+        <button type="button" data-escena="cambio" aria-pressed="false">🔄 Cambiar la cita</button>
+        <button type="button" data-escena="duena" aria-pressed="false">👑 Un día especial</button>
+      </div>
+      <p class="pie-demo">Toca un botón para ver cómo responde Lalan por WhatsApp en cada situación.</p>
     </div>
   </section>
 
@@ -752,5 +799,12 @@
   <!-- Three.js (r128) para la historia en 3D: va antes del módulo, que lo usa como global -->
   <script src="/landing/three.min.js"></script>
   <script type="module" src="/src/landing/main.ts"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+      });
+    }
+  </script>
 </body>
 </html>

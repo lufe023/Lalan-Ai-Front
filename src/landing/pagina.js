@@ -95,20 +95,73 @@
   function burbuja(m) {
     var b = document.createElement('div');
     b.className = 'burbuja ' + m.q;
-    if (m.voz) {
-      b.innerHTML = '<span class="nota-voz"><span aria-hidden="true">▶</span><span class="onda"></span><span>0:07</span></span>';
-      var tr = document.createElement('span');
-      tr.className = 'transcrito';
-      tr.textContent = 'Lalan escuchó: «' + m.t + '»';
-      b.appendChild(tr);
-    } else {
-      b.appendChild(document.createTextNode(m.t));
+
+    if (m.q === 'duena') {
+      var esAudio = m.t.indexOf('Alanny responde') === 0;
+      var titulo = esAudio ? 'Alanny respondió por nota de voz' : 'Aviso a Alanny (Canal privado por WhatsApp)';
+      var cuerpo = m.t.replace(/^(Aviso a Alanny por WhatsApp|Alanny responde con una nota de voz):\s*«?/, '').replace(/»?\s*$/, '');
+
+      b.innerHTML =
+        '<div class="duena-insignia">' +
+          '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+          '<span>Canal privado con la dueña · No visible para la clienta</span>' +
+        '</div>' +
+        '<div class="duena-cuerpo">' +
+          '<div class="duena-remitente">' + titulo + '</div>' +
+          (esAudio
+            ? '<div class="duena-audio-caja">' +
+                '<span class="duena-play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
+                '<div class="duena-onda-mini" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>' +
+                '<span class="duena-duracion">0:06</span>' +
+              '</div>' +
+              '<div class="duena-transcrito">«' + cuerpo + '»</div>'
+            : '<div class="duena-texto">«' + cuerpo + '»</div>'
+          ) +
+        '</div>';
+      return b;
     }
-    if (m.h) {
-      var h = document.createElement('span');
-      h.className = 'hora';
-      h.textContent = m.h;
-      b.appendChild(h);
+
+    if (m.q === 'sistema') {
+      b.innerHTML =
+        '<span class="wa-sistema-icono" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' +
+        '</span>' +
+        '<span>' + m.t + '</span>';
+      return b;
+    }
+
+    var horaTxt = m.h ? m.h.replace(' noche', ' p. m.').replace(' mañana', ' a. m.').replace(' tarde', ' p. m.') : '';
+    var checkSvg = m.q === 'lalan'
+      ? '<span class="wa-checks" title="Leído"><svg viewBox="0 0 16 11" width="15" height="11" fill="none" aria-hidden="true"><path d="M11.05 1.25L4.85 7.45L2.1 4.7" stroke="#53BDEB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.55 1.25L8.35 7.45L7.2 6.3" stroke="#53BDEB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
+      : '';
+
+    if (m.voz) {
+      b.innerHTML =
+        '<div class="wa-voz-cuerpo">' +
+          '<span class="wa-voz-play" aria-label="Reproducir nota de voz">' +
+            '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>' +
+          '</span>' +
+          '<div class="wa-voz-info">' +
+            '<div class="wa-voz-barras" aria-hidden="true">' +
+              '<span style="height:6px"></span><span style="height:14px"></span><span style="height:8px"></span><span style="height:18px"></span><span style="height:12px"></span><span style="height:20px"></span><span style="height:14px"></span><span style="height:9px"></span><span style="height:16px"></span><span style="height:7px"></span><span style="height:13px"></span><span style="height:11px"></span><span style="height:17px"></span><span style="height:8px"></span>' +
+            '</div>' +
+            '<div class="wa-voz-meta">' +
+              '<span class="wa-voz-duracion">0:07</span>' +
+              '<span class="hora">' + horaTxt + checkSvg + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="wa-voz-mic" title="Nota de voz">' +
+            '<svg viewBox="0 0 24 24" width="16" height="16" fill="#00A884"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>' +
+          '</div>' +
+        '</div>' +
+        '<div class="transcrito">Lalan escuchó: «' + m.t + '»</div>';
+    } else {
+      b.innerHTML =
+        '<div class="wa-texto">' + m.t + '</div>' +
+        '<div class="wa-meta">' +
+          '<span class="hora">' + horaTxt + '</span>' +
+          checkSvg +
+        '</div>';
     }
     return b;
   }
@@ -163,6 +216,13 @@
     var mio = ++turno;
     var mensajes = ESCENAS[nombre];
     hilo.innerHTML = '';
+
+    // Insignia de fecha de WhatsApp
+    var badgeFecha = document.createElement('div');
+    badgeFecha.className = 'wa-fecha';
+    badgeFecha.innerHTML = '<span>HOY</span>';
+    hilo.appendChild(badgeFecha);
+
     if (reducido) {
       mensajes.forEach(function (m) { hilo.appendChild(burbuja(m)); });
       return;
@@ -174,8 +234,8 @@
       var espera = m.q === 'clienta' ? 900 : 700;
       if (m.q === 'lalan') {
         var escr = document.createElement('div');
-        escr.className = 'escribiendo';
-        escr.innerHTML = '<i></i><i></i><i></i>';
+        escr.className = 'burbuja lalan escribiendo';
+        escr.innerHTML = '<div class="wa-typing-dots"><span></span><span></span><span></span></div>';
         hilo.appendChild(escr);
         hilo.scrollTop = hilo.scrollHeight;
         setTimeout(function () {
@@ -201,7 +261,11 @@
       reproducir(b.getAttribute('data-escena'));
     });
   });
-  // La primera escena ya se ve completa al cargar; luego se anima al tocar
+  // La primera escena ya se ve completa al cargar con la fecha "HOY"
+  var badgeInicial = document.createElement('div');
+  badgeInicial.className = 'wa-fecha';
+  badgeInicial.innerHTML = '<span>HOY</span>';
+  hilo.appendChild(badgeInicial);
   ESCENAS.noche.forEach(function (m) { hilo.appendChild(burbuja(m)); });
 
   // ── Recorrido por la app ─────────────────────────────────────────
