@@ -83,8 +83,8 @@ export const GananciasScreen: React.FC = () => {
    * más marcados, igual que antes con las citas.
    */
   const eventosCalendario = useMemo(
-    () => diasConRecaudo.flatMap(d =>
-      Array.from({ length: Math.max(1, Number(d.count) || 1) }, () => ({ date: d.date })),
+    () => diasConRecaudo.flatMap((d, i) =>
+      Array.from({ length: Math.max(1, Number(d.count) || 1) }, (_, j) => ({ id: `ganancia-${d.date}-${i}-${j}`, date: d.date })),
     ),
     [diasConRecaudo],
   );

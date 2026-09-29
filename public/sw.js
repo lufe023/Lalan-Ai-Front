@@ -10,7 +10,9 @@
  *    - Network-Only: Nunca se sirve información de dinero, citas o turnos vieja.
  */
 
-const CACHE_NAME = 'lalan-shell-v2';
+// CACHE_NAME: Se sincroniza y reemplaza automáticamente en tiempo de ejecución
+// y de compilación usando la variable de entorno VITE_CACHE_NAME (desde .env.local).
+const CACHE_NAME = 'lalan-shell-v3';
 
 const ASSETS_CORE = [
   '/app/',
@@ -45,6 +47,13 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => self.clients.claim())
   );
+});
+
+// Mensajes desde la interfaz de la aplicación (ej: botón Actualizar)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Intercepción de peticiones

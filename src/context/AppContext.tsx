@@ -214,13 +214,28 @@ export interface ToastInfo {
 }
 
 // ── Price Lists ────────────────────────────────────────────────────────────────
-export type PriceRuleTarget = 'service' | 'product' | 'category';
+export type PriceRuleTarget =
+  | 'service'
+  | 'product'
+  | 'category'
+  | 'service_category'
+  | 'product_category'
+  | 'specific_service'
+  | 'specific_product';
+
 export interface PriceListRule {
   id: string;
   target: PriceRuleTarget;
-  contextKey: string;        // serviceId | productId | categorySlug
-  modifierType: 'percent' | 'fixed';
-  modifierValue: number;     // negative = discount, positive = surcharge
+  contextKey?: string;        // serviceId | productId | categorySlug
+  modifierType?: 'percent' | 'fixed';
+  modifierValue?: number;     // negative = discount, positive = surcharge
+  serviceCategoryKey?: string;
+  productCategoryKey?: string;
+  serviceId?: string;
+  productId?: string;
+  fixedPrice?: number;
+  priceMultiplier?: number;
+  discountPercent?: number;
 }
 export interface PriceList {
   id: string;
@@ -229,6 +244,8 @@ export interface PriceList {
   isDefault: boolean;
   rules: PriceListRule[];
   clientCount: number;
+  startDate?: string;
+  endDate?: string;
 }
 // ──────────────────────────────────────────────────────────────────────────────
 

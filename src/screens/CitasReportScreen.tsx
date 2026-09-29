@@ -70,8 +70,8 @@ export const CitasReportScreen: React.FC = () => {
 
   /** Aquí los puntitos SÍ van donde hay citas: es de lo que trata esta pantalla */
   const eventos = useMemo(
-    () => dias.flatMap(d =>
-      Array.from({ length: Math.max(1, Number(d.count) || 1) }, () => ({ date: d.date })),
+    () => dias.flatMap((d, i) =>
+      Array.from({ length: Math.max(1, Number(d.count) || 1) }, (_, j) => ({ id: `cita-${d.date}-${i}-${j}`, date: d.date })),
     ),
     [dias],
   );

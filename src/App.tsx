@@ -37,6 +37,7 @@ import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
 import { PWAInstallBanner } from './components/ui/PWAInstallBanner';
+import { PWAUpdateNotification } from './components/ui/PWAUpdateNotification';
 import type { ScreenName } from './context/AppContext';
 
 /** El panel de plataforma abre la app con ?calor=app&pantalla=… para ver su mapa de calor */
@@ -132,6 +133,7 @@ const MainAppContent: React.FC = () => {
       {/* ── Offline & PWA helpers ──────────────────────── */}
       <OfflineIndicator />
       <PWAInstallBanner />
+      <PWAUpdateNotification />
 
       {/* ── Login vs Authenticated ──────────────────────── */}
       {!isLoading && (

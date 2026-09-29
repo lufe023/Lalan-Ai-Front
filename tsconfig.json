@@ -22,5 +22,7 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": ["src", "vite.config.ts", "server.ts", "app"],
+  "exclude": ["node_modules", "dist", "Claude outputs", "BACKEND"]
 }
