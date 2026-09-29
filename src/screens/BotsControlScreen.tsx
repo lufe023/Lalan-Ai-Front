@@ -31,6 +31,7 @@ import { CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSToggle } from '../components/ui/IOSToggle';
 import { PageContent } from '../components/ui/PageContent';
+import { ConectarMeta } from '../components/canales/ConectarMeta';
 
 export const BotsControlScreen: React.FC = () => {
   const { botConfigs, toggleBotChannel, updateBotMessage, settings, updateSettings, showToast, navigateTo } = useApp();
@@ -155,6 +156,8 @@ export const BotsControlScreen: React.FC = () => {
           a una persona queda en tus manos hasta que se la devuelvas desde el chat.
         </p>
 
+        {esDireccion && <ConectarMeta />}
+
         {/* Independent Channel Bot Toggles */}
         <div className="space-y-2.5">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400 block px-1">
@@ -201,7 +204,9 @@ export const BotsControlScreen: React.FC = () => {
                 </div>
               </div>
 
-              {/* La cuenta de Meta que alimenta este canal */}
+              {/* La cuenta de Meta que alimenta este canal: a mano solo el super admin;
+                  la dueña usa los botones "Conectar" de arriba */}
+              {currentUser?.role === 'super_admin' ? (
               <div className="pt-2 border-t border-slate-100 dark:border-neutral-800/80">
                 <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
                   Cuenta de Meta conectada
@@ -217,6 +222,11 @@ export const BotsControlScreen: React.FC = () => {
                 />
                 <p className="text-[10px] text-slate-400 mt-1">{AYUDA_CUENTA[bot.id]}</p>
               </div>
+              ) : !bot.channelIdentifier && (
+                <p className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 text-[11px] text-slate-500">
+                  Sin conectar: usa el botón de {bot.name} de arriba.
+                </p>
+              )}
 
               {/* Lo de hoy, contado de verdad */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-neutral-800/80">

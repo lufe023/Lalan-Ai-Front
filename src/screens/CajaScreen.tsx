@@ -11,6 +11,7 @@ import { PosPanel } from '../components/pos/PosPanel';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
 import { imprimirRecibo } from '../utils/recibo';
+import { ListaRecibos } from '../components/caja/ListaRecibos';
 
 /**
  * Caja — el punto de venta, fuera del Lounge.
@@ -54,7 +55,6 @@ export const CajaScreen: React.FC = () => {
     } finally { setCargando(false); }
   }, []);
 
-  useEffect(() => { if (vista === 'recibos') void cargarRecibos(); }, [vista, cargarRecibos]);
 
   const reimprimir = useCallback((venta: any) => {
     imprimirRecibo(venta, {
@@ -710,58 +710,7 @@ export const CajaScreen: React.FC = () => {
           </>
         ) : (
           <>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                value={busca}
-                onChange={e => setBusca(e.target.value)}
-                placeholder="Buscar por clienta o número de recibo…"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
-              />
-            </div>
-
-            <div className="p-2 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs">
-              {cargando ? (
-                <p className="py-8 text-center text-xs text-slate-400">Cargando…</p>
-              ) : recibosFiltrados.length ? (
-                <div className="divide-y divide-slate-100 dark:divide-neutral-800">
-                  {recibosFiltrados.map(r => {
-                    const f = new Date(r.closedAt ?? r.openedAt);
-                    return (
-                      <div key={r.id} className="p-2 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-800 dark:text-neutral-100 truncate">
-                            {r.clientName ?? r.label ?? 'Mostrador'}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            #{String(r.id).slice(-8).toUpperCase()} ·{' '}
-                            {f.toLocaleDateString('es')}{' '}
-                            {f.toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' })} ·{' '}
-                            {r.items?.length ?? 0} líneas
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs font-extrabold text-slate-900 dark:text-white tabular-nums">
-                            {plata(r.total)}
-                          </span>
-                          <button
-                            onClick={() => reimprimir(r)}
-                            title="Reimprimir — sale marcado como COPIA"
-                            className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-500 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-neutral-700 hover:text-[var(--primary)] transition"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="py-8 text-center text-xs text-slate-400">
-                  {busca ? 'Ningún recibo con esa búsqueda.' : 'Todavía no hay recibos cobrados.'}
-                </p>
-              )}
-            </div>
+            <ListaRecibos plata={plata} onReimprimir={reimprimir} />
           </>
         )}
       </PageContent>

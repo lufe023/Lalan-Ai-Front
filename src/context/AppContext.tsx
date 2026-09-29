@@ -91,7 +91,7 @@ export interface LoungeEvent {
 }
 
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'sala' | 'plataforma';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'sala' | 'plataforma' | 'informes';
 
 // ═══════════════════════════════════════════════════════════════════
 //  SALA Y TURNOS
@@ -303,6 +303,8 @@ interface AppContextType {
   sendMessageToConversation: (conversationId: string, text: string, sender?: 'client' | 'agent' | 'bot') => Promise<void>;
   startChatWithClient: (client: Client) => void;
   botConfigs: BotChannelConfig[];
+  /** Vuelve a pedir los canales (tras conectar o desconectar una cuenta de Meta) */
+  recargarBots: () => Promise<void>;
   toggleBotChannel: (channelId: CommunicationChannel, enabled: boolean) => Promise<void>;
   updateBotMessage: (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage' | 'channelIdentifier', text: string) => Promise<void>;
   settings: SalonBusinessSettings;
@@ -757,6 +759,7 @@ function mapApiBotConfig(b: any): BotChannelConfig {
     actividad: b.actividad ?? { respondidos: 0, sugerencias: 0, citas: 0, enAtencion: 0, ultimaRespuesta: null },
     welcomeMessage: b.welcomeMessage ?? '', offHoursMessage: b.offHoursMessage ?? '',
     channelIdentifier: b.channelIdentifier ?? '',
+    conexion: b.conexion ?? null, conectadoEn: b.conectadoEn ?? null,
   };
 }
 function mapApiTrack(t: any): LoungeTrack {
@@ -2673,7 +2676,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,
       toggleChatAiStatus, sendMessageToConversation, startChatWithClient,
-      botConfigs, toggleBotChannel, updateBotMessage,
+      botConfigs, recargarBots: loadBots, toggleBotChannel, updateBotMessage,
       settings, updateSettings,
       metricsPeriod, setMetricsPeriod,
       categorias, cargarCategorias, recargarCatalogo, categoriasDe, categoriaPorClave, crearCategoria, editarCategoria, quitarCategoria,

@@ -15,6 +15,7 @@ import {
   Receipt,
   Armchair,
   Globe2,
+  BarChart3,
 } from 'lucide-react';
 import { LogoLalan } from './LogoLalan';
 import { useApp, ScreenName } from '../../context/AppContext';
@@ -81,6 +82,7 @@ export const IOSTabBar: React.FC = () => {
     urgente?: boolean;
   }[] = [
     { id: 'dashboard', label: 'Métricas', icon: LayoutDashboard },
+    { id: 'informes', label: 'Informes', icon: BarChart3 },
     { id: 'calendar', label: 'Agenda', icon: Calendar, badge: pendingApts > 0 ? pendingApts : undefined },
     { id: 'sala', label: 'Sala', icon: Armchair },
     { id: 'clients', label: 'Clientas', icon: Users },

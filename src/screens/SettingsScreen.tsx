@@ -47,6 +47,7 @@ import { PeticionesMusica } from '../components/ui/PeticionesMusica';
 import { TuPlan } from '../components/ajustes/TuPlan';
 import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
 import { SelectorHora } from '../components/ui/SelectorHora';
+import { ConectarMeta } from '../components/canales/ConectarMeta';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
 const ESTILO_ACTIVIDAD: Record<EventoActividad['tipo'], { titulo: string; clase: string }> = {
@@ -1487,6 +1488,7 @@ export const SettingsScreen: React.FC = () => {
               {settings.aiAgentName || 'La asistente'} en los chats
             </h3>
           </div>
+          {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <ConectarMeta incrustado />}
           <button
             onClick={() => navigateTo('bots')}
             className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"

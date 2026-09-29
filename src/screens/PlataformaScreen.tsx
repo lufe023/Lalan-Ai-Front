@@ -9,19 +9,23 @@ import { PageContent } from '../components/ui/PageContent';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PilotoAplicaciones } from '../components/plataforma/PilotoAplicaciones';
 import { OtrosNegocios } from '../components/plataforma/OtrosNegocios';
+import { EquipoSoporte } from '../components/plataforma/EquipoSoporte';
+import { SaludServicios } from '../components/plataforma/SaludServicios';
 import { NegociosPlataforma, type PrellenadoNegocio } from '../components/plataforma/NegociosPlataforma';
 import { PlanesPlataforma } from '../components/plataforma/PlanesPlataforma';
 import { UsoAppPanel } from '../components/plataforma/UsoAppPanel';
 import type { Dispositivo, ResumenLanding } from '../types/plataforma';
 import { useAuth } from '../context/AuthContext';
 
-type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto';
+type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud';
 const PESTANAS: { id: Pestana; label: string }[] = [
+  { id: 'salud', label: 'Salud' },
   { id: 'negocios', label: 'Clientes' },
   { id: 'planes', label: 'Planes' },
   { id: 'visitas', label: 'Visitas' },
   { id: 'calor', label: 'Mapa de calor' },
   { id: 'piloto', label: 'Piloto' },
+  { id: 'soporte', label: 'Equipo' },
 ];
 
 type Rango = '7' | '30' | '90';
@@ -177,6 +181,7 @@ export const PlataformaScreen: React.FC = () => {
   /** Soporte ve solo a los clientes (para ayudarles), sin estadísticas ni planes */
   const esSoporte = currentUser?.role === 'support';
   const [pestana, setPestana] = useState<Pestana>('negocios');
+  const [abrirNegocio, setAbrirNegocio] = useState<string | null>(null);
   const [prellenado, setPrellenado] = useState<PrellenadoNegocio | null>(null);
   const [rango, setRango] = useState<Rango>('30');
   const [datos, setDatos] = useState<ResumenLanding | null>(null);
@@ -351,8 +356,10 @@ export const PlataformaScreen: React.FC = () => {
           </Tarjeta>
         )}
 
-        {pestana === 'negocios' && <NegociosPlataforma soloSoporte={esSoporte} prellenado={prellenado} onPrellenadoUsado={() => setPrellenado(null)} />}
+        {pestana === 'negocios' && <NegociosPlataforma soloSoporte={esSoporte} prellenado={prellenado} onPrellenadoUsado={() => setPrellenado(null)} abrirId={abrirNegocio} />}
         {pestana === 'planes' && <PlanesPlataforma />}
+        {pestana === 'soporte' && <EquipoSoporte />}
+        {pestana === 'salud' && <SaludServicios onAbrirNegocio={(id) => { setAbrirNegocio(id); setPestana('negocios'); }} />}
         {pestana === 'piloto' && (
           <div className="space-y-10">
             <PilotoAplicaciones onCrearSalon={(p) => { setPrellenado(p); setPestana('negocios'); }} />

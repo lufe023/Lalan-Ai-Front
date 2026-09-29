@@ -151,7 +151,7 @@ export const LoginScreen: React.FC = () => {
         </>)}
 
         <p className="text-center text-[11px] text-slate-400 dark:text-neutral-600 mt-4">
-          Gomez Santana Solutions Group SRL · Lalan AI v2.0
+          Gomez Santana Solutions Group SRL · Lalan AI v2.0 · <a href="/privacidad.html" target="_blank" rel="noopener" className="underline">Privacidad</a> · <a href="/terminos.html" target="_blank" rel="noopener" className="underline">Términos</a>
         </p>
       </motion.div>
     </div>

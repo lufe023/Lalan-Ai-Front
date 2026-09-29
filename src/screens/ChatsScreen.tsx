@@ -38,7 +38,11 @@ export const ChatsScreen: React.FC = () => {
     showToast,
     settings,
     descartarAviso,
+    botConfigs,
+    navigateTo,
   } = useApp();
+  /* Si ningún canal está conectado, aquí no va a entrar nada: se dice dónde conectarlo */
+  const sinCanales = botConfigs.length > 0 && !botConfigs.some(b => b.channelIdentifier);
   const agente = settings.aiAgentName || 'Lalan';
   const { currentUser } = useAuth();
 
@@ -87,6 +91,13 @@ export const ChatsScreen: React.FC = () => {
       />
 
       <PageContent className="space-y-3">
+        {sinCanales && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+          <button type="button" onClick={() => navigateTo('settings')}
+            className="w-full p-3 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-left cursor-pointer">
+            <b className="text-xs text-slate-900 dark:text-white block">Conecta tu WhatsApp, Instagram o Facebook</b>
+            <span className="text-[11px] text-slate-600 dark:text-neutral-300">Aún no llega ningún mensaje porque no hay canales conectados. Toca aquí: se hace en Configuración, con un botón.</span>
+          </button>
+        )}
         {/* Search Bar */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />

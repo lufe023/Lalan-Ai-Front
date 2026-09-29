@@ -16,6 +16,7 @@ import { ClientsScreen } from './screens/ClientsScreen';
 import { CatalogScreen } from './screens/CatalogScreen';
 import { ChatsScreen } from './screens/ChatsScreen';
 import { BotsControlScreen } from './screens/BotsControlScreen';
+import { InformesScreen } from './screens/InformesScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LoungePlayerScreen } from './screens/LoungePlayerScreen';
 import { CajaScreen } from './screens/CajaScreen';
@@ -83,6 +84,7 @@ const MainAppContent: React.FC = () => {
       case 'price-lists': return <PriceListsScreen key="price-lists" />;
       case 'ganancias':   return <GananciasScreen   key="ganancias"   />;
       case 'plataforma':  return <PlataformaScreen  key="plataforma"  />;
+      case 'informes':    return <InformesScreen    key="informes"    />;
       default:          return <DashboardScreen key="default"   />;
     }
   };

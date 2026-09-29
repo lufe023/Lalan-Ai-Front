@@ -25,7 +25,9 @@ import {
   X,
   Star,
   Settings,
+  Contact,
 } from 'lucide-react';
+import { exportarContactos } from '../utils/contactos';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -55,8 +57,25 @@ export const ClientsScreen: React.FC = () => {
        servidor. Reintentar daba "ese teléfono ya es de alguien", que era
        ella misma un segundo antes. */
     showToast,
+    settings,
   } = useApp();
   const { currentUser } = useAuth();
+  // Toda la lista de clientas: solo la dirección puede sacarla del sistema
+  const puedeExportar = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+  const [exportando, setExportando] = useState(false);
+  const guardarEnTelefono = async () => {
+    setExportando(true);
+    try {
+      const n = await exportarContactos(settings?.salonName || 'mi salón');
+      showToast('Contactos listos', n
+        ? `${n} clientas en el archivo. Ábrelo en tu teléfono y elige «Agregar a contactos».`
+        : 'Todavía no hay clientas con teléfono.', 'success');
+    } catch (e) {
+      showToast('No se pudo preparar el archivo', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('all');
@@ -518,6 +537,18 @@ export const ClientsScreen: React.FC = () => {
         }
         rightAction={
           <div className="flex items-center gap-2">
+            {puedeExportar && (
+              <button
+                onClick={guardarEnTelefono}
+                disabled={exportando}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-50"
+                title="Guardar las clientas en los contactos de mi teléfono"
+                aria-label="Guardar las clientas en los contactos de mi teléfono"
+                data-medir="Clientas: guardar en mi teléfono"
+              >
+                <Contact className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            )}
             <button
               onClick={handleOpenCatalogMgr}
               className="w-8 h-8 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:bg-slate-200 dark:hover:bg-neutral-700 transition"

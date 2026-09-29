@@ -7,6 +7,9 @@ import { UsoDelPlan } from './UsoDelPlan';
 import {
   NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type PlanLalan, type Recurso,
 } from '../../types/plataforma';
+import { CanalesCliente } from './CanalesCliente';
+import { EditorCanales } from './EditorCanales';
+import { LineasTelefonicas } from './LineasTelefonicas';
 
 /** Lo que llega de una aplicación al piloto para llenar el formulario */
 export interface PrellenadoNegocio { aplicacionId?: string; salon?: string; nombre?: string; telefono?: string; ciudad?: string; planClave?: string | null }
@@ -97,6 +100,8 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
   const [clave, setClave] = useState<ClaveNueva | null>(null);
   const [sede, setSede] = useState('');
   const [error, setError] = useState('');
+  /* Al guardar un canal a mano se vuelve a revisar su salud con Meta */
+  const [versionCanales, setVersionCanales] = useState(0);
   const cargar = useCallback(async () => {
     try { const r = await api.get<NegocioDetalle>(`/plataforma/negocios/${id}`); setD(r); setNotas(r.notasPlataforma ?? ''); } catch (e) { setError((e as Error).message); }
   }, [id]);
@@ -185,6 +190,12 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         <div className={soloSoporte ? 'pointer-events-none' : ''}><Excepciones d={d} catalogo={catalogo} planModulos={planModulos} onCambio={(extra, quitados) => void guardar({ modulosExtra: extra, modulosQuitados: quitados })} /></div>
       </div>
 
+      <CanalesCliente key={`salud-${versionCanales}`} negocioId={id} />
+      <div className="grid lg:grid-cols-2 gap-4">
+        <EditorCanales negocioId={id} alGuardar={() => setVersionCanales((v) => v + 1)} />
+        <LineasTelefonicas negocioId={id} />
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="space-y-2">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Usuarios</div>
@@ -218,7 +229,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
 };
 
 /** Los clientes de Lalan: crear, cambiar de plan, excepciones, suspender */
-export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null; onPrellenadoUsado: () => void; soloSoporte?: boolean }> = ({ prellenado, onPrellenadoUsado, soloSoporte }) => {
+export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null; onPrellenadoUsado: () => void; soloSoporte?: boolean; abrirId?: string | null }> = ({ prellenado, onPrellenadoUsado, soloSoporte, abrirId }) => {
   const [lista, setLista] = useState<NegocioResumen[] | null>(null);
   const [planes, setPlanes] = useState<PlanLalan[]>([]);
   const [catalogo, setCatalogo] = useState<CatalogoModulos | null>(null);
@@ -238,6 +249,8 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
   }, []);
   useEffect(() => { void cargar(); }, [cargar]);
   useEffect(() => { if (prellenado) { setCreando(true); setAbierto(null); } }, [prellenado]);
+  // Desde Salud: abrir directo la ficha del cliente con problemas
+  useEffect(() => { if (abrirId) { setAbierto(abrirId); setCreando(false); } }, [abrirId]);
 
   if (error) return <p className="text-xs text-rose-600">{error}</p>;
   if (!lista || !catalogo) return <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Cargando clientes…</div>;

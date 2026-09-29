@@ -25,6 +25,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { InventarioYMargenes } from '../components/metricas/InventarioYMargenes';
 import { useMetricas } from '../hooks/useMetricas';
 import { Barra, Comparado, PeriodoMetricas, ResumenMetricas } from '../types/metricas';
+import { usePlan } from '../context/PlanContext';
 
 const PERIODOS: { id: PeriodoMetricas; label: string }[] = [
   { id: 'day', label: 'Hoy' },
@@ -281,6 +282,7 @@ export const DashboardScreen: React.FC = () => {
 };
 
 const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; navigateTo: (s: any) => void }> = ({ d, dinero, navigateTo }) => {
+  const { tieneModulo } = usePlan();
   const contra = d.periodo.comparaCon;
   const { citas, asistente: ia, clientas } = d;
   const variasSemanas = d.periodo.id !== 'day';
@@ -311,9 +313,11 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
               {d.dinero.porCobrar > 0
                 ? <>Por cobrar: <b className="text-amber-600">{dinero(d.dinero.porCobrar)}</b> en {plural(d.dinero.comandasAbiertas, 'comanda', 'comandas')}</>
                 : 'Nada pendiente de cobro'}
-              <button onClick={() => navigateTo('ganancias')} className="block mt-1 font-semibold text-[var(--primary)] hover:opacity-70">
-                Ver informe →
-              </button>
+              {tieneModulo('informes') && (
+                <button onClick={() => navigateTo('ganancias')} className="block mt-1 font-semibold text-[var(--primary)] hover:opacity-70">
+                  Ver informe →
+                </button>
+              )}
             </>
           }
         />
