@@ -28,6 +28,7 @@ import {
   Music,
   Bot,
   ChevronRight,
+  Zap,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { CatalogoEnOtraMoneda } from '../components/ajustes/CatalogoEnOtraMoneda';
@@ -36,6 +37,7 @@ import { api, urlDePantalla, urlDeReproductor } from '../services/api';
 import QRCode from 'qrcode';
 import { vocesDisponibles, alCargarVoces, decir, fraseDeTurno } from '../utils/campana';
 import { useAuth } from '../context/AuthContext';
+import { quickAuth, QuickAuthRegistration } from '../services/quickAuth';
 import { CommunicationChannel, ThemeMode, UserRole, ThemePalettePreset, EventoActividad } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
@@ -96,6 +98,36 @@ export const SettingsScreen: React.FC = () => {
   } = useApp();
 
   const { currentUser, logout } = useAuth();
+
+  const [quickReg, setQuickReg] = useState<QuickAuthRegistration>(() => quickAuth.getRegistration());
+
+  const handleVincularDispositivo = async () => {
+    if (!currentUser) return;
+    try {
+      await quickAuth.registerDevice({
+        id: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.roleTitle || currentUser.name,
+        role: currentUser.role,
+        avatar: currentUser.avatar,
+      });
+      setQuickReg(quickAuth.getRegistration());
+      showToast('Acceso Rápido activado', 'Este dispositivo ahora puede entrar con 1 solo toque.', 'success');
+    } catch {
+      setQuickReg(quickAuth.getRegistration());
+      showToast('Dispositivo vinculado localmente', 'Listo para entrar con 1 toque.', 'info');
+    }
+  };
+
+  const handleDesvincularDispositivo = async () => {
+    try {
+      await quickAuth.revokeDevice();
+      setQuickReg(quickAuth.getRegistration());
+      showToast('Dispositivo desvinculado', 'Se ha revocado el acceso rápido en este equipo.', 'info');
+    } catch (e: any) {
+      showToast('Error al desvincular', e?.message, 'warning');
+    }
+  };
 
   const [showThemeModal, setShowThemeModal] = useState(false);
   // Alta de monedas y billetes desde Ajustes
@@ -1541,6 +1573,50 @@ export const SettingsScreen: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Acceso Rápido Seguro con 1 toque */}
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 fill-white" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Acceso Rápido (1 toque)
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+                    {quickReg.isRegistered
+                      ? `Vinculado a este ${quickReg.deviceName || 'dispositivo'}`
+                      : 'No configurado en este dispositivo'}
+                  </p>
+                </div>
+              </div>
+
+              {quickReg.isRegistered ? (
+                <button
+                  type="button"
+                  onClick={handleDesvincularDispositivo}
+                  className="px-2.5 py-1 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400 text-[10px] font-bold hover:bg-red-500/25 transition cursor-pointer"
+                >
+                  Desvincular
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleVincularDispositivo}
+                  className="px-3 py-1 rounded-lg bg-[var(--primary)] text-white text-[10px] font-bold hover:opacity-90 transition cursor-pointer shadow-xs"
+                >
+                  Vincular
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-neutral-400 leading-tight">
+              {quickReg.isRegistered
+                ? 'Este teléfono puede entrar al salón sin volver a ingresar contraseña.'
+                : 'Actívalo para entrar a tu salón con un solo toque desde este equipo.'}
+            </p>
+          </div>
 
           {/* Skip splash toggle */}
           <div className="flex items-center justify-between py-3 px-0.5 border-b border-slate-100 dark:border-neutral-800 mb-1">

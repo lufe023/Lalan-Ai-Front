@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { UserProfile, UserRole } from '../types';
 import { api, tokenStore } from '../services/api';
 import { enSoporte, salirDeSoporte } from '../services/soporte';
+import { quickAuth } from '../services/quickAuth';
 
 // ─── Permissions map by role ──────────────────────────────────────
 const PERMISSIONS: Record<UserRole, UserProfile['permissions']> = {
@@ -18,6 +19,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginWithQuickDevice: () => Promise<void>;
   logout: () => void;
   hasPermission: (permission: keyof UserProfile['permissions']) => boolean;
   /** Ya puso su clave: se quita la pantalla de cambio obligatorio */
@@ -112,6 +114,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {}
   }, []);
 
+  const loginWithQuickDevice = useCallback(async () => {
+    const { user } = await quickAuth.loginWithDevice();
+    setCurrentUser(buildProfile(user));
+    try {
+      localStorage.setItem('lalan_cached_user', JSON.stringify(user));
+    } catch {}
+  }, []);
+
   const logout = useCallback(() => {
     if (enSoporte()) { salirDeSoporte(); return; }
     tokenStore.clear();
@@ -131,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, logout, hasPermission, claveCambiada }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, claveCambiada }}>
       {children}
     </AuthContext.Provider>
   );
