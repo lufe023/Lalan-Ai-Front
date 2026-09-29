@@ -58,6 +58,26 @@ function pwaServiceWorkerPlugin(): Plugin {
           /const CACHE_NAME = ['"].*?['"];/,
           `const CACHE_NAME = ${JSON.stringify(currentCache)};`
         );
+
+        // Pre-cachear también los bundles generados en dist/assets para soporte offline 100% nativo
+        const assetsDir = path.resolve(__dirname, 'dist/assets');
+        if (fs.existsSync(assetsDir)) {
+          const assetFiles = fs
+            .readdirSync(assetsDir)
+            .filter((f) => f.endsWith('.js') || f.endsWith('.css'))
+            .map((f) => `  '/assets/${f}',`);
+
+          if (assetFiles.length > 0) {
+            content = content.replace(
+              /const ASSETS_CORE = \[([\s\S]*?)\];/,
+              (_match, p1) => {
+                const cleanP1 = p1.trim().replace(/,\s*$/, '');
+                return `const ASSETS_CORE = [\n  ${cleanP1},\n${assetFiles.join('\n')}\n];`;
+              }
+            );
+          }
+        }
+
         fs.writeFileSync(distSwPath, content, 'utf-8');
       }
     },

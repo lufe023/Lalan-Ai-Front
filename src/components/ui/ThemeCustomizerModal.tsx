@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence, useDragControls, PanInfo } from 'motion/react';
 import { Palette, X, Check, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../../theme/ThemeContext';
 import { ThemePalettePreset } from '../../types';
@@ -23,8 +23,24 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
   } = useTheme();
 
   const [showCustomPickers, setShowCustomPickers] = useState(isCustomPalette);
+  const dragControls = useDragControls();
+  const touchStartY = useRef<number | null>(null);
 
   if (!isOpen) return null;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY.current !== null) {
+      const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+      if (deltaY > 60) {
+        onClose();
+      }
+      touchStartY.current = null;
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -38,21 +54,56 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
           className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
         />
 
-        {/* Modal / iOS Bottom Sheet */}
+        {/* Modal / iOS Bottom Sheet with drag-to-dismiss */}
         <motion.div
           initial={{ opacity: 0, y: '100%' }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: '100%' }}
           transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+          drag="y"
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0.04, bottom: 0.65 }}
+          onDragEnd={(_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+            if (info.offset.y > 70 || info.velocity.y > 350) {
+              onClose();
+            }
+          }}
           className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-t-[32px] sm:rounded-[32px] bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xl z-10 overflow-hidden"
         >
-          {/* iOS Sheet Handle indicator */}
-          <div className="pt-3 pb-1 flex justify-center shrink-0">
-            <div className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-neutral-700" />
+          {/* iOS Sheet Handle indicator (área táctil ampliada) */}
+          <div
+            className="pt-3 pb-2 flex justify-center shrink-0 touch-none cursor-grab active:cursor-grabbing select-none group"
+            onPointerDown={(e) => dragControls.start(e)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            title="Arrastra hacia abajo para cerrar"
+          >
+            <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-neutral-600 group-hover:bg-slate-400 group-active:scale-95 transition-all" />
           </div>
 
           {/* Header */}
-          <div className="px-5 pt-2 pb-3.5 flex items-center justify-between border-b border-slate-100 dark:border-neutral-800 shrink-0">
+          <div
+            onPointerDown={(e) => {
+              const target = e.target as HTMLElement;
+              if (target.closest('button, a, input, select, textarea')) return;
+              dragControls.start(e);
+            }}
+            onTouchStart={(e) => {
+              const target = e.target as HTMLElement;
+              if (!target.closest('button, a, input, select, textarea')) {
+                handleTouchStart(e);
+              }
+            }}
+            onTouchEnd={(e) => {
+              const target = e.target as HTMLElement;
+              if (!target.closest('button, a, input, select, textarea')) {
+                handleTouchEnd(e);
+              }
+            }}
+            className="px-5 pt-1 pb-3.5 flex items-center justify-between border-b border-slate-100 dark:border-neutral-800 shrink-0 touch-none select-none cursor-grab active:cursor-grabbing"
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-[var(--primary)] flex items-center justify-center shadow-xs">
                 <Palette className="w-5 h-5" />

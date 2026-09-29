@@ -59,8 +59,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const user = await api.get<ApiUser>('/auth/me');
         setCurrentUser(buildProfile(user));
-      } catch {
-        tokenStore.clear();
+        try {
+          localStorage.setItem('lalan_cached_user', JSON.stringify(user));
+        } catch {}
+      } catch (err: any) {
+        const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+        const isNetworkErr = err?.message?.includes('fetch') || err?.name === 'TypeError' || isOffline;
+        const cachedRaw = localStorage.getItem('lalan_cached_user');
+
+        if (cachedRaw && (isNetworkErr || isOffline)) {
+          try {
+            const cachedUser = JSON.parse(cachedRaw);
+            setCurrentUser(buildProfile(cachedUser));
+          } catch {}
+        } else if (err?.message === 'Session expired') {
+          tokenStore.clear();
+          localStorage.removeItem('lalan_cached_user');
+        } else if (!isNetworkErr && !isOffline) {
+          tokenStore.clear();
+          localStorage.removeItem('lalan_cached_user');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -71,7 +89,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Listen for forced logout (token expired)
   useEffect(() => {
     // En soporte, una sesión caducada no cierra nada: se vuelve a la propia
-    const handler = () => { if (enSoporte()) { salirDeSoporte(); return; } setCurrentUser(null); tokenStore.clear(); };
+    const handler = () => {
+      if (enSoporte()) { salirDeSoporte(); return; }
+      setCurrentUser(null);
+      tokenStore.clear();
+      try { localStorage.removeItem('lalan_cached_user'); } catch {}
+    };
     window.addEventListener('lalan:logout', handler);
     return () => window.removeEventListener('lalan:logout', handler);
   }, []);
@@ -84,11 +107,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     tokenStore.set(data.accessToken);
     tokenStore.setRefresh(data.refreshToken);
     setCurrentUser(buildProfile(data.user));
+    try {
+      localStorage.setItem('lalan_cached_user', JSON.stringify(data.user));
+    } catch {}
   }, []);
 
   const logout = useCallback(() => {
     if (enSoporte()) { salirDeSoporte(); return; }
     tokenStore.clear();
+    try {
+      localStorage.removeItem('lalan_cached_user');
+    } catch {}
     setCurrentUser(null);
   }, []);
 

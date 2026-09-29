@@ -49,7 +49,60 @@
     </script>
   </head>
   <body class="bg-neutral-900 antialiased font-sans overflow-x-hidden">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Splash Screen instantáneo inline: se muestra en 0ms y evita pantallas en blanco sin internet -->
+      <div id="pre-react-splash" style="position:fixed;inset:0;background:#09090b;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:24px;color:#fff;font-family:'Plus Jakarta Sans',sans-serif;z-index:99999;user-select:none;-webkit-user-select:none;padding-top:max(env(safe-area-inset-top, 0px) + 20px, 52px);padding-bottom:max(env(safe-area-inset-bottom, 0px) + 20px, 28px);">
+        <!-- Top badge -->
+        <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:99px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);font-size:11px;color:#e4e4e7;letter-spacing:0.3px;">
+          <span style="color:#e11d48;">✦</span>
+          <span>Live Assistant for Logistics, Appointments & Networks</span>
+        </div>
+
+        <!-- Center Emblem -->
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin:auto 0;">
+          <div style="width:84px;height:84px;border-radius:24px;background:linear-gradient(135deg,#e11d48,#6366f1);padding:2px;margin-bottom:20px;box-shadow:0 0 45px rgba(225,29,72,0.38);display:flex;align-items:center;justify-content:center;">
+            <div style="width:100%;height:100%;border-radius:22px;background:#0a0a0c;display:flex;align-items:center;justify-content:center;">
+              <svg viewBox="0 0 120 120" style="width:42px;height:42px;fill:none;stroke:#e11d48;stroke-width:14;stroke-linecap:round;stroke-linejoin:round;">
+                <path d="M52 18V74H94" opacity="0.62"></path>
+                <path d="M30 42V98H72"></path>
+              </svg>
+            </div>
+          </div>
+          <h1 style="font-size:32px;font-weight:800;margin:0 0 8px 0;letter-spacing:-0.5px;color:#ffffff;">Lalan AI</h1>
+          <p style="font-size:11px;color:#a1a1aa;margin:0;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;">Logistics • Appointments • Hospitality • Networks</p>
+        </div>
+
+        <!-- Bottom Loading & Offline Indicator -->
+        <div style="width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;">
+          <div style="width:100%;height:5px;background:#27272a;border-radius:99px;overflow:hidden;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06);position:relative;">
+            <div id="inline-splash-bar" style="width:65%;height:100%;background:linear-gradient(90deg,#e11d48,#f43f5e);border-radius:99px;transition:width 0.4s ease;"></div>
+          </div>
+          <span id="inline-splash-step" style="font-size:11px;color:#a1a1aa;font-family:monospace;letter-spacing:-0.2px;">Iniciando entorno Lalan AI...</span>
+
+          <!-- Offline notice fallback -->
+          <div id="inline-offline-banner" style="display:none;margin-top:14px;padding:10px 14px;border-radius:14px;background:rgba(217,119,6,0.15);border:1px solid rgba(217,119,6,0.35);color:#fef3c7;font-size:11px;line-height:1.4;text-align:center;width:100%;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700;color:#fbbf24;margin-bottom:4px;">
+              <span>📶 Modo sin conexión</span>
+            </div>
+            <span>La app está cargada en memoria. Si no avanza, toca reintentar:</span>
+            <button onclick="location.reload()" style="display:block;margin:8px auto 0;background:#e11d48;color:#fff;border:none;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:bold;cursor:pointer;">Reintentar carga</button>
+          </div>
+        </div>
+      </div>
+      <script>
+        (function() {
+          var isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+          if (isOffline) {
+            var banner = document.getElementById('inline-offline-banner');
+            var step = document.getElementById('inline-splash-step');
+            var bar = document.getElementById('inline-splash-bar');
+            if (banner) banner.style.display = 'block';
+            if (step) step.textContent = 'Modo sin conexión activo';
+            if (bar) bar.style.width = '100%';
+          }
+        })();
+      </script>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       /* Registro del Service Worker y comprobación inmediata de versiones */
