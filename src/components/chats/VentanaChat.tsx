@@ -372,7 +372,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
     <div className="absolute inset-0 z-40 flex flex-col">
       <div id="active-chat-screen" className="relative z-10 w-full h-full flex flex-col bg-white dark:bg-neutral-950">
         {/* Custom iOS Chat Header */}
-        <div className="p-3 px-4 glass-nav border-b border-slate-200/70 dark:border-neutral-800/80 flex items-center justify-between shrink-0">
+        <div
+          className="px-4 pb-3 glass-nav border-b border-slate-200/70 dark:border-neutral-800/80 flex items-center justify-between shrink-0 pt-safe-header"
+          style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 8px), 14px)' }}
+        >
           <div className="flex items-center gap-2.5">
             <button
               onClick={onCerrar}
@@ -542,7 +545,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         {/* Input Bar */}
         <form
           onSubmit={handleSendMessage}
-          className="p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0"
+          className="p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0 pb-safe-tab"
         >
           <input
             type="text"

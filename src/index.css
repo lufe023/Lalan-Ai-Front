@@ -90,13 +90,46 @@
   height: 100dvh;          /* dynamic: excludes browser chrome on mobile */
 }
 
-/* ── Safe-area padding for iPhone tab bar / home indicator ── */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
+/* ── Safe-area utilities for iOS Notch, Dynamic Island, and Home Indicator ── */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Comfort padding for headers so top icons & title never collide with iPhone status bar, notch or signal/wifi icons */
+.pt-safe-header {
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 8px), 14px);
+}
+
+.pt-safe-top {
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 12px);
+}
+
+.top-safe-offset {
+  top: max(calc(env(safe-area-inset-top, 0px) + 12px), 16px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 .pb-safe-tab {
-  /* Ensures tab bar stays above home indicator AND Safari nav bar */
-  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+  /* Ensures tab bar stays comfortably above home indicator AND Safari nav bar */
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 4px), 12px);
+}
+
+.pl-safe {
+  padding-left: max(env(safe-area-inset-left, 0px), 0px);
+}
+
+.pr-safe {
+  padding-right: max(env(safe-area-inset-right, 0px), 0px);
 }
 
 

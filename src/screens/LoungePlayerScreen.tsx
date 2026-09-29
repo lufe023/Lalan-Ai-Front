@@ -1018,7 +1018,10 @@ export const LoungePlayerScreen: React.FC = () => {
   return (
     <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-[#F9FAFB] dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 select-none">
       {/* iOS Minimalist Nav Header */}
-      <div className="shrink-0 z-20 px-4 pt-3 pb-2.5 bg-[#F9FAFB]/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-slate-200/50 dark:border-neutral-900">
+      <div
+        className="shrink-0 z-20 px-4 pb-2.5 bg-[#F9FAFB]/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-slate-200/50 dark:border-neutral-900 pt-safe-header"
+        style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 8px), 14px)' }}
+      >
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">

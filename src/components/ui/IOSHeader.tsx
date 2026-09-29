@@ -60,7 +60,11 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
   };
 
   return (
-    <header id="ios-navigation-header" className="relative w-full shrink-0 z-30 pt-1 pb-2 px-4 select-none">
+    <header
+      id="ios-navigation-header"
+      className="relative w-full shrink-0 z-30 pb-2 px-4 select-none pt-safe-header"
+      style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 8px), 14px)' }}
+    >
       <div className="flex items-center justify-between min-h-[40px]">
         {showBack ? (
           <button

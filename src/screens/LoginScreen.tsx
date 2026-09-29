@@ -48,7 +48,8 @@ export const LoginScreen: React.FC = () => {
   return (
     <div
       id="login-screen"
-      className="flex-1 w-full h-full overflow-y-auto hide-scrollbar flex flex-col items-center justify-center p-6 select-none"
+      className="flex-1 w-full h-full overflow-y-auto hide-scrollbar flex flex-col items-center justify-center p-6 select-none pt-safe-top pb-safe"
+      style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)' }}
     >
       <motion.div
         initial={{ opacity: 0, y: 24 }}
