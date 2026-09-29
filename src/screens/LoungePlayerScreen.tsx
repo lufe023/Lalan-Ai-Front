@@ -1020,7 +1020,7 @@ export const LoungePlayerScreen: React.FC = () => {
       {/* iOS Minimalist Nav Header */}
       <div
         className="shrink-0 z-20 px-4 pb-2.5 bg-[#F9FAFB]/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-slate-200/50 dark:border-neutral-900 pt-safe-header"
-        style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 8px), 14px)' }}
+        style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 8px), 52px))' }}
       >
         <div className="flex items-center justify-between">
           <div>

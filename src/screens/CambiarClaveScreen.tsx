@@ -40,7 +40,7 @@ export const CambiarClaveScreen: React.FC = () => {
   return (
     <div
       className="flex-1 w-full h-full flex items-center justify-center p-6 bg-[#f8fafc] dark:bg-[#09090b] pt-safe-top pb-safe"
-      style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 16px), 24px)' }}
+      style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 16px), 54px))' }}
     >
       <form onSubmit={enviar} className="w-full max-w-sm p-6 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm space-y-4">
         <div className="w-12 h-12 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><KeyRound className="w-6 h-6" /></div>

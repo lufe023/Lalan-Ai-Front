@@ -35,20 +35,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <script>
+      /* Detección temprana de iOS y modo pantalla completa/PWA para garantizar el espacio seguro del notch */
+      (function() {
+        try {
+          var ua = navigator.userAgent || '';
+          var isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+          var isStandalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+          if (isIOS) document.documentElement.classList.add('is-ios');
+          if (isStandalone) document.documentElement.classList.add('is-standalone');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-neutral-900 antialiased font-sans overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      /*
-        Chrome solo ofrece "Instalar aplicación" si hay un service worker
-        registrado que atienda peticiones. El nuestro no cachea nada: solo
-        existe para cumplir ese requisito. Si falla el registro no pasa nada
-        —la web sigue igual—, simplemente no aparece la opción de instalar.
-      */
+      /* Registro del Service Worker y comprobación inmediata de versiones */
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js').catch(function () {});
+          navigator.serviceWorker.register('/sw.js').then(function (reg) {
+            if (reg) {
+              reg.update().catch(function () {});
+            }
+          }).catch(function () {});
         });
       }
     </script>

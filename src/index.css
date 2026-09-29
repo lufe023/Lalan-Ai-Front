@@ -96,6 +96,30 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+
+  /* Escritorio por defecto */
+  --header-safe-pt: max(calc(env(safe-area-inset-top, 0px) + 8px), 14px);
+  --toast-safe-top: max(calc(env(safe-area-inset-top, 0px) + 12px), 16px);
+  --banner-safe-top: max(calc(env(safe-area-inset-top, 0px) + 8px), 14px);
+}
+
+/* En teléfonos móviles, iPhones o cuando la app está instalada como PWA (standalone):
+   el notch / barra de estado de iPhone (ej. iPhone 11) mide entre 44px y 54px.
+   Garantizamos un espacio superior de al menos 52px para que los botones y títulos
+   nunca se mezclen con el reloj (11:41), el notch, el wifi o la batería. */
+@media (max-width: 768px), all and (display-mode: standalone) {
+  :root {
+    --header-safe-pt: max(calc(env(safe-area-inset-top, 0px) + 8px), 52px);
+    --toast-safe-top: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px);
+    --banner-safe-top: max(calc(env(safe-area-inset-top, 0px) + 8px), 52px);
+  }
+}
+
+html.is-ios,
+html.is-standalone {
+  --header-safe-pt: max(calc(env(safe-area-inset-top, 0px) + 8px), 52px);
+  --toast-safe-top: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px);
+  --banner-safe-top: max(calc(env(safe-area-inset-top, 0px) + 8px), 52px);
 }
 
 .pt-safe {
@@ -104,15 +128,15 @@
 
 /* Comfort padding for headers so top icons & title never collide with iPhone status bar, notch or signal/wifi icons */
 .pt-safe-header {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 8px), 14px);
+  padding-top: var(--header-safe-pt);
 }
 
 .pt-safe-top {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 12px);
+  padding-top: var(--header-safe-pt);
 }
 
 .top-safe-offset {
-  top: max(calc(env(safe-area-inset-top, 0px) + 12px), 16px);
+  top: var(--toast-safe-top);
 }
 
 .pb-safe {

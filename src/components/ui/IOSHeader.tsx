@@ -63,7 +63,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
     <header
       id="ios-navigation-header"
       className="relative w-full shrink-0 z-30 pb-2 px-4 select-none pt-safe-header"
-      style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 8px), 14px)' }}
+      style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 8px), 52px))' }}
     >
       <div className="flex items-center justify-between min-h-[40px]">
         {showBack ? (

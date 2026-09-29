@@ -374,7 +374,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         {/* Custom iOS Chat Header */}
         <div
           className="px-4 pb-3 glass-nav border-b border-slate-200/70 dark:border-neutral-800/80 flex items-center justify-between shrink-0 pt-safe-header"
-          style={{ paddingTop: 'max(calc(env(safe-area-inset-top, 0px) + 8px), 14px)' }}
+          style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 8px), 52px))' }}
         >
           <div className="flex items-center gap-2.5">
             <button

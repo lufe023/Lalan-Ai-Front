@@ -77,7 +77,7 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
               onClick={dismissToast}
               className="absolute right-4 left-4 lg:left-auto lg:w-96 z-[200] p-3 rounded-2xl bg-neutral-900/95 text-white backdrop-blur-xl border border-white/15 shadow-2xl flex items-center justify-between gap-3 cursor-pointer top-safe-offset"
-              style={{ top: 'max(calc(env(safe-area-inset-top, 0px) + 12px), 16px)' }}
+              style={{ top: 'var(--toast-safe-top, max(calc(env(safe-area-inset-top, 0px) + 12px), 56px))' }}
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white shrink-0 shadow-sm">
@@ -244,7 +244,7 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
         {/* ── Conversaciones que piden a una persona ── */}
         <div
           className="absolute right-4 left-4 lg:left-auto lg:w-96 z-[190] space-y-2 pointer-events-none"
-          style={{ top: 'max(calc(env(safe-area-inset-top, 0px) + 72px), 80px)' }}
+          style={{ top: 'max(calc(env(safe-area-inset-top, 0px) + 72px), 115px)' }}
         >
           <AnimatePresence>
             {avisosAtencion.map(a => (

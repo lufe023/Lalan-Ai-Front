@@ -5,11 +5,25 @@ import fs from 'fs';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
 /**
- * Plugin para sincronizar la versión de caché del Service Worker (sw.js)
- * directamente con la variable de entorno VITE_CACHE_NAME (o CACHE_NAME)
- * definida en .env.local o variables del sistema.
+ * Lee la versión más fresca de CACHE_NAME directamente desde .env.local
+ * para que cualquier cambio del usuario se refleje al instante en el navegador
+ * sin necesidad de reiniciar el servidor Vite.
  */
-function pwaServiceWorkerPlugin(cacheName: string): Plugin {
+function getCurrentCacheName(): string {
+  try {
+    const envLocalPath = path.resolve(__dirname, '.env.local');
+    if (fs.existsSync(envLocalPath)) {
+      const content = fs.readFileSync(envLocalPath, 'utf-8');
+      const match = content.match(/^VITE_CACHE_NAME\s*=\s*["']?([^"'\r\n]+)["']?/m);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+  } catch {}
+  return process.env.VITE_CACHE_NAME || process.env.CACHE_NAME || 'lalan-shell-v3';
+}
+
+function pwaServiceWorkerPlugin(): Plugin {
   return {
     name: 'pwa-service-worker-env',
     // 1. En entorno de desarrollo (npm run dev)
@@ -19,10 +33,11 @@ function pwaServiceWorkerPlugin(cacheName: string): Plugin {
         if (url === '/sw.js') {
           const swPath = path.resolve(__dirname, 'public/sw.js');
           if (fs.existsSync(swPath)) {
+            const currentCache = getCurrentCacheName();
             let content = fs.readFileSync(swPath, 'utf-8');
             content = content.replace(
               /const CACHE_NAME = ['"].*?['"];/,
-              `const CACHE_NAME = ${JSON.stringify(cacheName)};`
+              `const CACHE_NAME = ${JSON.stringify(currentCache)};`
             );
             res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -37,10 +52,11 @@ function pwaServiceWorkerPlugin(cacheName: string): Plugin {
     closeBundle() {
       const distSwPath = path.resolve(__dirname, 'dist/sw.js');
       if (fs.existsSync(distSwPath)) {
+        const currentCache = getCurrentCacheName();
         let content = fs.readFileSync(distSwPath, 'utf-8');
         content = content.replace(
           /const CACHE_NAME = ['"].*?['"];/,
-          `const CACHE_NAME = ${JSON.stringify(cacheName)};`
+          `const CACHE_NAME = ${JSON.stringify(currentCache)};`
         );
         fs.writeFileSync(distSwPath, content, 'utf-8');
       }
@@ -53,7 +69,7 @@ export default defineConfig(({ mode }) => {
   const cacheName = env.VITE_CACHE_NAME || env.CACHE_NAME || 'lalan-shell-v3';
 
   return {
-    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin(cacheName)],
+    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin()],
     define: {
       'import.meta.env.VITE_CACHE_NAME': JSON.stringify(cacheName),
     },

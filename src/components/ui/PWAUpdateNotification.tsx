@@ -9,45 +9,60 @@ export const PWAUpdateNotification: React.FC = () => {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
-    // Verificar actualizaciones periódicamente (cada 15 minutos)
-    const interval = setInterval(() => {
+    const checkRegistration = () => {
       navigator.serviceWorker.getRegistration().then((reg) => {
-        if (reg) reg.update().catch(() => {});
-      });
-    }, 15 * 60 * 1000);
+        if (!reg) return;
 
-    // Verificar actualizaciones cada vez que el usuario vuelve a la app (desbloquea el teléfono o cambia de app)
+        // Si ya hay un worker descargado en espera
+        if (reg.waiting) {
+          setWaitingWorker(reg.waiting);
+          setUpdateAvailable(true);
+          return;
+        }
+
+        // Si se está instalando uno nuevo en este momento
+        if (reg.installing) {
+          const installing = reg.installing;
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+              setWaitingWorker(installing);
+              setUpdateAvailable(true);
+            }
+          });
+        }
+
+        // Escuchar si encuentra una actualización
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              setWaitingWorker(newWorker);
+              setUpdateAvailable(true);
+            }
+          });
+        });
+
+        // Forzar consulta al servidor
+        reg.update().catch(() => {});
+      }).catch(() => {});
+    };
+
+    // Chequeo inicial
+    checkRegistration();
+
+    // Chequear al reenfocar o volver de otra app / desbloquear iPhone
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        navigator.serviceWorker.getRegistration().then((reg) => {
-          if (reg) reg.update().catch(() => {});
-        });
+        checkRegistration();
       }
     };
+    window.addEventListener('focus', checkRegistration);
     document.addEventListener('visibilitychange', onVisibilityChange);
 
-    // Detectar si el Service Worker descargó una nueva versión
-    navigator.serviceWorker.getRegistration().then((reg) => {
-      if (!reg) return;
-
-      // Si ya hay un worker en espera de activación
-      if (reg.waiting) {
-        setWaitingWorker(reg.waiting);
-        setUpdateAvailable(true);
-      }
-
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        if (!newWorker) return;
-
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            setWaitingWorker(newWorker);
-            setUpdateAvailable(true);
-          }
-        });
-      });
-    });
+    // Chequeo periódico cada 5 minutos
+    const interval = setInterval(checkRegistration, 5 * 60 * 1000);
 
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -59,6 +74,7 @@ export const PWAUpdateNotification: React.FC = () => {
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('focus', checkRegistration);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
@@ -67,10 +83,10 @@ export const PWAUpdateNotification: React.FC = () => {
     if (waitingWorker) {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     }
-    // Pequeño retardo de seguridad o recarga directa si controllerchange no dispara de inmediato
+    // Breve pausa para que el worker tome control antes de recargar
     setTimeout(() => {
       window.location.reload();
-    }, 200);
+    }, 250);
   };
 
   return (
@@ -80,12 +96,12 @@ export const PWAUpdateNotification: React.FC = () => {
           initial={{ opacity: 0, y: -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          className="fixed left-1/2 -translate-x-1/2 z-[250] flex items-center gap-3 bg-neutral-900/95 dark:bg-white/95 text-white dark:text-neutral-900 px-4 py-2 rounded-2xl shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md text-xs select-none top-safe-offset"
-          style={{ top: 'max(calc(env(safe-area-inset-top, 0px) + 12px), 16px)' }}
+          className="fixed left-1/2 -translate-x-1/2 z-[350] flex items-center gap-3 bg-neutral-900/95 dark:bg-white/95 text-white dark:text-neutral-900 px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md text-xs select-none"
+          style={{ top: 'var(--banner-safe-top, max(calc(env(safe-area-inset-top, 0px) + 10px), 52px))' }}
         >
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <span className="font-medium">Nueva versión disponible</span>
+            <span className="font-semibold">Nueva versión disponible</span>
           </div>
           <button
             type="button"

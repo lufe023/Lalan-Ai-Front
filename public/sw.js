@@ -31,7 +31,9 @@ self.addEventListener('install', (event) => {
       return cache.addAll(ASSETS_CORE).catch(() => {});
     })
   );
-  self.skipWaiting();
+  // NOTA: NO llamamos skipWaiting() automáticamente aquí para que el Service Worker
+  // nuevo pase a estado 'waiting' y la UI muestre la notificación "Nueva versión disponible".
+  // Cuando el usuario pulsa "Actualizar", la app envía { type: 'SKIP_WAITING' }.
 });
 
 // Activación: limpiar versiones viejas de caché
