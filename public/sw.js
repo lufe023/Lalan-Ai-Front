@@ -60,6 +60,17 @@ self.addEventListener('message', (event) => {
   }
 });
 
+/** Página mínima cuando no hay red ni copia guardada (en vez de una pantalla rota) */
+function paginaSinConexion() {
+  const html = '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lalan</title>' +
+    '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#09090b;color:#fafafa;font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:24px}' +
+    'button{margin-top:18px;background:#e11d48;color:#fff;border:0;border-radius:12px;padding:12px 22px;font-size:15px;font-weight:700}</style></head>' +
+    '<body><div><div style="font-size:22px;font-weight:700">No pudimos abrir Lalan</div>' +
+    '<p style="color:#a1a1aa;font-size:14px;line-height:1.5">Revisa tu conexión a internet e inténtalo de nuevo.</p>' +
+    '<button onclick="location.reload()">Reintentar</button></div></body></html>';
+  return new Response(html, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
 // Intercepción de peticiones
 self.addEventListener('fetch', (event) => {
   const req = event.request;
@@ -75,41 +86,39 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Peticiones de navegación (cuando el usuario entra o refresca /app/ o /):
-  if (req.mode === 'navigate' || url.pathname.startsWith('/app/') || url.pathname === '/') {
+  // Navegación (abrir o recargar la app): red primero; si falla o responde
+  // algo que no es una página, la copia guardada; y si tampoco hay, una
+  // página propia de "sin conexión". NUNCA una respuesta vacía: el iPhone la
+  // muestra como un archivo descargado ("app · 0 KB").
+  if (req.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        // 1. Si no hay conexión o modo avión, responder inmediatamente desde la caché local
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          const cached =
-            (await caches.match(req)) ||
-            (await caches.match('/app/')) ||
-            (await caches.match('/app/index.html')) ||
-            (await caches.match('/'));
-          if (cached) return cached;
-        }
+        const esPagina = (r) =>
+          r && r.ok && r.type !== 'opaqueredirect' &&
+          (r.headers.get('content-type') || '').includes('text/html');
+        const guardada = async () =>
+          (await caches.match(req)) || (await caches.match('/app/')) || (await caches.match('/app/index.html'));
 
-        // 2. Intentar red con timeout protector de 2000ms para evitar pantallas blancas
+        if (!navigator.onLine) {
+          const c = await guardada();
+          if (esPagina(c)) return c;
+          return paginaSinConexion();
+        }
         try {
-          const fetchPromise = fetch(req);
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Network timeout')), 2000)
-          );
-          const response = await Promise.race([fetchPromise, timeoutPromise]);
-          if (response && response.status === 200) {
-            const respClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, respClone));
+          const r = await Promise.race([
+            fetch(req),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('tiempo')), 6000)),
+          ]);
+          if (esPagina(r)) {
+            const copia = r.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copia)).catch(() => {});
+            return r;
           }
-          return response;
+          const c = await guardada();
+          return esPagina(c) ? c : (r && r.body ? r : paginaSinConexion());
         } catch {
-          // Fallback a caché local
-          const cached =
-            (await caches.match(req)) ||
-            (await caches.match('/app/')) ||
-            (await caches.match('/app/index.html')) ||
-            (await caches.match('/'));
-          if (cached) return cached;
-          return caches.match('/app/index.html');
+          const c = await guardada();
+          return esPagina(c) ? c : paginaSinConexion();
         }
       })()
     );

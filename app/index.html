@@ -124,18 +124,6 @@
       </script>
     </div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      /* Registro del Service Worker y comprobación inmediata de versiones */
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js').then(function (reg) {
-            if (reg) {
-              reg.update().catch(function () {});
-            }
-          }).catch(function () {});
-        });
-      }
-    </script>
   </body>
 </html>
 
