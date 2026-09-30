@@ -1,116 +1,112 @@
-import React, { useEffect, useState } from 'react';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+/** Si la versión nueva llega en estos primeros segundos, se instala sola: la persona aún no está trabajando */
+const SEGUNDOS_ARRANQUE = 8;
+/** Si el aviso no recarga la página en este tiempo, se recarga igual */
+const ESPERA_RECARGA_MS = 3000;
+const inicio = Date.now();
+
+/**
+ * Actualizaciones de la app sin estorbar:
+ *  - Al abrirla (primeros segundos) o si está en segundo plano: se actualiza sola.
+ *  - Si la persona está trabajando: aviso con un botón grande; y si no lo toca,
+ *    se actualiza sola la próxima vez que salga de la app. Nunca recarga a
+ *    mitad de lo que alguien está escribiendo.
+ */
 export const PWAUpdateNotification: React.FC = () => {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [estado, setEstado] = useState<'nada' | 'aviso' | 'actualizando'>('nada');
+  const esperando = useRef<ServiceWorker | null>(null);
+  const aplicado = useRef(false);
+
+  const aplicar = (visible: boolean) => {
+    if (aplicado.current || !esperando.current) return;
+    aplicado.current = true;
+    if (visible) setEstado('actualizando');
+    esperando.current.postMessage({ type: 'SKIP_WAITING' });
+    // La recarga la hace "controllerchange"; esto es por si no llega
+    setTimeout(() => window.location.reload(), ESPERA_RECARGA_MS);
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
-    const checkRegistration = () => {
+    const hayNueva = (w: ServiceWorker) => {
+      esperando.current = w;
+      if (document.visibilityState === 'hidden') aplicar(false);
+      else if (Date.now() - inicio < SEGUNDOS_ARRANQUE * 1000) aplicar(true);
+      else setEstado((e) => (e === 'nada' ? 'aviso' : e));
+    };
+    const vigilar = (w: ServiceWorker) => {
+      w.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) hayNueva(w);
+      });
+    };
+
+    const revisar = () => {
       navigator.serviceWorker.getRegistration().then((reg) => {
         if (!reg) return;
-
-        // Si ya hay un worker descargado en espera
-        if (reg.waiting) {
-          setWaitingWorker(reg.waiting);
-          setUpdateAvailable(true);
-          return;
-        }
-
-        // Si se está instalando uno nuevo en este momento
-        if (reg.installing) {
-          const installing = reg.installing;
-          installing.addEventListener('statechange', () => {
-            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-              setWaitingWorker(installing);
-              setUpdateAvailable(true);
-            }
-          });
-        }
-
-        // Escuchar si encuentra una actualización
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              setWaitingWorker(newWorker);
-              setUpdateAvailable(true);
-            }
-          });
-        });
-
-        // Forzar consulta al servidor
+        if (reg.waiting && navigator.serviceWorker.controller) { hayNueva(reg.waiting); return; }
+        if (reg.installing) vigilar(reg.installing);
         reg.update().catch(() => {});
       }).catch(() => {});
     };
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      reg?.addEventListener('updatefound', () => { if (reg.installing) vigilar(reg.installing); });
+    }).catch(() => {});
 
-    // Chequeo inicial
-    checkRegistration();
-
-    // Chequear al reenfocar o volver de otra app / desbloquear iPhone
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkRegistration();
-      }
+    const alCambiarVisibilidad = () => {
+      // Salió de la app con una versión esperando: se instala ahora, sin que lo note
+      if (document.visibilityState === 'hidden') { if (esperando.current) aplicar(false); }
+      else revisar();
     };
-    window.addEventListener('focus', checkRegistration);
-    document.addEventListener('visibilitychange', onVisibilityChange);
 
-    // Chequeo periódico cada 5 minutos
-    const interval = setInterval(checkRegistration, 5 * 60 * 1000);
+    let recargando = false;
+    const alCambiarControl = () => { if (!recargando) { recargando = true; window.location.reload(); } };
 
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
-
+    revisar();
+    document.addEventListener('visibilitychange', alCambiarVisibilidad);
+    navigator.serviceWorker.addEventListener('controllerchange', alCambiarControl);
+    const cada = setInterval(revisar, 5 * 60 * 1000);
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', checkRegistration);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      clearInterval(cada);
+      document.removeEventListener('visibilitychange', alCambiarVisibilidad);
+      navigator.serviceWorker.removeEventListener('controllerchange', alCambiarControl);
     };
   }, []);
 
-  const handleUpdate = () => {
-    if (waitingWorker) {
-      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-    }
-    // Breve pausa para que el worker tome control antes de recargar
-    setTimeout(() => {
-      window.location.reload();
-    }, 250);
-  };
-
   return (
     <AnimatePresence>
-      {updateAvailable && (
+      {estado !== 'nada' && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          className="fixed left-1/2 -translate-x-1/2 z-[350] flex items-center gap-3 bg-neutral-900/95 dark:bg-white/95 text-white dark:text-neutral-900 px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10 dark:border-black/10 backdrop-blur-md text-xs select-none"
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          className="fixed inset-x-3 z-[350] mx-auto max-w-md flex items-center gap-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 pl-4 pr-2 py-2 rounded-2xl shadow-2xl select-none"
           style={{ top: 'var(--banner-safe-top, max(calc(env(safe-area-inset-top, 0px) + 10px), 52px))' }}
+          role="status"
         >
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span className="font-semibold">Nueva versión disponible</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleUpdate}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[var(--primary)] text-white font-bold text-[11px] shadow-sm hover:opacity-90 active:scale-95 transition cursor-pointer"
-          >
-            <RefreshCw className="w-3 h-3" />
-            <span>Actualizar</span>
-          </button>
+          {estado === 'actualizando' ? (
+            <div className="flex items-center gap-2 py-2 text-sm font-semibold">
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
+              Actualizando Lalan…
+            </div>
+          ) : (<>
+            <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
+            <div className="flex-1 min-w-0 leading-tight">
+              <div className="text-sm font-bold">Hay una versión nueva</div>
+              <div className="text-[11px] opacity-70">Tarda un segundo. Si no, se pone sola al salir de la app.</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => aplicar(true)}
+              className="shrink-0 min-h-[44px] flex items-center gap-1.5 px-4 rounded-xl bg-[var(--primary)] text-white font-bold text-sm shadow-sm active:scale-95 transition cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Actualizar
+            </button>
+          </>)}
         </motion.div>
       )}
     </AnimatePresence>

@@ -415,7 +415,7 @@ export const IOSTabBar: React.FC = () => {
           onPointerMove={alMoverPuntero}
           onPointerUp={alSoltarPuntero}
           onPointerLeave={alSoltarPuntero}
-          className="w-full pt-1.5 pb-safe-tab glass-nav border-t border-slate-200/70 dark:border-neutral-800/80 overflow-x-auto hide-scrollbar overscroll-x-contain"
+          className="w-full pt-1.5 pb-safe-tab glass-nav border-t border-slate-200/70 dark:border-neutral-800/80 overflow-x-auto overflow-y-hidden overscroll-none touch-pan-x hide-scrollbar"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {/* `w-max` es lo que permite el scroll: sin él, flex reparte diez

@@ -52,7 +52,9 @@ function pwaServiceWorkerPlugin(): Plugin {
     closeBundle() {
       const distSwPath = path.resolve(__dirname, 'dist/sw.js');
       if (fs.existsSync(distSwPath)) {
-        const currentCache = getCurrentCacheName();
+        /* Un nombre distinto en CADA compilación: si el sw.js no cambia, el
+           teléfono nunca se entera de que hay versión nueva. */
+        const currentCache = `lalan-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`;
         let content = fs.readFileSync(distSwPath, 'utf-8');
         content = content.replace(
           /const CACHE_NAME = ['"].*?['"];/,

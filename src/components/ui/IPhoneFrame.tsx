@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Sparkles, Bell, AlertTriangle, BellRing, Coffee, Music2, HeartHandshake, X } from 'lucide-react';
 import { LogoLalan } from './LogoLalan';
@@ -55,9 +55,18 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
     dismissDue(appt.id);
   };
 
+  useEffect(() => {
+    /* iOS a veces no deja dibujar la franja de la raya de inicio: se ve el
+       fondo de la página. Se pinta del mismo color que el menú de abajo para
+       que parezca parte de él. (El splash lo pone oscuro mientras se ve.) */
+    const fondo = isDark ? '#111114' : '#fdfdfe';
+    document.body.style.background = fondo;
+    document.documentElement.style.background = fondo;
+  }, [isDark]);
+
   return (
     <div
-      className={`h-dvh w-full overflow-hidden transition-colors duration-300 ${
+      className={`marco-app h-dvh w-full overflow-hidden transition-colors duration-300 ${
         isDark ? 'bg-neutral-950' : 'bg-slate-100'
       }`}
     >

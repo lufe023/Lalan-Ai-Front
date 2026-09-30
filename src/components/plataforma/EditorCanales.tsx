@@ -2,14 +2,24 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Copy, Eye, EyeOff, KeyRound, Loader2, Pencil } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { horaDe } from '../../utils/hora';
 
 interface CanalFila {
   locationId: string; sede: string; channel: 'whatsapp' | 'instagram' | 'messenger'; nombre: string;
   identificador: string | null; cuentaMeta: string | null; tieneToken: boolean; encendido: boolean;
-  /** PIN de dos pasos del número (solo WhatsApp, solo lectura) */
-  pin: string | null;
+  /** id de la fila (null si el canal nunca se conectó) */
+  id: string | null;
+  /** Hay PIN de dos pasos guardado (solo WhatsApp; se mira con "Ver") */
+  tienePin: boolean;
   conexion: string | null; conectadoEn: string | null; conectadoPor: string | null;
 }
+interface Vista { id: string; canal: string; que: 'token' | 'pin'; email: string; creadoEn: string }
+type Respuesta = { canales: CanalFila[]; vistas: Vista[] };
+/** Segundos que un secreto queda a la vista antes de volver a ocultarse */
+const SEGUNDOS_VISIBLE = 30;
+const QUE: Record<Vista['que'], string> = { token: 'el token', pin: 'el PIN' };
+const NOMBRE_CANAL: Record<string, string> = { whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger' };
 const COMO: Record<string, string> = { boton_meta: 'con el botón de Meta', manual: 'a mano' };
 const AYUDA: Record<string, { id: string; cuenta: string }> = {
   whatsapp: { id: 'Phone number ID', cuenta: 'WABA ID (cuenta de WhatsApp Business)' },
@@ -28,13 +38,51 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
   const [abierto, setAbierto] = useState<string | null>(null);
   const [f, setF] = useState({ identificador: '', cuentaMeta: '', token: '', quitarToken: false, encendido: true });
   const [guardando, setGuardando] = useState(false);
-  const [pinVisible, setPinVisible] = useState<string | null>(null);
+  const { currentUser } = useAuth();
+  const esSuperAdmin = currentUser?.role === 'super_admin';
+  const [vistas, setVistas] = useState<Vista[]>([]);
+  /** El secreto que se está mirando: se oculta solo a los 30 segundos */
+  const [visible, setVisible] = useState<{ clave: string; valor: string } | null>(null);
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => setVisible(null), SEGUNDOS_VISIBLE * 1000);
+    return () => clearTimeout(t);
+  }, [visible]);
 
   const cargar = useCallback(async () => {
-    try { setFilas((await api.get<{ canales: CanalFila[] }>(`/plataforma/negocios/${negocioId}/canales`)).canales); }
+    try { const r = await api.get<Respuesta>(`/plataforma/negocios/${negocioId}/canales`); setFilas(r.canales); setVistas(r.vistas ?? []); }
     catch { setFilas([]); }
   }, [negocioId]);
   useEffect(() => { void cargar(); }, [cargar]);
+
+  const ver = async (c: CanalFila, que: Vista['que']) => {
+    const clave = `${c.id}:${que}`;
+    if (visible?.clave === clave) { setVisible(null); return; }
+    try {
+      const r = await api.post<{ valor: string }>(`/plataforma/negocios/${negocioId}/canales/${c.id}/ver`, { que });
+      setVisible({ clave, valor: r.valor });
+      void cargar();
+    } catch (e) { showToast('No se pudo mostrar', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'); }
+  };
+  const copiar = (valor: string, que: Vista['que']) => {
+    void navigator.clipboard.writeText(valor);
+    showToast(que === 'pin' ? 'PIN copiado' : 'Token copiado', que === 'pin' ? 'Dáselo solo a este cliente si se muda de proveedor.' : 'No lo pegues en chats ni correos.', 'success');
+  };
+  /** Un secreto oculto, con "Ver" (solo super admin, queda anotado) y "Copiar" mientras se ve */
+  const secreto = (c: CanalFila, que: Vista['que']) => {
+    const abierto = visible?.clave === `${c.id}:${que}` ? visible.valor : null;
+    return (<>
+      <b className={`font-mono ${que === 'pin' ? 'tracking-widest' : 'break-all'} ${abierto && que === 'token' ? 'text-[10px] font-normal' : ''}`}>{abierto ?? (que === 'pin' ? '••••••' : '••••••••')}</b>
+      {esSuperAdmin && (
+        <button type="button" title={abierto ? 'Ocultar' : 'Ver (queda anotado)'} onClick={() => void ver(c, que)} className="p-0.5 text-slate-400 hover:text-[var(--primary)] cursor-pointer shrink-0">
+          {abierto ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+        </button>
+      )}
+      {abierto && (
+        <button type="button" title="Copiar" onClick={() => copiar(abierto, que)} className="p-0.5 text-slate-400 hover:text-[var(--primary)] cursor-pointer shrink-0"><Copy className="w-3.5 h-3.5" /></button>
+      )}
+    </>);
+  };
 
   const clave = (c: CanalFila) => `${c.locationId}:${c.channel}`;
   const abrir = (c: CanalFila) => {
@@ -44,11 +92,11 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
   const guardar = async (c: CanalFila) => {
     setGuardando(true);
     try {
-      const r = await api.put<{ canales: CanalFila[] }>(`/plataforma/negocios/${negocioId}/canales`, {
+      const r = await api.put<Respuesta>(`/plataforma/negocios/${negocioId}/canales`, {
         locationId: c.locationId, channel: c.channel, identificador: f.identificador, cuentaMeta: f.cuentaMeta,
         ...(f.token.trim() ? { token: f.token.trim() } : {}), ...(f.quitarToken ? { quitarToken: true } : {}), encendido: f.encendido,
       });
-      setFilas(r.canales); setAbierto(null); alGuardar?.();
+      setFilas(r.canales); setVistas(r.vistas ?? []); setAbierto(null); alGuardar?.();
       showToast('Canal guardado', `${c.nombre} de ${c.sede} quedó actualizado.`, 'success');
     } catch (e) {
       showToast('No se pudo guardar', (e as Error)?.message || 'Revisa los datos.', 'warning');
@@ -83,17 +131,15 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
             {c.channel === 'whatsapp' && c.identificador && (
               <div className="mt-1 flex items-center gap-1.5 text-[11px]">
                 <span className="text-slate-500">PIN de dos pasos:</span>
-                {c.pin ? (<>
-                  <b className="font-mono tracking-widest">{pinVisible === k ? c.pin : '••••••'}</b>
-                  <button type="button" title={pinVisible === k ? 'Ocultar' : 'Ver'} onClick={() => setPinVisible(pinVisible === k ? null : k)} className="p-0.5 text-slate-400 hover:text-[var(--primary)] cursor-pointer">
-                    {pinVisible === k ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                  <button type="button" title="Copiar" onClick={() => { void navigator.clipboard.writeText(c.pin!); showToast('PIN copiado', 'Dáselo solo a este cliente si se muda de proveedor.', 'success'); }} className="p-0.5 text-slate-400 hover:text-[var(--primary)] cursor-pointer">
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </>) : (
+                {c.tienePin ? secreto(c, 'pin') : (
                   <span className="text-slate-400">sin PIN guardado (número en coexistencia, conectado a mano o sin registrar)</span>
                 )}
+              </div>
+            )}
+            {c.tieneToken && c.id && esSuperAdmin && abierto !== k && (
+              <div className="mt-1 flex items-start gap-1.5 text-[11px]">
+                <span className="text-slate-500 shrink-0">Token:</span>
+                {secreto(c, 'token')}
               </div>
             )}
             {abierto === k && (
@@ -120,6 +166,18 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
           </div>
         );
       })}
+      {vistas.length > 0 && (
+        <details className="text-[11px]">
+          <summary className="cursor-pointer text-slate-500">Quién ha visto secretos de este cliente</summary>
+          <ul className="mt-1 space-y-0.5">
+            {vistas.map((v) => (
+              <li key={v.id} className="text-slate-500">
+                {new Date(v.creadoEn).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}, {horaDe(v.creadoEn)} · {v.email} vio {QUE[v.que]} de {NOMBRE_CANAL[v.canal] ?? v.canal}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 };

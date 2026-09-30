@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Bot, WifiOff, RefreshCw, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Sparkles, WifiOff, RefreshCw, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { LogoLalan } from '../components/ui/LogoLalan';
 
 export const SplashScreen: React.FC = () => {
   const { closeSplash } = useApp();
@@ -45,21 +46,21 @@ export const SplashScreen: React.FC = () => {
     const timer1 = setTimeout(() => {
       setProgress(55);
       setLoadingStep('Conectando canales inteligentes (WhatsApp/IG)...');
-    }, 400);
+    }, 250);
 
     const timer2 = setTimeout(() => {
       setProgress(85);
       setLoadingStep('Sincronizando agenda, logística y hospitalidad...');
-    }, 1000);
+    }, 550);
 
     const timer3 = setTimeout(() => {
       setProgress(100);
       setLoadingStep('¡Todo listo! Bienvenido a Lalan AI');
-    }, 1600);
+    }, 850);
 
     const timer4 = setTimeout(() => {
       closeSplash();
-    }, 2200);
+    }, 1200);
 
     return () => {
       clearTimeout(timer1);
@@ -106,7 +107,7 @@ export const SplashScreen: React.FC = () => {
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[11px] font-medium tracking-wide text-neutral-200"
       >
         <Sparkles className="w-3.5 h-3.5 text-[var(--primary)] animate-spin" />
-        <span>Live Assistant for Logistics, Appointments & Networks</span>
+        <span>Live Assistant for Logistics, Appointments & Networking</span>
       </motion.div>
 
       {/* Central Animated Luxury Emblem */}
@@ -124,7 +125,7 @@ export const SplashScreen: React.FC = () => {
               transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
               className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
             />
-            <Bot className="w-12 h-12 text-[var(--primary)] stroke-[1.5]" />
+            <LogoLalan className="w-12 h-12 text-[var(--primary)]" titulo="Lalan" />
           </div>
         </motion.div>
 
@@ -144,7 +145,7 @@ export const SplashScreen: React.FC = () => {
           transition={{ delay: 0.5 }}
           className="text-xs text-neutral-400 max-w-xs font-medium tracking-wide uppercase"
         >
-          Logistics • Appointments • Hospitality • Networks
+          Logistics • Appointments • Hospitality • Networking
         </motion.p>
       </div>
 

@@ -63,20 +63,6 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleQuickLoginDev = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      await login({ email: 'admin@lalan.ai', password: 'Admin1234!' });
-      showToast('¡Bienvenida/o!', 'Sesión iniciada correctamente.', 'success');
-      navigateTo('dashboard');
-    } catch (err: any) {
-      setError(err?.message ?? 'Error al iniciar sesión.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div
       id="login-screen"
@@ -247,17 +233,6 @@ export const LoginScreen: React.FC = () => {
               )}
             </div>
 
-            {/* Entrada rápida de prueba en desarrollo */}
-            {import.meta.env.DEV && (
-              <button
-                type="button"
-                onClick={handleQuickLoginDev}
-                disabled={loading}
-                className="w-full mt-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] text-slate-400 dark:text-neutral-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-40 cursor-pointer"
-              >
-                ⚡ Admin demo (Dev)
-              </button>
-            )}
           </>
         )}
 

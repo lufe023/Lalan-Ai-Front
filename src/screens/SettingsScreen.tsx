@@ -107,15 +107,15 @@ export const SettingsScreen: React.FC = () => {
       await quickAuth.registerDevice({
         id: currentUser.id,
         name: currentUser.name,
-        email: currentUser.roleTitle || currentUser.name,
+        email: (currentUser as any).email ?? '',
         role: currentUser.role,
         avatar: currentUser.avatar,
       });
       setQuickReg(quickAuth.getRegistration());
       showToast('Acceso Rápido activado', 'Este dispositivo ahora puede entrar con 1 solo toque.', 'success');
-    } catch {
+    } catch (e: any) {
       setQuickReg(quickAuth.getRegistration());
-      showToast('Dispositivo vinculado localmente', 'Listo para entrar con 1 toque.', 'info');
+      showToast('No se pudo activar el acceso rápido', e?.message || 'Inténtalo de nuevo.', 'warning');
     }
   };
 

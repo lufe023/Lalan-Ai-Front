@@ -24,7 +24,7 @@ export const ActivarAccesoRapidoModal: React.FC<Props> = ({ isOpen, onClose }) =
       await quickAuth.registerDevice({
         id: currentUser.id,
         name: currentUser.name,
-        email: currentUser.roleTitle || currentUser.name,
+        email: (currentUser as any).email ?? '',
         role: currentUser.role,
         avatar: currentUser.avatar,
       });
@@ -35,12 +35,8 @@ export const ActivarAccesoRapidoModal: React.FC<Props> = ({ isOpen, onClose }) =
       );
       onClose();
     } catch (err: any) {
-      // Si el backend no tiene el endpoint activo aún, informamos claramente
-      showToast(
-        'Acceso Rápido guardado en este dispositivo',
-        'Configurado localmente. Recuerda habilitar la ruta en el backend.',
-        'info'
-      );
+      // No se guardó nada: se dice la verdad (antes decía "guardado" aunque fallara)
+      showToast('No se pudo activar el acceso rápido', err?.message || 'Inténtalo de nuevo desde Configuración.', 'warning');
       onClose();
     } finally {
       setLoading(false);

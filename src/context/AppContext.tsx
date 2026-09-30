@@ -1505,11 +1505,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const [showSplash, setShowSplash] = useState(() => {
-    try { return localStorage.getItem('skipSplash') !== 'true'; } catch { return true; }
+    /* Una vez por sesión: al recargar (por ejemplo, al actualizarse la app)
+       no se repite. La pantalla negra de index.html ya cubre el arranque. */
+    try {
+      if (localStorage.getItem('skipSplash') === 'true' || sessionStorage.getItem('splashVisto') === '1') return false;
+      sessionStorage.setItem('splashVisto', '1');
+      return true;
+    } catch { return true; }
   });
   useEffect(() => {
     if (!showSplash) return; // already hidden (skip mode)
-    const t = setTimeout(() => setShowSplash(false), 2200);
+    const t = setTimeout(() => setShowSplash(false), 1200);
     return () => clearTimeout(t);
   }, [showSplash]);
   const triggerSplash = () => setShowSplash(true);

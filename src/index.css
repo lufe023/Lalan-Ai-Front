@@ -144,8 +144,41 @@ html.is-standalone {
 }
 
 .pb-safe-tab {
-  /* Ensures tab bar stays comfortably above home indicator AND Safari nav bar */
-  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 4px), 12px);
+  /* La raya de inicio del iPhone mide unos 13px desde el borde; la zona
+     segura (34px) deja aire de sobra. Se usa un poco menos para que los
+     botones queden abajo, sin tocar la raya. En Android (barra de gestos) o
+     sin zona segura queda en 10px. */
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) - 4px), 8px);
+}
+
+/* App instalada (PWA): en iOS 100dvh a veces se queda corto y debajo del
+   menú se veía el fondo negro del body. Pegado a los cuatro bordes, el menú
+   llega hasta abajo y su propio fondo rellena la zona segura. */
+html.is-standalone .marco-app {
+  position: fixed;
+  inset: 0;
+  height: auto;
+}
+
+/* iPhone, app instalada, barra de estado translúcida: iOS le da a la página
+   la altura de la pantalla MENOS la barra de estado, y esa diferencia queda
+   abajo, en la zona de la raya de inicio. Lo que está "fijo" no se dibuja
+   ahí, pero el documento sí (por eso al arrastrar el menú bajaba y se veía
+   bien). Se alarga el documento esa diferencia y la app va dentro de él. */
+html.is-ios.is-standalone,
+html.is-ios.is-standalone body {
+  /* --alto-app = alto real de la pantalla, medido en index.html */
+  height: var(--alto-app, calc(100dvh + env(safe-area-inset-top, 0px)));
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.is-ios.is-standalone .marco-app {
+  position: absolute;
+  inset: auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--alto-app, calc(100dvh + env(safe-area-inset-top, 0px)));
 }
 
 .pl-safe {
@@ -166,3 +199,4 @@ button, [role="button"], .ios-touch, label, select {
   -webkit-user-select: none;
   user-select: none;
 }
+

@@ -44,9 +44,29 @@
           var isStandalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
           if (isIOS) document.documentElement.classList.add('is-ios');
           if (isStandalone) document.documentElement.classList.add('is-standalone');
+          /* iPhone con la app instalada: iOS mide la página más corta que la
+             pantalla. La app usa el alto REAL de la pantalla, y la página no
+             debe desplazarse nunca (si se corre, la app sube y el menú baja). */
+          if (isIOS && isStandalone) {
+            var raiz = document.documentElement;
+            var fijarAlto = function () {
+              var vertical = window.innerHeight >= window.innerWidth;
+              var alto = vertical ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
+              raiz.style.setProperty('--alto-app', alto + 'px');
+            };
+            fijarAlto();
+            window.addEventListener('resize', fijarAlto);
+            window.addEventListener('orientationchange', function () { setTimeout(fijarAlto, 300); });
+            window.addEventListener('scroll', function () { if (window.scrollY !== 0) window.scrollTo(0, 0); }, { passive: true });
+          }
         } catch (e) {}
       })();
     </script>
+    <style>
+      /* Mismo arreglo que en index.css (iPhone, app instalada) para el splash inicial */
+      html.is-ios.is-standalone, html.is-ios.is-standalone body { height: var(--alto-app, 100%); overflow: hidden; background: #09090b; }
+      html.is-ios.is-standalone #pre-react-splash { position: absolute !important; bottom: auto !important; height: var(--alto-app, 100%); }
+    </style>
   </head>
   <body class="bg-neutral-900 antialiased font-sans overflow-x-hidden">
     <div id="root">

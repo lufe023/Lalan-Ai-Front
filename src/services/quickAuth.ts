@@ -1,4 +1,4 @@
-import { api, tokenStore, publicRequest } from './api';
+import { api, tokenStore, publicRequest, ErrorPublico } from './api';
 
 const DEVICE_ID_KEY = 'lalan_quick_device_id';
 const DEVICE_SECRET_KEY = 'lalan_quick_device_secret';
@@ -132,18 +132,18 @@ export const quickAuth = {
     }
 
     // 1. Enviar petición al endpoint público de acceso rápido
-    const res = await publicRequest<{
-      accessToken: string;
-      refreshToken: string;
-      user: any;
-      newDeviceSecret?: string;
-    }>('/auth/quick-login', {
-      method: 'POST',
-      body: {
-        deviceId,
-        deviceSecret,
-      },
-    });
+    let res: { accessToken: string; refreshToken: string; user: any; newDeviceSecret?: string };
+    try {
+      res = await publicRequest('/auth/quick-login', { method: 'POST', body: { deviceId, deviceSecret } });
+    } catch (e) {
+      // 401: desvinculado, vencido o secreto viejo. El botón deja de salir y se entra con clave.
+      if (e instanceof ErrorPublico && e.status === 401) {
+        localStorage.removeItem(DEVICE_SECRET_KEY);
+        localStorage.removeItem(DEVICE_USER_KEY);
+        localStorage.removeItem(DEVICE_NAME_KEY);
+      }
+      throw e;
+    }
 
     // 2. Guardar tokens de sesión
     tokenStore.set(res.accessToken);
