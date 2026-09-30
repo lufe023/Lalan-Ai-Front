@@ -8,6 +8,7 @@ import { useDinero } from '../hooks/useDinero';
 import type { ClaveModulo } from '../types/plataforma';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
+import { InformesDeLalan } from '../components/informes/InformesDeLalan';
 
 /** Los informes que ya viven en otras pantallas: aquí se reúnen, allá siguen igual */
 const ACCESOS: { pantalla: ScreenName; titulo: string; texto: string; icono: React.FC<{ className?: string }>; modulo?: ClaveModulo }[] = [
@@ -124,6 +125,7 @@ export const InformesScreen: React.FC = () => {
     <div className="relative flex-1 w-full h-full flex flex-col overflow-hidden text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <IOSHeader title="Informes" subtitle="Todo lo que pasa en tu salón, en un solo lugar" />
       <PageContent className="space-y-5">
+        <InformesDeLalan />
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {accesos.map(a => (
             <button key={a.pantalla} type="button" onClick={() => navigateTo(a.pantalla)} data-medir={`Informes: ${a.titulo}`}

@@ -811,7 +811,30 @@ const FALLBACK_TRACK: LoungeTrack = {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
-  const [currentScreen, setCurrentScreen] = useState<ScreenName>('dashboard');
+  /* Si iOS recarga la app al volver de otra (lo hace cuando necesita memoria),
+     se vuelve a la misma pantalla en vez de empezar de cero */
+  const [currentScreen, setCurrentScreen] = useState<ScreenName>(() => {
+    try {
+      // Al tocar una notificación se abre /app/?ir=chats
+      const ir = new URLSearchParams(window.location.search).get('ir');
+      if (ir) return ir as ScreenName;
+      return (sessionStorage.getItem('lalan.pantallaActual') as ScreenName) || 'dashboard';
+    } catch { return 'dashboard'; }
+  });
+  /* Con la app ya abierta, la notificación le pide ir a una pantalla */
+  useEffect(() => {
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.has('ir')) { u.searchParams.delete('ir'); window.history.replaceState(null, '', u.pathname + u.search + u.hash); }
+    } catch { /* nada */ }
+    if (!('serviceWorker' in navigator)) return;
+    const oir = (e: MessageEvent) => { if (e.data?.tipo === 'ir' && e.data.pantalla) setCurrentScreen(e.data.pantalla as ScreenName); };
+    navigator.serviceWorker.addEventListener('message', oir);
+    return () => navigator.serviceWorker.removeEventListener('message', oir);
+  }, []);
+  useEffect(() => {
+    try { sessionStorage.setItem('lalan.pantallaActual', currentScreen); } catch { /* sin almacenamiento: se vive sin ello */ }
+  }, [currentScreen]);
   const [screenHistory, setScreenHistory] = useState<ScreenName[]>([]);
   const navigateTo = useCallback((screen: ScreenName) => {
     setScreenHistory(h => [...h, currentScreen]);

@@ -168,7 +168,7 @@ html.is-standalone .marco-app {
 html.is-ios.is-standalone,
 html.is-ios.is-standalone body {
   /* --alto-app = alto real de la pantalla, medido en index.html */
-  height: var(--alto-app, calc(100dvh + env(safe-area-inset-top, 0px)));
+  height: var(--alto-app, 100dvh);
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -178,7 +178,7 @@ html.is-ios.is-standalone .marco-app {
   top: 0;
   left: 0;
   right: 0;
-  height: var(--alto-app, calc(100dvh + env(safe-area-inset-top, 0px)));
+  height: var(--alto-app, 100dvh);
 }
 
 .pl-safe {

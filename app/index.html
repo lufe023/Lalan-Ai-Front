@@ -49,7 +49,13 @@
              debe desplazarse nunca (si se corre, la app sube y el menú baja). */
           if (isIOS && isStandalone) {
             var raiz = document.documentElement;
+            var escribiendo = function () {
+              var el = document.activeElement;
+              return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+            };
             var fijarAlto = function () {
+              /* Con el teclado abierto manda iOS (así sube el campo por encima del teclado) */
+              if (escribiendo()) { raiz.style.removeProperty('--alto-app'); return; }
               var vertical = window.innerHeight >= window.innerWidth;
               var alto = vertical ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
               raiz.style.setProperty('--alto-app', alto + 'px');
@@ -57,7 +63,12 @@
             fijarAlto();
             window.addEventListener('resize', fijarAlto);
             window.addEventListener('orientationchange', function () { setTimeout(fijarAlto, 300); });
-            window.addEventListener('scroll', function () { if (window.scrollY !== 0) window.scrollTo(0, 0); }, { passive: true });
+            document.addEventListener('focusin', fijarAlto);
+            /* Al cerrar el teclado, todo vuelve a su sitio */
+            document.addEventListener('focusout', function () {
+              setTimeout(function () { if (!escribiendo()) { fijarAlto(); window.scrollTo(0, 0); } }, 100);
+            });
+            window.addEventListener('scroll', function () { if (!escribiendo() && window.scrollY !== 0) window.scrollTo(0, 0); }, { passive: true });
           }
         } catch (e) {}
       })();
@@ -102,15 +113,25 @@
           <!-- Offline notice fallback -->
           <div id="inline-offline-banner" style="display:none;margin-top:14px;padding:10px 14px;border-radius:14px;background:rgba(217,119,6,0.15);border:1px solid rgba(217,119,6,0.35);color:#fef3c7;font-size:11px;line-height:1.4;text-align:center;width:100%;">
             <div style="display:flex;align-items:center;justify-content:center;gap:6px;font-weight:700;color:#fbbf24;margin-bottom:4px;">
-              <span>📶 Modo sin conexión</span>
+              <span id="inline-banner-titulo">📶 Modo sin conexión</span>
             </div>
-            <span>La app está cargada en memoria. Si no avanza, toca reintentar:</span>
+            <span id="inline-banner-texto">La app está cargada en memoria. Si no avanza, toca reintentar:</span>
             <button onclick="location.reload()" style="display:block;margin:8px auto 0;background:#e11d48;color:#fff;border:none;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:bold;cursor:pointer;">Reintentar carga</button>
           </div>
         </div>
       </div>
       <script>
         (function() {
+          /* Si en 10 segundos la app no arrancó (red lenta, servidor caído), se dice y se ofrece reintentar */
+          setTimeout(function () {
+            if (!document.getElementById('pre-react-splash')) return;
+            var banner = document.getElementById('inline-offline-banner');
+            var step = document.getElementById('inline-splash-step');
+            if (step) step.textContent = 'Está tardando más de lo normal';
+            var t = document.getElementById('inline-banner-titulo'); if (t) t.textContent = 'No termina de abrir';
+            var x = document.getElementById('inline-banner-texto'); if (x) x.textContent = 'Puede ser la conexión. Toca para intentarlo otra vez:';
+            if (banner) banner.style.display = 'block';
+          }, 10000);
           var isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
           if (isOffline) {
             var banner = document.getElementById('inline-offline-banner');

@@ -50,6 +50,7 @@ import { TuPlan } from '../components/ajustes/TuPlan';
 import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
 import { SelectorHora } from '../components/ui/SelectorHora';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
+import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
 const ESTILO_ACTIVIDAD: Record<EventoActividad['tipo'], { titulo: string; clase: string }> = {
@@ -306,6 +307,7 @@ export const SettingsScreen: React.FC = () => {
       <PageContent className="space-y-4 text-xs">
         {/* Su plan y su gente: lo primero que una dueña busca en Ajustes */}
         <TuPlan />
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <ActivarNotificaciones />}
         {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <UsuariosSalon />}
 
         {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}

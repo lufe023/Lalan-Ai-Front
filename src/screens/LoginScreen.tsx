@@ -66,14 +66,14 @@ export const LoginScreen: React.FC = () => {
   return (
     <div
       id="login-screen"
-      className="flex-1 w-full h-full overflow-y-auto hide-scrollbar flex flex-col items-center justify-center p-6 select-none pt-safe-top pb-safe"
+      className="flex-1 w-full h-full overflow-y-auto hide-scrollbar flex flex-col items-center p-6 select-none pt-safe-top pb-safe"
       style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 16px), 54px))' }}
     >
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-        className="w-full max-w-sm"
+        className="w-full max-w-sm my-auto"
       >
         {/* Brand */}
         <div className="flex flex-col items-center text-center mb-8">

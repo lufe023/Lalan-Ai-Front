@@ -10,6 +10,7 @@ import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PilotoAplicaciones } from '../components/plataforma/PilotoAplicaciones';
 import { OtrosNegocios } from '../components/plataforma/OtrosNegocios';
 import { EquipoSoporte } from '../components/plataforma/EquipoSoporte';
+import { PortadasPlataforma } from '../components/plataforma/PortadasPlataforma';
 import { SaludServicios } from '../components/plataforma/SaludServicios';
 import { NegociosPlataforma, type PrellenadoNegocio } from '../components/plataforma/NegociosPlataforma';
 import { PlanesPlataforma } from '../components/plataforma/PlanesPlataforma';
@@ -17,7 +18,7 @@ import { UsoAppPanel } from '../components/plataforma/UsoAppPanel';
 import type { Dispositivo, ResumenLanding } from '../types/plataforma';
 import { useAuth } from '../context/AuthContext';
 
-type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud';
+type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas';
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'salud', label: 'Salud' },
   { id: 'negocios', label: 'Clientes' },
@@ -26,6 +27,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'calor', label: 'Mapa de calor' },
   { id: 'piloto', label: 'Piloto' },
   { id: 'soporte', label: 'Equipo' },
+  { id: 'portadas', label: 'Portadas' },
 ];
 
 type Rango = '7' | '30' | '90';
@@ -359,6 +361,7 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'negocios' && <NegociosPlataforma soloSoporte={esSoporte} prellenado={prellenado} onPrellenadoUsado={() => setPrellenado(null)} abrirId={abrirNegocio} />}
         {pestana === 'planes' && <PlanesPlataforma />}
         {pestana === 'soporte' && <EquipoSoporte />}
+        {pestana === 'portadas' && <PortadasPlataforma />}
         {pestana === 'salud' && <SaludServicios onAbrirNegocio={(id) => { setAbrirNegocio(id); setPestana('negocios'); }} />}
         {pestana === 'piloto' && (
           <div className="space-y-10">

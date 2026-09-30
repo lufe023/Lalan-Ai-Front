@@ -421,7 +421,7 @@ export const IOSTabBar: React.FC = () => {
           {/* `w-max` es lo que permite el scroll: sin él, flex reparte diez
               iconos en el ancho del teléfono y quedan del tamaño de una uña.
               Cada botón tiene ancho fijo y área táctil de 44px de alto. */}
-          <div className="flex items-center gap-1 w-max px-2">
+          <div className="flex items-center justify-between gap-1 w-max min-w-full px-2">
             {tabs.map(tab => {
               const isActive = currentScreen === tab.id;
               const Icon = tab.icon;

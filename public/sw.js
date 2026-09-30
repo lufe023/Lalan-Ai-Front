@@ -189,3 +189,39 @@ self.addEventListener('fetch', (event) => {
     fetch(req).catch(() => caches.match(req))
   );
 });
+
+// ── Notificaciones en la pantalla del teléfono (Web Push) ────────────
+// El backend manda { titulo, cuerpo, ir, etiqueta }. "ir" es la pantalla que
+// se abre al tocarla.
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch { d = { cuerpo: event.data ? event.data.text() : '' }; }
+  const titulo = d.titulo || 'Lalan';
+  event.waitUntil(
+    self.registration.showNotification(titulo, {
+      body: d.cuerpo || '',
+      icon: '/icono-192.png',
+      badge: '/icono-192.png',
+      tag: d.etiqueta || undefined,
+      renotify: !!d.etiqueta,
+      data: { ir: d.ir || 'dashboard' },
+    }).then(() => (self.navigator && 'setAppBadge' in self.navigator ? self.navigator.setAppBadge().catch(() => {}) : undefined))
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const ir = (event.notification.data && event.notification.data.ir) || 'dashboard';
+  const url = '/app/?ir=' + encodeURIComponent(ir);
+  event.waitUntil((async () => {
+    if (self.navigator && 'clearAppBadge' in self.navigator) self.navigator.clearAppBadge().catch(() => {});
+    const ventanas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const v of ventanas) {
+      if (v.url.includes('/app')) {
+        v.postMessage({ tipo: 'ir', pantalla: ir });
+        return v.focus();
+      }
+    }
+    return self.clients.openWindow(url);
+  })());
+});

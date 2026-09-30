@@ -72,7 +72,7 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
     >
       {/* Mobile: centered narrow container. Desktop (lg+): full-width, no cap */}
       <div
-        className={`relative w-full h-full max-w-[520px] mx-auto lg:max-w-none flex flex-col ${
+        className={`relative w-full h-full max-w-[520px] mx-auto lg:max-w-none landscape:max-w-none landscape:pl-[env(safe-area-inset-left)] landscape:pr-[env(safe-area-inset-right)] flex flex-col ${
           isDark ? 'bg-[#09090b]' : 'bg-[#f8fafc]'
         }`}
       >

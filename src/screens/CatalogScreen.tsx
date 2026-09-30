@@ -14,6 +14,7 @@ import {
   Package,
   Layers,
   Edit2,
+  PackagePlus,
   Trash2,
   Check,
   Search,
@@ -23,6 +24,7 @@ import {
   X,
   Eye,
 } from 'lucide-react';
+import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
 import { useApp, ServiceIngredient } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { LineaDeReceta, PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
@@ -65,6 +67,8 @@ export const CatalogScreen: React.FC = () => {
     categoriaPorClave,
     guardarRecetaProducto,
   } = useApp();
+  /* Recibir mercancía (lotes con vencimiento) */
+  const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
   const { base, dinero, enSuMoneda, esExtranjera } = useDinero();
   const iconoCategoria = (kind: 'service' | 'product', key: string) => categoriaPorClave(kind, key)?.icon || '✨';
   const primeraCategoria = (kind: 'service' | 'product') => {
@@ -815,6 +819,15 @@ export const CatalogScreen: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      {!product.preparedToOrder && (
+                        <button
+                          onClick={() => setRecibiendo({ id: product.id, name: product.name, unit: product.unit, costPrice: (product as any).costPrice ?? null })}
+                          className="p-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] ios-touch cursor-pointer"
+                          title="Recibir mercancía (con fecha de vencimiento)"
+                        >
+                          <PackagePlus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleOpenEditProduct(product)}
                         className="p-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] ios-touch cursor-pointer"
@@ -1791,6 +1804,7 @@ export const CatalogScreen: React.FC = () => {
         </form>
      
       </IOSModal>
+      <RecibirMercancia producto={recibiendo} onClose={() => setRecibiendo(null)} />
     </div>
   );
 };

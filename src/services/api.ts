@@ -181,3 +181,21 @@ export const api = {
   put:    <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
   delete: <T>(path: string) => apiFetch<T>(path, { method: 'DELETE' }),
 };
+
+/**
+ * Descarga un archivo del backend (PDF, Excel) con la sesión y lo guarda.
+ * En iPhone abre la vista del PDF, desde donde se comparte o se guarda.
+ */
+export async function descargarArchivo(path: string, nombre: string): Promise<void> {
+  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {} });
+  let res = await pedir();
+  if (res.status === 401 && (await refrescarSesion())) res = await pedir();
+  if (!res.ok) throw new Error('No se pudo descargar el archivo');
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Dirección completa de un recurso del backend (para <img src>) */
+export const urlApi = (path: string) => `${BASE_URL}${path}`;

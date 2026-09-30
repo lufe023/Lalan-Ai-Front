@@ -27,6 +27,7 @@ import {
   Settings,
   Contact,
 } from 'lucide-react';
+import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
 import { exportarContactos } from '../utils/contactos';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
@@ -809,6 +810,9 @@ export const ClientsScreen: React.FC = () => {
                 <p className="text-[11px] leading-relaxed opacity-90">{selectedClient.medicalOrAllergyNotes}</p>
               </div>
             )}
+
+            {/* Datos que Lalan anotó de sus chats */}
+            <LoQueLalanSabe clienteId={selectedClient.id} />
 
             {/* VIP Lounge & Preferences Card */}
             <div className="rounded-2xl border border-amber-500/30 dark:border-amber-500/20 overflow-hidden">
