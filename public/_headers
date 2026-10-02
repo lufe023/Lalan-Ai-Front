@@ -1,0 +1,8 @@
+# El service worker siempre fresco: si se queda en caché, los teléfonos no se enteran de la versión nueva
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+# Los archivos de assets llevan huella en el nombre: pueden guardarse un año
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
