@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { UserProfile, UserRole } from '../types';
+import { ConfirmacionCorreo, UserProfile, UserRole } from '../types';
 import { api, tokenStore } from '../services/api';
 import { enSoporte, salirDeSoporte } from '../services/soporte';
 import { quickAuth } from '../services/quickAuth';
@@ -12,7 +12,8 @@ const PERMISSIONS: Record<UserRole, UserProfile['permissions']> = {
   support: { canViewMetrics: true, canManageBots: true, canEditConfig: true, canManageCalendar: false, canManageChats: false, canAccessSystemLogs: true },
 };
 
-interface LoginCredentials { email: string; password: string; }
+/** identificador = correo, usuario o teléfono */
+interface LoginCredentials { identificador: string; password: string; }
 
 interface AuthContextType {
   currentUser: UserProfile | null;
@@ -24,14 +25,18 @@ interface AuthContextType {
   hasPermission: (permission: keyof UserProfile['permissions']) => boolean;
   /** Ya puso su clave: se quita la pantalla de cambio obligatorio */
   claveCambiada: () => void;
+  /** Confirmó su correo (o lo dejó para después, si no era obligatorio) */
+  correoListo: (correo?: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface ApiUser {
-  id: string; name: string; email: string; role: UserRole;
+  id: string; name: string; email: string | null; role: UserRole;
   roleTitle?: string; avatar?: string; badgeColor?: string;
   debeCambiarClave?: boolean;
+  usuario?: string | null; telefono?: string | null;
+  confirmarCorreo?: ConfirmacionCorreo | null;
   soporte?: { negocio: string };
 }
 
@@ -45,6 +50,9 @@ function buildProfile(u: ApiUser): UserProfile {
     badgeColor: u.badgeColor ?? '#6366f1',
     description: '',
     debeCambiarClave: !!u.debeCambiarClave,
+    correo: u.email ?? null,
+    usuario: u.usuario ?? null,
+    confirmarCorreo: u.confirmarCorreo ?? null,
     soporte: u.soporte,
     permissions: PERMISSIONS[u.role] ?? PERMISSIONS.assistant,
   };
@@ -101,10 +109,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('lalan:logout', handler);
   }, []);
 
-  const login = useCallback(async ({ email, password }: LoginCredentials) => {
+  const login = useCallback(async ({ identificador, password }: LoginCredentials) => {
     const data = await api.post<{ accessToken: string; refreshToken: string; user: ApiUser }>(
       '/auth/login',
-      { email, password },
+      { identificador, password },
     );
     tokenStore.set(data.accessToken);
     tokenStore.setRefresh(data.refreshToken);
@@ -135,13 +143,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser((u) => (u ? { ...u, debeCambiarClave: false } : u));
   }, []);
 
+  const correoListo = useCallback((correo?: string | null) => {
+    setCurrentUser((u) => (u ? { ...u, confirmarCorreo: null, ...(correo !== undefined ? { correo } : {}) } : u));
+  }, []);
+
   const hasPermission = useCallback((permission: keyof UserProfile['permissions']): boolean => {
     if (!currentUser) return false;
     return !!currentUser.permissions[permission];
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, claveCambiada }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, claveCambiada, correoListo }}>
       {children}
     </AuthContext.Provider>
   );

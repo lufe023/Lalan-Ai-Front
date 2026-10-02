@@ -121,13 +121,20 @@ export interface NegocioDetalle {
   efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites };
   uso: Uso;
   sedes: { id: string; name: string; address: string | null; phone: string | null }[];
-  usuarios: { id: string; name: string; email: string; role: string; active: boolean; debeCambiarClave: boolean }[];
+  usuarios: { id: string; name: string; email: string | null; usuario?: string | null; telefono?: string | null; correoConfirmadoEn?: string | null; role: string; active: boolean; debeCambiarClave: boolean }[];
 }
 
 export interface UsuarioSalon {
   id: string;
   name: string;
-  email: string;
+  /** Opcional para el equipo; obligatorio para administración */
+  email: string | null;
+  /** Para entrar sin correo: "maria.bella" */
+  usuario: string | null;
+  /** Para entrar con el teléfono: 18095551234 */
+  telefono: string | null;
+  /** null = sin confirmar */
+  correoConfirmadoEn: string | null;
   role: 'admin' | 'assistant';
   roleTitle: string | null;
   active: boolean;

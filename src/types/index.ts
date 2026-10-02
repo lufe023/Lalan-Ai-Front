@@ -1,6 +1,9 @@
 /** super_admin: el dueño de la plataforma Lalan (ve la landing y el piloto; puede todo lo de un admin) */
 export type UserRole = 'admin' | 'assistant' | 'support' | 'super_admin';
 
+/** ¿Tiene que confirmar su correo? obligatoria = dueñas; opcional = equipo */
+export type ConfirmacionCorreo = 'obligatoria' | 'opcional';
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -13,6 +16,11 @@ export interface UserProfile {
   debeCambiarClave?: boolean;
   /** Sesión de soporte de Lalan dentro de este salón */
   soporte?: { negocio: string };
+  /** Su correo (puede no tener: entra con usuario o teléfono) */
+  correo?: string | null;
+  usuario?: string | null;
+  /** Si tiene que confirmar su correo al entrar */
+  confirmarCorreo?: ConfirmacionCorreo | null;
   permissions: {
     canViewMetrics: boolean;
     canManageBots: boolean;

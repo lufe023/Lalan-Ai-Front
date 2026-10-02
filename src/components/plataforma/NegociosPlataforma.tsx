@@ -14,7 +14,7 @@ import { LineasTelefonicas } from './LineasTelefonicas';
 /** Lo que llega de una aplicación al piloto para llenar el formulario */
 export interface PrellenadoNegocio { aplicacionId?: string; salon?: string; nombre?: string; telefono?: string; ciudad?: string; planClave?: string | null }
 
-interface ClaveNueva { nombre: string; email: string; clave: string; telefono?: string | null; salon?: string }
+interface ClaveNueva { nombre: string; email?: string | null; entraCon?: string[]; clave: string; telefono?: string | null; salon?: string }
 
 const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 const tarjeta = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]';
@@ -32,11 +32,11 @@ const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio |
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setOcupado(true);
     try {
-      const r = await api.post<{ negocioId: string; email: string; claveTemporal: string; telefono: string | null }>('/plataforma/negocios', {
+      const r = await api.post<{ negocioId: string; email: string; claveTemporal: string; telefono: string | null; entraCon?: string[] }>('/plataforma/negocios', {
         salon: f.salon, sede: f.sede || undefined, direccion: f.direccion || undefined, planId: f.planId,
         duena: { nombre: f.nombre, email: f.email, telefono: f.telefono || undefined }, aplicacionId: prellenado?.aplicacionId,
       });
-      onCreado({ nombre: f.nombre, email: r.email, clave: r.claveTemporal, telefono: r.telefono, salon: f.salon }, r.negocioId);
+      onCreado({ nombre: f.nombre, email: r.email, entraCon: r.entraCon, clave: r.claveTemporal, telefono: r.telefono, salon: f.salon }, r.negocioId);
     } catch (err) { setError((err as Error).message); } finally { setOcupado(false); }
   };
   return (
@@ -113,7 +113,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
   };
   const nuevaClave = async (u: NegocioDetalle['usuarios'][number]) => {
     if (!window.confirm(`¿Generar una clave temporal nueva para ${u.name}? Se le cerrará la sesión.`)) return;
-    try { const r = await api.post<{ claveTemporal: string }>(`/plataforma/negocios/${id}/usuarios/${u.id}/clave-temporal`, {}); setClave({ nombre: u.name, email: u.email, clave: r.claveTemporal, salon: d?.nombre }); void cargar(); }
+    try { const r = await api.post<{ claveTemporal: string }>(`/plataforma/negocios/${id}/usuarios/${u.id}/clave-temporal`, {}); setClave({ nombre: u.name, entraCon: [u.usuario, u.email].filter((x): x is string => !!x), clave: r.claveTemporal, salon: d?.nombre }); void cargar(); }
     catch (e) { setError((e as Error).message); }
   };
   const [entrando, setEntrando] = useState(false);
@@ -202,7 +202,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           {d.usuarios.map((u) => (
             <div key={u.id} className={`flex items-center gap-2 text-[12px] ${u.active ? '' : 'opacity-50'}`}>
               <div className="flex-1 min-w-0"><b>{u.name}</b> <span className="text-slate-400">· {u.role === 'admin' ? 'Administración' : u.role === 'assistant' ? 'Asistente' : u.role}</span>
-                <div className="text-[11px] text-slate-500 truncate">{u.email}{u.debeCambiarClave && <span className="text-amber-600"> · aún no entra</span>}</div></div>
+                <div className="text-[11px] text-slate-500 truncate">{[u.usuario, u.email].filter(Boolean).join(' · ')}{u.debeCambiarClave && <span className="text-amber-600"> · aún no entra</span>}{u.email && !u.correoConfirmadoEn && <span className="text-amber-600"> · correo sin confirmar</span>}</div></div>
               <button type="button" onClick={() => void nuevaClave(u)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer" title="Clave temporal nueva"><KeyRound className="w-3.5 h-3.5 text-slate-500" /></button>
             </div>
           ))}

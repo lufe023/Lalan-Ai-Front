@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RecuperarClave } from '../components/ui/RecuperarClave';
 import { ActivarAccesoRapidoModal } from '../components/ui/ActivarAccesoRapidoModal';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Mail, Lock, Loader2, AlertCircle, Zap, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
+import { Sparkles, AtSign as Mail, Lock, Loader2, AlertCircle, Zap, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 import { LogoLalan } from '../components/ui/LogoLalan';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -29,11 +29,11 @@ export const LoginScreen: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { setError('Ingresa tu correo y contraseña.'); return; }
+    if (!email || !password) { setError('Escribe tu correo, usuario o teléfono y tu contraseña.'); return; }
     setError('');
     setLoading(true);
     try {
-      await login({ email, password });
+      await login({ identificador: email.trim(), password });
       showToast('¡Bienvenida/o!', 'Sesión iniciada correctamente.', 'success');
       // Si este dispositivo aún no tiene configurado el acceso rápido, ofrecemos activarlo
       if (!quickAuth.getRegistration().isRegistered) {
@@ -42,7 +42,7 @@ export const LoginScreen: React.FC = () => {
         navigateTo('dashboard');
       }
     } catch (err: any) {
-      setError(err?.message === 'Invalid credentials' ? 'Credenciales incorrectas.' : (err?.message ?? 'Error al iniciar sesión.'));
+      setError(err?.message === 'Invalid credentials' ? 'Esos datos no coinciden.' : (err?.message ?? 'Error al iniciar sesión.'));
     } finally {
       setLoading(false);
     }
@@ -156,16 +156,19 @@ export const LoginScreen: React.FC = () => {
               {/* Email */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-neutral-400 mb-1.5">
-                  Correo electrónico
+                  Correo, usuario o teléfono
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={e => { setEmail(e.target.value); setError(''); }}
-                    placeholder="tu@correo.com"
-                    autoComplete="email"
+                    placeholder="tu@correo.com · maria.bella · 809-555-1234"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 transition"
                   />
                 </div>

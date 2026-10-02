@@ -29,6 +29,7 @@ import { ReproductorSala } from './screens/ReproductorSala';
 import { PedirCancionScreen } from './screens/PedirCancionScreen';
 import { PlataformaScreen } from './screens/PlataformaScreen';
 import { CambiarClaveScreen } from './screens/CambiarClaveScreen';
+import { ConfirmarCorreoScreen, confirmacionOmitida } from './screens/ConfirmarCorreoScreen';
 import { PlanProvider } from './context/PlanContext';
 import { BarraSoporte } from './components/ui/BarraSoporte';
 import { AvisoMensajes } from './components/ui/AvisoMensajes';
@@ -139,6 +140,9 @@ const MainAppContent: React.FC = () => {
       {!isLoading && (
         isAuthenticated && currentUser?.debeCambiarClave ? (
           <CambiarClaveScreen />
+        ) : isAuthenticated && (currentUser?.confirmarCorreo === 'obligatoria'
+            || (currentUser?.confirmarCorreo === 'opcional' && !confirmacionOmitida(currentUser.id))) ? (
+          <ConfirmarCorreoScreen />
         ) : !isAuthenticated ? (
           <motion.div
             key="login-view"

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Users, UserPlus, KeyRound, Loader2, X } from 'lucide-react';
+import { Users, UserPlus, KeyRound, Loader2, X, Pencil, MailCheck, MailWarning } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { usePlan } from '../../context/PlanContext';
@@ -12,7 +12,16 @@ const ROLES: { id: UsuarioSalon['role']; label: string; ayuda: string }[] = [
 ];
 
 interface Sede { id: string; name: string }
-interface ClaveNueva { nombre: string; email: string; clave: string }
+interface ClaveNueva { nombre: string; entraCon: string[]; clave: string; telefono: string | null }
+interface Acceso { email: string; usuario: string; telefono: string }
+
+/** 18095551234 → 809-555-1234 */
+const telefonoLegible = (t: string | null) => {
+  if (!t) return '';
+  const d = t.length === 11 && t.startsWith('1') ? t.slice(1) : t;
+  return d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : t;
+};
+const VACIO = { name: '', email: '', usuario: '', telefono: '', role: 'assistant' as UsuarioSalon['role'], roleTitle: '', locationId: '' };
 
 const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 
@@ -23,7 +32,8 @@ export const UsuariosSalon: React.FC = () => {
   const [lista, setLista] = useState<UsuarioSalon[] | null>(null);
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [creando, setCreando] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', role: 'assistant' as UsuarioSalon['role'], roleTitle: '', locationId: '' });
+  const [form, setForm] = useState(VACIO);
+  const [editandoAcceso, setEditandoAcceso] = useState<{ id: string; datos: Acceso } | null>(null);
   const [clave, setClave] = useState<ClaveNueva | null>(null);
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -39,13 +49,30 @@ export const UsuariosSalon: React.FC = () => {
   const crear = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setOcupado(true);
     try {
-      const r = await api.post<{ usuario: UsuarioSalon; claveTemporal: string }>('/users', {
-        name: form.name, email: form.email, role: form.role, roleTitle: form.roleTitle || undefined, locationId: form.locationId || null,
+      const r = await api.post<{ usuario: UsuarioSalon; claveTemporal: string; entraCon: string[] }>('/users', {
+        name: form.name, email: form.email.trim() || null, usuario: form.usuario.trim() || null, telefono: form.telefono.trim() || null,
+        role: form.role, roleTitle: form.roleTitle || undefined, locationId: form.locationId || null,
       });
-      setClave({ nombre: r.usuario.name, email: r.usuario.email, clave: r.claveTemporal });
-      setCreando(false); setForm({ name: '', email: '', role: 'assistant', roleTitle: '', locationId: '' });
+      setClave({ nombre: r.usuario.name, entraCon: r.entraCon, clave: r.claveTemporal, telefono: r.usuario.telefono });
+      setCreando(false); setForm(VACIO);
       await cargar(); void recargarPlan();
     } catch (err) { setError((err as Error).message); } finally { setOcupado(false); }
+  };
+
+  const guardarAcceso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editandoAcceso) return;
+    const u = lista?.find((x) => x.id === editandoAcceso.id);
+    if (!u) return;
+    const d = editandoAcceso.datos;
+    const cambio: Record<string, string | null> = {};
+    if (d.email.trim() !== (u.email ?? '')) cambio.email = d.email.trim() || null;
+    if (d.usuario.trim() !== (u.usuario ?? '')) cambio.usuario = d.usuario.trim();
+    if (d.telefono.trim() !== telefonoLegible(u.telefono)) cambio.telefono = d.telefono.trim() || null;
+    if (!Object.keys(cambio).length) { setEditandoAcceso(null); return; }
+    setError('');
+    try { await api.patch(`/users/${u.id}`, cambio); setEditandoAcceso(null); await cargar(); }
+    catch (err) { setError((err as Error).message); }
   };
 
   const editar = async (u: UsuarioSalon, cambio: Partial<UsuarioSalon>) => {
@@ -56,7 +83,10 @@ export const UsuariosSalon: React.FC = () => {
 
   const nuevaClave = async (u: UsuarioSalon) => {
     if (!window.confirm(`¿Darle una clave temporal nueva a ${u.name}? Se le cerrará la sesión y tendrá que entrar con la nueva.`)) return;
-    try { const r = await api.post<{ claveTemporal: string }>(`/users/${u.id}/clave-temporal`, {}); setClave({ nombre: u.name, email: u.email, clave: r.claveTemporal }); }
+    try {
+      const r = await api.post<{ claveTemporal: string; entraCon: string[] }>(`/users/${u.id}/clave-temporal`, {});
+      setClave({ nombre: u.name, entraCon: r.entraCon, clave: r.claveTemporal, telefono: u.telefono });
+    }
     catch (err) { setError((err as Error).message); }
   };
 
@@ -82,7 +112,7 @@ export const UsuariosSalon: React.FC = () => {
         )}
       </div>
 
-      {clave && <ClaveParaCompartir nombre={clave.nombre} email={clave.email} clave={clave.clave} onListo={() => setClave(null)} />}
+      {clave && <ClaveParaCompartir nombre={clave.nombre} entraCon={clave.entraCon} clave={clave.clave} telefono={clave.telefono} onListo={() => setClave(null)} />}
       {error && <p className="text-[11px] font-semibold text-rose-600" role="alert">{error}</p>}
 
       {creando && (
@@ -90,7 +120,12 @@ export const UsuariosSalon: React.FC = () => {
           <div className="flex justify-between items-center"><b className="text-[12px]">Nuevo usuario</b><button type="button" onClick={() => setCreando(false)} className="cursor-pointer" aria-label="Cancelar"><X className="w-4 h-4 text-slate-400" /></button></div>
           <div className="grid sm:grid-cols-2 gap-2">
             <input required minLength={2} placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={campo} />
-            <input required type="email" placeholder="Correo (con él entra)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={campo} />
+            <input type="tel" inputMode="tel" placeholder="Teléfono (puede entrar con él)" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} className={campo} />
+            <input required={form.role === 'admin'} type="email" autoCapitalize="none"
+              placeholder={form.role === 'admin' ? 'Correo (obligatorio en administración)' : 'Correo (opcional)'}
+              value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={campo} />
+            <input autoCapitalize="none" placeholder="Usuario (si lo dejas vacío, se crea solo)" value={form.usuario}
+              onChange={(e) => setForm({ ...form, usuario: e.target.value.toLowerCase().replace(/\s/g, '') })} className={campo} />
             <input placeholder="Cargo (ej.: Recepción)" value={form.roleTitle} onChange={(e) => setForm({ ...form, roleTitle: e.target.value })} className={campo} />
             {sedes.length > 1 && (
               <select value={form.locationId} onChange={(e) => setForm({ ...form, locationId: e.target.value })} className={campo}>
@@ -121,7 +156,28 @@ export const UsuariosSalon: React.FC = () => {
               <div key={u.id} className={`py-2.5 flex flex-wrap items-center gap-2 ${u.active ? '' : 'opacity-50'}`}>
                 <div className="flex-1 min-w-[160px]">
                   <div className="text-[12px] font-bold text-slate-900 dark:text-white">{u.name}{yo && <span className="text-slate-400 font-normal"> · tú</span>}</div>
-                  <div className="text-[11px] text-slate-500">{u.email}{u.debeCambiarClave && <span className="text-amber-600"> · aún no entra</span>}</div>
+                  <div className="text-[11px] text-slate-500 break-all">
+                    {[u.usuario, telefonoLegible(u.telefono), u.email].filter(Boolean).join(' · ')}
+                    {u.debeCambiarClave && <span className="text-amber-600"> · aún no entra</span>}
+                  </div>
+                  {u.email && (u.correoConfirmadoEn
+                    ? <div className="text-[10px] text-emerald-600 flex items-center gap-1 mt-0.5"><MailCheck className="w-3 h-3" /> Correo confirmado</div>
+                    : <div className="text-[10px] text-amber-600 flex items-center gap-1 mt-0.5"><MailWarning className="w-3 h-3" /> Correo sin confirmar: no puede recuperar su clave por correo</div>)}
+                  {editandoAcceso?.id === u.id && (
+                    <form onSubmit={guardarAcceso} className="mt-2 grid sm:grid-cols-3 gap-2">
+                      <input autoCapitalize="none" placeholder="Usuario" value={editandoAcceso.datos.usuario}
+                        onChange={(e) => setEditandoAcceso({ id: u.id, datos: { ...editandoAcceso.datos, usuario: e.target.value.toLowerCase().replace(/\s/g, '') } })} className={campo} />
+                      <input type="tel" inputMode="tel" placeholder="Teléfono" value={editandoAcceso.datos.telefono}
+                        onChange={(e) => setEditandoAcceso({ id: u.id, datos: { ...editandoAcceso.datos, telefono: e.target.value } })} className={campo} />
+                      <input type="email" autoCapitalize="none" placeholder="Correo" value={editandoAcceso.datos.email}
+                        onChange={(e) => setEditandoAcceso({ id: u.id, datos: { ...editandoAcceso.datos, email: e.target.value } })} className={campo} />
+                      <div className="sm:col-span-3 flex gap-2">
+                        <button type="submit" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold cursor-pointer">Guardar</button>
+                        <button type="button" onClick={() => setEditandoAcceso(null)} className="px-3 py-1.5 rounded-lg text-[11px] font-semibold text-slate-500 cursor-pointer">Cancelar</button>
+                        <span className="text-[10px] text-slate-400 self-center">Si cambias el correo, tendrá que confirmarlo otra vez.</span>
+                      </div>
+                    </form>
+                  )}
                 </div>
                 <select value={u.role} disabled={yo} onChange={(e) => void editar(u, { role: e.target.value as UsuarioSalon['role'] })}
                   className="text-[11px] rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" aria-label="Rol">
@@ -134,6 +190,9 @@ export const UsuariosSalon: React.FC = () => {
                     {sedes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 )}
+                <button type="button" title="Con qué entra (usuario, teléfono, correo)"
+                  onClick={() => setEditandoAcceso(editandoAcceso?.id === u.id ? null : { id: u.id, datos: { email: u.email ?? '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono) } })}
+                  className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
                 <button type="button" onClick={() => void nuevaClave(u)} title="Clave temporal nueva" className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><KeyRound className="w-3.5 h-3.5" /></button>
                 {!yo && (
                   <button type="button" onClick={() => void editar(u, { active: !u.active })}

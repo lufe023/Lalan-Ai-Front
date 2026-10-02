@@ -49,6 +49,8 @@ import { EditorPizarra } from '../components/ui/EditorPizarra';
 import { PeticionesMusica } from '../components/ui/PeticionesMusica';
 import { TuPlan } from '../components/ajustes/TuPlan';
 import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
+import { AvisosEquipo } from '../components/ajustes/AvisosEquipo';
+import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPedida } from '../components/ajustes/MenuAjustes';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
@@ -101,6 +103,13 @@ export const SettingsScreen: React.FC = () => {
   } = useApp();
 
   const { currentUser, logout } = useAuth();
+  // Ajustes es un menú: cada grupo abre su página (o llega directo desde otra pantalla)
+  const [seccion, setSeccion] = useState<SeccionAjustes | null>(() => tomarSeccionPedida());
+  const abrirSeccion = (s: SeccionAjustes | null) => {
+    setSeccion(s);
+    document.querySelector('#settings-screen .overflow-y-auto, #settings-screen main')?.scrollTo?.({ top: 0 });
+  };
+  const grupoAbierto = seccion ? gruposPara(currentUser?.role).find((x) => x.id === seccion) ?? GRUPOS_AJUSTES.find((x) => x.id === seccion) ?? null : null;
 
   const [quickReg, setQuickReg] = useState<QuickAuthRegistration>(() => quickAuth.getRegistration());
 
@@ -300,290 +309,136 @@ export const SettingsScreen: React.FC = () => {
   return (
     <div id="settings-screen" className="flex-1 w-full h-full flex flex-col overflow-hidden">
       <IOSHeader
-        title="Configuración"
-        subtitle="Temas, colores de marca, mensajes automatizados y perfil"
+        title={grupoAbierto ? grupoAbierto.titulo : 'Configuración'}
+        subtitle={grupoAbierto ? grupoAbierto.resumen : 'Tu cuenta, tu equipo y todo lo del salón'}
+        showBack={!!grupoAbierto}
+        onBack={() => abrirSeccion(null)}
       />
 
       <PageContent className="space-y-4 text-xs">
-        {/* Su plan y su gente: lo primero que una dueña busca en Ajustes */}
-        <TuPlan />
-        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <ActivarNotificaciones />}
-        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <UsuariosSalon />}
-
-        {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
+        {!seccion && <MenuAjustes rol={currentUser?.role} onAbrir={abrirSeccion} />}
+        {seccion === 'cuenta' && (
+          <>
+        {/* Todo el equipo puede activar las notificaciones: la dueña decide qué le llega a cada quien */}
+        {currentUser?.role !== 'support' && <ActivarNotificaciones />}
+        {/* SECTION 5: ACCOUNT & PROFILE ACTIONS */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-[var(--primary)] flex items-center justify-center">
-                <Palette className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                  Personalización de Tema & 3 Colores
-                </h3>
-                <p className="text-[10px] text-slate-500 dark:text-neutral-400">
-                  Primario · Acento / Secundario · Terciario
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowThemeModal(true)}
-              className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white font-bold text-[10px] flex items-center gap-1 shadow-xs ios-touch cursor-pointer hover:opacity-90"
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Ver Paletas</span>
-            </button>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+              Mi perfil
+            </span>
           </div>
 
-          {/* Theme Mode Selector (Claro / Oscuro / Sistema) */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
-              Modo de Pantalla
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {[
-                { id: 'light', label: 'Modo Claro', icon: <Sun className="w-3.5 h-3.5" /> },
-                { id: 'dark', label: 'Modo Oscuro', icon: <Moon className="w-3.5 h-3.5" /> },
-                { id: 'system', label: 'Automático', icon: <Laptop className="w-3.5 h-3.5" /> },
-              ].map(m => {
-                const isSelected = themeMode === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setThemeMode(m.id as ThemeMode)}
-                    className={`py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold transition ios-touch cursor-pointer ${
-                      isSelected
-                        ? 'bg-[var(--primary)] text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    {m.icon}
-                    <span>{m.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3-Color Legend and Quick Active Preview */}
-          <div className="px-3.5 py-2.5 rounded-2xl bg-slate-100/80 dark:bg-neutral-800/80 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="w-3 h-3 rounded-full shadow-xs"
-                  style={{ backgroundColor: primaryColor }}
-                />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Primario</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="w-3 h-3 rounded-full shadow-xs"
-                  style={{ backgroundColor: accentColor }}
-                />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Acento</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="w-3 h-3 rounded-full shadow-xs"
-                  style={{ backgroundColor: tertiaryColor }}
-                />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Terciario</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowCustomPickers(!showCustomPickers)}
-              className="text-[10px] font-bold text-[var(--primary)] hover:underline flex items-center gap-1"
-            >
-              <SlidersHorizontal className="w-3 h-3" />
-              <span>{showCustomPickers ? 'Ocultar HEX' : 'Editar HEX'}</span>
-            </button>
-          </div>
-
-          {/* Custom HEX Pickers (Optional expand) */}
-          {showCustomPickers && (
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-200/80 dark:border-neutral-700/80 grid grid-cols-3 gap-2">
-              <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Primario
-                </label>
-                <div className="flex items-center justify-center gap-1.5">
-                  <input
-                    type="color"
-                    value={primaryColor}
-                    onChange={e => setPrimaryColor(e.target.value)}
-                    className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
-                  />
-                  <span className="text-[10px] font-mono uppercase text-slate-500">
-                    {primaryColor}
-                  </span>
+          {currentUser && (
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
+              <img
+                src={currentUser.avatar}
+                alt={currentUser.name}
+                className="w-11 h-11 rounded-full object-cover border"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-xs text-slate-900 dark:text-white">
+                  {currentUser.name}
                 </div>
-              </div>
-
-              <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Acento
-                </label>
-                <div className="flex items-center justify-center gap-1.5">
-                  <input
-                    type="color"
-                    value={accentColor}
-                    onChange={e => setAccentColor(e.target.value)}
-                    className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
-                  />
-                  <span className="text-[10px] font-mono uppercase text-slate-500">
-                    {accentColor}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Terciario
-                </label>
-                <div className="flex items-center justify-center gap-1.5">
-                  <input
-                    type="color"
-                    value={tertiaryColor}
-                    onChange={e => setTertiaryColor(e.target.value)}
-                    className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
-                  />
-                  <span className="text-[10px] font-mono uppercase text-slate-500">
-                    {tertiaryColor}
-                  </span>
+                <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                  {currentUser.roleTitle}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Quick 1-Click Preset Palettes Grid */}
-          <div className="space-y-2">
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-              Combinaciones Listas (1 Clic):
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {THEME_PALETTE_PRESETS.map((preset: ThemePalettePreset) => {
-                const isSelected = activePaletteId === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => applyPalettePreset(preset.id)}
-                    className={`p-2.5 rounded-2xl border text-left flex items-center justify-between transition ios-touch cursor-pointer ${
-                      isSelected
-                        ? 'bg-slate-50 dark:bg-neutral-800 shadow-xs ring-2 ring-[var(--primary)]/40'
-                        : 'bg-white dark:bg-neutral-900 border-slate-200/80 dark:border-neutral-800 hover:border-slate-300'
-                    }`}
-                    style={{
-                      borderColor: isSelected ? preset.primary : undefined,
-                    }}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-base shrink-0">{preset.icon}</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
-                          <span>{preset.name}</span>
-                          {isSelected && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold">
-                              Activo
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[9.5px] text-slate-500 dark:text-neutral-400 truncate">
-                          {preset.subtitle}
-                        </div>
-                      </div>
-                    </div>
+          {/* Acceso Rápido Seguro con 1 toque */}
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 fill-white" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Acceso Rápido (1 toque)
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+                    {quickReg.isRegistered
+                      ? `Vinculado a este ${quickReg.deviceName || 'dispositivo'}`
+                      : 'No configurado en este dispositivo'}
+                  </p>
+                </div>
+              </div>
 
-                    <div className="flex items-center gap-1 shrink-0 pl-1.5">
-                      <span
-                        className="w-3 h-3 rounded-full shadow-xs border border-white/50"
-                        style={{ backgroundColor: preset.primary }}
-                        title="Primario"
-                      />
-                      <span
-                        className="w-3 h-3 rounded-full shadow-xs border border-white/50"
-                        style={{ backgroundColor: preset.accent }}
-                        title="Acento"
-                      />
-                      <span
-                        className="w-3 h-3 rounded-full shadow-xs border border-white/50"
-                        style={{ backgroundColor: preset.tertiary }}
-                        title="Terciario"
-                      />
-                    </div>
-                  </button>
-                );
-              })}
+              {quickReg.isRegistered ? (
+                <button
+                  type="button"
+                  onClick={handleDesvincularDispositivo}
+                  className="px-2.5 py-1 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400 text-[10px] font-bold hover:bg-red-500/25 transition cursor-pointer"
+                >
+                  Desvincular
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleVincularDispositivo}
+                  className="px-3 py-1 rounded-lg bg-[var(--primary)] text-white text-[10px] font-bold hover:opacity-90 transition cursor-pointer shadow-xs"
+                >
+                  Vincular
+                </button>
+              )}
             </div>
-          </div>
-        </div>
-
-        {/* SECTION 2: AUTOMATED WELCOME & OFF-HOURS MESSAGES */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <MessageSquare className="w-4 h-4 text-purple-500" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                Mensajes Automatizados del Bot
-              </h3>
-            </div>
-            <span className="text-[10px] text-slate-400">Meta Webhook Reply</span>
-          </div>
-
-          {/* Channel Selector */}
-          <IOSSegmentedControl
-            id="message-channel-selector"
-            options={[
-              { id: 'whatsapp', label: 'WhatsApp' },
-              { id: 'instagram', label: 'Instagram DM' },
-              { id: 'messenger', label: 'Messenger' },
-            ]}
-            value={activeMessageChannel}
-            onChange={handleChannelChange}
-            size="sm"
-          />
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Mensaje de Bienvenida Inicial
-            </label>
-            <textarea
-              rows={3}
-              value={welcomeText}
-              onChange={e => setWelcomeText(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Aviso cuando el salón está cerrado
-            </label>
-            <p className="text-[10px] text-slate-500 dark:text-neutral-400 mb-1.5">
-              Lalan atiende y agenda a toda hora, también con el salón cerrado (solo ofrece horas en que abres).
-              Este aviso solo le cuenta a la clienta que, si necesita a alguien del equipo, le escriben cuando abran.
+            <p className="text-[10px] text-slate-500 dark:text-neutral-400 leading-tight">
+              {quickReg.isRegistered
+                ? 'Este teléfono puede entrar al salón sin volver a ingresar contraseña.'
+                : 'Actívalo para entrar a tu salón con un solo toque desde este equipo.'}
             </p>
-            <textarea
-              rows={2}
-              placeholder="Ahora estamos cerrados, pero yo te ayudo y te agendo. Si necesitas a alguien del equipo, te escriben apenas abramos 💜"
-              value={offHoursText}
-              onChange={e => setOffHoursText(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-            />
           </div>
 
-          <button
-            onClick={handleSaveWelcomeMessages}
-            className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white font-bold flex items-center justify-center gap-1.5 ios-touch cursor-pointer hover:opacity-90 shadow-sm"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>Guardar Plantillas de Mensajes</span>
-          </button>
-        </div>
+          {/* Skip splash toggle */}
+          <div className="flex items-center justify-between py-3 px-0.5 border-b border-slate-100 dark:border-neutral-800 mb-1">
+            <div>
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Ocultar pantalla de inicio</p>
+              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">Salta el splash al recargar la app</p>
+            </div>
+            <button
+              onClick={toggleSkipSplash}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ios-touch cursor-pointer flex-shrink-0 ${skipSplash ? 'bg-[var(--primary)]' : 'bg-slate-200 dark:bg-neutral-700'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${skipSplash ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
 
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              onClick={triggerSplash}
+              className="py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-bold flex items-center justify-center gap-1 ios-touch cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Ver Splash Screen</span>
+            </button>
+
+            <button
+              onClick={logout}
+              className="py-2.5 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold flex items-center justify-center gap-1 border border-rose-500/20 ios-touch cursor-pointer hover:bg-rose-500/25"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        </div>
+          </>
+        )}
+        {seccion === 'plan' && (
+          <>
+        {/* Su plan y su gente: lo primero que una dueña busca en Ajustes */}
+        <TuPlan />
+          </>
+        )}
+        {seccion === 'equipo' && (
+          <>
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <UsuariosSalon />}
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <AvisosEquipo />}
+          </>
+        )}
+        {seccion === 'salon' && (
+          <>
         {/* SECTION 3: SALON BUSINESS PARAMETERS */}
         <form
           onSubmit={handleSaveSalonSettings}
@@ -1029,6 +884,112 @@ export const SettingsScreen: React.FC = () => {
           </div>
         </div>
 
+          </>
+        )}
+        {seccion === 'chats' && (
+          <>
+        {/* SECTION 4: LA ASISTENTE EN LOS CHATS */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Bot className="w-4 h-4 text-purple-500" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+              {settings.aiAgentName || 'La asistente'} en los chats
+            </h3>
+          </div>
+          {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <ConectarMeta incrustado />}
+          <button
+            onClick={() => navigateTo('bots')}
+            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"
+          >
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">Canales, instrucciones y agenda</div>
+              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                Encender cada canal, sugerencias, nombre, tono e instrucciones
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+          </button>
+          <button
+            onClick={abrirActividad}
+            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"
+          >
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">Actividad reciente</div>
+              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                Lo último que entró, lo que respondió, las citas que agendó y los chats que pasó a una persona
+              </div>
+            </div>
+            <Terminal className="w-4 h-4 text-slate-400 shrink-0" />
+          </button>
+        </div>
+
+        {/* SECTION 2: AUTOMATED WELCOME & OFF-HOURS MESSAGES */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-purple-500" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                Mensajes Automatizados del Bot
+              </h3>
+            </div>
+            <span className="text-[10px] text-slate-400">Meta Webhook Reply</span>
+          </div>
+
+          {/* Channel Selector */}
+          <IOSSegmentedControl
+            id="message-channel-selector"
+            options={[
+              { id: 'whatsapp', label: 'WhatsApp' },
+              { id: 'instagram', label: 'Instagram DM' },
+              { id: 'messenger', label: 'Messenger' },
+            ]}
+            value={activeMessageChannel}
+            onChange={handleChannelChange}
+            size="sm"
+          />
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Mensaje de Bienvenida Inicial
+            </label>
+            <textarea
+              rows={3}
+              value={welcomeText}
+              onChange={e => setWelcomeText(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Aviso cuando el salón está cerrado
+            </label>
+            <p className="text-[10px] text-slate-500 dark:text-neutral-400 mb-1.5">
+              Lalan atiende y agenda a toda hora, también con el salón cerrado (solo ofrece horas en que abres).
+              Este aviso solo le cuenta a la clienta que, si necesita a alguien del equipo, le escriben cuando abran.
+            </p>
+            <textarea
+              rows={2}
+              placeholder="Ahora estamos cerrados, pero yo te ayudo y te agendo. Si necesitas a alguien del equipo, te escriben apenas abramos 💜"
+              value={offHoursText}
+              onChange={e => setOffHoursText(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            />
+          </div>
+
+          <button
+            onClick={handleSaveWelcomeMessages}
+            className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white font-bold flex items-center justify-center gap-1.5 ios-touch cursor-pointer hover:opacity-90 shadow-sm"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>Guardar Plantillas de Mensajes</span>
+          </button>
+        </div>
+
+          </>
+        )}
+        {seccion === 'sala' && (
+          <>
         {/* SECTION 3.46: PANTALLA DE PARED */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
           <div className="flex items-center gap-1.5">
@@ -1291,6 +1252,10 @@ export const SettingsScreen: React.FC = () => {
           <PeticionesMusica />
         </div>
 
+          </>
+        )}
+        {seccion === 'caja' && (
+          <>
         {/* SECTION 3.5: MONEDAS Y DENOMINACIONES */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
           <div className="flex items-center gap-1.5">
@@ -1523,144 +1488,223 @@ export const SettingsScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* SECTION 4: LA ASISTENTE EN LOS CHATS */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-2">
-          <div className="flex items-center gap-1.5">
-            <Bot className="w-4 h-4 text-purple-500" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              {settings.aiAgentName || 'La asistente'} en los chats
-            </h3>
-          </div>
-          {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <ConectarMeta incrustado />}
-          <button
-            onClick={() => navigateTo('bots')}
-            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"
-          >
-            <div>
-              <div className="text-xs font-bold text-slate-900 dark:text-white">Canales, instrucciones y agenda</div>
-              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
-                Encender cada canal, sugerencias, nombre, tono e instrucciones
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-          </button>
-          <button
-            onClick={abrirActividad}
-            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"
-          >
-            <div>
-              <div className="text-xs font-bold text-slate-900 dark:text-white">Actividad reciente</div>
-              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
-                Lo último que entró, lo que respondió, las citas que agendó y los chats que pasó a una persona
-              </div>
-            </div>
-            <Terminal className="w-4 h-4 text-slate-400 shrink-0" />
-          </button>
-        </div>
-
-        {/* SECTION 5: ACCOUNT & PROFILE ACTIONS */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+          </>
+        )}
+        {seccion === 'apariencia' && (
+          <>
+        {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              Perfil Activo
-            </span>
-            <span className="text-[10px] text-slate-400">Mock Auth</span>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-[var(--primary)] flex items-center justify-center">
+                <Palette className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                  Personalización de Tema & 3 Colores
+                </h3>
+                <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+                  Primario · Acento / Secundario · Terciario
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowThemeModal(true)}
+              className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white font-bold text-[10px] flex items-center gap-1 shadow-xs ios-touch cursor-pointer hover:opacity-90"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Ver Paletas</span>
+            </button>
           </div>
 
-          {currentUser && (
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-11 h-11 rounded-full object-cover border"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-xs text-slate-900 dark:text-white">
-                  {currentUser.name}
+          {/* Theme Mode Selector (Claro / Oscuro / Sistema) */}
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+              Modo de Pantalla
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: 'light', label: 'Modo Claro', icon: <Sun className="w-3.5 h-3.5" /> },
+                { id: 'dark', label: 'Modo Oscuro', icon: <Moon className="w-3.5 h-3.5" /> },
+                { id: 'system', label: 'Automático', icon: <Laptop className="w-3.5 h-3.5" /> },
+              ].map(m => {
+                const isSelected = themeMode === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setThemeMode(m.id as ThemeMode)}
+                    className={`py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold transition ios-touch cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--primary)] text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    {m.icon}
+                    <span>{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3-Color Legend and Quick Active Preview */}
+          <div className="px-3.5 py-2.5 rounded-2xl bg-slate-100/80 dark:bg-neutral-800/80 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-full shadow-xs"
+                  style={{ backgroundColor: primaryColor }}
+                />
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Primario</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-full shadow-xs"
+                  style={{ backgroundColor: accentColor }}
+                />
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Acento</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-3 h-3 rounded-full shadow-xs"
+                  style={{ backgroundColor: tertiaryColor }}
+                />
+                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Terciario</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowCustomPickers(!showCustomPickers)}
+              className="text-[10px] font-bold text-[var(--primary)] hover:underline flex items-center gap-1"
+            >
+              <SlidersHorizontal className="w-3 h-3" />
+              <span>{showCustomPickers ? 'Ocultar HEX' : 'Editar HEX'}</span>
+            </button>
+          </div>
+
+          {/* Custom HEX Pickers (Optional expand) */}
+          {showCustomPickers && (
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-200/80 dark:border-neutral-700/80 grid grid-cols-3 gap-2">
+              <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
+                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Primario
+                </label>
+                <div className="flex items-center justify-center gap-1.5">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={e => setPrimaryColor(e.target.value)}
+                    className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
+                  />
+                  <span className="text-[10px] font-mono uppercase text-slate-500">
+                    {primaryColor}
+                  </span>
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-neutral-400">
-                  {currentUser.roleTitle}
+              </div>
+
+              <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
+                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Acento
+                </label>
+                <div className="flex items-center justify-center gap-1.5">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={e => setAccentColor(e.target.value)}
+                    className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
+                  />
+                  <span className="text-[10px] font-mono uppercase text-slate-500">
+                    {accentColor}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
+                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Terciario
+                </label>
+                <div className="flex items-center justify-center gap-1.5">
+                  <input
+                    type="color"
+                    value={tertiaryColor}
+                    onChange={e => setTertiaryColor(e.target.value)}
+                    className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
+                  />
+                  <span className="text-[10px] font-mono uppercase text-slate-500">
+                    {tertiaryColor}
+                  </span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Acceso Rápido Seguro con 1 toque */}
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                  <Zap className="w-4 h-4 fill-white" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                    Acceso Rápido (1 toque)
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-neutral-400">
-                    {quickReg.isRegistered
-                      ? `Vinculado a este ${quickReg.deviceName || 'dispositivo'}`
-                      : 'No configurado en este dispositivo'}
-                  </p>
-                </div>
-              </div>
+          {/* Quick 1-Click Preset Palettes Grid */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              Combinaciones Listas (1 Clic):
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {THEME_PALETTE_PRESETS.map((preset: ThemePalettePreset) => {
+                const isSelected = activePaletteId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPalettePreset(preset.id)}
+                    className={`p-2.5 rounded-2xl border text-left flex items-center justify-between transition ios-touch cursor-pointer ${
+                      isSelected
+                        ? 'bg-slate-50 dark:bg-neutral-800 shadow-xs ring-2 ring-[var(--primary)]/40'
+                        : 'bg-white dark:bg-neutral-900 border-slate-200/80 dark:border-neutral-800 hover:border-slate-300'
+                    }`}
+                    style={{
+                      borderColor: isSelected ? preset.primary : undefined,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base shrink-0">{preset.icon}</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
+                          <span>{preset.name}</span>
+                          {isSelected && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold">
+                              Activo
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[9.5px] text-slate-500 dark:text-neutral-400 truncate">
+                          {preset.subtitle}
+                        </div>
+                      </div>
+                    </div>
 
-              {quickReg.isRegistered ? (
-                <button
-                  type="button"
-                  onClick={handleDesvincularDispositivo}
-                  className="px-2.5 py-1 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400 text-[10px] font-bold hover:bg-red-500/25 transition cursor-pointer"
-                >
-                  Desvincular
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleVincularDispositivo}
-                  className="px-3 py-1 rounded-lg bg-[var(--primary)] text-white text-[10px] font-bold hover:opacity-90 transition cursor-pointer shadow-xs"
-                >
-                  Vincular
-                </button>
-              )}
+                    <div className="flex items-center gap-1 shrink-0 pl-1.5">
+                      <span
+                        className="w-3 h-3 rounded-full shadow-xs border border-white/50"
+                        style={{ backgroundColor: preset.primary }}
+                        title="Primario"
+                      />
+                      <span
+                        className="w-3 h-3 rounded-full shadow-xs border border-white/50"
+                        style={{ backgroundColor: preset.accent }}
+                        title="Acento"
+                      />
+                      <span
+                        className="w-3 h-3 rounded-full shadow-xs border border-white/50"
+                        style={{ backgroundColor: preset.tertiary }}
+                        title="Terciario"
+                      />
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-neutral-400 leading-tight">
-              {quickReg.isRegistered
-                ? 'Este teléfono puede entrar al salón sin volver a ingresar contraseña.'
-                : 'Actívalo para entrar a tu salón con un solo toque desde este equipo.'}
-            </p>
-          </div>
-
-          {/* Skip splash toggle */}
-          <div className="flex items-center justify-between py-3 px-0.5 border-b border-slate-100 dark:border-neutral-800 mb-1">
-            <div>
-              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Ocultar pantalla de inicio</p>
-              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">Salta el splash al recargar la app</p>
-            </div>
-            <button
-              onClick={toggleSkipSplash}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ios-touch cursor-pointer flex-shrink-0 ${skipSplash ? 'bg-[var(--primary)]' : 'bg-slate-200 dark:bg-neutral-700'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${skipSplash ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <button
-              onClick={triggerSplash}
-              className="py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-bold flex items-center justify-center gap-1 ios-touch cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Ver Splash Screen</span>
-            </button>
-
-            <button
-              onClick={logout}
-              className="py-2.5 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold flex items-center justify-center gap-1 border border-rose-500/20 ios-touch cursor-pointer hover:bg-rose-500/25"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Cerrar Sesión</span>
-            </button>
           </div>
         </div>
+
+          </>
+        )}
       </PageContent>
 
       {horarioDe && (() => {

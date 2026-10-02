@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { pedirSeccionAjustes } from '../components/ajustes/MenuAjustes';
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from 'motion/react';
 import {
   Clock, Megaphone, Scissors, CheckCircle2, X, UserPlus,
@@ -597,7 +598,7 @@ export const SalaScreen: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => navigateTo('settings')}
+                onClick={() => { pedirSeccionAjustes('salon'); navigateTo('settings'); }}
                 className="shrink-0 px-3 py-1.5 rounded-xl bg-amber-500 text-white text-[11px] font-bold hover:opacity-90 cursor-pointer transition"
               >
                 Ir a Ajustes

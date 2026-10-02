@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { pedirSeccionAjustes } from '../components/ajustes/MenuAjustes';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MessageSquareText,
@@ -92,7 +93,7 @@ export const ChatsScreen: React.FC = () => {
 
       <PageContent className="space-y-3">
         {sinCanales && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
-          <button type="button" onClick={() => navigateTo('settings')}
+          <button type="button" onClick={() => { pedirSeccionAjustes('chats'); navigateTo('settings'); }}
             className="w-full p-3 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-left cursor-pointer">
             <b className="text-xs text-slate-900 dark:text-white block">Conecta tu WhatsApp, Instagram o Facebook</b>
             <span className="text-[11px] text-slate-600 dark:text-neutral-300">Aún no llega ningún mensaje porque no hay canales conectados. Toca aquí: se hace en Configuración, con un botón.</span>

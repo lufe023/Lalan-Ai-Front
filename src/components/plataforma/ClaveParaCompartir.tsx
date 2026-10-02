@@ -6,11 +6,18 @@ import { Copy, MessageCircle, Check, KeyRound } from 'lucide-react';
  * por WhatsApp con el mensaje ya escrito.
  */
 export const ClaveParaCompartir: React.FC<{
-  nombre: string; email: string; clave: string; telefono?: string | null; salon?: string; onListo: () => void;
-}> = ({ nombre, email, clave, telefono, salon, onListo }) => {
+  nombre: string;
+  /** Con qué puede entrar: usuario, teléfono y/o correo */
+  entraCon?: string[];
+  /** Versión vieja: solo el correo */
+  email?: string | null;
+  clave: string; telefono?: string | null; salon?: string; onListo: () => void;
+}> = ({ nombre, entraCon, email, clave, telefono, salon, onListo }) => {
   const [copiado, setCopiado] = useState(false);
   const enlace = `${window.location.origin}/app/`;
-  const mensaje = `Hola ${nombre.split(' ')[0]}, ya está listo tu acceso a Lalan${salon ? ` para ${salon}` : ''} 🎉\n\nEntra aquí: ${enlace}\nCorreo: ${email}\nClave temporal: ${clave}\n\nAl entrar te pedirá poner tu propia clave.`;
+  const llaves = (entraCon?.length ? entraCon : [email]).filter((x): x is string => !!x);
+  const entra = llaves.join(' o ');
+  const mensaje = `Hola ${nombre.split(' ')[0]}, ya está listo tu acceso a Lalan${salon ? ` para ${salon}` : ''} 🎉\n\nEntra aquí: ${enlace}\nEntra con: ${entra}\nClave temporal: ${clave}\n\nAl entrar te pedirá poner tu propia clave.`;
   const copiar = async () => {
     try { await navigator.clipboard.writeText(mensaje); setCopiado(true); setTimeout(() => setCopiado(false), 2000); } catch { /* sin permiso de portapapeles */ }
   };
@@ -18,7 +25,7 @@ export const ClaveParaCompartir: React.FC<{
     <div className="p-4 rounded-2xl border-2 border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-[13px]"><KeyRound className="w-4 h-4" /> Acceso listo para {nombre}</div>
       <div className="text-[12px] text-slate-700 dark:text-neutral-200 space-y-1">
-        <div>Correo: <b>{email}</b></div>
+        <div>Entra con: <b className="break-all">{entra}</b></div>
         <div>Clave temporal: <b className="font-mono text-[15px] tracking-wide select-all">{clave}</b></div>
         <p className="text-[11px] text-slate-500">Guárdala ahora: por seguridad no se vuelve a mostrar. Si se pierde, genera otra.</p>
       </div>
