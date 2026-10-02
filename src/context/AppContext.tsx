@@ -120,6 +120,8 @@ export interface SalonStaff {
   active: boolean;
   zoneId?: string | null;
   zone?: { id: string; name: string; prefix: string; color?: string | null } | null;
+  /** Su horario propio; null = trabaja todo el horario del salón */
+  horarioSemanal?: import('../types').DiaDeHorario[] | null;
 }
 
 export type QueueStatus = 'waiting' | 'called' | 'serving' | 'done' | 'cancelled' | 'no_show';
@@ -389,7 +391,7 @@ interface AppContextType {
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
   loadEspecialistas: () => Promise<void>;
-  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean }) => Promise<boolean>;
+  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null }) => Promise<boolean>;
   eliminarEspecialista: (id: string) => Promise<void>;
   /** Da el turno: la persona llegó. Con appointmentId es una cita; sin él, walk-in */
   darTurno: (dto: { appointmentId?: string | null; clientId?: string | null; clientName?: string; zoneId?: string | null; staffId?: string | null; reason?: string | null }) => Promise<QueueTicket | null>;
@@ -749,6 +751,7 @@ function mapApiAppointment(a: any): Appointment {
     startsAt: a.startsAt, completedAt: a.completedAt ?? undefined,
     arrivedAt: a.arrivedAt ?? undefined, originalStartsAt: a.originalStartsAt ?? undefined,
     bookedByAssistant: !!a.bookedByAssistant, createdByName: a.createdByName ?? null,
+    fueraDeHorario: !!a.fueraDeHorario,
   };
 }
 function mapApiConversation(c: any): Conversation {
@@ -761,12 +764,16 @@ function mapApiConversation(c: any): Conversation {
     unreadCount: c.unreadCount ?? 0, serviceInterest: c.serviceInterest,
     lastMessageAt: c.lastMessageAt ?? undefined,
     windowExpiresAt: c.windowExpiresAt ?? null,
+    fueraDeHorarioHasta: c.fueraDeHorarioHasta ?? null, fueraDeHorarioPor: c.fueraDeHorarioPor ?? null,
+    silenciadaHasta: c.silenciadaHasta ?? null, bloqueada: !!c.bloqueada, bloqueadaPor: c.bloqueadaPor ?? null,
+    // Los borrados vienen sin contenido (salvo para el super admin): se muestran como aviso
     messages: (c.messages ?? [])
-      .filter((m: any) => !m.deletedAt)
       .map((m: any): ChatMessage => ({
         id: m.id, sender: m.sender, text: m.text ?? '', timestamp: m.createdAt,
         isAiGenerated: m.isAiGenerated, isSuggestion: !!m.isSuggestion,
         deliveryStatus: m.deliveryStatus ?? null, failureReason: m.failureReason ?? null,
+        tipo: m.contentType ?? 'texto', adjunto: m.adjunto ?? null,
+        reaccion: m.reaction ?? null, eliminado: !!m.deletedAt, origen: m.origin ?? null,
       })),
   };
 }
@@ -823,12 +830,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   /* Con la app ya abierta, la notificación le pide ir a una pantalla */
   useEffect(() => {
+    /* Lo que hay que abrir dentro de la pantalla (el informe o el chat de la notificación) */
+    const abrirDentro = (aviso?: string | null, conversacion?: string | null) => {
+      if (aviso) { try { sessionStorage.setItem('lalan.abrirAviso', aviso); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-aviso')); }
+      if (conversacion) setActiveConversationId(conversacion);
+    };
     try {
       const u = new URL(window.location.href);
-      if (u.searchParams.has('ir')) { u.searchParams.delete('ir'); window.history.replaceState(null, '', u.pathname + u.search + u.hash); }
+      if (u.searchParams.has('ir')) {
+        abrirDentro(u.searchParams.get('aviso'), u.searchParams.get('conversacion'));
+        ['ir', 'aviso', 'conversacion'].forEach(k => u.searchParams.delete(k));
+        window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+      }
     } catch { /* nada */ }
     if (!('serviceWorker' in navigator)) return;
-    const oir = (e: MessageEvent) => { if (e.data?.tipo === 'ir' && e.data.pantalla) setCurrentScreen(e.data.pantalla as ScreenName); };
+    const oir = (e: MessageEvent) => {
+      if (e.data?.tipo !== 'ir' || !e.data.pantalla) return;
+      setCurrentScreen(e.data.pantalla as ScreenName);
+      abrirDentro(e.data.aviso, e.data.conversacion);
+    };
     navigator.serviceWorker.addEventListener('message', oir);
     return () => navigator.serviceWorker.removeEventListener('message', oir);
   }, []);
@@ -1196,6 +1216,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       depositPaid: data.depositPaid ?? 0,
       channel: data.channel,
       notes: data.notes || undefined,
+      ...((data as any).fueraDeHorario ? { fueraDeHorario: true } : {}),
     });
     setAppointments(a => [...a, mapApiAppointment(res)]);
 

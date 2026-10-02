@@ -28,6 +28,10 @@ import { PageContent } from '../components/ui/PageContent';
 import { CascadingRibbonCalendar, CalendarGranularity } from '../components/ui/CascadingRibbonCalendar';
 import { hora12 } from '../utils/hora';
 import { SelectorHora } from '../components/ui/SelectorHora';
+import { CitasPendientes, citasPendientes } from '../components/agenda/CitasPendientes';
+import { useAusencias } from '../hooks/useAusencias';
+import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
+import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
 
 export const CalendarScreen: React.FC = () => {
   const { dinero } = useDinero();
@@ -48,7 +52,13 @@ export const CalendarScreen: React.FC = () => {
     abrirComandaDeCita,
     categoriasDe,
     categoriaPorClave,
+    especialistas,
+    loadEspecialistas,
   } = useApp();
+  useEffect(() => { void loadEspecialistas(); }, [loadEspecialistas]);
+  // Quién no viene y quién no trabaja ese día (vacaciones, horario propio)
+  const { ausencias, motivo: motivoAusencia } = useAusencias();
+  const semanaSalon = useMemo(() => semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime), [settings.horarioSemanal, settings.openingTime, settings.closingTime]);
   const { currentUser } = useAuth();
 
   // ── Calendar range info (driven by CascadingRibbonCalendar) ─────────────
@@ -61,6 +71,16 @@ export const CalendarScreen: React.FC = () => {
   // ── UI State ─────────────────────────────────────────────────────────────
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | 'all'>('all');
   const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null);
+  /* Pendientes: la lista, y saltar al día de la cita elegida (el calendario se vuelve a montar en esa fecha) */
+  const [verPendientes, setVerPendientes] = useState(false);
+  const [irA, setIrA] = useState<{ fecha: Date; vez: number } | null>(null);
+  const abrirPendiente = (a: Appointment) => {
+    setVerPendientes(false);
+    setIrA({ fecha: new Date(`${a.date}T12:00:00`), vez: Date.now() });
+    setCurrentDateStr(a.date);
+    setActiveAppointment(a);
+  };
+  const totalPendientes = useMemo(() => citasPendientes(appointments).total, [appointments]);
   const [showNewAptModal, setShowNewAptModal] = useState<boolean>(false);
   const [completionDialog, setCompletionDialog] = useState<{
     appointment: Appointment;
@@ -152,7 +172,8 @@ export const CalendarScreen: React.FC = () => {
   const [selectedTierName, setSelectedTierName] = useState<string>('');
   const [customPrice, setCustomPrice] = useState<number | null>(null);
   const [newTime, setNewTime] = useState('11:00');
-  const [newStaff, setNewStaff] = useState('Camila Ríos');
+  /** Id de la especialista elegida; '' = por asignar (el salón decide luego) */
+  const [newStaff, setNewStaff] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [newChannel, setNewChannel] = useState<CommunicationChannel>('whatsapp');
 
@@ -192,15 +213,30 @@ export const CalendarScreen: React.FC = () => {
     }
   };
 
-  const handleCreateAppointment = (e: React.FormEvent) => {
+  // Los ratos en que se puede agendar ese día (salón, o la especialista elegida)
+  const personaElegida = (especialistas ?? []).find(e => e.id === newStaff) ?? null;
+  const turnosDelDia = turnosParaAgendar(personaElegida, currentDateStr, semanaSalon, ausencias);
+  const duracionElegida = services.find(s => s.id === newServiceId)?.durationMinutes || settings.defaultAppointmentDurationMinutes || 60;
+  const fueraDeHorario = !cabeEn(turnosDelDia, newTime, duracionElegida);
+  const [errorAlAgendar, setErrorAlAgendar] = useState<string | null>(null);
+  const [agendando, setAgendando] = useState(false);
+
+  // Solo la dueña o la administración agendan fuera de horario (turno especial)
+  const puedeForzarHorario = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+
+  const handleCreateAppointment = async (e: React.FormEvent | React.MouseEvent, forzar = false) => {
     e.preventDefault();
-    if (!newClientName) return;
+    if (!newClientName || (fueraDeHorario && !forzar) || agendando) return;
     const selectedSrv = services.find(s => s.id === newServiceId) || services[0];
     const finalPrice = customPrice !== null ? customPrice : (selectedSrv.priceTiers?.[0]?.price ?? selectedSrv.price ?? 0);
     // El anticipo que dice Ajustes: si no se pide o es 0 %, no hay anticipo
     const deposit = settings.requireDeposit ? Math.round(finalPrice * ((settings.depositPercent || 0) / 100)) : 0;
     const fullServiceName = selectedTierName ? `${selectedSrv.name} (${selectedTierName})` : selectedSrv.name;
-    addAppointment({
+    setErrorAlAgendar(null);
+    setAgendando(true);
+    try {
+    await addAppointment({
+      ...(forzar ? { fueraDeHorario: true } : {}),
       // Si la eligieron de la lista, se enlaza por id y no por parecido de nombre
       clientId: selectedClientId || undefined,
       clientName: newClientName.trim(),
@@ -218,12 +254,20 @@ export const CalendarScreen: React.FC = () => {
       // El precio va en la moneda del servicio; el sistema lo convierte al cobrar
       currencyCode: selectedSrv.currencyCode,
       depositPaid: deposit,
-      staffName: newStaff,
+      staffId: newStaff || undefined,
+      staffName: (especialistas ?? []).find(e => e.id === newStaff)?.name ?? 'Por asignar',
       // La confirma quien la agenda; el backend la guarda a su nombre
       status: 'confirmed',
       channel: newChannel,
       notes: newNotes,
     });
+    } catch (err: any) {
+      // El servidor tiene la última palabra (horario, ausencias): se dice aquí mismo, sin cerrar
+      setErrorAlAgendar(err?.message ?? 'No se pudo agendar. Inténtalo de nuevo.');
+      return;
+    } finally {
+      setAgendando(false);
+    }
     setNewClientName(''); setNewClientPhone(''); setSelectedClientId('');
     setSelectedTierName(''); setCustomPrice(null); setNewNotes('');
     setShowNewAptModal(false);
@@ -296,6 +340,8 @@ export const CalendarScreen: React.FC = () => {
 
       <PageContent className="space-y-3">
         <CascadingRibbonCalendar
+          key={irA?.vez ?? 'calendario'}
+          initialDate={irA?.fecha}
           events={calendarEvents}
           initialGranularity="days"
           onSelectDate={(_, dateStr) => setCurrentDateStr(dateStr)}
@@ -310,8 +356,31 @@ export const CalendarScreen: React.FC = () => {
 
             return (
               <div className="space-y-3 mt-1">
+                {granularity === 'days' && (() => {
+                  const noVienen = (especialistas ?? []).filter(e => e.active)
+                    .map(e => ({ e, hoy: estadoDelDia(e, currentDateStr, semanaSalon, ausencias, motivoAusencia) }))
+                    .filter(x => !x.hoy.trabaja || x.hoy.detalle?.startsWith('Sale'));
+                  if (!noVienen.length || !semanaSalon.find(d => d.dia === new Date(`${currentDateStr}T12:00:00Z`).getUTCDay())?.abierto) return null;
+                  return (
+                    <div className="px-3 py-2 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-900 text-[11px] text-sky-900 dark:text-sky-200">
+                      <span className="font-bold">Este día: </span>
+                      {noVienen.map(x => `${x.e.name.split(' ')[0]} (${(x.hoy.detalle ?? '').toLowerCase()})`).join(' · ')}
+                    </div>
+                  );
+                })()}
                 {/* Category filter pills */}
                 <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setVerPendientes(true)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ios-touch cursor-pointer flex items-center gap-1 ${
+                      totalPendientes
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
+                        : 'bg-white dark:bg-neutral-900 text-slate-500 border border-slate-200/80 dark:border-neutral-800'
+                    }`}
+                  >
+                    ⏳ Pendientes{totalPendientes ? ` ${totalPendientes}` : ''}
+                  </button>
                   {[
                     { id: 'all', label: 'Todos' },
                     // Las categorías del salón (las crea la dueña en Catálogo)
@@ -370,7 +439,14 @@ export const CalendarScreen: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">{apt.clientName}</h4>
-                            {getStatusBadge(apt.status, apt)}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {apt.fueraDeHorario && (
+                                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-violet-500/15 text-violet-700 dark:text-violet-300" title="Se agendó fuera del horario, con autorización">
+                                  Fuera de horario
+                                </span>
+                              )}
+                              {getStatusBadge(apt.status, apt)}
+                            </div>
                           </div>
                           <p className="text-[11px] font-medium text-slate-600 dark:text-neutral-300 truncate mt-0.5 flex items-center gap-1">
                             {getServiceCategoryIcon(apt.serviceCategory)}
@@ -729,8 +805,18 @@ export const CalendarScreen: React.FC = () => {
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Hora</label>
-              <SelectorHora value={newTime} onChange={setNewTime} />
+              <SelectorHora value={newTime} onChange={v => { setNewTime(v); setErrorAlAgendar(null); }} />
             </div>
+          </div>
+          <div className={`px-3 py-2 rounded-xl text-[11px] ${fueraDeHorario
+            ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
+            : 'bg-slate-50 dark:bg-neutral-800/60 text-slate-500 dark:text-neutral-400'}`}>
+            {!turnosDelDia.length
+              ? (personaElegida ? `${personaElegida.name.split(' ')[0]} no trabaja este día. Elige a otra persona u otro día.` : 'El salón está cerrado este día. Elige otro día.')
+              : <>
+                  <span className="font-bold">{personaElegida ? `${personaElegida.name.split(' ')[0]} atiende` : 'Este día se atiende'}: </span>{ratos(turnosDelDia)}
+                  {fueraDeHorario && <span className="block font-semibold mt-0.5">A esa hora la cita ({duracionElegida} min) queda fuera del horario.</span>}
+                </>}
           </div>
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Servicio</label>
@@ -760,12 +846,17 @@ export const CalendarScreen: React.FC = () => {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Especialista</label>
-              <select value={newStaff} onChange={e => setNewStaff(e.target.value)}
+              <select value={newStaff} onChange={e => { setNewStaff(e.target.value); setErrorAlAgendar(null); }}
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none">
-                <option value="Camila Ríos (Uñas)">Camila Ríos (Uñas)</option>
-                <option value="Elena Soto (Spa Pies)">Elena Soto (Spa Pies)</option>
-                <option value="Carlos M. (Peinados)">Carlos M. (Peinados)</option>
-                <option value="Ana Lucía (Masajes)">Ana Lucía (Masajes)</option>
+                <option value="">Por asignar</option>
+                {(especialistas ?? []).filter(e => e.active).map(e => {
+                  const hoy = estadoDelDia(e, currentDateStr, semanaSalon, ausencias, motivoAusencia);
+                  return (
+                    <option key={e.id} value={e.id} disabled={!hoy.trabaja}>
+                      {e.name}{e.role ? ` (${e.role})` : ''}{!hoy.trabaja ? ` — ${hoy.detalle}` : hoy.detalle?.startsWith('Sale') ? ` — ${hoy.detalle}` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div>
@@ -789,7 +880,17 @@ export const CalendarScreen: React.FC = () => {
               ${Math.round((() => { const srv = services.find(s => s.id === newServiceId); return customPrice !== null ? customPrice : (srv?.priceTiers?.[0]?.price ?? srv?.price ?? 0); })() * ((settings.depositPercent || 30) / 100))}
             </span>
           </div>
-          <button type="submit" className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer">
+          {fueraDeHorario && puedeForzarHorario && (
+            <button type="button" disabled={agendando || !newClientName} onClick={e => void handleCreateAppointment(e, true)}
+              className="w-full py-2.5 rounded-xl border border-violet-300 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-xs font-bold ios-touch cursor-pointer disabled:opacity-40">
+              Agendar igual como turno especial (fuera de horario)
+            </button>
+          )}
+          {errorAlAgendar && (
+            <p className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-[12px] font-semibold text-rose-700 dark:text-rose-300">{errorAlAgendar}</p>
+          )}
+          <button type="submit" disabled={fueraDeHorario || agendando}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
             Guardar Cita en Agenda
           </button>
         </form>
@@ -911,6 +1012,7 @@ export const CalendarScreen: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <CitasPendientes abierto={verPendientes} onCerrar={() => setVerPendientes(false)} citas={appointments} onAbrir={abrirPendiente} />
     </div>
   );
 };

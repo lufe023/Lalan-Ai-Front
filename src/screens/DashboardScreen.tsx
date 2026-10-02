@@ -182,11 +182,21 @@ const Barras: React.FC<{
 };
 
 /** Columnas por hora o por día. La más alta va en color lleno; el resto, el mismo color más suave. */
+/** De la primera a la última hora con citas (con una de margen): sin la madrugada vacía */
+function horasConMovimiento<T extends { citas: number }>(horas: T[]): T[] {
+  const primera = horas.findIndex(h => h.citas > 0);
+  if (primera < 0) return horas;
+  const ultima = horas.length - 1 - [...horas].reverse().findIndex(h => h.citas > 0);
+  return horas.slice(Math.max(primera - 1, 0), Math.min(ultima + 2, horas.length));
+}
+
 const Columnas: React.FC<{ columnas: { clave: string; etiqueta: string; citas: number; ayuda: string }[] }> = ({ columnas }) => {
   const mayor = Math.max(...columnas.map(c => c.citas), 0);
   if (!mayor) return <p className="text-[11px] text-slate-400 dark:text-neutral-500 text-center py-6">Sin citas en este período</p>;
+  /* Muchas columnas (las horas): etiqueta una sí y una no, para que se lean completas */
+  const apretadas = columnas.length > 10;
   return (
-    <div className="flex items-end gap-1.5 h-32">
+    <div className={`flex items-end h-32 w-full min-w-0 ${apretadas ? 'gap-1' : 'gap-1.5'}`}>
       {columnas.map((c, i) => {
         const pico = c.citas === mayor;
         return (
@@ -204,7 +214,7 @@ const Columnas: React.FC<{ columnas: { clave: string; etiqueta: string; citas: n
                 }`}
               />
             </div>
-            <span className="text-[10px] text-slate-500 dark:text-neutral-400 truncate w-full text-center">{c.etiqueta}</span>
+            <span className={`text-[10px] text-slate-500 dark:text-neutral-400 whitespace-nowrap text-center ${apretadas && i % 2 ? 'invisible' : ''}`}>{c.etiqueta}</span>
           </div>
         );
       })}
@@ -447,7 +457,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
             nota="Citas por hora de la cita"
           />
           <Columnas
-            columnas={d.porHora.map(h => ({
+            columnas={horasConMovimiento(d.porHora).map(h => ({
               clave: String(h.hora),
               etiqueta: horaCorta(h.hora),
               citas: h.citas,

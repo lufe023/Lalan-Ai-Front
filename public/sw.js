@@ -204,21 +204,24 @@ self.addEventListener('push', (event) => {
       badge: '/icono-192.png',
       tag: d.etiqueta || undefined,
       renotify: !!d.etiqueta,
-      data: { ir: d.ir || 'dashboard' },
+      data: { ir: d.ir || 'dashboard', aviso: d.aviso || null, conversacion: d.conversacion || null },
     }).then(() => (self.navigator && 'setAppBadge' in self.navigator ? self.navigator.setAppBadge().catch(() => {}) : undefined))
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const ir = (event.notification.data && event.notification.data.ir) || 'dashboard';
-  const url = '/app/?ir=' + encodeURIComponent(ir);
+  const datos = event.notification.data || {};
+  const ir = datos.ir || 'dashboard';
+  let url = '/app/?ir=' + encodeURIComponent(ir);
+  if (datos.aviso) url += '&aviso=' + encodeURIComponent(datos.aviso);
+  if (datos.conversacion) url += '&conversacion=' + encodeURIComponent(datos.conversacion);
   event.waitUntil((async () => {
     if (self.navigator && 'clearAppBadge' in self.navigator) self.navigator.clearAppBadge().catch(() => {});
     const ventanas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const v of ventanas) {
       if (v.url.includes('/app')) {
-        v.postMessage({ tipo: 'ir', pantalla: ir });
+        v.postMessage({ tipo: 'ir', pantalla: ir, aviso: datos.aviso || null, conversacion: datos.conversacion || null });
         return v.focus();
       }
     }

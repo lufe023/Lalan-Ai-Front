@@ -38,7 +38,7 @@ export const PageContent: React.FC<PageContentProps> = ({
     .join(' ');
 
   return (
-    <div data-desplazable className="flex-1 overflow-y-auto hide-scrollbar pb-6 lg:pb-8">
+    <div data-desplazable className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none hide-scrollbar pb-6 lg:pb-8">
       <div className={innerClass}>{children}</div>
     </div>
   );

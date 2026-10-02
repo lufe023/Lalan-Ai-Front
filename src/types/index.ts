@@ -195,6 +195,8 @@ export interface Appointment {
   selectedPriceTierName?: string;
   depositPaid: number;
   staffName: string;
+  /** La especialista enlazada (si se eligió de la plantilla) */
+  staffId?: string | null;
   status: AppointmentStatus;
   channel: CommunicationChannel;
   notes?: string;
@@ -205,6 +207,8 @@ export interface Appointment {
   arrivedAt?: string;
   /** La agendó la asistente por chat */
   bookedByAssistant?: boolean;
+  /** Turno especial: se agendó fuera del horario, con autorización de la dueña */
+  fueraDeHorario?: boolean;
   /** Quién del equipo la agendó desde la app */
   createdByName?: string | null;
   /** La hora que tenía agendada, si llegó en otro momento y la cita se movió a la hora real */
@@ -225,6 +229,26 @@ export interface ChatMessage {
   /** Por qué no salió, dicho para una persona */
   failureReason?: string | null;
   appointmentData?: Partial<Appointment>;
+  /** texto, imagen, video, nota_voz, documento, sticker… (catálogo TipoContenido) */
+  tipo?: string;
+  /** La foto, video o documento que vino con el mensaje */
+  adjunto?: AdjuntoDeMensaje | null;
+  /** El emoji con que la clienta reaccionó a este mensaje */
+  reaccion?: string | null;
+  /** La clienta lo borró. El equipo solo ve el aviso; el super admin, también el contenido */
+  eliminado?: boolean;
+  /** De dónde llegó: anuncio, enlace o historia */
+  origen?: { tipo: string; id?: string; url?: string; titulo?: string } | null;
+}
+
+export interface AdjuntoDeMensaje {
+  /** Ya está guardado en el servidor y se puede mostrar */
+  tieneArchivo: boolean;
+  mime?: string | null;
+  nombre?: string | null;
+  /** Lo que vio la IA en la foto */
+  descripcion?: string | null;
+  transcripcion?: string | null;
 }
 
 export type ChatStatus = 'ai_active' | 'manual_control' | 'needs_attention';
@@ -247,6 +271,14 @@ export interface Conversation {
   lastMessageAt?: string;
   /** Hasta cuándo se le puede escribir (24 h desde su último mensaje, regla de Meta) */
   windowExpiresAt?: string | null;
+  /** La dueña autorizó que Lalan le agende fuera del horario, hasta esta hora */
+  fueraDeHorarioHasta?: string | null;
+  fueraDeHorarioPor?: string | null;
+  /** En pausa por posible spam hasta esta hora: Lalan no contesta, no se guardan archivos */
+  silenciadaHasta?: string | null;
+  /** Bloqueada por el salón: no se guarda nada de lo que mande */
+  bloqueada?: boolean;
+  bloqueadaPor?: string | null;
 }
 
 export interface ActividadDelCanal {
@@ -310,6 +342,40 @@ export interface ThemePalettePreset {
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+/** Un turno del día. Horas "HH:mm" locales */
+export interface TramoHorario {
+  desde: string;
+  hasta: string;
+}
+
+/** Un día del horario semanal (0 = domingo). Varios turnos = cierra y vuelve a abrir */
+export interface DiaDeHorario {
+  dia: number;
+  abierto: boolean;
+  tramos: TramoHorario[];
+}
+
+/** Un día (o unas horas) en que una especialista no viene */
+export interface AusenciaEspecialista {
+  id: string;
+  staffId: string;
+  /** Fechas locales "2026-10-10", ambas incluidas */
+  desde: string;
+  hasta: string;
+  horaDesde: string | null;
+  horaHasta: string | null;
+  /** Clave del catálogo de motivos (GET /salon/ausencias/motivos) */
+  motivo: string;
+  nota?: string | null;
+  staff?: { id: string; name: string };
+}
+
+export interface MotivoAusencia {
+  id: string;
+  descripcion: string;
+  emoji: string;
+}
+
 export interface SalonBusinessSettings {
   salonName: string;
   tagline: string;
@@ -317,6 +383,8 @@ export interface SalonBusinessSettings {
   address: string;
   openingTime: string; // e.g. "09:00"
   closingTime: string; // e.g. "20:00"
+  /** Cada día con su horario (cerrar un jueves, media jornada el sábado…) */
+  horarioSemanal: DiaDeHorario[];
   // Appointment timing & buffer parameters
   bufferTimeMinutes: number; // Tiempo de descanso / preparación entre cita y cita (ej. 5, 10, 15 min)
   defaultAppointmentDurationMinutes: number; // Tiempo que dura una cita estándar (ej. 60 min)

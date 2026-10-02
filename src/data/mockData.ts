@@ -934,6 +934,7 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   address: 'Av. Paseo de las Palmas 720, Lomas de Chapultepec',
   openingTime: '09:00',
   closingTime: '20:00',
+  horarioSemanal: [1, 2, 3, 4, 5, 6, 0].map(dia => ({ dia, abierto: true, tramos: [{ desde: '09:00', hasta: '20:00' }] })),
   // Configuration requested by user
   bufferTimeMinutes: 5, // 5 minutos de descanso / preparación entre cita y cita
   defaultAppointmentDurationMinutes: 60, // 60 min duración estándar

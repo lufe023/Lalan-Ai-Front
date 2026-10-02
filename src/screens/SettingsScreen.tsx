@@ -29,6 +29,7 @@ import {
   Bot,
   ChevronRight,
   Zap,
+  CalendarClock,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { CatalogoEnOtraMoneda } from '../components/ajustes/CatalogoEnOtraMoneda';
@@ -48,7 +49,8 @@ import { EditorPizarra } from '../components/ui/EditorPizarra';
 import { PeticionesMusica } from '../components/ui/PeticionesMusica';
 import { TuPlan } from '../components/ajustes/TuPlan';
 import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
-import { SelectorHora } from '../components/ui/SelectorHora';
+import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
+import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 
@@ -245,6 +247,8 @@ export const SettingsScreen: React.FC = () => {
   });
 
   const [showLogsModal, setShowLogsModal] = useState(false);
+  /** La especialista cuyo horario y ausencias se están viendo */
+  const [horarioDe, setHorarioDe] = useState<string | null>(null);
   /* La actividad reciente de los chats, de la base: si aquí no aparece
      nada, es que no está llegando nada (antes había eventos inventados) */
   const [actividad, setActividad] = useState<EventoActividad[] | null>(null);
@@ -259,8 +263,6 @@ export const SettingsScreen: React.FC = () => {
   const [salonName, setSalonName] = useState(settings.salonName);
   const [address, setAddress] = useState(settings.address);
   const [phone, setPhone] = useState(settings.phone);
-  const [openingTime, setOpeningTime] = useState(settings.openingTime);
-  const [closingTime, setClosingTime] = useState(settings.closingTime);
   const [bufferTimeMinutes, setBufferTimeMinutes] = useState(settings.bufferTimeMinutes);
   const [defaultAppointmentDurationMinutes, setDefaultAppointmentDurationMinutes] = useState(
     settings.defaultAppointmentDurationMinutes
@@ -288,8 +290,6 @@ export const SettingsScreen: React.FC = () => {
       salonName,
       address,
       phone,
-      openingTime,
-      closingTime,
       bufferTimeMinutes,
       defaultAppointmentDurationMinutes,
       gracePeriodMinutes,
@@ -560,10 +560,15 @@ export const SettingsScreen: React.FC = () => {
 
           <div>
             <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Mensaje Fuera de Horario
+              Aviso cuando el salón está cerrado
             </label>
+            <p className="text-[10px] text-slate-500 dark:text-neutral-400 mb-1.5">
+              Lalan atiende y agenda a toda hora, también con el salón cerrado (solo ofrece horas en que abres).
+              Este aviso solo le cuenta a la clienta que, si necesita a alguien del equipo, le escriben cuando abran.
+            </p>
             <textarea
               rows={2}
+              placeholder="Ahora estamos cerrados, pero yo te ayudo y te agendo. Si necesitas a alguien del equipo, te escriben apenas abramos 💜"
               value={offHoursText}
               onChange={e => setOffHoursText(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
@@ -618,19 +623,11 @@ export const SettingsScreen: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Abre a las
-              </label>
-              <SelectorHora value={openingTime} onChange={setOpeningTime} paso={15} />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Cierra a las
-              </label>
-              <SelectorHora value={closingTime} onChange={setClosingTime} paso={15} />
-            </div>
+          <div className="pt-2 border-t border-slate-200/60 dark:border-neutral-800">
+            <HorarioSemanal
+              semana={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
+              onGuardar={horarioSemanal => updateSettings({ horarioSemanal })}
+            />
           </div>
 
           {/* CRITICAL PARAMETERS: BUFFER TIME, DURATION, AND GRACE PERIOD */}
@@ -921,7 +918,8 @@ export const SettingsScreen: React.FC = () => {
           </div>
           <p className="text-[11px] text-slate-400 leading-relaxed">
             Cada una con su especialidad y su zona. La zona es la que decide a
-            qué cola entra un turno cuando no se elige a mano.
+            qué cola entra un turno cuando no se elige a mano. Con el reloj
+            pones su horario (si no es el del salón) y los días que no viene.
           </p>
 
           <div className="space-y-2">
@@ -963,6 +961,17 @@ export const SettingsScreen: React.FC = () => {
                     <option key={z.id} value={z.id}>{z.prefix} · {z.name}</option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={() => setHorarioDe(e.id)}
+                  aria-label={`Horario de ${e.name}`}
+                  title="Horario y días que no viene"
+                  className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    e.horarioSemanal ? 'text-[var(--primary)] bg-[var(--primary)]/10' : 'text-slate-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
+                  }`}
+                >
+                  <CalendarClock className="w-3.5 h-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => eliminarEspecialista(e.id)}
@@ -1653,6 +1662,18 @@ export const SettingsScreen: React.FC = () => {
           </div>
         </div>
       </PageContent>
+
+      {horarioDe && (() => {
+        const persona = (especialistas ?? []).find(x => x.id === horarioDe);
+        return persona ? (
+          <HorarioEspecialista
+            persona={persona}
+            semanaSalon={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
+            onCerrar={() => setHorarioDe(null)}
+          />
+        ) : null;
+      })()}
+
 
       {/* Actividad reciente de los chats */}
       <IOSModal

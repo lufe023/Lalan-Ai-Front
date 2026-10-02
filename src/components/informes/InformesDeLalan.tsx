@@ -17,7 +17,7 @@ interface Informe { tipo: Tipo; titulo: string; periodo: string; sede: string; n
 interface Aviso { id: string; tipo: Tipo; titulo: string; resumen: string; informe: Informe; leidoEn: string | null; creadoEn: string }
 interface Preferencia {
   id: Tipo; nombre: string; descripcion: string; incluido: boolean; soloSiHayAlgo: boolean;
-  frecuencia: Frecuencia; diaSemana: number | null; diaMes: number | null; minuto: number; canales: Canal[]; plantillaSiCerrada: boolean; activo: boolean;
+  frecuencia: Frecuencia; diaSemana: number | null; diaMes: number | null; minuto: number; canales: Canal[]; plantillaSiCerrada: boolean; activo: boolean; ultimoEnvio: string | null;
 }
 interface Sede { id: string; name: string }
 
@@ -150,6 +150,26 @@ export const InformesDeLalan: React.FC = () => {
     finally { setCargando(false); }
   }, [periodo, sede, showToast]);
 
+  /* Al tocar la notificación de un informe: se abre ese informe, tal como llegó */
+  useEffect(() => {
+    if (!esDireccion) return;
+    const revisar = async () => {
+      let id: string | null = null;
+      try { id = sessionStorage.getItem('lalan.abrirAviso'); sessionStorage.removeItem('lalan.abrirAviso'); } catch { /* nada */ }
+      if (!id) return;
+      try {
+        const r = await api.get<{ avisos: Aviso[]; sinLeer: number }>('/informes-lalan/avisos');
+        setAvisos(r.avisos); setSinLeer(r.sinLeer);
+        const a = r.avisos.find(x => x.id === id);
+        if (a) abrirAviso(a);
+      } catch { /* sin conexión: se queda en Informes */ }
+    };
+    void revisar();
+    window.addEventListener('lalan:abrir-aviso', revisar);
+    return () => window.removeEventListener('lalan:abrir-aviso', revisar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esDireccion]);
+
   const abrirAviso = (a: Aviso) => {
     setAbierto({ tipo: a.tipo, informe: a.informe, desdeAviso: true });
     if (!a.leidoEn) {
@@ -271,7 +291,7 @@ export const InformesDeLalan: React.FC = () => {
                 <FileDown className="w-4 h-4" /> Descargar en Excel
               </button>
               <span className="text-[11px] text-slate-500 w-full">Mándamelo:</span>
-              {CANALES.filter(c => c.id !== 'app' && (c.id !== 'whatsapp' || tieneWhatsapp)).map(c => (
+              {CANALES.filter(c => c.id !== 'whatsapp' || tieneWhatsapp).map(c => (
                 <button key={c.id} type="button" disabled={!!enviando} onClick={() => void mandar(c.id)}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[12px] font-bold disabled:opacity-50 cursor-pointer">
                   {enviando === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <c.Icono className="w-3.5 h-3.5" />} {c.texto}
@@ -336,6 +356,11 @@ export const InformesDeLalan: React.FC = () => {
                   )}
                   <SelectorHora value={aHHMM(p.minuto)} paso={30} onChange={v => void guardar(p, { minuto: aMinutos(v) })} />
                   {p.soloSiHayAlgo && <span className="text-slate-400">Solo si hay algo que atender</span>}
+                  <span className="w-full text-[10px] text-slate-400">
+                    {p.ultimoEnvio
+                      ? `Última revisión: ${new Date(p.ultimoEnvio).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}, ${new Date(p.ultimoEnvio).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+                      : 'Todavía no ha salido'}
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {CANALES.filter(c => c.id !== 'whatsapp' || tieneWhatsapp).map(c => {

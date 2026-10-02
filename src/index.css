@@ -200,3 +200,10 @@ button, [role="button"], .ios-touch, label, select {
   user-select: none;
 }
 
+
+/* App nativa: nada se desliza de lado sin querer (solo lo que es carrusel,
+   como el menú de abajo, que lo pide explícitamente con overflow-x-auto) */
+html, body, #root {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}

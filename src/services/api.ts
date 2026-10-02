@@ -197,5 +197,18 @@ export async function descargarArchivo(path: string, nombre: string): Promise<vo
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/**
+ * Un archivo protegido (foto o video de un chat) como dirección local para
+ * <img>/<video>: esas etiquetas no mandan el token, así que se pide con
+ * sesión y se convierte en un blob. Quien la pide la libera al desmontarse.
+ */
+export async function blobProtegido(path: string): Promise<string> {
+  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {} });
+  let res = await pedir();
+  if (res.status === 401 && (await refrescarSesion())) res = await pedir();
+  if (!res.ok) throw new Error('No se pudo cargar el archivo');
+  return URL.createObjectURL(await res.blob());
+}
+
 /** Dirección completa de un recurso del backend (para <img src>) */
 export const urlApi = (path: string) => `${BASE_URL}${path}`;

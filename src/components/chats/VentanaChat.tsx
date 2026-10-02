@@ -5,6 +5,10 @@ import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { CommunicationChannel, ChatStatus, ChatMessage } from '../../types';
 import { IOSToggle } from '../ui/IOSToggle';
+import { ContenidoMensaje, OrigenDelChat, ReaccionDeMensaje } from './ContenidoMensaje';
+import { TurnoEspecial } from './TurnoEspecial';
+import { BloquearChat, ProteccionDelChat } from './ProteccionDelChat';
+import { useAuth } from '../../context/AuthContext';
 
 /** "1:22 a. m." si es de hoy; "26 sep, 1:22 a. m." si no. Nunca el ISO crudo. */
 export function horaDeMensaje(iso?: string) {
@@ -100,6 +104,9 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
   const agente = settings.aiAgentName || 'Lalan';
   const [inputText, setInputText] = useState('');
   const activeConversation = conversations.find(c => c.id === conversacionId);
+  const { currentUser } = useAuth();
+  const esSuperAdmin = currentUser?.role === 'super_admin';
+  const puedeAutorizarTurno = esSuperAdmin || currentUser?.role === 'admin';
   const activeConversationId = conversacionId;
 
   /* Con el chat en manos de una persona, se puede escribirle a la clienta o
@@ -218,6 +225,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           <>
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
+          <OrigenDelChat mensajes={hilo} />
           {hilo.map((msg, idx) => {
             const isClient = msg.sender === 'client';
             const isBot = msg.sender === 'bot';
@@ -266,7 +274,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                     )}
                   </div>
 
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                  <ContenidoMensaje msg={msg} sobreColor={!isClient} esSuperAdmin={esSuperAdmin} />
 
                   <div className="flex items-center justify-end gap-1 text-[9px] opacity-70 mt-1">
                     <span>{horaDeMensaje(msg.timestamp)}</span>
@@ -278,6 +286,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                     </div>
                   )}
                 </div>
+                <ReaccionDeMensaje emoji={msg.reaccion} aLaDerecha={!isClient} />
               </motion.div>
             );
           })}
@@ -357,6 +366,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           </button>
         </form>
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
+        <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
+        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
+          {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
+        </TurnoEspecial>
         {ventanaCerrada && (
           <p className="px-4 pb-2 text-[10px] text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-950">
             Pasaron más de 24 horas desde su último mensaje: WhatsApp no deja escribirle hasta que ella vuelva a escribir.
@@ -434,6 +447,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
 
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
+          <OrigenDelChat mensajes={hilo} />
           {hilo.map((msg, idx) => {
             const isClient = msg.sender === 'client';
             const isBot = msg.sender === 'bot';
@@ -482,7 +496,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                     )}
                   </div>
 
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                  <ContenidoMensaje msg={msg} sobreColor={!isClient} esSuperAdmin={esSuperAdmin} />
 
                   <div className="flex items-center justify-end gap-1 text-[9px] opacity-70 mt-1">
                     <span>{horaDeMensaje(msg.timestamp)}</span>
@@ -494,6 +508,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                     </div>
                   )}
                 </div>
+                <ReaccionDeMensaje emoji={msg.reaccion} aLaDerecha={!isClient} />
               </motion.div>
             );
           })}
@@ -573,6 +588,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           </button>
         </form>
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
+        <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
+        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
+          {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
+        </TurnoEspecial>
         {ventanaCerrada && (
           <p className="px-4 pb-2 text-[10px] text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-950">
             Pasaron más de 24 horas desde su último mensaje: WhatsApp no deja escribirle hasta que ella vuelva a escribir.
