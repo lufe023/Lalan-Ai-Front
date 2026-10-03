@@ -17,6 +17,10 @@ const VOZ_MINIMA = 0.018;
  */
 const VENTANA_RUIDO = 42; // ~2,5 s de medidas
 const PERCENTIL_RUIDO = 0.15;
+/** El ruido de arranque no puede ser más que esto: si ya estaba hablando, su voz no es "ruido" */
+const RUIDO_INICIAL_MAXIMO = 0.02;
+/** Cuánto puede subir el ruido medido por cada medida (60 ms): ~7 % por segundo */
+const SUBIDA_RUIDO = 1.004;
 /** Para contar como voz tiene que durar un poquito (un pito o un golpe no es alguien hablando) */
 const TICS_PARA_VOZ = 3;
 /** Por encima de esto, el lugar es ruidoso: se sugiere acercar el teléfono o escribir */
@@ -58,8 +62,8 @@ export function useEscucha(opts: {
   const r = useRef<{
     grabador: MediaRecorder | null; flujo: MediaStream | null; fuente: MediaStreamAudioSourceNode | null; analizador: AnalyserNode | null;
     tic: number | null; trozos: Blob[]; inicio: number; primeraVoz: number; ultimaVoz: number; hablo: boolean; muestras: number[];
-    seguidos: number; pico: number; cancelado: boolean; sola: boolean;
-  }>({ grabador: null, flujo: null, fuente: null, analizador: null, tic: null, trozos: [], inicio: 0, primeraVoz: 0, ultimaVoz: 0, hablo: false, muestras: [], seguidos: 0, pico: 0, cancelado: false, sola: false });
+    seguidos: number; pico: number; vozPropia: number; ruido: number; cancelado: boolean; sola: boolean;
+  }>({ vozPropia: 0, ruido: 0, grabador: null, flujo: null, fuente: null, analizador: null, tic: null, trozos: [], inicio: 0, primeraVoz: 0, ultimaVoz: 0, hablo: false, muestras: [], seguidos: 0, pico: 0, cancelado: false, sola: false });
   const op = useRef(opts);
   op.current = opts;
 
@@ -146,6 +150,8 @@ export function useEscucha(opts: {
       s.muestras = [];
       s.seguidos = 0;
       s.pico = 0;
+      s.vozPropia = 0;
+      s.ruido = 0;
       setRuidoso(false);
       const datos = new Uint8Array(1024);
       s.tic = window.setInterval(() => {
@@ -173,7 +179,13 @@ export function useEscucha(opts: {
         if (s.muestras.length > VENTANA_RUIDO) s.muestras.shift();
         if (pasado < CALIBRAR_MS) return;
         const orden = [...s.muestras].sort((a, b) => a - b);
-        const ruido = Math.max(0.003, orden[Math.floor(orden.length * PERCENTIL_RUIDO)] ?? 0.005);
+        const medido = Math.max(0.003, orden[Math.floor(orden.length * PERCENTIL_RUIDO)] ?? 0.005);
+        // El ruido BAJA al instante pero SUBE despacio (~7 % por segundo). Así, si la
+        // persona empieza a hablar de una vez (o habla seguido), su voz no se confunde
+        // con "ruido"; y una tele o una calle constantes sí terminan contando como ruido.
+        if (!s.ruido) s.ruido = Math.min(medido, RUIDO_INICIAL_MAXIMO);
+        s.ruido = medido < s.ruido ? medido : Math.min(medido, s.ruido * SUBIDA_RUIDO);
+        const ruido = s.ruido;
         if (ruido > RUIDO_ALTO) setRuidoso(true);
         s.pico = Math.max(s.pico, v / ruido);
         const aj = op.current.ajustes();
@@ -181,9 +193,16 @@ export function useEscucha(opts: {
         // Para EMPEZAR a contar como voz hay que superar el umbral completo; una vez
         // que está hablando, basta menos para seguir: si retoma más bajito tras
         // una pausa (o hay ruido), el anillo se borra en cuanto vuelve a hablar
+        // Voz principal: quien tiene el teléfono en la mano suena mucho más fuerte que
+        // la tele o la gente alrededor. Mientras habla se mide SU volumen, y para seguir
+        // escuchando hay que llegar a una parte de él: el fondo no reinicia la cuenta.
+        const deFondo = (aj.ignorarFondo ?? 30) / 100;
         const umbral = s.hablo
-          ? Math.max(VOZ_MINIMA * 0.7, ruido * Math.max(1.4, aj.sensibilidad * 0.6))
+          ? Math.max(VOZ_MINIMA * 0.7, ruido * Math.max(1.4, aj.sensibilidad * 0.6), s.vozPropia * deFondo)
           : Math.max(VOZ_MINIMA, ruido * aj.sensibilidad);
+        // Su volumen: lo más alto reciente, que baja muy despacio (la mitad en ~40 s):
+        // durante la pausa de pensar no debe bajar tanto que la tele vuelva a contar
+        s.vozPropia = s.hablo && v > umbral ? Math.max(v, s.vozPropia * 0.999) : s.vozPropia * 0.999;
         if (v > umbral) {
           s.seguidos += 1;
           if (!s.hablo && s.seguidos >= TICS_PARA_VOZ) { s.hablo = true; s.primeraVoz = ahora - TICS_PARA_VOZ * TIC_MS; }
