@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, RotateCcw, Send, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, RotateCcw, Send, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,7 +17,7 @@ interface Accion {
   id: string; tipo: 'indicacion' | 'mensaje'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
 }
-interface Mensaje { id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null }
+interface Mensaje { id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null; util?: boolean | null }
 interface Respuesta { mensajes: Mensaje[] }
 
 const EVENTO_ABRIR = 'lalan:abrir';
@@ -292,6 +292,14 @@ export const PantallaLalan: React.FC = () => {
     soltarAudio();
   };
 
+  /** 👍 / 👎: si le sirvió la respuesta (tocar otra vez lo quita) */
+  const calificar = async (id: string, util: boolean | null) => {
+    const antes = mensajes.find((m) => m.id === id)?.util ?? null;
+    setMensajes((ms) => ms.map((m) => (m.id === id ? { ...m, util } : m)));
+    try { await api.put(`/asistente/mensajes/${id}/util`, { util }); }
+    catch { setMensajes((ms) => ms.map((m) => (m.id === id ? { ...m, util: antes } : m))); }
+  };
+
   const empezarDeNuevo = async () => {
     setMenu(false);
     callarLalan();
@@ -428,6 +436,7 @@ export const PantallaLalan: React.FC = () => {
                   <div key={m.id} className="space-y-2.5 max-w-[92%]">
                     <p className="text-[1.0625rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
                     {m.accion && <TarjetaAccion accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} />}
+                    <Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} />
                   </div>
                 ) : (
                   <div key={m.id} className="flex justify-end">
@@ -554,6 +563,29 @@ const LoQueQueda: React.FC<{ uso: Uso }> = ({ uso }) => {
 };
 
 /** "¿Se lo mando?": lo que Lalan propone hacer, con Sí / No */
+/** ¿Te sirvió? Discreto: dos iconos chiquitos debajo de lo que dijo Lalan */
+const Calificar: React.FC<{ util: boolean | null; onCambio: (u: boolean | null) => void }> = ({ util, onCambio }) => {
+  const boton = (valor: boolean, Icono: typeof ThumbsUp, etiqueta: string) => {
+    const activo = util === valor;
+    return (
+      <button type="button" aria-label={etiqueta} aria-pressed={activo} title={etiqueta}
+        onClick={() => onCambio(activo ? null : valor)}
+        className={`p-1.5 rounded-full cursor-pointer transition-colors ${activo
+          ? valor ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/40'
+          : 'text-slate-300 hover:text-slate-500 dark:text-neutral-600 dark:hover:text-neutral-400'}`}>
+        <Icono className="w-3.5 h-3.5" fill={activo ? 'currentColor' : 'none'} />
+      </button>
+    );
+  };
+  return (
+    <div className="flex items-center gap-0.5 -ml-1.5 -mt-1">
+      {boton(true, ThumbsUp, 'Me sirvió')}
+      {boton(false, ThumbsDown, 'No me sirvió')}
+      {util !== null && <span className="text-[0.6875rem] text-slate-400 ml-1">{util ? 'Gracias' : 'Gracias, lo vamos a mejorar'}</span>}
+    </div>
+  );
+};
+
 const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a: Accion, si: boolean) => void; onVerChat: (id: string) => void }> = ({ accion, ocupada, onResolver, onVerChat }) => {
   const titulo = accion.tipo === 'indicacion' ? 'Indicación para Lalan en el chat' : 'Mensaje para la clienta';
   return (

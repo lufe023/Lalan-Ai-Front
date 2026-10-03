@@ -11,6 +11,7 @@ import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PilotoAplicaciones } from '../components/plataforma/PilotoAplicaciones';
 import { OtrosNegocios } from '../components/plataforma/OtrosNegocios';
 import { ReportesExcel } from '../components/plataforma/ReportesExcel';
+import { UsoLalanPlataforma } from '../components/plataforma/UsoLalanPlataforma';
 import { EquipoSoporte } from '../components/plataforma/EquipoSoporte';
 import { PortadasPlataforma } from '../components/plataforma/PortadasPlataforma';
 import { SaludServicios } from '../components/plataforma/SaludServicios';
@@ -186,6 +187,7 @@ export const PlataformaScreen: React.FC = () => {
   /** Soporte ve solo a los clientes (para ayudarles), sin estadísticas ni planes */
   const esSoporte = currentUser?.role === 'support';
   const [pestana, setPestana] = useState<Pestana>('negocios');
+  const [vistaLalan, setVistaLalan] = useState<'uso' | 'ajustes'>('uso');
   const [abrirNegocio, setAbrirNegocio] = useState<string | null>(null);
   const [prellenado, setPrellenado] = useState<PrellenadoNegocio | null>(null);
   const [rango, setRango] = useState<Rango>('30');
@@ -365,7 +367,12 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'planes' && <PlanesPlataforma />}
         {pestana === 'soporte' && <EquipoSoporte />}
         {pestana === 'portadas' && <PortadasPlataforma />}
-        {pestana === 'lalan' && <AjustesLalanPlataforma />}
+        {pestana === 'lalan' && (
+          <div className="space-y-5">
+            <IOSSegmentedControl id="plataforma-lalan" options={[{ id: 'uso', label: 'Cómo la usan' }, { id: 'ajustes', label: 'Ajustes' }]} value={vistaLalan} onChange={(v) => setVistaLalan(v as 'uso' | 'ajustes')} size="sm" />
+            {vistaLalan === 'uso' ? <UsoLalanPlataforma /> : <AjustesLalanPlataforma />}
+          </div>
+        )}
         {pestana === 'salud' && <SaludServicios onAbrirNegocio={(id) => { setAbrirNegocio(id); setPestana('negocios'); }} />}
         {pestana === 'piloto' && (
           <div className="space-y-10">

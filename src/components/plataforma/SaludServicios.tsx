@@ -5,9 +5,10 @@ import { horaDe } from '../../utils/hora';
 import { TodosLosCanales } from './TodosLosCanales';
 
 type Estado = 'ok' | 'aviso' | 'caido' | 'sin_configurar';
-interface Servicio { id: string; nombre: string; descripcion: string; estado: Estado; detalle: string; ms: number | null; revisadoEn: string | null; enlaces?: { negocioId: string; texto: string }[] }
+interface Servicio { id: string; grupo?: string; nombre: string; descripcion: string; estado: Estado; detalle: string; ms: number | null; revisadoEn: string | null; enlaces?: { negocioId: string; texto: string }[] }
 interface Evento { id: string; creadoEn: string; servicio: string; estado: Estado; detalle: string | null }
-interface Salud { servicios: Servicio[]; historial: Evento[] }
+interface Grupo { id: string; nombre: string; descripcion: string }
+interface Salud { grupos?: Grupo[]; servicios: Servicio[]; historial: Evento[] }
 
 const VISTA: Record<Estado, { texto: string; icono: React.FC<{ className?: string }>; clase: string; borde: string }> = {
   ok: { texto: 'Bien', icono: CheckCircle2, clase: 'text-emerald-600 dark:text-emerald-400', borde: 'border-emerald-200 dark:border-emerald-900/60' },
@@ -42,6 +43,7 @@ export const SaludServicios: React.FC<{ onAbrirNegocio?: (id: string) => void }>
   const servicios = [...datos.servicios].sort((a, b) => ORDEN[a.estado] - ORDEN[b.estado]);
   const caidos = servicios.filter(s => s.estado === 'caido').length;
   const avisos = servicios.filter(s => s.estado === 'aviso').length;
+  const grupos: Grupo[] = [...(datos.grupos ?? []), { id: 'otros', nombre: 'Otros', descripcion: '' }];
   const nombre = (id: string) => datos.servicios.find(s => s.id === id)?.nombre ?? id;
   const resumen = caidos ? `${caidos} ${caidos === 1 ? 'servicio caído' : 'servicios caídos'}` : avisos ? `${avisos} ${avisos === 1 ? 'cosa que mirar' : 'cosas que mirar'}` : 'Todo funcionando';
 
@@ -59,35 +61,49 @@ export const SaludServicios: React.FC<{ onAbrirNegocio?: (id: string) => void }>
         </button>
       </header>
 
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-        {servicios.map(s => {
-          const v = VISTA[s.estado];
-          return (
-            <article key={s.id} className={`rounded-2xl border bg-white dark:bg-neutral-900 p-3 space-y-1.5 ${v.borde}`}>
-              <div className="flex items-center justify-between gap-2">
-                <b className="text-sm">{s.nombre}</b>
-                <span className={`flex items-center gap-1 text-[0.75rem] font-bold ${v.clase}`}><v.icono className="w-4 h-4" /> {v.texto}</span>
-              </div>
-              <p className="text-xs text-slate-700 dark:text-neutral-200">{s.detalle}</p>
-              {s.enlaces && s.enlaces.length > 0 && (
-                <ul className="space-y-1">
-                  {s.enlaces.map((e, i) => (
-                    <li key={i}>
-                      <button type="button" onClick={() => onAbrirNegocio?.(e.negocioId)} className="text-left text-[0.75rem] font-semibold text-[var(--primary)] hover:underline cursor-pointer">{e.texto} →</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {s.id === 'canales' && s.estado !== 'sin_configurar' && (
-                <button type="button" onClick={() => setVerCanales(v => !v)} className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline cursor-pointer" aria-expanded={verCanales}>
-                  {verCanales ? 'Ocultar la lista' : 'Ver todos los canales →'}
-                </button>
-              )}
-              <p className="text-[0.6875rem] text-slate-400">{s.descripcion}{s.ms !== null ? ` · ${s.ms} ms` : ''}{s.revisadoEn ? ` · revisado ${horaDe(s.revisadoEn)}` : ''}</p>
-            </article>
-          );
-        })}
-      </div>
+      {grupos.map(g => {
+        const suyos = servicios.filter(s => (s.grupo ?? 'otros') === g.id);
+        if (!suyos.length) return null;
+        const peor = suyos[0].estado;
+        return (
+          <div key={g.id} className="space-y-2">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h4 className="text-[0.8125rem] font-extrabold uppercase tracking-wide text-slate-600 dark:text-neutral-300">{g.nombre}</h4>
+              <span className={`text-[0.6875rem] font-bold ${VISTA[peor].clase}`}>{peor === 'ok' ? 'todo bien' : peor === 'sin_configurar' ? 'sin configurar' : VISTA[peor].texto.toLowerCase()}</span>
+              <span className="text-[0.6875rem] text-slate-400">{g.descripcion}</span>
+            </div>
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {suyos.map(s => {
+              const v = VISTA[s.estado];
+              return (
+                <article key={s.id} className={`rounded-2xl border bg-white dark:bg-neutral-900 p-3 space-y-1.5 ${v.borde}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <b className="text-sm">{s.nombre}</b>
+                    <span className={`flex items-center gap-1 text-[0.75rem] font-bold ${v.clase}`}><v.icono className="w-4 h-4" /> {v.texto}</span>
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-neutral-200">{s.detalle}</p>
+                  {s.enlaces && s.enlaces.length > 0 && (
+                    <ul className="space-y-1">
+                      {s.enlaces.map((e, i) => (
+                        <li key={i}>
+                          <button type="button" onClick={() => onAbrirNegocio?.(e.negocioId)} className="text-left text-[0.75rem] font-semibold text-[var(--primary)] hover:underline cursor-pointer">{e.texto} →</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {s.id === 'canales' && s.estado !== 'sin_configurar' && (
+                    <button type="button" onClick={() => setVerCanales(v => !v)} className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline cursor-pointer" aria-expanded={verCanales}>
+                      {verCanales ? 'Ocultar la lista' : 'Ver todos los canales →'}
+                    </button>
+                  )}
+                  <p className="text-[0.6875rem] text-slate-400">{s.descripcion}{s.ms !== null ? ` · ${s.ms} ms` : ''}{s.revisadoEn ? ` · revisado ${horaDe(s.revisadoEn)}` : ''}</p>
+                </article>
+              );
+              })}
+            </div>
+          </div>
+        );
+      })}
 
       {verCanales && <TodosLosCanales onAbrirNegocio={onAbrirNegocio} onCerrar={() => setVerCanales(false)} />}
 
