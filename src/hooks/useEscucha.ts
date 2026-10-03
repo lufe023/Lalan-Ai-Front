@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { AjustesLalan } from '../utils/ajustesLalan';
 
 /** Los formatos que graban los navegadores (iPhone: mp4; Chrome/Android: webm) */
 const FORMATOS = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
-/** Si en este tiempo no dijo nada, se deja de escuchar */
-const SIN_VOZ_MS = 8000;
-/** Lo más que dura una pregunta */
-const MAXIMO_MS = 90_000;
 /** Lo primero se usa para medir el ruido del lugar */
 const CALIBRAR_MS = 300;
 const TIC_MS = 60;
@@ -13,22 +10,8 @@ const TIC_MS = 60;
 const ESPERA_MEDIDOR_MS = 1000;
 /** Volumen mínimo que cuenta como voz (aunque el lugar esté en silencio total) */
 const VOZ_MINIMA = 0.018;
-/**
- * Con frases muy cortas ("¿y mañana?") se espera un poco más: quien dice dos
- * palabras casi siempre está pensando cómo seguir.
- */
-const HABLO_POCO_MS = 1500;
-const EXTRA_SI_HABLO_POCO_MS = 800;
 
 export type EstadoEscucha = 'quieta' | 'escuchando';
-
-/** Cuánto se espera en silencio antes de dar la frase por terminada (catálogo: id + descripción) */
-export const PAUSAS = {
-  corta: { ms: 1800, nombre: 'Corta' },
-  normal: { ms: 2800, nombre: 'Normal' },
-  larga: { ms: 4200, nombre: 'Larga' },
-} as const;
-export type Pausa = keyof typeof PAUSAS;
 
 /**
  * Escuchar a la dueña como Siri: se toca, habla, y cuando se calla un rato
@@ -40,7 +23,10 @@ export type Pausa = keyof typeof PAUSAS;
  * a escuchar sola cuando Lalan termina de hablar, sin otro toque.
  */
 export function useEscucha(opts: {
-  pausa: Pausa;
+  /** Silencio que da la frase por terminada (la pausa elegida en el aparato) */
+  esperaMs: number;
+  /** Los ajustes globales (Plataforma → Lalan) */
+  ajustes: () => AjustesLalan;
   contexto: () => AudioContext | null;
   onFrase: (audio: Blob) => void;
   /** No dijo nada. `sola` = la escucha la abrió la app (después de hablar Lalan), no un toque */
@@ -149,22 +135,25 @@ export function useEscucha(opts: {
           // si la abrió un toque, se graba y se corta tocando la esfera
           if (s.sola) { terminar(false); op.current.onNada(true); return; }
           s.hablo = true;
-          if (pasado > MAXIMO_MS) terminar(true);
+          if (pasado > op.current.ajustes().maximoSegundos * 1000) terminar(true);
           return;
         }
         if (pasado < CALIBRAR_MS) { s.muestras.push(v); return; }
         if (!s.ruido) s.ruido = s.muestras.length ? s.muestras.reduce((a, b) => a + b, 0) / s.muestras.length : 0.005;
-        const umbral = Math.max(VOZ_MINIMA, s.ruido * 2.5);
+        const aj = op.current.ajustes();
+        const maximoMs = aj.maximoSegundos * 1000;
+        const umbral = Math.max(VOZ_MINIMA, s.ruido * aj.sensibilidad);
         if (v > umbral) { if (!s.hablo) s.primeraVoz = ahora; s.hablo = true; s.ultimaVoz = ahora; }
         if (s.hablo) {
           const hablado = s.ultimaVoz - s.primeraVoz;
-          const espera = PAUSAS[op.current.pausa].ms + (hablado < HABLO_POCO_MS ? EXTRA_SI_HABLO_POCO_MS : 0);
+          // Con frases muy cortas ("¿y mañana…?") se espera un poco más: quien dice dos palabras casi siempre sigue
+          const espera = op.current.esperaMs + (hablado < aj.habloPocoMs ? aj.extraSiHabloPocoMs : 0);
           const callado = ahora - s.ultimaVoz;
           // El anillo empieza a llenarse a la mitad de la espera: un respiro normal no se ve
           setCierre(Math.max(0, Math.min(1, (callado - espera / 2) / (espera / 2))));
           if (callado > espera) terminar(true);
-        } else if (pasado > SIN_VOZ_MS) terminar(true);
-        if (pasado > MAXIMO_MS) terminar(true);
+        } else if (pasado > (s.sola ? aj.sinVozSolaMs : aj.sinVozMs)) terminar(true);
+        if (pasado > maximoMs) terminar(true);
       }, TIC_MS);
     } catch {
       soltar();

@@ -4,7 +4,9 @@ import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHori
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { PAUSAS, Pausa, useEscucha } from '../../hooks/useEscucha';
+import { useEscucha } from '../../hooks/useEscucha';
+import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA, type Pausa } from '../../utils/ajustesLalan';
+import { PAPEL_TAPIZ_SALON } from './papelTapiz';
 import {
   alCargarVoces, callarLalan, callarSiempre, contextoDeAudio, decirComoLalan, despertarVoz, estaCallada, guardarPausa, guardarSeguirEscuchando,
   guardarVoz, hayVoz, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, vozDeLalan, vocesEnEspanol,
@@ -70,8 +72,14 @@ export const PantallaLalan: React.FC = () => {
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>(vocesEnEspanol);
   const [vozActual, setVozActual] = useState<string | null>(() => vozDeLalan()?.name ?? null);
   const [resolviendo, setResolviendo] = useState<string | null>(null);
-  const [seguir, setSeguir] = useState(seguirEscuchando);
-  const [pausa, setPausa] = useState<Pausa>(pausaGuardada);
+  const [aj, setAj] = useState<AjustesLalan>(ajustesLalan);
+  // Lo que eligió este aparato; si nunca eligió, vale lo global (Plataforma → Lalan)
+  const [seguirAqui, setSeguirAqui] = useState<boolean | null>(seguirEscuchando);
+  const [pausaAqui, setPausaAqui] = useState<Pausa | null>(pausaGuardada);
+  const seguir = seguirAqui ?? aj.seguirEscuchando;
+  const pausa: Pausa = pausaAqui ?? aj.pausaPorDefecto;
+  const [altoAbajo, setAltoAbajo] = useState(240);
+  const abajo = useRef<HTMLDivElement>(null);
   const lista = useRef<HTMLDivElement>(null);
   const entrada = useRef<HTMLInputElement>(null);
   /**
@@ -90,6 +98,17 @@ export const PantallaLalan: React.FC = () => {
   }, []);
 
   useEffect(() => alCargarVoces(() => { setVoces(vocesEnEspanol()); setVozActual(vozDeLalan()?.name ?? null); }), []);
+
+  // Lo que mide la parte de abajo: la conversación deja ese espacio al final para que nada quede tapado
+  useEffect(() => {
+    const el = abajo.current;
+    if (!el) return;
+    const medir = () => setAltoAbajo(el.offsetHeight);
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [abierta, escribiendo]);
 
   const bajar = () => requestAnimationFrame(() => lista.current?.scrollTo({ top: lista.current.scrollHeight, behavior: 'smooth' }));
 
@@ -125,6 +144,7 @@ export const PantallaLalan: React.FC = () => {
     setError('');
     setCargando(true);
     conVoz.current = true;
+    void cargarAjustesLalan().then((a) => vigente && setAj(a));
     api.get<Respuesta>('/asistente')
       // Se mezcla: el panorama puede llegar antes que la lista
       .then((r) => { if (vigente) { setMensajes((antes) => juntar(r.mensajes, antes)); bajar(); } })
@@ -138,7 +158,8 @@ export const PantallaLalan: React.FC = () => {
   }, [abierta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const escucha = useEscucha({
-    pausa,
+    esperaMs: msDePausa(pausa, aj),
+    ajustes: ajustesLalan,
     contexto: contextoDeAudio,
     onFrase: async (audio) => {
       setModo('pensando');
@@ -156,7 +177,7 @@ export const PantallaLalan: React.FC = () => {
 
   escucharSola.current = () => {
     setModo('escuchando');
-    tonoEscucho();
+    if (!callada) tonoEscucho();
     void escucha.empezar(true);
   };
 
@@ -169,7 +190,7 @@ export const PantallaLalan: React.FC = () => {
     prepararAudio();
     conVoz.current = true;
     setEscribiendo(false);
-    tonoEscucho();
+    if (!callada) tonoEscucho();
     void escucha.empezar();
   };
 
@@ -241,14 +262,34 @@ export const PantallaLalan: React.FC = () => {
           className="fixed inset-0 z-[300] flex flex-col bg-slate-50/90 dark:bg-neutral-950/92 backdrop-blur-2xl text-slate-900 dark:text-neutral-100"
           style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
         >
-          <div className="w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col">
+          {/* El fondo: dibujitos de salón, del color de la marca (como el fondo de WhatsApp) */}
+          {aj.papelTapiz && aj.intensidadPapel > 0 && (
+            <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundColor: 'var(--primary)', opacity: aj.intensidadPapel / 100,
+                WebkitMaskImage: `url("${PAPEL_TAPIZ_SALON}")`, maskImage: `url("${PAPEL_TAPIZ_SALON}")`,
+                WebkitMaskSize: `${aj.tamanoPapel}px`, maskSize: `${aj.tamanoPapel}px`, WebkitMaskRepeat: 'repeat', maskRepeat: 'repeat',
+              }} />
+          )}
+          <div className="relative w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col">
             {/* Arriba */}
             <div className="flex items-center justify-between px-4 h-12 shrink-0">
-              <button type="button" onClick={cerrar} aria-label="Cerrar" className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
-                <ChevronDown className="w-6 h-6" />
-              </button>
+              <div className="w-24 flex">
+                <button type="button" onClick={cerrar} aria-label="Cerrar" className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                  <ChevronDown className="w-6 h-6" />
+                </button>
+              </div>
               <span className="text-[0.9375rem] font-bold tracking-tight">Lalan</span>
-              <div className="relative">
+              <div className="relative w-24 flex justify-end gap-1">
+                {/* Silencio con un toque: de noche, en una reunión… Lalan responde solo por escrito */}
+                <button type="button" onClick={cambiarCallada} aria-pressed={callada}
+                  aria-label={callada ? 'Lalan en silencio: tocar para que vuelva a hablar' : 'Silenciar a Lalan (solo texto)'}
+                  title={callada ? 'En silencio' : 'Silenciar'}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-colors ${callada
+                    ? 'bg-[var(--primary)]/12 text-[var(--primary)]'
+                    : 'text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800'}`}>
+                  {callada ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
                 <button type="button" onClick={() => setMenu((m) => !m)} aria-label="Opciones de Lalan" aria-expanded={menu}
                   className="w-10 h-10 -mr-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
                   <MoreHorizontal className="w-5 h-5" />
@@ -260,7 +301,7 @@ export const PantallaLalan: React.FC = () => {
                       <span className="flex-1">{callada ? 'Solo texto (sin voz)' : 'Lalan responde en voz alta'}</span>
                     </button>
                     {!callada && (
-                      <button type="button" onClick={() => { const n = !seguir; setSeguir(n); guardarSeguirEscuchando(n); }}
+                      <button type="button" onClick={() => { const n = !seguir; setSeguirAqui(n); guardarSeguirEscuchando(n); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
                         <Mic className={`w-4 h-4 ${seguir ? 'text-[var(--primary)]' : 'text-slate-500'}`} />
                         <span className="flex-1">Seguir escuchando cuando Lalan termina</span>
@@ -272,14 +313,14 @@ export const PantallaLalan: React.FC = () => {
                     <div className="px-3 pt-2 pb-1">
                       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cuánto espero cuando te callas</div>
                       <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
-                        {(Object.keys(PAUSAS) as Pausa[]).map((p) => (
-                          <button key={p} type="button" onClick={() => { setPausa(p); guardarPausa(p); }} aria-pressed={pausa === p}
+                        {(Object.keys(NOMBRE_PAUSA) as Pausa[]).map((p) => (
+                          <button key={p} type="button" onClick={() => { setPausaAqui(p); guardarPausa(p); }} aria-pressed={pausa === p}
                             className={`py-1.5 rounded-lg text-[0.8125rem] font-semibold cursor-pointer ${pausa === p ? 'bg-white dark:bg-neutral-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}>
-                            {PAUSAS[p].nombre}
+                            {NOMBRE_PAUSA[p]}
                           </button>
                         ))}
                       </div>
-                      <div className="text-[0.6875rem] text-slate-400 mt-1">{(PAUSAS[pausa].ms / 1000).toLocaleString('es-DO')} segundos de silencio y te respondo.</div>
+                      <div className="text-[0.6875rem] text-slate-400 mt-1">{(msDePausa(pausa, aj) / 1000).toLocaleString('es-DO')} segundos de silencio y te respondo.</div>
                     </div>
                     {voces.length > 0 && !callada && (
                       <div className="px-3 pt-2 pb-1">
@@ -304,8 +345,9 @@ export const PantallaLalan: React.FC = () => {
               </div>
             </div>
 
-            {/* La conversación */}
-            <div ref={lista} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-5" aria-live="polite">
+            <div className="relative flex-1 min-h-0">
+            {/* La conversación: corre por detrás de la esfera (abajo es transparente) */}
+            <div ref={lista} className="absolute inset-0 overflow-y-auto px-5 pt-4 space-y-5" style={{ paddingBottom: altoAbajo + 8 }} aria-live="polite">
               {cargando && !mensajes.length && (
                 <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
               )}
@@ -332,8 +374,8 @@ export const PantallaLalan: React.FC = () => {
               ))}
             </div>
 
-            {/* Abajo: la esfera */}
-            <div className="shrink-0 px-5 pt-2 flex flex-col items-center gap-2">
+            {/* Abajo: la esfera, flotando sobre la conversación */}
+            <div ref={abajo} className="absolute inset-x-0 bottom-0 px-5 pt-10 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto bg-gradient-to-t from-slate-50/75 via-slate-50/25 to-transparent dark:from-neutral-950/75 dark:via-neutral-950/25">
               {error && <p className="text-[0.8125rem] font-semibold text-rose-600 dark:text-rose-400 text-center" role="alert">{error}</p>}
               {escribiendo ? (
                 <form onSubmit={enviarTexto} className="w-full flex items-center gap-2 py-2">
@@ -349,12 +391,13 @@ export const PantallaLalan: React.FC = () => {
                 </form>
               ) : (
                 <>
-                  <p className="text-[0.8125rem] font-medium text-slate-500 dark:text-neutral-400 h-5">{TEXTO_ESTADO[modo]}</p>
+                  {/* En una pastilla: el texto de la conversación pasa por detrás y no se mezcla */}
+                  <p className="text-[0.8125rem] font-medium text-slate-600 dark:text-neutral-300 px-3 py-1 rounded-full bg-white/75 dark:bg-neutral-900/75 backdrop-blur-md shadow-sm">{callada && modo === 'reposo' ? 'En silencio: te respondo solo por escrito' : TEXTO_ESTADO[modo]}</p>
                   <div className="w-full flex items-center justify-between">
                     <span className="w-11" />
                     <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
                       className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
-                      <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={150} />
+                      <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={aj.tamanoEsfera} />
                       {/* Se llena cuando la persona se calla: se ve venir el envío y se puede seguir hablando */}
                       {modo === 'escuchando' && escucha.cierre > 0 && (
                         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
@@ -370,6 +413,7 @@ export const PantallaLalan: React.FC = () => {
                   </div>
                 </>
               )}
+            </div>
             </div>
           </div>
         </motion.div>

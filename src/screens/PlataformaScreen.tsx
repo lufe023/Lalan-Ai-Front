@@ -1,3 +1,4 @@
+import { AjustesLalanPlataforma } from '../components/plataforma/AjustesLalanPlataforma';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Globe2, RefreshCw, Smartphone, Tablet, Monitor, Clock, MousePointerClick, PlayCircle, Volume2, Maximize2, Repeat,
@@ -18,7 +19,7 @@ import { UsoAppPanel } from '../components/plataforma/UsoAppPanel';
 import type { Dispositivo, ResumenLanding } from '../types/plataforma';
 import { useAuth } from '../context/AuthContext';
 
-type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas';
+type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas' | 'lalan';
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'salud', label: 'Salud' },
   { id: 'negocios', label: 'Clientes' },
@@ -28,6 +29,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'piloto', label: 'Piloto' },
   { id: 'soporte', label: 'Equipo' },
   { id: 'portadas', label: 'Portadas' },
+  { id: 'lalan', label: 'Lalan' },
 ];
 
 type Rango = '7' | '30' | '90';
@@ -362,6 +364,7 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'planes' && <PlanesPlataforma />}
         {pestana === 'soporte' && <EquipoSoporte />}
         {pestana === 'portadas' && <PortadasPlataforma />}
+        {pestana === 'lalan' && <AjustesLalanPlataforma />}
         {pestana === 'salud' && <SaludServicios onAbrirNegocio={(id) => { setAbrirNegocio(id); setPestana('negocios'); }} />}
         {pestana === 'piloto' && (
           <div className="space-y-10">

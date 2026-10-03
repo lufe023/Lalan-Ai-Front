@@ -9,12 +9,12 @@
  * Si no está ninguna, cualquier voz en español.
  */
 import { alCargarVoces, hayVoz, vocesDisponibles } from './campana';
+import { ajustesLalan, type Pausa } from './ajustesLalan';
 
 const CLAVE_VOZ = 'lalan_asistente_voz';
 const CLAVE_CALLADA = 'lalan_asistente_callada';
 const CLAVE_SEGUIR = 'lalan_asistente_seguir_escuchando';
 const CLAVE_PAUSA = 'lalan_asistente_pausa';
-const PREFERIDAS = [/paulina/i, /google español de estados unidos/i, /m[oó]nica/i, /google español/i];
 const IDIOMAS = ['es-mx', 'es-us', 'es-do', 'es-419', 'es-es'];
 /** Chrome corta las frases largas a los ~15 s: se dice frase por frase */
 const LARGO_TROZO = 180;
@@ -38,18 +38,18 @@ export function callarSiempre(si: boolean) {
   try { if (si) localStorage.setItem(CLAVE_CALLADA, '1'); else localStorage.removeItem(CLAVE_CALLADA); } catch { /* noop */ }
 }
 
-/** Conversación continua: al terminar de hablar Lalan, el micrófono se abre solo (por defecto sí) */
-export function seguirEscuchando(): boolean {
-  try { return localStorage.getItem(CLAVE_SEGUIR) !== '0'; } catch { return true; }
+/** Conversación continua: lo que eligió este aparato, o null si nunca eligió (vale lo global) */
+export function seguirEscuchando(): boolean | null {
+  try { const v = localStorage.getItem(CLAVE_SEGUIR); return v === null ? null : v !== '0'; } catch { return null; }
 }
 export function guardarSeguirEscuchando(si: boolean) {
   try { localStorage.setItem(CLAVE_SEGUIR, si ? '1' : '0'); } catch { /* noop */ }
 }
-/** Cuánto espera Lalan cuando la persona se calla (corta · normal · larga) */
-export function pausaGuardada(): 'corta' | 'normal' | 'larga' {
-  try { const p = localStorage.getItem(CLAVE_PAUSA); return p === 'corta' || p === 'larga' ? p : 'normal'; } catch { return 'normal'; }
+/** La pausa que eligió este aparato, o null si nunca eligió (vale la global) */
+export function pausaGuardada(): Pausa | null {
+  try { const p = localStorage.getItem(CLAVE_PAUSA); return p === 'corta' || p === 'normal' || p === 'larga' ? p : null; } catch { return null; }
 }
-export function guardarPausa(p: 'corta' | 'normal' | 'larga') {
+export function guardarPausa(p: Pausa) {
   try { localStorage.setItem(CLAVE_PAUSA, p); } catch { /* noop */ }
 }
 
@@ -75,6 +75,7 @@ export function soltarAudio() {
 
 /** Un "tilín" suave: avisa que el micrófono se abrió (como Siri) */
 export function tonoEscucho() {
+  if (!ajustesLalan().tonoAlEscuchar) return;
   const c = contexto;
   if (!c || c.state !== 'running') return;
   try {
@@ -100,7 +101,12 @@ export function vozDeLalan(): SpeechSynthesisVoice | null {
   const guardada = vozGuardada();
   const exacta = guardada ? voces.find((v) => v.name === guardada) : null;
   if (exacta) return exacta;
-  for (const p of PREFERIDAS) { const v = voces.find((x) => p.test(x.name)); if (v) return v; }
+  // Las preferidas las pone el super admin (Plataforma → Lalan), en orden
+  const norma = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  for (const nombre of ajustesLalan().vocesPreferidas.split(',').map(norma).filter(Boolean)) {
+    const v = voces.find((x) => norma(x.name).includes(nombre));
+    if (v) return v;
+  }
   for (const l of IDIOMAS) { const v = voces.find((x) => x.lang.toLowerCase() === l); if (v) return v; }
   return voces[0];
 }
@@ -148,8 +154,8 @@ export function decirComoLalan(texto: string, alHablar?: () => void): Promise<vo
       if (mio !== turno || i >= partes.length) { listo(); return; }
       const u = new SpeechSynthesisUtterance(partes[i++]);
       if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = 'es-MX';
-      u.rate = 1.02;
-      u.pitch = 1.05;
+      u.rate = ajustesLalan().velocidadVoz;
+      u.pitch = ajustesLalan().tonoVoz;
       u.onboundary = () => alHablar?.();
       u.onend = siguiente;
       u.onerror = siguiente;
