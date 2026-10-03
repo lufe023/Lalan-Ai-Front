@@ -12,6 +12,8 @@ import { alCargarVoces, hayVoz, vocesDisponibles } from './campana';
 
 const CLAVE_VOZ = 'lalan_asistente_voz';
 const CLAVE_CALLADA = 'lalan_asistente_callada';
+const CLAVE_SEGUIR = 'lalan_asistente_seguir_escuchando';
+const CLAVE_PAUSA = 'lalan_asistente_pausa';
 const PREFERIDAS = [/paulina/i, /google español de estados unidos/i, /m[oó]nica/i, /google español/i];
 const IDIOMAS = ['es-mx', 'es-us', 'es-do', 'es-419', 'es-es'];
 /** Chrome corta las frases largas a los ~15 s: se dice frase por frase */
@@ -34,6 +36,61 @@ export function estaCallada(): boolean {
 }
 export function callarSiempre(si: boolean) {
   try { if (si) localStorage.setItem(CLAVE_CALLADA, '1'); else localStorage.removeItem(CLAVE_CALLADA); } catch { /* noop */ }
+}
+
+/** Conversación continua: al terminar de hablar Lalan, el micrófono se abre solo (por defecto sí) */
+export function seguirEscuchando(): boolean {
+  try { return localStorage.getItem(CLAVE_SEGUIR) !== '0'; } catch { return true; }
+}
+export function guardarSeguirEscuchando(si: boolean) {
+  try { localStorage.setItem(CLAVE_SEGUIR, si ? '1' : '0'); } catch { /* noop */ }
+}
+/** Cuánto espera Lalan cuando la persona se calla (corta · normal · larga) */
+export function pausaGuardada(): 'corta' | 'normal' | 'larga' {
+  try { const p = localStorage.getItem(CLAVE_PAUSA); return p === 'corta' || p === 'larga' ? p : 'normal'; } catch { return 'normal'; }
+}
+export function guardarPausa(p: 'corta' | 'normal' | 'larga') {
+  try { localStorage.setItem(CLAVE_PAUSA, p); } catch { /* noop */ }
+}
+
+/**
+ * Un solo contexto de audio mientras la pantalla de Lalan está abierta. Se
+ * crea en un TOQUE (el iPhone no deja arrancarlo de otra forma) y así la
+ * escucha puede abrirse sola cuando Lalan termina de hablar.
+ */
+let contexto: AudioContext | null = null;
+export function contextoDeAudio(): AudioContext | null { return contexto; }
+export function prepararAudio() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    if (!contexto || contexto.state === 'closed') contexto = new Ctx();
+    void contexto.resume().catch(() => undefined);
+  } catch { contexto = null; }
+}
+export function soltarAudio() {
+  void contexto?.close().catch(() => undefined);
+  contexto = null;
+}
+
+/** Un "tilín" suave: avisa que el micrófono se abrió (como Siri) */
+export function tonoEscucho() {
+  const c = contexto;
+  if (!c || c.state !== 'running') return;
+  try {
+    const t = c.currentTime;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(740, t);
+    o.frequency.exponentialRampToValueAtTime(1180, t + 0.12);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.09, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g).connect(c.destination);
+    o.start(t);
+    o.stop(t + 0.25);
+  } catch { /* sin tono */ }
 }
 
 /** La voz que se usará: la guardada, si no la mejor que haya */

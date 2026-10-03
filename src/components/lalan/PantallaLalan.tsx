@@ -4,9 +4,10 @@ import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHori
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { useEscucha } from '../../hooks/useEscucha';
+import { PAUSAS, Pausa, useEscucha } from '../../hooks/useEscucha';
 import {
-  alCargarVoces, callarLalan, callarSiempre, decirComoLalan, despertarVoz, estaCallada, guardarVoz, hayVoz, vozDeLalan, vocesEnEspanol,
+  alCargarVoces, callarLalan, callarSiempre, contextoDeAudio, decirComoLalan, despertarVoz, estaCallada, guardarPausa, guardarSeguirEscuchando,
+  guardarVoz, hayVoz, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, vozDeLalan, vocesEnEspanol,
 } from '../../utils/vozLalan';
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
 
@@ -27,8 +28,9 @@ function juntar(antes: Mensaje[], nuevos: Mensaje[]): Mensaje[] {
 
 /** Abre la pantalla de Lalan desde cualquier lado (botón del menú, aviso…) */
 export function abrirLalan() {
-  // El toque que abre también "despierta" la voz en el iPhone
+  // El toque que abre también "despierta" la voz y el micrófono en el iPhone
   despertarVoz();
+  prepararAudio();
   window.dispatchEvent(new Event(EVENTO_ABRIR));
 }
 
@@ -39,7 +41,7 @@ export function puedeHablarConLalan(rol?: string) {
 
 const TEXTO_ESTADO: Record<ModoEsfera, string> = {
   reposo: 'Toca la esfera y háblame',
-  escuchando: 'Te escucho…',
+  escuchando: 'Te escucho… (toca cuando termines)',
   pensando: 'Pensando…',
   hablando: 'Toca para interrumpirme',
 };
@@ -68,8 +70,18 @@ export const PantallaLalan: React.FC = () => {
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>(vocesEnEspanol);
   const [vozActual, setVozActual] = useState<string | null>(() => vozDeLalan()?.name ?? null);
   const [resolviendo, setResolviendo] = useState<string | null>(null);
+  const [seguir, setSeguir] = useState(seguirEscuchando);
+  const [pausa, setPausa] = useState<Pausa>(pausaGuardada);
   const lista = useRef<HTMLDivElement>(null);
   const entrada = useRef<HTMLInputElement>(null);
+  /**
+   * Para la conversación continua: si la persona viene hablando (no
+   * escribiendo), cuando Lalan termina de hablar el micrófono se abre solo.
+   */
+  const conVoz = useRef(true);
+  const vivo = useRef({ abierta: false, modo: 'reposo' as ModoEsfera, seguir: true, escribiendo: false });
+  vivo.current = { abierta, modo, seguir, escribiendo };
+  const escucharSola = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     const abrir = () => setAbierta(true);
@@ -86,6 +98,9 @@ export const PantallaLalan: React.FC = () => {
     if (callada || !hayVoz() || !t.trim()) { setModo('reposo'); return; }
     setModo('hablando');
     await decirComoLalan(t, () => setPulso((p) => p + 1));
+    // Terminó de hablar sola (no la interrumpieron): le toca a la persona
+    const v = vivo.current;
+    if (v.modo === 'hablando' && v.abierta && v.seguir && !v.escribiendo && conVoz.current) { escucharSola.current(); return; }
     setModo((m) => (m === 'hablando' ? 'reposo' : m));
   }, [callada]);
 
@@ -109,6 +124,7 @@ export const PantallaLalan: React.FC = () => {
     let vigente = true;
     setError('');
     setCargando(true);
+    conVoz.current = true;
     api.get<Respuesta>('/asistente')
       // Se mezcla: el panorama puede llegar antes que la lista
       .then((r) => { if (vigente) { setMensajes((antes) => juntar(r.mensajes, antes)); bajar(); } })
@@ -122,6 +138,8 @@ export const PantallaLalan: React.FC = () => {
   }, [abierta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const escucha = useEscucha({
+    pausa,
+    contexto: contextoDeAudio,
     onFrase: async (audio) => {
       setModo('pensando');
       const f = new FormData();
@@ -129,11 +147,18 @@ export const PantallaLalan: React.FC = () => {
       f.append('audio', audio, `pregunta.${ext}`);
       try { recibir(await subirArchivo<Respuesta>('/asistente/voz', f)); } catch (e) { fallo(e); }
     },
-    onNada: () => { setModo('reposo'); setError('No te escuché. Toca la esfera y háblame.'); },
+    // Si la escucha se abrió sola y no dijo nada, se cierra sin quejarse
+    onNada: (sola) => { setModo('reposo'); if (!sola) setError('No te escuché. Toca la esfera y háblame.'); },
     onError: (m) => { setModo('reposo'); setError(m); },
   });
 
   useEffect(() => { if (escucha.estado === 'escuchando') setModo('escuchando'); }, [escucha.estado]);
+
+  escucharSola.current = () => {
+    setModo('escuchando');
+    tonoEscucho();
+    void escucha.empezar(true);
+  };
 
   const tocarEsfera = () => {
     setError('');
@@ -141,7 +166,10 @@ export const PantallaLalan: React.FC = () => {
     if (escucha.estado === 'escuchando') { escucha.terminar(true); return; }
     callarLalan();
     despertarVoz();
+    prepararAudio();
+    conVoz.current = true;
     setEscribiendo(false);
+    tonoEscucho();
     void escucha.empezar();
   };
 
@@ -151,6 +179,7 @@ export const PantallaLalan: React.FC = () => {
     if (!t || modo === 'pensando') return;
     callarLalan();
     despertarVoz();
+    conVoz.current = false;
     setTexto('');
     setError('');
     setModo('pensando');
@@ -177,6 +206,7 @@ export const PantallaLalan: React.FC = () => {
     setMenu(false);
     setAbierta(false);
     setModo('reposo');
+    soltarAudio();
   };
 
   const empezarDeNuevo = async () => {
@@ -229,6 +259,28 @@ export const PantallaLalan: React.FC = () => {
                       {callada ? <VolumeX className="w-4 h-4 text-slate-500" /> : <Volume2 className="w-4 h-4 text-[var(--primary)]" />}
                       <span className="flex-1">{callada ? 'Solo texto (sin voz)' : 'Lalan responde en voz alta'}</span>
                     </button>
+                    {!callada && (
+                      <button type="button" onClick={() => { const n = !seguir; setSeguir(n); guardarSeguirEscuchando(n); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                        <Mic className={`w-4 h-4 ${seguir ? 'text-[var(--primary)]' : 'text-slate-500'}`} />
+                        <span className="flex-1">Seguir escuchando cuando Lalan termina</span>
+                        <span className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${seguir ? 'bg-[var(--primary)]' : 'bg-slate-300 dark:bg-neutral-700'}`} aria-hidden="true">
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${seguir ? 'left-[18px]' : 'left-0.5'}`} />
+                        </span>
+                      </button>
+                    )}
+                    <div className="px-3 pt-2 pb-1">
+                      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cuánto espero cuando te callas</div>
+                      <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
+                        {(Object.keys(PAUSAS) as Pausa[]).map((p) => (
+                          <button key={p} type="button" onClick={() => { setPausa(p); guardarPausa(p); }} aria-pressed={pausa === p}
+                            className={`py-1.5 rounded-lg text-[0.8125rem] font-semibold cursor-pointer ${pausa === p ? 'bg-white dark:bg-neutral-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                            {PAUSAS[p].nombre}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-[0.6875rem] text-slate-400 mt-1">{(PAUSAS[pausa].ms / 1000).toLocaleString('es-DO')} segundos de silencio y te respondo.</div>
+                    </div>
                     {voces.length > 0 && !callada && (
                       <div className="px-3 pt-2 pb-1">
                         <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Voz en este aparato</div>
@@ -300,9 +352,16 @@ export const PantallaLalan: React.FC = () => {
                   <p className="text-[0.8125rem] font-medium text-slate-500 dark:text-neutral-400 h-5">{TEXTO_ESTADO[modo]}</p>
                   <div className="w-full flex items-center justify-between">
                     <span className="w-11" />
-                    <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Terminar' : 'Hablarle a Lalan'}
-                      className="rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+                    <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
+                      className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
                       <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={150} />
+                      {/* Se llena cuando la persona se calla: se ve venir el envío y se puede seguir hablando */}
+                      {modo === 'escuchando' && escucha.cierre > 0 && (
+                        <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="var(--primary)" strokeOpacity="0.9" strokeWidth="2.5" strokeLinecap="round"
+                            strokeDasharray={`${escucha.cierre * 251.3} 251.3`} />
+                        </svg>
+                      )}
                     </button>
                     <button type="button" onClick={() => { escucha.terminar(false); setEscribiendo(true); }} aria-label="Escribirle"
                       className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">

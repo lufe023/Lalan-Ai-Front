@@ -2,37 +2,61 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** Los formatos que graban los navegadores (iPhone: mp4; Chrome/Android: webm) */
 const FORMATOS = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
-/** Silencio después de hablar que da por terminada la frase */
-const SILENCIO_FINAL_MS = 1500;
 /** Si en este tiempo no dijo nada, se deja de escuchar */
-const SIN_VOZ_MS = 7000;
+const SIN_VOZ_MS = 8000;
 /** Lo más que dura una pregunta */
-const MAXIMO_MS = 60_000;
+const MAXIMO_MS = 90_000;
 /** Lo primero se usa para medir el ruido del lugar */
 const CALIBRAR_MS = 300;
 const TIC_MS = 60;
+/** Lo que se le da al medidor de volumen para arrancar */
+const ESPERA_MEDIDOR_MS = 1000;
 /** Volumen mínimo que cuenta como voz (aunque el lugar esté en silencio total) */
 const VOZ_MINIMA = 0.018;
+/**
+ * Con frases muy cortas ("¿y mañana?") se espera un poco más: quien dice dos
+ * palabras casi siempre está pensando cómo seguir.
+ */
+const HABLO_POCO_MS = 1500;
+const EXTRA_SI_HABLO_POCO_MS = 800;
 
 export type EstadoEscucha = 'quieta' | 'escuchando';
 
+/** Cuánto se espera en silencio antes de dar la frase por terminada (catálogo: id + descripción) */
+export const PAUSAS = {
+  corta: { ms: 1800, nombre: 'Corta' },
+  normal: { ms: 2800, nombre: 'Normal' },
+  larga: { ms: 4200, nombre: 'Larga' },
+} as const;
+export type Pausa = keyof typeof PAUSAS;
+
 /**
- * Escuchar a la dueña como Siri: se toca, habla, y cuando se calla un
- * segundo y medio la grabación se corta sola y se entrega. El corte se
- * decide aquí, en el teléfono (gratis): solo viaja la frase.
+ * Escuchar a la dueña como Siri: se toca, habla, y cuando se calla un rato
+ * la grabación se corta sola y se entrega. El corte se decide aquí, en el
+ * teléfono (gratis): solo viaja la frase.
+ *
+ * El contexto de audio lo pone quien llama y vive mientras la pantalla esté
+ * abierta: el iPhone solo lo deja arrancar en un toque, y así se puede volver
+ * a escuchar sola cuando Lalan termina de hablar, sin otro toque.
  */
 export function useEscucha(opts: {
+  pausa: Pausa;
+  contexto: () => AudioContext | null;
   onFrase: (audio: Blob) => void;
-  onNada: () => void;
+  /** No dijo nada. `sola` = la escucha la abrió la app (después de hablar Lalan), no un toque */
+  onNada: (sola: boolean) => void;
   onError: (mensaje: string) => void;
 }) {
   const [estado, setEstado] = useState<EstadoEscucha>('quieta');
   /** Volumen de ahora (0 a 1), para animar la esfera */
   const [nivel, setNivel] = useState(0);
+  /** 0 a 1: cuánto falta para dar la frase por terminada (para que se vea que va a enviar) */
+  const [cierre, setCierre] = useState(0);
   const r = useRef<{
-    grabador: MediaRecorder | null; flujo: MediaStream | null; ctx: AudioContext | null; analizador: AnalyserNode | null;
-    tic: number | null; trozos: Blob[]; inicio: number; ultimaVoz: number; hablo: boolean; ruido: number; muestras: number[]; cancelado: boolean;
-  }>({ grabador: null, flujo: null, ctx: null, analizador: null, tic: null, trozos: [], inicio: 0, ultimaVoz: 0, hablo: false, ruido: 0, muestras: [], cancelado: false });
+    grabador: MediaRecorder | null; flujo: MediaStream | null; fuente: MediaStreamAudioSourceNode | null; analizador: AnalyserNode | null;
+    tic: number | null; trozos: Blob[]; inicio: number; primeraVoz: number; ultimaVoz: number; hablo: boolean; ruido: number; muestras: number[];
+    cancelado: boolean; sola: boolean;
+  }>({ grabador: null, flujo: null, fuente: null, analizador: null, tic: null, trozos: [], inicio: 0, primeraVoz: 0, ultimaVoz: 0, hablo: false, ruido: 0, muestras: [], cancelado: false, sola: false });
   const op = useRef(opts);
   op.current = opts;
 
@@ -40,12 +64,14 @@ export function useEscucha(opts: {
     const s = r.current;
     if (s.tic) window.clearInterval(s.tic);
     s.tic = null;
+    try { s.fuente?.disconnect(); } catch { /* noop */ }
+    s.fuente = null;
+    s.analizador = null;
+    // El micrófono se suelta del todo: así la voz de Lalan sale por el altavoz y no por el auricular
     s.flujo?.getTracks().forEach((t) => t.stop());
     s.flujo = null;
-    s.analizador = null;
-    void s.ctx?.close().catch(() => undefined);
-    s.ctx = null;
     setNivel(0);
+    setCierre(0);
     setEstado('quieta');
   }, []);
 
@@ -62,34 +88,35 @@ export function useEscucha(opts: {
       const hablo = s.hablo;
       soltar();
       if (s.cancelado) return;
-      if (!blob || !hablo) { op.current.onNada(); return; }
+      if (!blob || !hablo) { op.current.onNada(s.sola); return; }
       op.current.onFrase(blob);
     };
     g.stop();
   }, [soltar]);
 
-  const empezar = useCallback(async () => {
+  /** sola = la abre la app después de que Lalan habla (si no dicen nada, se cierra sin quejarse) */
+  const empezar = useCallback(async (sola = false) => {
     if (r.current.grabador) return;
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       op.current.onError('Este navegador no deja usar el micrófono. Escríbeme abajo.');
       return;
     }
     const s = r.current;
-    // El contexto de audio se crea en el mismo toque (el iPhone lo exige así)
-    try {
-      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (Ctx) s.ctx = new Ctx();
-    } catch { s.ctx = null; }
+    s.sola = sola;
     setEstado('escuchando');
     try {
       const flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       s.flujo = flujo;
-      if (s.ctx) {
-        const a = s.ctx.createAnalyser();
-        a.fftSize = 1024;
-        s.ctx.createMediaStreamSource(flujo).connect(a);
-        s.analizador = a;
-        void s.ctx.resume().catch(() => undefined);
+      const ctx = op.current.contexto();
+      if (ctx) {
+        try {
+          void ctx.resume().catch(() => undefined);
+          const a = ctx.createAnalyser();
+          a.fftSize = 1024;
+          s.fuente = ctx.createMediaStreamSource(flujo);
+          s.fuente.connect(a);
+          s.analizador = a;
+        } catch { s.analizador = null; }
       }
       const formato = FORMATOS.find((f) => MediaRecorder.isTypeSupported?.(f));
       const g = new MediaRecorder(flujo, formato ? { mimeType: formato } : undefined);
@@ -98,6 +125,7 @@ export function useEscucha(opts: {
       g.start(250);
       s.grabador = g;
       s.inicio = Date.now();
+      s.primeraVoz = 0;
       s.ultimaVoz = 0;
       s.hablo = false;
       s.ruido = 0;
@@ -114,19 +142,29 @@ export function useEscucha(opts: {
           v = Math.sqrt(suma / datos.length);
         }
         setNivel(Math.min(1, v * 6));
-        if (!s.analizador) {
-          // Sin medidor de volumen: se corta a mano o por tiempo
-          if (pasado > MAXIMO_MS) terminar(true);
+        if (!s.analizador || ctx?.state !== 'running') {
+          // El medidor a veces tarda un instante en arrancar
+          if (s.analizador && pasado < ESPERA_MEDIDOR_MS) return;
+          // Sin medidor no se sabe cuándo calla. Si la escucha la abrió la app, se cierra;
+          // si la abrió un toque, se graba y se corta tocando la esfera
+          if (s.sola) { terminar(false); op.current.onNada(true); return; }
           s.hablo = true;
+          if (pasado > MAXIMO_MS) terminar(true);
           return;
         }
         if (pasado < CALIBRAR_MS) { s.muestras.push(v); return; }
         if (!s.ruido) s.ruido = s.muestras.length ? s.muestras.reduce((a, b) => a + b, 0) / s.muestras.length : 0.005;
         const umbral = Math.max(VOZ_MINIMA, s.ruido * 2.5);
-        if (v > umbral) { s.hablo = true; s.ultimaVoz = ahora; }
-        if (s.hablo && ahora - s.ultimaVoz > SILENCIO_FINAL_MS) terminar(true);
-        else if (!s.hablo && pasado > SIN_VOZ_MS) terminar(true);
-        else if (pasado > MAXIMO_MS) terminar(true);
+        if (v > umbral) { if (!s.hablo) s.primeraVoz = ahora; s.hablo = true; s.ultimaVoz = ahora; }
+        if (s.hablo) {
+          const hablado = s.ultimaVoz - s.primeraVoz;
+          const espera = PAUSAS[op.current.pausa].ms + (hablado < HABLO_POCO_MS ? EXTRA_SI_HABLO_POCO_MS : 0);
+          const callado = ahora - s.ultimaVoz;
+          // El anillo empieza a llenarse a la mitad de la espera: un respiro normal no se ve
+          setCierre(Math.max(0, Math.min(1, (callado - espera / 2) / (espera / 2))));
+          if (callado > espera) terminar(true);
+        } else if (pasado > SIN_VOZ_MS) terminar(true);
+        if (pasado > MAXIMO_MS) terminar(true);
       }, TIC_MS);
     } catch {
       soltar();
@@ -140,8 +178,7 @@ export function useEscucha(opts: {
     try { s.grabador?.stop(); } catch { /* noop */ }
     if (s.tic) window.clearInterval(s.tic);
     s.flujo?.getTracks().forEach((t) => t.stop());
-    void s.ctx?.close().catch(() => undefined);
   }, []);
 
-  return { estado, nivel, empezar, terminar };
+  return { estado, nivel, cierre, empezar, terminar };
 }
