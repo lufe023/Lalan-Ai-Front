@@ -1,0 +1,366 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, RotateCcw, Send, Volume2, VolumeX, X } from 'lucide-react';
+import { api, subirArchivo } from '../../services/api';
+import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { useEscucha } from '../../hooks/useEscucha';
+import {
+  alCargarVoces, callarLalan, callarSiempre, decirComoLalan, despertarVoz, estaCallada, guardarVoz, hayVoz, vozDeLalan, vocesEnEspanol,
+} from '../../utils/vozLalan';
+import { EsferaLalan, ModoEsfera } from './EsferaLalan';
+
+interface Accion {
+  id: string; tipo: 'indicacion' | 'mensaje'; resumen: string;
+  estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
+}
+interface Mensaje { id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null }
+interface Respuesta { mensajes: Mensaje[] }
+
+const EVENTO_ABRIR = 'lalan:abrir';
+
+/** Une dos listas de mensajes sin repetir (lo nuevo manda: trae la tarjeta al día) */
+function juntar(antes: Mensaje[], nuevos: Mensaje[]): Mensaje[] {
+  const ids = new Set(nuevos.map((m) => m.id));
+  return [...antes.filter((m) => !ids.has(m.id)), ...nuevos].sort((a, b) => a.creadoEn.localeCompare(b.creadoEn));
+}
+
+/** Abre la pantalla de Lalan desde cualquier lado (botón del menú, aviso…) */
+export function abrirLalan() {
+  // El toque que abre también "despierta" la voz en el iPhone
+  despertarVoz();
+  window.dispatchEvent(new Event(EVENTO_ABRIR));
+}
+
+/** Quién puede hablar con Lalan aquí: la administración del salón */
+export function puedeHablarConLalan(rol?: string) {
+  return rol === 'admin' || rol === 'super_admin';
+}
+
+const TEXTO_ESTADO: Record<ModoEsfera, string> = {
+  reposo: 'Toca la esfera y háblame',
+  escuchando: 'Te escucho…',
+  pensando: 'Pensando…',
+  hablando: 'Toca para interrumpirme',
+};
+
+/**
+ * La pantalla de Lalan, como Siri: una esfera que escucha, piensa y habla.
+ * La persona toca y habla; cuando se calla, la frase se pasa a texto en el
+ * servidor (su audio no se guarda) y Lalan responde con lo que sabe del
+ * salón, en texto y con la voz del teléfono. Para escribirle a una clienta
+ * solo propone: una tarjeta "¿Se lo mando?" que se confirma con un toque o
+ * diciendo "sí".
+ */
+export const PantallaLalan: React.FC = () => {
+  const { currentUser } = useAuth();
+  const { navigateTo, setActiveConversationId } = useApp();
+  const [abierta, setAbierta] = useState(false);
+  const [mensajes, setMensajes] = useState<Mensaje[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [modo, setModo] = useState<ModoEsfera>('reposo');
+  const [pulso, setPulso] = useState(0);
+  const [error, setError] = useState('');
+  const [escribiendo, setEscribiendo] = useState(false);
+  const [texto, setTexto] = useState('');
+  const [menu, setMenu] = useState(false);
+  const [callada, setCallada] = useState(estaCallada);
+  const [voces, setVoces] = useState<SpeechSynthesisVoice[]>(vocesEnEspanol);
+  const [vozActual, setVozActual] = useState<string | null>(() => vozDeLalan()?.name ?? null);
+  const [resolviendo, setResolviendo] = useState<string | null>(null);
+  const lista = useRef<HTMLDivElement>(null);
+  const entrada = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const abrir = () => setAbierta(true);
+    window.addEventListener(EVENTO_ABRIR, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR, abrir);
+  }, []);
+
+  useEffect(() => alCargarVoces(() => { setVoces(vocesEnEspanol()); setVozActual(vozDeLalan()?.name ?? null); }), []);
+
+  const bajar = () => requestAnimationFrame(() => lista.current?.scrollTo({ top: lista.current.scrollHeight, behavior: 'smooth' }));
+
+  /** Lalan dice su último mensaje (si no está callada) */
+  const decir = useCallback(async (t: string) => {
+    if (callada || !hayVoz() || !t.trim()) { setModo('reposo'); return; }
+    setModo('hablando');
+    await decirComoLalan(t, () => setPulso((p) => p + 1));
+    setModo((m) => (m === 'hablando' ? 'reposo' : m));
+  }, [callada]);
+
+  const recibir = useCallback((r: Respuesta, hablar = true) => {
+    if (!r.mensajes.length) { setModo('reposo'); return; }
+    setMensajes((antes) => juntar(antes, r.mensajes));
+    bajar();
+    const ultimo = [...r.mensajes].reverse().find((m) => m.deLalan);
+    if (hablar && ultimo) void decir(ultimo.texto);
+    else setModo('reposo');
+  }, [decir]);
+
+  const fallo = (e: unknown) => {
+    setError((e as Error)?.message || 'Algo falló. Inténtalo otra vez.');
+    setModo('reposo');
+  };
+
+  // Al abrir: la conversación de antes y, si hace rato que no hablan, el panorama del día
+  useEffect(() => {
+    if (!abierta) return;
+    let vigente = true;
+    setError('');
+    setCargando(true);
+    api.get<Respuesta>('/asistente')
+      // Se mezcla: el panorama puede llegar antes que la lista
+      .then((r) => { if (vigente) { setMensajes((antes) => juntar(r.mensajes, antes)); bajar(); } })
+      .catch((e) => vigente && fallo(e))
+      .finally(() => vigente && setCargando(false));
+    setModo('pensando');
+    api.post<Respuesta>('/asistente/panorama', {})
+      .then((r) => vigente && recibir(r))
+      .catch(() => vigente && setModo('reposo'));
+    return () => { vigente = false; };
+  }, [abierta]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const escucha = useEscucha({
+    onFrase: async (audio) => {
+      setModo('pensando');
+      const f = new FormData();
+      const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
+      f.append('audio', audio, `pregunta.${ext}`);
+      try { recibir(await subirArchivo<Respuesta>('/asistente/voz', f)); } catch (e) { fallo(e); }
+    },
+    onNada: () => { setModo('reposo'); setError('No te escuché. Toca la esfera y háblame.'); },
+    onError: (m) => { setModo('reposo'); setError(m); },
+  });
+
+  useEffect(() => { if (escucha.estado === 'escuchando') setModo('escuchando'); }, [escucha.estado]);
+
+  const tocarEsfera = () => {
+    setError('');
+    if (modo === 'pensando') return;
+    if (escucha.estado === 'escuchando') { escucha.terminar(true); return; }
+    callarLalan();
+    despertarVoz();
+    setEscribiendo(false);
+    void escucha.empezar();
+  };
+
+  const enviarTexto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const t = texto.trim();
+    if (!t || modo === 'pensando') return;
+    callarLalan();
+    despertarVoz();
+    setTexto('');
+    setError('');
+    setModo('pensando');
+    try { recibir(await api.post<Respuesta>('/asistente/mensaje', { texto: t })); } catch (err) { fallo(err); }
+  };
+
+  const resolver = async (a: Accion, confirmar: boolean) => {
+    callarLalan();
+    setResolviendo(a.id);
+    setError('');
+    try { recibir(await api.post<Respuesta>(`/asistente/acciones/${a.id}`, { confirmar })); } catch (e) { fallo(e); }
+    finally { setResolviendo(null); }
+  };
+
+  const verChat = (id: string) => {
+    cerrar();
+    navigateTo('chats');
+    setActiveConversationId(id);
+  };
+
+  const cerrar = () => {
+    callarLalan();
+    escucha.terminar(false);
+    setMenu(false);
+    setAbierta(false);
+    setModo('reposo');
+  };
+
+  const empezarDeNuevo = async () => {
+    setMenu(false);
+    callarLalan();
+    try { await api.delete('/asistente'); setMensajes([]); } catch (e) { fallo(e); }
+  };
+
+  const cambiarCallada = () => {
+    const nueva = !callada;
+    setCallada(nueva);
+    callarSiempre(nueva);
+    if (nueva) { callarLalan(); setModo((m) => (m === 'hablando' ? 'reposo' : m)); }
+  };
+
+  const elegirVoz = (nombre: string) => {
+    guardarVoz(nombre);
+    setVozActual(nombre);
+    void decirComoLalan('Hola, así sueno yo.');
+  };
+
+  if (!puedeHablarConLalan(currentUser?.role)) return null;
+
+  return (
+    <AnimatePresence>
+      {abierta && (
+        <motion.div
+          key="lalan"
+          role="dialog" aria-modal="true" aria-label="Lalan"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[300] flex flex-col bg-slate-50/90 dark:bg-neutral-950/92 backdrop-blur-2xl text-slate-900 dark:text-neutral-100"
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
+        >
+          <div className="w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col">
+            {/* Arriba */}
+            <div className="flex items-center justify-between px-4 h-12 shrink-0">
+              <button type="button" onClick={cerrar} aria-label="Cerrar" className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                <ChevronDown className="w-6 h-6" />
+              </button>
+              <span className="text-[0.9375rem] font-bold tracking-tight">Lalan</span>
+              <div className="relative">
+                <button type="button" onClick={() => setMenu((m) => !m)} aria-label="Opciones de Lalan" aria-expanded={menu}
+                  className="w-10 h-10 -mr-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
+                {menu && (
+                  <div className="absolute right-0 top-11 z-10 w-72 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-xl p-2 text-[0.875rem]">
+                    <button type="button" onClick={cambiarCallada} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                      {callada ? <VolumeX className="w-4 h-4 text-slate-500" /> : <Volume2 className="w-4 h-4 text-[var(--primary)]" />}
+                      <span className="flex-1">{callada ? 'Solo texto (sin voz)' : 'Lalan responde en voz alta'}</span>
+                    </button>
+                    {voces.length > 0 && !callada && (
+                      <div className="px-3 pt-2 pb-1">
+                        <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Voz en este aparato</div>
+                        <div className="max-h-52 overflow-y-auto -mx-1">
+                          {voces.map((v) => (
+                            <button key={v.name} type="button" onClick={() => elegirVoz(v.name)}
+                              className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                              <span className="w-4 shrink-0">{vozActual === v.name && <Check className="w-4 h-4 text-[var(--primary)]" />}</span>
+                              <span className="flex-1 truncate">{v.name}</span>
+                              <span className="text-[0.6875rem] text-slate-400 shrink-0">{v.lang}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <button type="button" onClick={() => void empezarDeNuevo()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                      <RotateCcw className="w-4 h-4 text-slate-500" /> <span>Empezar de nuevo</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* La conversación */}
+            <div ref={lista} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-5" aria-live="polite">
+              {cargando && !mensajes.length && (
+                <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              )}
+              {!cargando && !mensajes.length && modo !== 'pensando' && (
+                <div className="text-center py-10 space-y-2 text-slate-500 dark:text-neutral-400">
+                  <p className="text-lg font-semibold text-slate-800 dark:text-neutral-100" style={{ textWrap: 'balance' }}>¿En qué te ayudo?</p>
+                  <p className="text-[0.875rem]">Prueba: «¿Cómo se ve mi día?», «¿Quién me está esperando?» o «Dile a Ana que sí la esperamos a las 3».</p>
+                </div>
+              )}
+              {mensajes.map((m) => (
+                m.deLalan ? (
+                  <div key={m.id} className="space-y-2.5 max-w-[92%]">
+                    <p className="text-[1.0625rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
+                    {m.accion && <TarjetaAccion accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} />}
+                  </div>
+                ) : (
+                  <div key={m.id} className="flex justify-end">
+                    <div className="max-w-[85%] px-4 py-2.5 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug">
+                      {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
+                      {m.texto}
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+
+            {/* Abajo: la esfera */}
+            <div className="shrink-0 px-5 pt-2 flex flex-col items-center gap-2">
+              {error && <p className="text-[0.8125rem] font-semibold text-rose-600 dark:text-rose-400 text-center" role="alert">{error}</p>}
+              {escribiendo ? (
+                <form onSubmit={enviarTexto} className="w-full flex items-center gap-2 py-2">
+                  <button type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" className="shrink-0 cursor-pointer">
+                    <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={48} />
+                  </button>
+                  <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…" autoFocus
+                    className="flex-1 min-w-0 px-4 py-3 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-[0.9375rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
+                  <button type="submit" disabled={!texto.trim() || modo === 'pensando'} aria-label="Enviar"
+                    className="w-11 h-11 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shrink-0 disabled:opacity-40 cursor-pointer">
+                    {modo === 'pensando' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <p className="text-[0.8125rem] font-medium text-slate-500 dark:text-neutral-400 h-5">{TEXTO_ESTADO[modo]}</p>
+                  <div className="w-full flex items-center justify-between">
+                    <span className="w-11" />
+                    <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Terminar' : 'Hablarle a Lalan'}
+                      className="rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+                      <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={150} />
+                    </button>
+                    <button type="button" onClick={() => { escucha.terminar(false); setEscribiendo(true); }} aria-label="Escribirle"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                      <Keyboard className="w-5 h-5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+/** "¿Se lo mando?": lo que Lalan propone hacer, con Sí / No */
+const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a: Accion, si: boolean) => void; onVerChat: (id: string) => void }> = ({ accion, ocupada, onResolver, onVerChat }) => {
+  const titulo = accion.tipo === 'indicacion' ? 'Indicación para Lalan en el chat' : 'Mensaje para la clienta';
+  return (
+    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm p-3.5 space-y-2.5">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{titulo}</div>
+      <p className="text-[0.875rem] leading-snug text-slate-700 dark:text-neutral-200">{accion.resumen.replace(/^(Indicación para Lalan en el chat de |Mensaje para )/, '')}</p>
+      {accion.estado === 'pendiente' ? (
+        <div className="flex items-center gap-2">
+          <button type="button" disabled={ocupada} onClick={() => onResolver(accion, true)}
+            className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer">
+            {ocupada ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Sí, mándalo
+          </button>
+          <button type="button" disabled={ocupada} onClick={() => onResolver(accion, false)}
+            className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.875rem] font-semibold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+            <X className="w-4 h-4" /> No
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2 text-[0.8125rem]">
+          <span className={`font-semibold ${accion.estado === 'hecha' ? 'text-emerald-600' : accion.estado === 'fallida' ? 'text-rose-600' : 'text-slate-400'}`}>
+            {accion.estado === 'hecha' ? 'Enviado' : accion.estado === 'fallida' ? `No salió${accion.resultado ? `: ${accion.resultado}` : ''}` : 'No se mandó'}
+          </span>
+          {accion.conversacionId && (
+            <button type="button" onClick={() => onVerChat(accion.conversacionId!)} className="font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">
+              <MessageSquareText className="w-4 h-4" /> Ver el chat
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** El botón flotante (móvil): la esfera chiquita, siempre a mano */
+export const BotonLalan: React.FC = () => {
+  const { currentUser } = useAuth();
+  if (!puedeHablarConLalan(currentUser?.role)) return null;
+  return (
+    <button type="button" onClick={abrirLalan} aria-label="Hablar con Lalan" data-medir="Abrir Lalan"
+      className="lg:hidden absolute right-3 bottom-3 z-40 rounded-full shadow-lg shadow-[var(--primary)]/30 cursor-pointer active:scale-95 transition-transform">
+      <EsferaLalan modo="reposo" tamano={56} />
+    </button>
+  );
+};

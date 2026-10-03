@@ -34,6 +34,7 @@ import { PlanProvider } from './context/PlanContext';
 import { BarraSoporte } from './components/ui/BarraSoporte';
 import { AvisoMensajes } from './components/ui/AvisoMensajes';
 import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
+import { BotonLalan, PantallaLalan } from './components/lalan/PantallaLalan';
 import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
@@ -160,6 +161,7 @@ const MainAppContent: React.FC = () => {
           <div className="flex-1 w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
             {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} />}
             <ChatsFlotantes />
+            <PantallaLalan />
             {MODO_CALOR && currentUser?.role === 'super_admin' && <CalorApp key={currentScreen} {...MODO_CALOR} pantalla={currentScreen} />}
 
             {/* ── Main content column ── */}
@@ -182,6 +184,9 @@ const MainAppContent: React.FC = () => {
                   </motion.div>
                 </AnimatePresence>
               </div>
+
+              {/* La esfera de Lalan, a mano en el teléfono (en la computadora va en el menú) */}
+              {!activeConversationId && <BotonLalan />}
 
               {/* ── Desktop footer (hidden on mobile) ── */}
               <footer id="pie-app" className="hidden lg:flex shrink-0 items-center justify-between px-8 py-2.5 border-t border-slate-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50">

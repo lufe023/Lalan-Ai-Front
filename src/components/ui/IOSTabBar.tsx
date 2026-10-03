@@ -18,6 +18,8 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { LogoLalan } from './LogoLalan';
+import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
+import { EsferaLalan } from '../lalan/EsferaLalan';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useAplicacionesNuevas } from '../../hooks/useAplicacionesNuevas';
@@ -328,6 +330,16 @@ export const IOSTabBar: React.FC = () => {
               <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 font-medium tracking-wide uppercase">Studio & Lounge</div>
             </div>
           </div>
+          {puedeHablarConLalan(currentUser?.role) && (
+            <button type="button" onClick={abrirLalan} data-medir="Abrir Lalan"
+              className="mt-3 w-full flex items-center gap-2.5 px-2 py-1.5 rounded-2xl bg-[var(--primary)]/8 hover:bg-[var(--primary)]/15 text-left cursor-pointer ios-touch">
+              <EsferaLalan modo="reposo" tamano={34} />
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-bold text-slate-900 dark:text-white leading-tight">Habla con Lalan</span>
+                <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate">Tu día, tus chats, tus informes</span>
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Nav items */}
