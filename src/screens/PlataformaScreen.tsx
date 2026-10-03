@@ -10,6 +10,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PilotoAplicaciones } from '../components/plataforma/PilotoAplicaciones';
 import { OtrosNegocios } from '../components/plataforma/OtrosNegocios';
+import { ReportesExcel } from '../components/plataforma/ReportesExcel';
 import { EquipoSoporte } from '../components/plataforma/EquipoSoporte';
 import { PortadasPlataforma } from '../components/plataforma/PortadasPlataforma';
 import { SaludServicios } from '../components/plataforma/SaludServicios';
@@ -370,6 +371,7 @@ export const PlataformaScreen: React.FC = () => {
           <div className="space-y-10">
             <PilotoAplicaciones onCrearSalon={(p) => { setPrellenado(p); setPestana('negocios'); }} />
             <OtrosNegocios />
+            <ReportesExcel />
           </div>
         )}
 
