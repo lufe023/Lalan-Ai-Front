@@ -9,7 +9,7 @@ import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA
 import { PAPEL_TAPIZ_SALON } from './papelTapiz';
 import {
   alCargarVoces, callarLalan, callarSiempre, contextoDeAudio, decirComoLalan, despertarVoz, estaCallada, guardarPausa, guardarSeguirEscuchando,
-  guardarVoz, hayVoz, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, vozDeLalan, vocesEnEspanol,
+  guardarVoz, hayVoz, lalanHablando, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, vozDeLalan, vocesEnEspanol,
 } from '../../utils/vozLalan';
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
 
@@ -30,8 +30,10 @@ function juntar(antes: Mensaje[], nuevos: Mensaje[]): Mensaje[] {
 
 /** Abre la pantalla de Lalan desde cualquier lado (botón del menú, aviso…) */
 export function abrirLalan() {
-  // El toque que abre también "despierta" la voz y el micrófono en el iPhone
-  despertarVoz();
+  // El toque que abre también "despierta" la voz y el micrófono en el iPhone.
+  // En silencio no se toca la voz: en el iPhone, una voz "despierta" mientras se
+  // abre el micrófono puede dejar la grabación muda.
+  if (!estaCallada()) despertarVoz();
   prepararAudio();
   window.dispatchEvent(new Event(EVENTO_ABRIR));
 }
@@ -41,12 +43,20 @@ export function puedeHablarConLalan(rol?: string) {
   return rol === 'admin' || rol === 'super_admin';
 }
 
-const TEXTO_ESTADO: Record<ModoEsfera, string> = {
-  reposo: 'Toca la esfera y háblame',
-  escuchando: 'Te escucho… (toca cuando termines)',
-  pensando: 'Pensando…',
-  hablando: 'Toca para interrumpirme',
+/** Lo que dice la pastilla sobre la esfera. Para quien ya sabe usarla, la versión corta */
+const TEXTO_ESTADO: Record<ModoEsfera, { nueva: string; sabe: string | null }> = {
+  reposo: { nueva: 'Toca la esfera y háblame', sabe: null },
+  escuchando: { nueva: 'Te escucho… (toca cuando termines)', sabe: 'Te escucho…' },
+  pensando: { nueva: 'Pensando…', sabe: 'Pensando…' },
+  hablando: { nueva: 'Toca para interrumpirme', sabe: null },
 };
+/** Después de tantas preguntas con la voz, ya sabe cómo funciona: menos ayudas en pantalla */
+const YA_SABE_TRAS = 5;
+/** Cuánto se ve la pastilla antes de desvanecerse */
+const PASTILLA_MS = 3500;
+const CLAVE_USOS = 'lalan_asistente_usos_voz';
+const usosDeVoz = () => { try { return Number(localStorage.getItem(CLAVE_USOS)) || 0; } catch { return 0; } };
+const contarUsoDeVoz = () => { try { localStorage.setItem(CLAVE_USOS, String(usosDeVoz() + 1)); } catch { /* noop */ } };
 
 /**
  * La pantalla de Lalan, como Siri: una esfera que escucha, piensa y habla.
@@ -69,6 +79,8 @@ export const PantallaLalan: React.FC = () => {
   const [texto, setTexto] = useState('');
   const [menu, setMenu] = useState(false);
   const [callada, setCallada] = useState(estaCallada);
+  const calladaAhora = useRef(callada);
+  calladaAhora.current = callada;
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>(vocesEnEspanol);
   const [vozActual, setVozActual] = useState<string | null>(() => vozDeLalan()?.name ?? null);
   const [resolviendo, setResolviendo] = useState<string | null>(null);
@@ -114,14 +126,16 @@ export const PantallaLalan: React.FC = () => {
 
   /** Lalan dice su último mensaje (si no está callada) */
   const decir = useCallback(async (t: string) => {
-    if (callada || !hayVoz() || !t.trim()) { setModo('reposo'); return; }
+    // Se mira el silencio de AHORA (no el de cuando se hizo la pregunta): si la
+    // pusieron en silencio mientras pensaba, ya no habla
+    if (calladaAhora.current || !hayVoz() || !t.trim()) { setModo('reposo'); return; }
     setModo('hablando');
     await decirComoLalan(t, () => setPulso((p) => p + 1));
     // Terminó de hablar sola (no la interrumpieron): le toca a la persona
     const v = vivo.current;
     if (v.modo === 'hablando' && v.abierta && v.seguir && !v.escribiendo && conVoz.current) { escucharSola.current(); return; }
     setModo((m) => (m === 'hablando' ? 'reposo' : m));
-  }, [callada]);
+  }, []);
 
   const recibir = useCallback((r: Respuesta, hablar = true) => {
     if (!r.mensajes.length) { setModo('reposo'); return; }
@@ -162,6 +176,7 @@ export const PantallaLalan: React.FC = () => {
     ajustes: ajustesLalan,
     contexto: contextoDeAudio,
     onFrase: async (audio) => {
+      contarUsoDeVoz();
       setModo('pensando');
       const f = new FormData();
       const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
@@ -181,17 +196,43 @@ export const PantallaLalan: React.FC = () => {
     void escucha.empezar(true);
   };
 
+  /**
+   * La pastilla de ayuda aparece suave cuando cambia algo (empieza a escuchar,
+   * piensa, la silencian) y se desvanece sola: no se queda haciendo ruido
+   * visual. A quien ya la usó varias veces ni siquiera le dice "toca la esfera".
+   */
+  const [pastilla, setPastilla] = useState<string | null>(null);
+  const silencioAnterior = useRef(callada);
+  useEffect(() => {
+    if (!abierta) { setPastilla(null); return; }
+    const cambioSilencio = silencioAnterior.current !== callada;
+    silencioAnterior.current = callada;
+    const sabe = usosDeVoz() >= YA_SABE_TRAS;
+    const t = cambioSilencio
+      ? (callada ? 'En silencio: te respondo solo por escrito' : 'Vuelvo a hablar en voz alta')
+      : sabe ? TEXTO_ESTADO[modo].sabe : TEXTO_ESTADO[modo].nueva;
+    setPastilla(t);
+    if (!t) return;
+    // "Pensando…" se queda mientras piensa; lo demás se va solo
+    if (modo === 'pensando' && !cambioSilencio) return;
+    const id = window.setTimeout(() => setPastilla(null), PASTILLA_MS);
+    return () => window.clearTimeout(id);
+  }, [modo, callada, abierta]);
+
   const tocarEsfera = () => {
     setError('');
     if (modo === 'pensando') return;
     if (escucha.estado === 'escuchando') { escucha.terminar(true); return; }
+    // Primero se calla del todo y después se abre el micrófono: en el iPhone,
+    // si la voz sigue activa al abrirlo, la grabación puede salir muda
+    const hablaba = lalanHablando();
     callarLalan();
-    despertarVoz();
     prepararAudio();
     conVoz.current = true;
     setEscribiendo(false);
+    setModo('escuchando');
     if (!callada) tonoEscucho();
-    void escucha.empezar();
+    window.setTimeout(() => void escucha.empezar(), hablaba ? 250 : 0);
   };
 
   const enviarTexto = async (e: React.FormEvent) => {
@@ -199,7 +240,7 @@ export const PantallaLalan: React.FC = () => {
     const t = texto.trim();
     if (!t || modo === 'pensando') return;
     callarLalan();
-    despertarVoz();
+    if (!callada) despertarVoz();
     conVoz.current = false;
     setTexto('');
     setError('');
@@ -238,9 +279,12 @@ export const PantallaLalan: React.FC = () => {
 
   const cambiarCallada = () => {
     const nueva = !callada;
+    calladaAhora.current = nueva;
     setCallada(nueva);
     callarSiempre(nueva);
+    // Silenciar NO apaga el micrófono: solo que Lalan no hable. Si está escuchando, sigue escuchando
     if (nueva) { callarLalan(); setModo((m) => (m === 'hablando' ? 'reposo' : m)); }
+    else despertarVoz();
   };
 
   const elegirVoz = (nombre: string) => {
@@ -391,10 +435,21 @@ export const PantallaLalan: React.FC = () => {
                 </form>
               ) : (
                 <>
-                  {/* En una pastilla: el texto de la conversación pasa por detrás y no se mezcla */}
-                  <p className="text-[0.8125rem] font-medium text-slate-600 dark:text-neutral-300 px-3 py-1 rounded-full bg-white/75 dark:bg-neutral-900/75 backdrop-blur-md shadow-sm">{callada && modo === 'reposo' ? 'En silencio: te respondo solo por escrito' : TEXTO_ESTADO[modo]}</p>
                   <div className="w-full flex items-center justify-between">
                     <span className="w-11" />
+                    <div className="relative">
+                    {/* La pastilla, pegada a la esfera; aparece y se desvanece suave */}
+                    <AnimatePresence>
+                      {pastilla && (
+                        <motion.p key={pastilla} role="status"
+                          initial={{ opacity: 0, y: 6, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                          className="absolute left-1/2 z-10 whitespace-nowrap text-[0.8125rem] font-medium text-slate-600 dark:text-neutral-300 px-3 py-1 rounded-full bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shadow-sm pointer-events-none"
+                          style={{ bottom: `calc(100% - ${Math.round(aj.tamanoEsfera * 0.16)}px)`, x: '-50%' }}>
+                          {pastilla}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
                     <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
                       className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
                       <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={aj.tamanoEsfera} />
@@ -406,6 +461,7 @@ export const PantallaLalan: React.FC = () => {
                         </svg>
                       )}
                     </button>
+                    </div>
                     <button type="button" onClick={() => { escucha.terminar(false); setEscribiendo(true); }} aria-label="Escribirle"
                       className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
                       <Keyboard className="w-5 h-5" />

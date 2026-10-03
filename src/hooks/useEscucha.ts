@@ -91,6 +91,9 @@ export function useEscucha(opts: {
     s.sola = sola;
     setEstado('escuchando');
     try {
+      // Que el medidor de volumen esté andando antes de grabar (si no, no se sabe cuándo calla)
+      const ctx0 = op.current.contexto();
+      if (ctx0 && ctx0.state !== 'running') await Promise.race([ctx0.resume().catch(() => undefined), new Promise((ok) => setTimeout(ok, 300))]);
       const flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       s.flujo = flujo;
       const ctx = op.current.contexto();
