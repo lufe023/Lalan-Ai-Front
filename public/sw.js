@@ -90,6 +90,13 @@ self.addEventListener('fetch', (event) => {
   // algo que no es una página, la copia guardada; y si tampoco hay, una
   // página propia de "sin conexión". NUNCA una respuesta vacía: el iPhone la
   // muestra como un archivo descargado ("app · 0 KB").
+  // Páginas fuera de la app (landing, /privacidad, /terminos): las sirve el
+  // sitio tal cual. Cloudflare redirige "/privacidad.html" a "/privacidad" y
+  // una redirección NO debe acabar mostrando la app.
+  if (req.mode === 'navigate' && !url.pathname.startsWith('/app')) {
+    return;
+  }
+
   if (req.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -109,6 +116,8 @@ self.addEventListener('fetch', (event) => {
             fetch(req),
             new Promise((_, rej) => setTimeout(() => rej(new Error('tiempo')), 6000)),
           ]);
+          // Una redirección se le devuelve al navegador para que la siga
+          if (r && r.type === 'opaqueredirect') return r;
           if (esPagina(r)) {
             const copia = r.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, copia)).catch(() => {});
