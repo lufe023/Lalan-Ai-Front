@@ -3,6 +3,7 @@ import { Loader2, Play, RotateCcw, Save } from 'lucide-react';
 import { api, pedirAudio } from '../../services/api';
 import { cargarAjustesLalan } from '../../utils/ajustesLalan';
 import { abrirLalan } from '../lalan/PantallaLalan';
+import { EsferaLalan, type ColorEsfera, type EstiloEsfera, type ModoEsfera } from '../lalan/EsferaLalan';
 
 type Valor = number | boolean | string;
 interface Campo {
@@ -60,6 +61,61 @@ const Control: React.FC<{ c: Campo; v: Valor; onCambio: (v: Valor) => void }> = 
           onChange={(e) => onCambio(Number(e.target.value) * factor)} aria-label={`${c.nombre} (número)`}
           className={`${caja} w-20 text-right tabular-nums`} />
         <span className="text-[0.75rem] text-slate-400 w-10">{esMs ? 's' : c.unidad ?? ''}</span>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Elegir la esfera viéndola: cada forma (o color) se muestra moviéndose, y
+ * arriba una grande que se puede poner a escuchar, pensar o hablar.
+ */
+const SelectorEsfera: React.FC<{ campo: 'estiloEsfera' | 'colorEsfera'; c: Campo; v: Valor; todo: Record<string, Valor>; onCambio: (v: Valor) => void }> = ({ campo, c, v, todo, onCambio }) => (
+  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+    {c.opciones?.map((o) => {
+      const elegida = v === o.id;
+      return (
+        <button key={o.id} type="button" onClick={() => onCambio(o.id)} aria-pressed={elegida}
+          className={`flex flex-col items-center gap-1 p-2 rounded-2xl border-2 cursor-pointer transition-colors ${elegida ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-transparent bg-slate-50 dark:bg-neutral-800/60 hover:border-slate-200 dark:hover:border-neutral-700'}`}>
+          <EsferaLalan modo={elegida ? 'hablando' : 'reposo'} tamano={64}
+            estilo={(campo === 'estiloEsfera' ? o.id : todo.estiloEsfera) as EstiloEsfera}
+            color={(campo === 'colorEsfera' ? o.id : todo.colorEsfera) as ColorEsfera}
+            ritmo={Number(todo.ritmoEsfera) || 1} />
+          <span className={`text-[0.75rem] font-semibold ${elegida ? 'text-[var(--primary)]' : 'text-slate-500'}`}>{o.nombre}</span>
+        </button>
+      );
+    })}
+  </div>
+);
+
+const MODOS_VISTA: { id: ModoEsfera; nombre: string }[] = [
+  { id: 'reposo', nombre: 'En reposo' }, { id: 'escuchando', nombre: 'Escuchando' }, { id: 'pensando', nombre: 'Pensando' }, { id: 'hablando', nombre: 'Hablando' },
+];
+
+/** La esfera grande, con el estilo del borrador, en el estado que se elija */
+const VistaEsfera: React.FC<{ todo: Record<string, Valor> }> = ({ todo }) => {
+  const [modo, setModo] = useState<ModoEsfera>('hablando');
+  const [pulso, setPulso] = useState(0);
+  const [nivel, setNivel] = useState(0);
+  // Simula la voz: pulsos al "hablar" y volumen al "escuchar"
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setPulso((p) => p + 1);
+      setNivel(0.15 + Math.random() * 0.6);
+    }, 220);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/60">
+      <EsferaLalan modo={modo} tamano={Math.min(180, Number(todo.tamanoEsfera) || 150)} pulso={modo === 'hablando' ? pulso : 0} nivel={modo === 'escuchando' ? nivel : 0}
+        estilo={todo.estiloEsfera as EstiloEsfera} color={todo.colorEsfera as ColorEsfera} ritmo={Number(todo.ritmoEsfera) || 1} />
+      <div className="inline-flex flex-wrap justify-center gap-1 p-1 rounded-xl bg-white dark:bg-neutral-900">
+        {MODOS_VISTA.map((x) => (
+          <button key={x.id} type="button" onClick={() => setModo(x.id)} aria-pressed={modo === x.id}
+            className={`px-2.5 py-1 rounded-lg text-[0.75rem] font-semibold cursor-pointer ${modo === x.id ? 'bg-[var(--primary)] text-white' : 'text-slate-500'}`}>
+            {x.nombre}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -191,6 +247,7 @@ export const AjustesLalanPlataforma: React.FC = () => {
         {cat.grupos.map((g) => (
           <section key={g.id} className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{g.nombre}</h3>
+            {g.id === 'apariencia' && <VistaEsfera todo={borrador} />}
             {g.id === 'voz' && <PruebaVoz motor={String(borrador.motorVoz ?? 'aparato')} voz={String(borrador.vozAura ?? 'celeste')} />}
             {cat.campos.filter((c) => c.grupo === g.id).map((c) => {
               const v = borrador[c.id] ?? c.porDefecto;
@@ -204,7 +261,9 @@ export const AjustesLalanPlataforma: React.FC = () => {
                     </div>
                     {c.tipo === 'si_no' && <Control c={c} v={v} onCambio={(x) => setBorrador((b) => ({ ...b, [c.id]: x }))} />}
                   </div>
-                  {c.tipo !== 'si_no' && <Control c={c} v={v} onCambio={(x) => setBorrador((b) => ({ ...b, [c.id]: x }))} />}
+                  {(c.id === 'estiloEsfera' || c.id === 'colorEsfera')
+                    ? <SelectorEsfera campo={c.id} c={c} v={v} todo={borrador} onCambio={(x) => setBorrador((b) => ({ ...b, [c.id]: x }))} />
+                    : c.tipo !== 'si_no' && <Control c={c} v={v} onCambio={(x) => setBorrador((b) => ({ ...b, [c.id]: x }))} />}
                   {distinto && (
                     <button type="button" onClick={() => setBorrador((b) => ({ ...b, [c.id]: cat.porDefecto[c.id] }))}
                       className="text-[0.6875rem] font-semibold text-[var(--primary)] cursor-pointer">

@@ -85,6 +85,12 @@ export const PantallaLalan: React.FC = () => {
   const [escribiendo, setEscribiendo] = useState(false);
   const [texto, setTexto] = useState('');
   const [menu, setMenu] = useState(false);
+  const [uso, setUso] = useState<Uso | null>(null);
+  // Al abrir el menú: cuánto le queda (preguntas de hoy, voz del mes, mensajes del plan)
+  useEffect(() => {
+    if (!menu) return;
+    api.get<Uso>('/asistente/uso').then(setUso).catch(() => undefined);
+  }, [menu]);
   const [callada, setCallada] = useState(estaCallada);
   const calladaAhora = useRef(callada);
   calladaAhora.current = callada;
@@ -354,7 +360,8 @@ export const PantallaLalan: React.FC = () => {
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
                 {menu && (
-                  <div className="absolute right-0 top-11 z-10 w-72 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-xl p-2 text-[0.875rem]">
+                  <div className="absolute right-0 top-11 z-10 w-72 max-h-[75vh] overflow-y-auto rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-xl p-2 text-[0.875rem]">
+                    {uso && <LoQueQueda uso={uso} />}
                     <button type="button" onClick={cambiarCallada} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
                       {callada ? <VolumeX className="w-4 h-4 text-slate-500" /> : <Volume2 className="w-4 h-4 text-[var(--primary)]" />}
                       <span className="flex-1">{callada ? 'Solo texto (sin voz)' : 'Lalan responde en voz alta'}</span>
@@ -497,6 +504,52 @@ export const PantallaLalan: React.FC = () => {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+};
+
+interface Uso {
+  preguntas: { usadas: number; tope: number };
+  voz: { usadas: number; tope: number } | null;
+  mensajesClientas: { usados: number; tope: number | null } | null;
+}
+
+/** Una barrita de "cuánto queda": verde, ámbar al 80 %, roja al acabarse */
+const Barra: React.FC<{ titulo: string; usado: number; tope: number | null; queda: string }> = ({ titulo, usado, tope, queda }) => {
+  const pct = tope ? Math.min(100, (usado / tope) * 100) : 0;
+  const color = !tope ? 'bg-emerald-500' : pct >= 100 ? 'bg-rose-500' : pct >= 80 ? 'bg-amber-500' : 'bg-emerald-500';
+  return (
+    <div className="space-y-1">
+      <div className="text-[0.75rem] font-semibold text-slate-600 dark:text-neutral-300">{titulo}</div>
+      {tope !== null && (
+        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 overflow-hidden">
+          <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(2, pct)}%` }} />
+        </div>
+      )}
+      <div className="text-[0.6875rem] tabular-nums text-slate-500 dark:text-neutral-400 first-letter:uppercase">{queda}</div>
+    </div>
+  );
+};
+
+const n = (x: number) => x.toLocaleString('es-DO');
+
+/** Lo que le queda a la dueña: preguntas a Lalan hoy, voz natural del mes y mensajes del plan */
+const LoQueQueda: React.FC<{ uso: Uso }> = ({ uso }) => {
+  const { preguntas, voz, mensajesClientas: m } = uso;
+  const quedanPreguntas = Math.max(0, preguntas.tope - preguntas.usadas);
+  return (
+    <div className="px-3 pt-2 pb-3 mb-1 space-y-2.5 border-b border-slate-100 dark:border-neutral-800">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Lo que te queda</div>
+      <Barra titulo="Preguntas a Lalan hoy" usado={preguntas.usadas} tope={preguntas.tope}
+        queda={quedanPreguntas ? `quedan ${n(quedanPreguntas)} de ${n(preguntas.tope)}` : 'se acabaron por hoy'} />
+      {voz && (
+        <Barra titulo="Voz natural este mes" usado={voz.usadas} tope={voz.tope}
+          queda={voz.usadas >= voz.tope ? 'uso la del teléfono' : `quedan ~${n(Math.floor((voz.tope - voz.usadas) / 240))} respuestas`} />
+      )}
+      {m && (
+        <Barra titulo="Mensajes a clientas (mes)" usado={m.usados} tope={m.tope}
+          queda={m.tope === null ? `${n(m.usados)} · sin límite` : `quedan ${n(Math.max(0, m.tope - m.usados))} de ${n(m.tope)}`} />
+      )}
+    </div>
   );
 };
 

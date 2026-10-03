@@ -169,15 +169,23 @@ async function decirConNube(partes: string[], mio: number, alHablar?: () => void
   pedidos?.abort();
   const control = new AbortController();
   pedidos = control;
-  const pedir = (t: string) => pedirAudio('/asistente/voz-lalan', { texto: t }, control.signal);
-  let siguiente: Promise<Blob | null> | null = pedir(partes[0]);
-  for (let i = 0; i < partes.length; i++) {
+  // La primera frase sola (corta = llega rápido y Lalan empieza a hablar antes);
+  // las demás se piden TODAS de una vez mientras suena la primera
+  const [primera, ...resto] = partes;
+  const corte = primera.search(/[.!?](\s|$)/);
+  const lista = corte > 0 && corte < primera.length - 1
+    ? [primera.slice(0, corte + 1).trim(), primera.slice(corte + 1).trim(), ...resto].filter(Boolean)
+    : partes;
+  const audios = lista.map((t) => {
+    const p = pedirAudio('/asistente/voz-lalan', { texto: t }, control.signal);
+    p.catch(() => undefined);
+    return p;
+  });
+  for (let i = 0; i < lista.length; i++) {
     let audio: Blob | null;
-    try { audio = await siguiente; } catch { return mio === turno ? partes.slice(i) : []; }
+    try { audio = await audios[i]; } catch { return mio === turno ? lista.slice(i) : []; }
     if (mio !== turno) return [];
-    if (!audio) return partes.slice(i);
-    siguiente = i + 1 < partes.length ? pedir(partes[i + 1]) : null;
-    siguiente?.catch(() => undefined);
+    if (!audio) return lista.slice(i);
     await tocar(audio, mio, alHablar);
     if (mio !== turno) return [];
   }
