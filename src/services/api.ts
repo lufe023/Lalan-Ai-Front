@@ -227,3 +227,25 @@ export async function subirArchivo<T>(path: string, formulario: FormData): Promi
 
 /** Dirección completa de un recurso del backend (para <img src>) */
 export const urlApi = (path: string) => `${BASE_URL}${path}`;
+
+/**
+ * Un audio que genera el servidor (la voz de Lalan). Devuelve null si el
+ * servidor dice "usa la voz del aparato" (204). Lanza si falla: quien llama
+ * cae a la voz del aparato.
+ */
+export async function pedirAudio(path: string, cuerpo: unknown, senal?: AbortSignal): Promise<Blob | null> {
+  const pedir = () => fetch(`${BASE_URL}${path}`, {
+    method: 'POST', signal: senal, body: JSON.stringify(cuerpo),
+    headers: { 'Content-Type': 'application/json', ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) },
+  });
+  let res = await pedir();
+  if (res.status === 401 && (await refrescarSesion())) res = await pedir();
+  if (res.status === 204) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    const e = new Error(String(err?.message ?? 'Sin voz')) as Error & { estado?: number };
+    e.estado = res.status;
+    throw e;
+  }
+  return res.blob();
+}

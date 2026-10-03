@@ -75,6 +75,13 @@ export const PantallaLalan: React.FC = () => {
   const [modo, setModo] = useState<ModoEsfera>('reposo');
   const [pulso, setPulso] = useState(0);
   const [error, setError] = useState('');
+  const hayRuido = useRef(false);
+  // Los avisos se van solos: no se quedan en rojo toda la conversación
+  useEffect(() => {
+    if (!error) return;
+    const id = window.setTimeout(() => setError(''), 7000);
+    return () => window.clearTimeout(id);
+  }, [error]);
   const [escribiendo, setEscribiendo] = useState(false);
   const [texto, setTexto] = useState('');
   const [menu, setMenu] = useState(false);
@@ -158,7 +165,8 @@ export const PantallaLalan: React.FC = () => {
     setError('');
     setCargando(true);
     conVoz.current = true;
-    void cargarAjustesLalan().then((a) => vigente && setAj(a));
+    // La voz (aparato o Cloudflare) sale de los ajustes: se esperan antes de que Lalan hable
+    const ajustesListos = cargarAjustesLalan().then((a) => { if (vigente) setAj(a); return a; });
     api.get<Respuesta>('/asistente')
       // Se mezcla: el panorama puede llegar antes que la lista
       .then((r) => { if (vigente) { setMensajes((antes) => juntar(r.mensajes, antes)); bajar(); } })
@@ -166,7 +174,7 @@ export const PantallaLalan: React.FC = () => {
       .finally(() => vigente && setCargando(false));
     setModo('pensando');
     api.post<Respuesta>('/asistente/panorama', {})
-      .then((r) => vigente && recibir(r))
+      .then(async (r) => { await ajustesListos; if (vigente) recibir(r); })
       .catch(() => vigente && setModo('reposo'));
     return () => { vigente = false; };
   }, [abierta]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -184,11 +192,18 @@ export const PantallaLalan: React.FC = () => {
       try { recibir(await subirArchivo<Respuesta>('/asistente/voz', f)); } catch (e) { fallo(e); }
     },
     // Si la escucha se abrió sola y no dijo nada, se cierra sin quejarse
-    onNada: (sola) => { setModo('reposo'); if (!sola) setError('No te escuché. Toca la esfera y háblame.'); },
+    onNada: (sola) => {
+      setModo('reposo');
+      if (sola) return;
+      setError(hayRuido.current
+        ? 'Hay mucho ruido y no te escuché. Acerca el teléfono a la boca, o escríbeme.'
+        : 'No te escuché. Toca la esfera y háblame.');
+    },
     onError: (m) => { setModo('reposo'); setError(m); },
   });
 
   useEffect(() => { if (escucha.estado === 'escuchando') setModo('escuchando'); }, [escucha.estado]);
+  hayRuido.current = escucha.ruidoso;
 
   escucharSola.current = () => {
     setModo('escuchando');
@@ -420,7 +435,14 @@ export const PantallaLalan: React.FC = () => {
 
             {/* Abajo: la esfera, flotando sobre la conversación */}
             <div ref={abajo} className="absolute inset-x-0 bottom-0 px-5 pt-10 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto bg-gradient-to-t from-slate-50/75 via-slate-50/25 to-transparent dark:from-neutral-950/75 dark:via-neutral-950/25">
-              {error && <p className="text-[0.8125rem] font-semibold text-rose-600 dark:text-rose-400 text-center" role="alert">{error}</p>}
+              <AnimatePresence>
+                {error && (
+                  <motion.p key={error} role="alert" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
+                    className="max-w-sm text-center text-[0.8125rem] font-medium leading-snug text-amber-800 dark:text-amber-200 px-3.5 py-2 rounded-2xl bg-amber-50/90 dark:bg-amber-950/70 border border-amber-200/80 dark:border-amber-900/60 backdrop-blur-md shadow-sm">
+                    {error}
+                  </motion.p>
+                )}
+              </AnimatePresence>
               {escribiendo ? (
                 <form onSubmit={enviarTexto} className="w-full flex items-center gap-2 py-2">
                   <button type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" className="shrink-0 cursor-pointer">
@@ -515,7 +537,10 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
 /** El botón flotante (móvil): la esfera chiquita, siempre a mano */
 export const BotonLalan: React.FC = () => {
   const { currentUser } = useAuth();
-  if (!puedeHablarConLalan(currentUser?.role)) return null;
+  const puede = puedeHablarConLalan(currentUser?.role);
+  // Los ajustes se traen al entrar a la app: al abrir a Lalan ya se sabe qué voz usar
+  useEffect(() => { if (puede) void cargarAjustesLalan(); }, [puede]);
+  if (!puede) return null;
   return (
     <button type="button" onClick={abrirLalan} aria-label="Hablar con Lalan" data-medir="Abrir Lalan"
       className="lg:hidden absolute right-3 bottom-3 z-40 rounded-full shadow-lg shadow-[var(--primary)]/30 cursor-pointer active:scale-95 transition-transform">

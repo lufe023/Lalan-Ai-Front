@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, RotateCcw, Save } from 'lucide-react';
-import { api } from '../../services/api';
+import { Loader2, Play, RotateCcw, Save } from 'lucide-react';
+import { api, pedirAudio } from '../../services/api';
 import { cargarAjustesLalan } from '../../utils/ajustesLalan';
 import { abrirLalan } from '../lalan/PantallaLalan';
 
@@ -35,7 +35,7 @@ const Control: React.FC<{ c: Campo; v: Valor; onCambio: (v: Valor) => void }> = 
   if (c.tipo === 'si_no') return <Interruptor si={!!v} onCambio={onCambio} etiqueta={c.nombre} />;
   if (c.tipo === 'opciones') {
     return (
-      <div className="inline-grid grid-flow-col gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
+      <div className="inline-flex flex-wrap gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
         {c.opciones?.map((o) => (
           <button key={o.id} type="button" onClick={() => onCambio(o.id)} aria-pressed={v === o.id}
             className={`px-3 py-1.5 rounded-lg text-[0.8125rem] font-semibold cursor-pointer ${v === o.id ? 'bg-white dark:bg-neutral-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}>
@@ -61,6 +61,66 @@ const Control: React.FC<{ c: Campo; v: Valor; onCambio: (v: Valor) => void }> = 
           className={`${caja} w-20 text-right tabular-nums`} />
         <span className="text-[0.75rem] text-slate-400 w-10">{esMs ? 's' : c.unidad ?? ''}</span>
       </div>
+    </div>
+  );
+};
+
+const FRASE_DE_PRUEBA = 'Buenas tardes. Hoy tienes seis citas y la tarde libre de tres a cinco. Ana te espera en WhatsApp: pregunta si hay cupo el jueves. ¿Quieres que le diga que sí?';
+
+/** Oír la voz de Cloudflare elegida (sin guardar) y ver cuánto se ha usado este mes */
+const PruebaVoz: React.FC<{ motor: string; voz: string }> = ({ motor, voz }) => {
+  const [texto, setTexto] = useState(FRASE_DE_PRUEBA);
+  const [estado, setEstado] = useState<'' | 'cargando' | 'sonando'>('');
+  const [aviso, setAviso] = useState('');
+  const [consumo, setConsumo] = useState<{ configurada: boolean; filas: { negocio: string; motor: string; caracteres: number; pedidos: number }[] } | null>(null);
+  useEffect(() => { api.get<typeof consumo>('/asistente/voz-lalan/consumo').then(setConsumo).catch(() => undefined); }, []);
+
+  if (motor === 'aparato') return <p className="text-[0.75rem] text-slate-400">Con "Aparato" cada teléfono usa su propia voz (Paulina, Google…). Elige MeloTTS o Aura-2 para probar las de Cloudflare.</p>;
+
+  const probar = async () => {
+    setAviso(''); setEstado('cargando');
+    const t0 = performance.now();
+    try {
+      const blob = await pedirAudio('/asistente/voz-lalan/prueba', { texto, motor, voz });
+      if (!blob) throw new Error('Sin audio');
+      const segundos = ((performance.now() - t0) / 1000).toLocaleString('es-DO', { maximumFractionDigits: 1 });
+      const audio = new Audio(URL.createObjectURL(blob));
+      audio.onended = () => setEstado('');
+      setEstado('sonando');
+      await audio.play();
+      // Lo que cuesta esta frase con Aura-2 (MeloTTS cobra por minuto: casi nada)
+      setAviso(`Tardó ${segundos} s en llegar.${motor === 'aura2' ? ` Esta frase cuesta ~US$ ${((texto.length / 1000) * 0.03).toFixed(4)}.` : ''}`);
+    } catch (e) {
+      setEstado('');
+      setAviso((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
+      {consumo && !consumo.configurada && (
+        <p className="text-[0.75rem] font-semibold text-amber-700 dark:text-amber-300">Falta configurar Cloudflare en Railway: CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_AI_TOKEN. Mientras tanto, Lalan usa la voz del teléfono.</p>
+      )}
+      <textarea value={texto} onChange={(e) => setTexto(e.target.value.slice(0, 600))} rows={3} className={`${caja} w-full`} aria-label="Frase de prueba" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <button type="button" onClick={() => void probar()} disabled={estado !== '' || !texto.trim()}
+          className="px-3 py-2 rounded-xl text-[0.8125rem] font-bold text-white bg-[var(--primary)] flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+          {estado === 'cargando' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          {estado === 'sonando' ? 'Sonando…' : `Probar la voz (${motor === 'aura2' ? `Aura-2 · ${voz}` : 'MeloTTS'})`}
+        </button>
+        {aviso && <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400">{aviso}</span>}
+      </div>
+      {!!consumo?.filas.length && (
+        <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 space-y-0.5">
+          <div className="font-semibold">Este mes</div>
+          {consumo.filas.map((f) => (
+            <div key={f.negocio + f.motor} className="flex justify-between tabular-nums">
+              <span>{f.negocio} · {f.motor === 'aura2' ? 'Aura-2' : 'MeloTTS'}</span>
+              <span>{f.caracteres.toLocaleString('es-DO')} letras{f.motor === 'aura2' ? ` · ~US$ ${((f.caracteres / 1000) * 0.03).toFixed(2)}` : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -131,6 +191,7 @@ export const AjustesLalanPlataforma: React.FC = () => {
         {cat.grupos.map((g) => (
           <section key={g.id} className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{g.nombre}</h3>
+            {g.id === 'voz' && <PruebaVoz motor={String(borrador.motorVoz ?? 'aparato')} voz={String(borrador.vozAura ?? 'celeste')} />}
             {cat.campos.filter((c) => c.grupo === g.id).map((c) => {
               const v = borrador[c.id] ?? c.porDefecto;
               const distinto = v !== cat.porDefecto[c.id];

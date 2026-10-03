@@ -9,6 +9,7 @@ export interface AjustesLalan {
   pausaCortaMs: number; pausaNormalMs: number; pausaLargaMs: number; pausaPorDefecto: 'corta' | 'normal' | 'larga';
   habloPocoMs: number; extraSiHabloPocoMs: number; sinVozMs: number; sinVozSolaMs: number; maximoSegundos: number; sensibilidad: number;
   seguirEscuchando: boolean; tonoAlEscuchar: boolean;
+  motorVoz: 'aparato' | 'melotts' | 'aura2'; vozAura: string;
   vocesPreferidas: string; velocidadVoz: number; tonoVoz: number;
   papelTapiz: boolean; intensidadPapel: number; tamanoPapel: number; tamanoEsfera: number;
 }
@@ -17,6 +18,7 @@ export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
   pausaCortaMs: 1800, pausaNormalMs: 2800, pausaLargaMs: 4200, pausaPorDefecto: 'normal',
   habloPocoMs: 1500, extraSiHabloPocoMs: 800, sinVozMs: 8000, sinVozSolaMs: 8000, maximoSegundos: 90, sensibilidad: 2.5,
   seguirEscuchando: true, tonoAlEscuchar: true,
+  motorVoz: 'aparato', vozAura: 'celeste',
   vocesPreferidas: 'Paulina, Google español de Estados Unidos, Mónica, Google español', velocidadVoz: 1.02, tonoVoz: 1.05,
   papelTapiz: true, intensidadPapel: 7, tamanoPapel: 230, tamanoEsfera: 150,
 };

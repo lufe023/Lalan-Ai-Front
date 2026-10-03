@@ -3,13 +3,28 @@ import type { AjustesLalan } from '../utils/ajustesLalan';
 
 /** Los formatos que graban los navegadores (iPhone: mp4; Chrome/Android: webm) */
 const FORMATOS = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
-/** Lo primero se usa para medir el ruido del lugar */
+/** Lo primero se usa para empezar a medir el ruido del lugar */
 const CALIBRAR_MS = 300;
 const TIC_MS = 60;
 /** Lo que se le da al medidor de volumen para arrancar */
 const ESPERA_MEDIDOR_MS = 1000;
 /** Volumen mínimo que cuenta como voz (aunque el lugar esté en silencio total) */
 const VOZ_MINIMA = 0.018;
+/**
+ * El ruido del lugar se mide TODO el tiempo (no solo al principio): es el nivel
+ * más bajo de los últimos segundos. Así, si la persona empieza a hablar en
+ * cuanto se abre el micrófono, o pasan carros, el umbral se acomoda solo.
+ */
+const VENTANA_RUIDO = 42; // ~2,5 s de medidas
+const PERCENTIL_RUIDO = 0.15;
+/** Para contar como voz tiene que durar un poquito (un pito o un golpe no es alguien hablando) */
+const TICS_PARA_VOZ = 3;
+/** Por encima de esto, el lugar es ruidoso: se sugiere acercar el teléfono o escribir */
+const RUIDO_ALTO = 0.025;
+/** Si al final no se reconoció voz pero hubo algo así de fuerte, se manda igual y que Whisper decida */
+const PICO_PARA_INTENTAR = 1.6;
+/** Una grabación más corta que esto no se manda (fue un toque) */
+const MINIMO_PARA_MANDAR_MS = 700;
 
 export type EstadoEscucha = 'quieta' | 'escuchando';
 
@@ -38,11 +53,13 @@ export function useEscucha(opts: {
   const [nivel, setNivel] = useState(0);
   /** 0 a 1: cuánto falta para dar la frase por terminada (para que se vea que va a enviar) */
   const [cierre, setCierre] = useState(0);
+  /** El lugar está ruidoso (para sugerir acercar el teléfono o escribir) */
+  const [ruidoso, setRuidoso] = useState(false);
   const r = useRef<{
     grabador: MediaRecorder | null; flujo: MediaStream | null; fuente: MediaStreamAudioSourceNode | null; analizador: AnalyserNode | null;
-    tic: number | null; trozos: Blob[]; inicio: number; primeraVoz: number; ultimaVoz: number; hablo: boolean; ruido: number; muestras: number[];
-    cancelado: boolean; sola: boolean;
-  }>({ grabador: null, flujo: null, fuente: null, analizador: null, tic: null, trozos: [], inicio: 0, primeraVoz: 0, ultimaVoz: 0, hablo: false, ruido: 0, muestras: [], cancelado: false, sola: false });
+    tic: number | null; trozos: Blob[]; inicio: number; primeraVoz: number; ultimaVoz: number; hablo: boolean; muestras: number[];
+    seguidos: number; pico: number; cancelado: boolean; sola: boolean;
+  }>({ grabador: null, flujo: null, fuente: null, analizador: null, tic: null, trozos: [], inicio: 0, primeraVoz: 0, ultimaVoz: 0, hablo: false, muestras: [], seguidos: 0, pico: 0, cancelado: false, sola: false });
   const op = useRef(opts);
   op.current = opts;
 
@@ -61,20 +78,29 @@ export function useEscucha(opts: {
     setEstado('quieta');
   }, []);
 
-  /** Termina: con enviar=false se descarta lo grabado */
-  const terminar = useCallback((enviar = true) => {
+  /**
+   * Termina: con enviar=false se descarta lo grabado.
+   * `sola` = lo decidió el medidor (silencio, tiempo); si no, fue la persona
+   * tocando la esfera: ella dice que ya habló, así que se manda aunque el
+   * medidor no haya reconocido la voz (pasa en la calle, con ruido).
+   */
+  const terminar = useCallback((enviar = true, sola = false) => {
     const s = r.current;
     const g = s.grabador;
     s.grabador = null;
     s.cancelado = !enviar;
     if (!g || g.state === 'inactive') { soltar(); return; }
+    const duro = Date.now() - s.inicio;
     g.onstop = () => {
       const blob = s.trozos.length ? new Blob(s.trozos, { type: g.mimeType || s.trozos[0].type || 'audio/mp4' }) : null;
       s.trozos = [];
-      const hablo = s.hablo;
+      const vale = s.hablo
+        || (!sola && duro > MINIMO_PARA_MANDAR_MS)
+        // Escucha abierta por un toque que se acabó sin voz reconocida, pero hubo sonido: que decida Whisper
+        || (sola && !s.sola && s.pico > PICO_PARA_INTENTAR && duro > 1000);
       soltar();
       if (s.cancelado) return;
-      if (!blob || !hablo) { op.current.onNada(s.sola); return; }
+      if (!blob || !vale) { op.current.onNada(s.sola); return; }
       op.current.onFrase(blob);
     };
     g.stop();
@@ -117,8 +143,10 @@ export function useEscucha(opts: {
       s.primeraVoz = 0;
       s.ultimaVoz = 0;
       s.hablo = false;
-      s.ruido = 0;
       s.muestras = [];
+      s.seguidos = 0;
+      s.pico = 0;
+      setRuidoso(false);
       const datos = new Uint8Array(1024);
       s.tic = window.setInterval(() => {
         const ahora = Date.now();
@@ -138,15 +166,29 @@ export function useEscucha(opts: {
           // si la abrió un toque, se graba y se corta tocando la esfera
           if (s.sola) { terminar(false); op.current.onNada(true); return; }
           s.hablo = true;
-          if (pasado > op.current.ajustes().maximoSegundos * 1000) terminar(true);
+          if (pasado > op.current.ajustes().maximoSegundos * 1000) terminar(true, true);
           return;
         }
-        if (pasado < CALIBRAR_MS) { s.muestras.push(v); return; }
-        if (!s.ruido) s.ruido = s.muestras.length ? s.muestras.reduce((a, b) => a + b, 0) / s.muestras.length : 0.005;
+        s.muestras.push(v);
+        if (s.muestras.length > VENTANA_RUIDO) s.muestras.shift();
+        if (pasado < CALIBRAR_MS) return;
+        const orden = [...s.muestras].sort((a, b) => a - b);
+        const ruido = Math.max(0.003, orden[Math.floor(orden.length * PERCENTIL_RUIDO)] ?? 0.005);
+        if (ruido > RUIDO_ALTO) setRuidoso(true);
+        s.pico = Math.max(s.pico, v / ruido);
         const aj = op.current.ajustes();
         const maximoMs = aj.maximoSegundos * 1000;
-        const umbral = Math.max(VOZ_MINIMA, s.ruido * aj.sensibilidad);
-        if (v > umbral) { if (!s.hablo) s.primeraVoz = ahora; s.hablo = true; s.ultimaVoz = ahora; }
+        // Para EMPEZAR a contar como voz hay que superar el umbral completo; una vez
+        // que está hablando, basta menos para seguir: si retoma más bajito tras
+        // una pausa (o hay ruido), el anillo se borra en cuanto vuelve a hablar
+        const umbral = s.hablo
+          ? Math.max(VOZ_MINIMA * 0.7, ruido * Math.max(1.4, aj.sensibilidad * 0.6))
+          : Math.max(VOZ_MINIMA, ruido * aj.sensibilidad);
+        if (v > umbral) {
+          s.seguidos += 1;
+          if (!s.hablo && s.seguidos >= TICS_PARA_VOZ) { s.hablo = true; s.primeraVoz = ahora - TICS_PARA_VOZ * TIC_MS; }
+          if (s.hablo) s.ultimaVoz = ahora;
+        } else s.seguidos = 0;
         if (s.hablo) {
           const hablado = s.ultimaVoz - s.primeraVoz;
           // Con frases muy cortas ("¿y mañana…?") se espera un poco más: quien dice dos palabras casi siempre sigue
@@ -154,9 +196,9 @@ export function useEscucha(opts: {
           const callado = ahora - s.ultimaVoz;
           // El anillo empieza a llenarse a la mitad de la espera: un respiro normal no se ve
           setCierre(Math.max(0, Math.min(1, (callado - espera / 2) / (espera / 2))));
-          if (callado > espera) terminar(true);
-        } else if (pasado > (s.sola ? aj.sinVozSolaMs : aj.sinVozMs)) terminar(true);
-        if (pasado > maximoMs) terminar(true);
+          if (callado > espera) terminar(true, true);
+        } else if (pasado > (s.sola ? aj.sinVozSolaMs : aj.sinVozMs)) terminar(true, true);
+        if (pasado > maximoMs) terminar(true, true);
       }, TIC_MS);
     } catch {
       soltar();
@@ -172,5 +214,5 @@ export function useEscucha(opts: {
     s.flujo?.getTracks().forEach((t) => t.stop());
   }, []);
 
-  return { estado, nivel, cierre, empezar, terminar };
+  return { estado, nivel, cierre, ruidoso, empezar, terminar };
 }

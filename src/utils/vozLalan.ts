@@ -10,6 +10,7 @@
  */
 import { alCargarVoces, hayVoz, vocesDisponibles } from './campana';
 import { ajustesLalan, type Pausa } from './ajustesLalan';
+import { pedirAudio } from '../services/api';
 
 const CLAVE_VOZ = 'lalan_asistente_voz';
 const CLAVE_CALLADA = 'lalan_asistente_callada';
@@ -116,12 +117,71 @@ export function vozDeLalan(): SpeechSynthesisVoice | null {
  * esfera: una frase vacía "abre" la voz para lo que venga después.
  */
 export function despertarVoz() {
+  despertarAudio();
   if (!hayVoz()) return;
   try {
     const u = new SpeechSynthesisUtterance(' ');
     u.volume = 0;
     window.speechSynthesis.speak(u);
   } catch { /* noop */ }
+}
+
+// ── La voz de Cloudflare (MeloTTS / Aura-2), cuando el super admin la eligió ──
+
+/** Un mp3 mudo de 50 ms: tocarlo en el toque "abre" el reproductor en el iPhone */
+const MUDO = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//NwwAAAAAAAAAAAAEluZm8AAAAPAAAABAAAAlgAenp6enp6enp6enp6enp6enp6enp6enp6pqampqampqampqampqampqampqampqamptPT09PT09PT09PT09PT09PT09PT09PT09P/////////////////////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQCcQAAAAAAAAJY+/rsqgAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+let reproductor: HTMLAudioElement | null = null;
+let pedidos: AbortController | null = null;
+
+function elReproductor(): HTMLAudioElement {
+  if (!reproductor) { reproductor = new Audio(); reproductor.preload = 'auto'; }
+  return reproductor;
+}
+
+/** Se llama en un toque: después el iPhone deja reproducir la voz sin otro toque */
+export function despertarAudio() {
+  try { const a = elReproductor(); a.src = MUDO; void a.play().catch(() => undefined); } catch { /* noop */ }
+}
+
+/** Toca un mp3 y espera a que termine (o a que la corten) */
+function tocar(blob: Blob, mio: number, alHablar?: () => void): Promise<void> {
+  return new Promise((listo) => {
+    const a = elReproductor();
+    const url = URL.createObjectURL(blob);
+    // La esfera late mientras habla (el audio no avisa palabra por palabra)
+    const latido = window.setInterval(() => { if (mio === turno) alHablar?.(); }, 190);
+    const fin = () => { window.clearInterval(latido); a.onended = null; a.onerror = null; a.onpause = null; URL.revokeObjectURL(url); listo(); };
+    a.onended = fin;
+    a.onerror = fin;
+    a.onpause = () => { if (mio !== turno) fin(); };
+    a.src = url;
+    a.playbackRate = ajustesLalan().velocidadVoz;
+    void a.play().catch(fin);
+  });
+}
+
+/**
+ * Con la voz de Cloudflare: pide la primera frase y, mientras suena, ya pide
+ * la siguiente. Devuelve las frases que NO pudo decir (para que las diga la
+ * voz del aparato): si la nube falla o el servidor dice "usa el aparato".
+ */
+async function decirConNube(partes: string[], mio: number, alHablar?: () => void): Promise<string[]> {
+  pedidos?.abort();
+  const control = new AbortController();
+  pedidos = control;
+  const pedir = (t: string) => pedirAudio('/asistente/voz-lalan', { texto: t }, control.signal);
+  let siguiente: Promise<Blob | null> | null = pedir(partes[0]);
+  for (let i = 0; i < partes.length; i++) {
+    let audio: Blob | null;
+    try { audio = await siguiente; } catch { return mio === turno ? partes.slice(i) : []; }
+    if (mio !== turno) return [];
+    if (!audio) return partes.slice(i);
+    siguiente = i + 1 < partes.length ? pedir(partes[i + 1]) : null;
+    siguiente?.catch(() => undefined);
+    await tocar(audio, mio, alHablar);
+    if (mio !== turno) return [];
+  }
+  return [];
 }
 
 function trozos(texto: string): string[] {
@@ -142,12 +202,22 @@ let turno = 0;
  * Lalan dice el texto. Devuelve cuando termina (o cuando la cortan).
  * `alHablar` se llama con cada palabra: sirve para animar la esfera.
  */
-export function decirComoLalan(texto: string, alHablar?: () => void): Promise<void> {
+export async function decirComoLalan(texto: string, alHablar?: () => void): Promise<void> {
   callarLalan();
-  if (!hayVoz() || !texto.trim()) return Promise.resolve();
+  if (!texto.trim()) return;
   const mio = ++turno;
+  let partes = trozos(texto);
+  if (ajustesLalan().motorVoz !== 'aparato') {
+    partes = await decirConNube(partes, mio, alHablar);
+    if (!partes.length || mio !== turno) return;
+  }
+  return decirConAparato(partes, mio, alHablar);
+}
+
+/** Con la voz del aparato (gratis): frase por frase */
+function decirConAparato(partes: string[], mio: number, alHablar?: () => void): Promise<void> {
+  if (!hayVoz()) return Promise.resolve();
   const voz = vozDeLalan();
-  const partes = trozos(texto);
   return new Promise((listo) => {
     let i = 0;
     const siguiente = () => {
@@ -168,9 +238,12 @@ export function decirComoLalan(texto: string, alHablar?: () => void): Promise<vo
 /** Cortar a Lalan al instante (la dueña tocó la esfera o se fue) */
 export function callarLalan() {
   turno++;
+  pedidos?.abort();
+  pedidos = null;
+  try { reproductor?.pause(); } catch { /* noop */ }
   try { window.speechSynthesis?.cancel?.(); } catch { /* noop */ }
 }
 
 export function lalanHablando(): boolean {
-  try { return !!window.speechSynthesis?.speaking; } catch { return false; }
+  try { return !!window.speechSynthesis?.speaking || (!!reproductor && !reproductor.paused && !reproductor.ended); } catch { return false; }
 }
