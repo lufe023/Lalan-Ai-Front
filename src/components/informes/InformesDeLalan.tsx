@@ -18,6 +18,8 @@ interface Aviso { id: string; tipo: Tipo; titulo: string; resumen: string; infor
 interface Preferencia {
   id: Tipo; nombre: string; descripcion: string; incluido: boolean; soloSiHayAlgo: boolean;
   frecuencia: Frecuencia; diaSemana: number | null; diaMes: number | null; minuto: number; canales: Canal[]; plantillaSiCerrada: boolean; activo: boolean; ultimoEnvio: string | null;
+  /** Lo recomendado por Lalan para este informe */
+  porDefecto: { frecuencia: Frecuencia; diaSemana?: number; diaMes?: number; minuto: number; canales: Canal[] };
 }
 interface Sede { id: string; name: string }
 
@@ -38,6 +40,26 @@ const CANALES: { id: Canal; texto: string; Icono: React.FC<{ className?: string 
   { id: 'app', texto: 'App y teléfono', Icono: Bell }, { id: 'correo', texto: 'Correo', Icono: Mail }, { id: 'whatsapp', texto: 'WhatsApp', Icono: MessageCircle },
 ];
 const aHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+/** 480 → "8:00 a. m." */
+const horaHablada = (m: number) => {
+  const h = Math.floor(m / 60), min = m % 60, h12 = h % 12 || 12;
+  return `${h12}:${String(min).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+};
+/** Lo recomendado, dicho en una frase: "cada lunes a las 8:00 a. m." */
+const recomendadoEnPalabras = (d: Preferencia['porDefecto']) => {
+  const cuando = d.frecuencia === 'diaria' ? 'todos los días'
+    : d.frecuencia === 'semanal' ? `cada ${DIAS[d.diaSemana ?? 1]}`
+    : d.frecuencia === 'mensual' ? `el día ${d.diaMes ?? 1} de cada mes` : 'nunca';
+  return `${cuando} a las ${horaHablada(d.minuto)}`;
+};
+/** ¿Está como lo recomienda Lalan? */
+const esRecomendado = (p: Preferencia) => {
+  const d = p.porDefecto;
+  return p.activo && p.frecuencia === d.frecuencia && p.minuto === d.minuto
+    && (d.frecuencia !== 'semanal' || p.diaSemana === (d.diaSemana ?? null))
+    && (d.frecuencia !== 'mensual' || p.diaMes === (d.diaMes ?? null))
+    && p.canales.length === d.canales.length && d.canales.every(c => p.canales.includes(c));
+};
 const aMinutos = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 const cuando = (p: Preferencia) => p.frecuencia === 'nunca' || !p.activo ? 'No se envía'
   : `${p.frecuencia === 'diaria' ? 'Cada día' : p.frecuencia === 'semanal' ? `Cada ${DIAS[p.diaSemana ?? 1]}` : `El día ${p.diaMes ?? 1} de cada mes`}, ${hora12(aHHMM(p.minuto))}`;
@@ -204,6 +226,17 @@ export const InformesDeLalan: React.FC = () => {
     } catch (e) { showToast('No se pudo guardar', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'); void cargar(); }
   };
 
+  /** Volver a lo recomendado por Lalan (un informe) */
+  const recomendado = (p: Preferencia) => guardar(p, {
+    frecuencia: p.porDefecto.frecuencia, diaSemana: p.porDefecto.diaSemana ?? null, diaMes: p.porDefecto.diaMes ?? null,
+    minuto: p.porDefecto.minuto, canales: [...p.porDefecto.canales], activo: true, plantillaSiCerrada: false,
+  });
+  /** …o todos de una vez */
+  const todoRecomendado = async () => {
+    for (const p of (prefs ?? []).filter(x => x.incluido && !esRecomendado(x))) await recomendado(p);
+    showToast('Listo', 'Todos los informes quedaron como los recomienda Lalan.', 'success');
+  };
+
   if (!esDireccion) return null;
   if (!prefs) return <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</div>;
   const disponibles = prefs.filter(p => p.incluido);
@@ -333,6 +366,12 @@ export const InformesDeLalan: React.FC = () => {
           <p className="text-[0.75rem] text-slate-500 leading-relaxed">
             En la app y por correo es gratis. Por WhatsApp también lo es si le escribiste a Lalan en las últimas 24 horas; si no, WhatsApp cobra por iniciar la conversación, así que solo se usa si lo activas abajo.
           </p>
+          {disponibles.some(p => !esRecomendado(p)) && (
+            <button type="button" onClick={() => void todoRecomendado()}
+              className="w-full min-h-[44px] px-3 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold cursor-pointer">
+              Poner todo como recomienda Lalan
+            </button>
+          )}
           {disponibles.map(p => (
             <section key={p.id} className="rounded-2xl border border-slate-200/80 dark:border-neutral-800 p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
@@ -380,6 +419,13 @@ export const InformesDeLalan: React.FC = () => {
                   </label>
                 )}
               </>)}
+              {esRecomendado(p) ? (
+                <p className="text-[0.6875rem] text-emerald-600 dark:text-emerald-400">✓ Como lo recomienda Lalan</p>
+              ) : (
+                <button type="button" onClick={() => void recomendado(p)} className="text-left text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">
+                  Usar lo recomendado: {recomendadoEnPalabras(p.porDefecto)}
+                </button>
+              )}
             </section>
           ))}
           {!tieneWhatsapp && <p className="text-[0.75rem] text-slate-400">Para recibirlos por WhatsApp, pon tu número en Lalan en los chats → Aviso a la dueña.</p>}

@@ -1,8 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { GrabadorVoz } from './GrabadorVoz';
 import { useDeslizarParaVolver } from '../../hooks/useDeslizarParaVolver';
 import { motion } from 'motion/react';
 import { AlertTriangle, Bot, Check, CheckCheck, Clock, Minus, Send, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { CommunicationChannel, ChatStatus, ChatMessage } from '../../types';
 import { IOSToggle } from '../ui/IOSToggle';
@@ -101,7 +102,7 @@ interface VentanaChatProps {
  * es una ventanita y se pueden tener varias a la vez.
  */
 export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotante = false, minimizada = false, onCerrar, onMinimizar }) => {
-  const { conversations, toggleChatAiStatus, sendMessageToConversation, showToast, settings, descartarAviso, marcarLeida } = useApp();
+  const { conversations, toggleChatAiStatus, sendMessageToConversation, recargarConversaciones, showToast, settings, descartarAviso, marcarLeida } = useApp();
   const agente = settings.aiAgentName || 'Lalan';
   const [inputText, setInputText] = useState('');
   const activeConversation = conversations.find(c => c.id === conversacionId);
@@ -129,6 +130,35 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
       showToast(`${agente} se encarga`, 'Le responde a la clienta con lo que le dijiste y retoma el chat.', 'success');
     } catch (err) {
       showToast('No se pudo pasar la indicación', (err as Error)?.message || 'Inténtalo de nuevo o escríbele tú a la clienta.', 'warning');
+    } finally {
+      setIndicando(false);
+    }
+  };
+
+  /**
+   * Nota de voz grabada en el chat. Con "Para Lalan": se transcribe y Lalan la
+   * aplica como indicación (la clienta no oye la voz). Si no: le llega a la
+   * clienta como nota de voz y Lalan se pausa en este chat.
+   */
+  const enviarVoz = async (audio: Blob) => {
+    if (!activeConversationId || activeConversationId.startsWith('temp_')) return;
+    const paraLalan = paraLaAsistente && activeConversation?.status !== 'ai_active';
+    const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
+    const formulario = new FormData();
+    formulario.append('audio', audio, `nota-de-voz.${ext}`);
+    setIndicando(true);
+    try {
+      if (paraLalan) {
+        const r = await subirArchivo<{ texto: string }>(`/chat/panel/conversaciones/${activeConversationId}/indicacion-voz`, formulario);
+        setParaLaAsistente(false);
+        showToast(`${agente} se encarga`, `Entendió: «${r.texto}»`, 'success');
+      } else {
+        const r = await subirArchivo<{ deliveryStatus?: string; failureReason?: string }>(`/conversations/${activeConversationId}/nota-de-voz`, formulario);
+        if (r.deliveryStatus === 'fallido') showToast('No se envió', r.failureReason ?? 'Meta no aceptó la nota de voz.', 'warning');
+        await recargarConversaciones();
+      }
+    } catch (err) {
+      showToast('No se pudo enviar la nota de voz', (err as Error)?.message || 'Inténtalo de nuevo.', 'warning');
     } finally {
       setIndicando(false);
     }
@@ -341,7 +371,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         {/* Input Bar */}
         <form
           onSubmit={handleSendMessage}
-          className="p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0"
+          className="relative p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0"
         >
           <input
             type="text"
@@ -359,14 +389,24 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
             className="flex-1 px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
           />
 
-          <button
-            type="submit"
-            disabled={!inputText.trim() || indicando}
-            aria-label={paraLaAsistente ? `Pasarle la indicación a ${agente}` : 'Enviar'}
-            className={`w-10 h-10 rounded-2xl ${paraLaAsistente && activeConversation.status !== 'ai_active' ? 'bg-purple-600' : 'bg-[var(--primary)]'} text-white flex items-center justify-center disabled:opacity-40 transition ios-touch cursor-pointer shadow-sm`}
-          >
-            {paraLaAsistente && activeConversation.status !== 'ai_active' ? <Wand2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-          </button>
+          {inputText.trim() || ventanaCerrada ? (
+            <button
+              type="submit"
+              disabled={!inputText.trim() || indicando}
+              aria-label={paraLaAsistente ? `Pasarle la indicación a ${agente}` : 'Enviar'}
+              className={`w-10 h-10 rounded-2xl ${paraLaAsistente && activeConversation.status !== 'ai_active' ? 'bg-purple-600' : 'bg-[var(--primary)]'} text-white flex items-center justify-center disabled:opacity-40 transition ios-touch cursor-pointer shadow-sm`}
+            >
+              {paraLaAsistente && activeConversation.status !== 'ai_active' ? <Wand2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+            </button>
+          ) : (
+            <GrabadorVoz
+              onListo={enviarVoz}
+              onAviso={(t, d) => showToast(t, d, 'warning')}
+              deshabilitado={indicando}
+              color={paraLaAsistente && activeConversation.status !== 'ai_active' ? 'bg-purple-600' : 'bg-[var(--primary)]'}
+              etiqueta={paraLaAsistente && activeConversation.status !== 'ai_active' ? `Mantén presionado para decirle a ${agente} qué responder` : 'Mantén presionado para grabar una nota de voz'}
+            />
+          )}
         </form>
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
@@ -563,7 +603,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         {/* Input Bar */}
         <form
           onSubmit={handleSendMessage}
-          className="p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0 pb-safe-tab"
+          className="relative p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0 pb-safe-tab"
         >
           <input
             type="text"
@@ -581,14 +621,24 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
             className="flex-1 px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
           />
 
-          <button
-            type="submit"
-            disabled={!inputText.trim() || indicando}
-            aria-label={paraLaAsistente ? `Pasarle la indicación a ${agente}` : 'Enviar'}
-            className={`w-10 h-10 rounded-2xl ${paraLaAsistente && activeConversation.status !== 'ai_active' ? 'bg-purple-600' : 'bg-[var(--primary)]'} text-white flex items-center justify-center disabled:opacity-40 transition ios-touch cursor-pointer shadow-sm`}
-          >
-            {paraLaAsistente && activeConversation.status !== 'ai_active' ? <Wand2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-          </button>
+          {inputText.trim() || ventanaCerrada ? (
+            <button
+              type="submit"
+              disabled={!inputText.trim() || indicando}
+              aria-label={paraLaAsistente ? `Pasarle la indicación a ${agente}` : 'Enviar'}
+              className={`w-10 h-10 rounded-2xl ${paraLaAsistente && activeConversation.status !== 'ai_active' ? 'bg-purple-600' : 'bg-[var(--primary)]'} text-white flex items-center justify-center disabled:opacity-40 transition ios-touch cursor-pointer shadow-sm`}
+            >
+              {paraLaAsistente && activeConversation.status !== 'ai_active' ? <Wand2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+            </button>
+          ) : (
+            <GrabadorVoz
+              onListo={enviarVoz}
+              onAviso={(t, d) => showToast(t, d, 'warning')}
+              deshabilitado={indicando}
+              color={paraLaAsistente && activeConversation.status !== 'ai_active' ? 'bg-purple-600' : 'bg-[var(--primary)]'}
+              etiqueta={paraLaAsistente && activeConversation.status !== 'ai_active' ? `Mantén presionado para decirle a ${agente} qué responder` : 'Mantén presionado para grabar una nota de voz'}
+            />
+          )}
         </form>
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />

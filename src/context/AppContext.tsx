@@ -320,6 +320,8 @@ interface AppContextType {
   descartarAviso: (id: string) => void;
   toggleChatAiStatus: (conversationId: string, enableAi: boolean) => Promise<void>;
   sendMessageToConversation: (conversationId: string, text: string, sender?: 'client' | 'agent' | 'bot') => Promise<void>;
+  /** Vuelve a pedir los chats (por ejemplo, después de mandar una nota de voz) */
+  recargarConversaciones: () => Promise<unknown>;
   startChatWithClient: (client: Client) => void;
   botConfigs: BotChannelConfig[];
   /** Vuelve a pedir los canales (tras conectar o desconectar una cuenta de Meta) */
@@ -2742,7 +2744,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       preguntar, consulta,
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,
-      toggleChatAiStatus, sendMessageToConversation, startChatWithClient,
+      toggleChatAiStatus, sendMessageToConversation, recargarConversaciones: loadConversations, startChatWithClient,
       botConfigs, recargarBots: loadBots, toggleBotChannel, updateBotMessage,
       settings, updateSettings,
       metricsPeriod, setMetricsPeriod,

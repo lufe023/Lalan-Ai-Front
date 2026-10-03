@@ -15,6 +15,29 @@ import type { ChatMessage } from '../../types';
 const TIPOS_IMAGEN = ['imagen', 'sticker'];
 const TIPOS_VIDEO = ['video'];
 const TIPOS_AUDIO = ['nota_voz', 'audio'];
+/** Velocidades para escuchar notas de voz (WhatsApp llega a 2×; aquí, hasta 2.5×) */
+const VELOCIDADES = [1, 1.5, 2, 2.5];
+
+/** El reproductor de una nota de voz, con botón de velocidad */
+const ReproductorAudio: React.FC<{ url: string; suave: string }> = ({ url, suave }) => {
+  const ref = React.useRef<HTMLAudioElement>(null);
+  const [vel, setVel] = React.useState(1);
+  const cambiar = () => {
+    const siguiente = VELOCIDADES[(VELOCIDADES.indexOf(vel) + 1) % VELOCIDADES.length];
+    setVel(siguiente);
+    if (ref.current) ref.current.playbackRate = siguiente;
+  };
+  return (
+    <div className="flex items-center gap-2">
+      <audio ref={ref} src={url} controls preload="metadata" className="w-56 max-w-full h-10"
+        onPlay={() => { if (ref.current) ref.current.playbackRate = vel; }} />
+      <button type="button" onClick={cambiar} aria-label={`Velocidad ${vel}×. Toca para cambiar`}
+        className={`min-w-[2.75rem] h-8 px-2 rounded-full text-[0.75rem] font-bold tabular-nums border cursor-pointer ${vel === 1 ? `border-current/30 ${suave}` : 'bg-[var(--primary)] text-white border-transparent'}`}>
+        {vel}×
+      </button>
+    </div>
+  );
+};
 /** Extensión para descargar el audio con un nombre que el teléfono entienda */
 const EXTENSION_AUDIO: Record<string, string> = { 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/aac': 'aac', 'video/mp4': 'mp4' };
 /** Textos de relleno que pone el sistema cuando no hay texto de la clienta */
@@ -94,7 +117,7 @@ export const ContenidoMensaje: React.FC<{
         a?.tieneArchivo ? (
           <div className="space-y-1">
             {url
-              ? <audio src={url} controls preload="metadata" className="w-60 max-w-full h-10" />
+              ? <ReproductorAudio url={url} suave={suave} />
               : <p className={suave}>{error ? 'No se pudo cargar el audio' : 'Cargando audio…'}</p>}
             {url && (
               <button

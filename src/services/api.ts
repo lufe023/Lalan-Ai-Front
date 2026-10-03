@@ -210,5 +210,20 @@ export async function blobProtegido(path: string): Promise<string> {
   return URL.createObjectURL(await res.blob());
 }
 
+/** Subir un archivo (multipart) con la sesión: notas de voz del chat */
+export async function subirArchivo<T>(path: string, formulario: FormData): Promise<T> {
+  const pedir = () => fetch(`${BASE_URL}${path}`, {
+    method: 'POST', body: formulario, headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {},
+  });
+  let res = await pedir();
+  if (res.status === 401 && (await refrescarSesion())) res = await pedir();
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    const m = err?.message?.message ?? err?.message ?? 'No se pudo enviar';
+    throw new Error(Array.isArray(m) ? m.join(' | ') : String(m));
+  }
+  return res.json() as Promise<T>;
+}
+
 /** Dirección completa de un recurso del backend (para <img src>) */
 export const urlApi = (path: string) => `${BASE_URL}${path}`;
