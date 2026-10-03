@@ -140,12 +140,15 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
    * aplica como indicación (la clienta no oye la voz). Si no: le llega a la
    * clienta como nota de voz y Lalan se pausa en este chat.
    */
-  const enviarVoz = async (audio: Blob) => {
-    if (!activeConversationId || activeConversationId.startsWith('temp_')) return;
+  const enviarVoz = async (tramos: Blob[]) => {
+    if (!activeConversationId || activeConversationId.startsWith('temp_') || !tramos.length) return;
     const paraLalan = paraLaAsistente && activeConversation?.status !== 'ai_active';
-    const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
+    // Cada pausa del grabador deja un tramo: el servidor los junta en una sola nota
     const formulario = new FormData();
-    formulario.append('audio', audio, `nota-de-voz.${ext}`);
+    tramos.forEach((audio, i) => {
+      const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
+      formulario.append('audio', audio, `nota-de-voz-${i + 1}.${ext}`);
+    });
     setIndicando(true);
     try {
       if (paraLalan) {

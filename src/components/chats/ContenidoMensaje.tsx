@@ -16,7 +16,7 @@ const TIPOS_IMAGEN = ['imagen', 'sticker'];
 const TIPOS_VIDEO = ['video'];
 const TIPOS_AUDIO = ['nota_voz', 'audio'];
 /** Velocidades para escuchar notas de voz (WhatsApp llega a 2×; aquí, hasta 2.5×) */
-const VELOCIDADES = [1, 1.5, 2, 2.5];
+const VELOCIDADES = [1, 1.5, 2, 2.5, 3];
 
 /** El reproductor de una nota de voz, con botón de velocidad */
 const ReproductorAudio: React.FC<{ url: string; suave: string }> = ({ url, suave }) => {
