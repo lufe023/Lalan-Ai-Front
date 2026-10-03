@@ -164,7 +164,7 @@ export const LoginScreen: React.FC = () => {
                     type="text"
                     value={email}
                     onChange={e => { setEmail(e.target.value); setError(''); }}
-                    placeholder="tu@correo.com · maria.bella · 809-555-1234"
+                    placeholder="Ej.: maria.bella o 809-555-1234"
                     autoComplete="username"
                     autoCapitalize="none"
                     autoCorrect="off"
@@ -220,7 +220,7 @@ export const LoginScreen: React.FC = () => {
             </form>
 
             <div className="flex items-center justify-between mt-3">
-              <button type="button" onClick={() => setRecuperando(true)} className="text-[12px] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] cursor-pointer">
+              <button type="button" onClick={() => setRecuperando(true)} className="text-[0.8125rem] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] cursor-pointer">
                 ¿Olvidaste tu clave?
               </button>
 
@@ -228,7 +228,7 @@ export const LoginScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => { setError(''); setModoManual(false); }}
-                  className="text-[12px] font-bold text-[var(--primary)] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[0.8125rem] font-bold text-[var(--primary)] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Zap className="w-3 h-3 fill-current" />
                   <span>Volver a Acceso Rápido</span>
@@ -239,7 +239,7 @@ export const LoginScreen: React.FC = () => {
           </>
         )}
 
-        <p className="text-center text-[11px] text-slate-400 dark:text-neutral-600 mt-5">
+        <p className="text-center text-[0.75rem] text-slate-400 dark:text-neutral-600 mt-5">
           Gomez Santana Solutions Group SRL · Lalan AI v2.0 · <a href="/privacidad.html" target="_blank" rel="noopener" className="underline">Privacidad</a> · <a href="/terminos.html" target="_blank" rel="noopener" className="underline">Términos</a>
         </p>
       </motion.div>

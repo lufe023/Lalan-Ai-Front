@@ -2,6 +2,10 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { aplicarTamano, tamanoGuardado } from './utils/tamanoLetra';
+
+// La letra que eligió esta persona en este teléfono, antes de pintar nada
+aplicarTamano(tamanoGuardado());
 
 /* El service worker (abrir sin internet, actualizaciones) es SOLO para la app
    compilada. En desarrollo guardaba en caché el código mientras se editaba:

@@ -45,7 +45,7 @@ export const ActivarNotificaciones: React.FC = () => {
         {activas ? <BellRing className="w-4 h-4 text-emerald-500" /> : estado === 'instalar' ? <Share className="w-4 h-4 text-[var(--primary)]" /> : <BellOff className="w-4 h-4 text-slate-400" />}
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Notificaciones en el teléfono</h3>
       </div>
-      <p className="text-[11px] text-slate-500 dark:text-neutral-400 leading-relaxed">{TEXTO[estado]}</p>
+      <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 leading-relaxed">{TEXTO[estado]}</p>
       {(estado === 'apagadas' || activas) && (
         <div className="flex gap-2">
           {!activas ? (
@@ -54,8 +54,8 @@ export const ActivarNotificaciones: React.FC = () => {
             </button>
           ) : (<>
             <button type="button" disabled={ocupado} onClick={() => void probarNotificacion().then(r => showToast(r.llegaron ? 'Enviada' : 'No llegó', r.llegaron ? 'Mira la pantalla del teléfono.' : 'Vuelve a activarlas.', r.llegaron ? 'success' : 'warning'))}
-              className="min-h-[40px] px-3 rounded-xl border border-slate-200 dark:border-neutral-700 text-[12px] font-bold cursor-pointer">Probar</button>
-            <button type="button" disabled={ocupado} onClick={() => void apagar()} className="min-h-[40px] px-3 rounded-xl text-[12px] text-slate-500 cursor-pointer">Apagar en este aparato</button>
+              className="min-h-[40px] px-3 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold cursor-pointer">Probar</button>
+            <button type="button" disabled={ocupado} onClick={() => void apagar()} className="min-h-[40px] px-3 rounded-xl text-[0.8125rem] text-slate-500 cursor-pointer">Apagar en este aparato</button>
           </>)}
         </div>
       )}

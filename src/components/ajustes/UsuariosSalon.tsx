@@ -23,7 +23,7 @@ const telefonoLegible = (t: string | null) => {
 };
 const VACIO = { name: '', email: '', usuario: '', telefono: '', role: 'assistant' as UsuarioSalon['role'], roleTitle: '', locationId: '' };
 
-const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
+const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 
 /** En Ajustes (solo administración): quién entra a la app del salón */
 export const UsuariosSalon: React.FC = () => {
@@ -101,23 +101,23 @@ export const UsuariosSalon: React.FC = () => {
           <div className="w-8 h-8 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><Users className="w-4 h-4" /></div>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">Usuarios</h3>
-            <p className="text-[10px] text-slate-500 dark:text-neutral-400">Quién entra a la app del salón{tope !== null ? ` · ${activos} de ${tope} en tu plan` : ''}</p>
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Quién entra a la app del salón{tope !== null ? ` · ${activos} de ${tope} en tu plan` : ''}</p>
           </div>
         </div>
         {!creando && (
           <button type="button" disabled={lleno} onClick={() => setCreando(true)} title={lleno ? 'Tu plan no permite más usuarios' : undefined}
-            className="px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold flex items-center gap-1 disabled:opacity-40 cursor-pointer">
+            className="px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold flex items-center gap-1 disabled:opacity-40 cursor-pointer">
             <UserPlus className="w-3.5 h-3.5" /> Agregar
           </button>
         )}
       </div>
 
       {clave && <ClaveParaCompartir nombre={clave.nombre} entraCon={clave.entraCon} clave={clave.clave} telefono={clave.telefono} onListo={() => setClave(null)} />}
-      {error && <p className="text-[11px] font-semibold text-rose-600" role="alert">{error}</p>}
+      {error && <p className="text-[0.75rem] font-semibold text-rose-600" role="alert">{error}</p>}
 
       {creando && (
         <form onSubmit={crear} className="p-3 rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/5 space-y-2.5">
-          <div className="flex justify-between items-center"><b className="text-[12px]">Nuevo usuario</b><button type="button" onClick={() => setCreando(false)} className="cursor-pointer" aria-label="Cancelar"><X className="w-4 h-4 text-slate-400" /></button></div>
+          <div className="flex justify-between items-center"><b className="text-[0.8125rem]">Nuevo usuario</b><button type="button" onClick={() => setCreando(false)} className="cursor-pointer" aria-label="Cancelar"><X className="w-4 h-4 text-slate-400" /></button></div>
           <div className="grid sm:grid-cols-2 gap-2">
             <input required minLength={2} placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={campo} />
             <input type="tel" inputMode="tel" placeholder="Teléfono (puede entrar con él)" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} className={campo} />
@@ -138,31 +138,31 @@ export const UsuariosSalon: React.FC = () => {
             {ROLES.map((r) => (
               <button key={r.id} type="button" onClick={() => setForm({ ...form, role: r.id })}
                 className={`p-2.5 rounded-xl border text-left cursor-pointer ${form.role === r.id ? 'border-[var(--primary)] bg-white dark:bg-neutral-900' : 'border-slate-200 dark:border-neutral-700'}`}>
-                <b className="text-[12px]">{r.label}</b><span className="block text-[10px] text-slate-500 mt-0.5">{r.ayuda}</span>
+                <b className="text-[0.8125rem]">{r.label}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5">{r.ayuda}</span>
               </button>
             ))}
           </div>
-          <button type="submit" disabled={ocupado} className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[12px] font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer">
+          <button type="submit" disabled={ocupado} className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer">
             {ocupado && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Crear y generar su clave temporal
           </button>
         </form>
       )}
 
-      {!lista ? <div className="flex items-center gap-2 text-[11px] text-slate-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…</div> : (
+      {!lista ? <div className="flex items-center gap-2 text-[0.75rem] text-slate-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…</div> : (
         <div className="divide-y divide-slate-100 dark:divide-neutral-800">
           {lista.map((u) => {
             const yo = u.id === currentUser?.id;
             return (
               <div key={u.id} className={`py-2.5 flex flex-wrap items-center gap-2 ${u.active ? '' : 'opacity-50'}`}>
                 <div className="flex-1 min-w-[160px]">
-                  <div className="text-[12px] font-bold text-slate-900 dark:text-white">{u.name}{yo && <span className="text-slate-400 font-normal"> · tú</span>}</div>
-                  <div className="text-[11px] text-slate-500 break-all">
+                  <div className="text-[0.8125rem] font-bold text-slate-900 dark:text-white">{u.name}{yo && <span className="text-slate-400 font-normal"> · tú</span>}</div>
+                  <div className="text-[0.75rem] text-slate-500 break-all">
                     {[u.usuario, telefonoLegible(u.telefono), u.email].filter(Boolean).join(' · ')}
                     {u.debeCambiarClave && <span className="text-amber-600"> · aún no entra</span>}
                   </div>
                   {u.email && (u.correoConfirmadoEn
-                    ? <div className="text-[10px] text-emerald-600 flex items-center gap-1 mt-0.5"><MailCheck className="w-3 h-3" /> Correo confirmado</div>
-                    : <div className="text-[10px] text-amber-600 flex items-center gap-1 mt-0.5"><MailWarning className="w-3 h-3" /> Correo sin confirmar: no puede recuperar su clave por correo</div>)}
+                    ? <div className="text-[0.6875rem] text-emerald-600 flex items-center gap-1 mt-0.5"><MailCheck className="w-3 h-3" /> Correo confirmado</div>
+                    : <div className="text-[0.6875rem] text-amber-600 flex items-center gap-1 mt-0.5"><MailWarning className="w-3 h-3" /> Correo sin confirmar: no puede recuperar su clave por correo</div>)}
                   {editandoAcceso?.id === u.id && (
                     <form onSubmit={guardarAcceso} className="mt-2 grid sm:grid-cols-3 gap-2">
                       <input autoCapitalize="none" placeholder="Usuario" value={editandoAcceso.datos.usuario}
@@ -172,20 +172,20 @@ export const UsuariosSalon: React.FC = () => {
                       <input type="email" autoCapitalize="none" placeholder="Correo" value={editandoAcceso.datos.email}
                         onChange={(e) => setEditandoAcceso({ id: u.id, datos: { ...editandoAcceso.datos, email: e.target.value } })} className={campo} />
                       <div className="sm:col-span-3 flex gap-2">
-                        <button type="submit" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold cursor-pointer">Guardar</button>
-                        <button type="button" onClick={() => setEditandoAcceso(null)} className="px-3 py-1.5 rounded-lg text-[11px] font-semibold text-slate-500 cursor-pointer">Cancelar</button>
-                        <span className="text-[10px] text-slate-400 self-center">Si cambias el correo, tendrá que confirmarlo otra vez.</span>
+                        <button type="submit" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-bold cursor-pointer">Guardar</button>
+                        <button type="button" onClick={() => setEditandoAcceso(null)} className="px-3 py-1.5 rounded-lg text-[0.75rem] font-semibold text-slate-500 cursor-pointer">Cancelar</button>
+                        <span className="text-[0.6875rem] text-slate-400 self-center">Si cambias el correo, tendrá que confirmarlo otra vez.</span>
                       </div>
                     </form>
                   )}
                 </div>
                 <select value={u.role} disabled={yo} onChange={(e) => void editar(u, { role: e.target.value as UsuarioSalon['role'] })}
-                  className="text-[11px] rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" aria-label="Rol">
+                  className="text-[0.75rem] rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" aria-label="Rol">
                   {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>
                 {sedes.length > 1 && (
                   <select value={u.locationId ?? ''} onChange={(e) => void editar(u, { locationId: e.target.value || null })}
-                    className="text-[11px] rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" aria-label="Sede">
+                    className="text-[0.75rem] rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" aria-label="Sede">
                     <option value="">Todas las sedes</option>
                     {sedes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -196,7 +196,7 @@ export const UsuariosSalon: React.FC = () => {
                 <button type="button" onClick={() => void nuevaClave(u)} title="Clave temporal nueva" className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><KeyRound className="w-3.5 h-3.5" /></button>
                 {!yo && (
                   <button type="button" onClick={() => void editar(u, { active: !u.active })}
-                    className="text-[11px] font-semibold px-2 py-1 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer">
+                    className="text-[0.75rem] font-semibold px-2 py-1 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer">
                     {u.active ? 'Desactivar' : 'Activar'}
                   </button>
                 )}

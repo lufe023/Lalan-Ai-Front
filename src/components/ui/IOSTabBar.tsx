@@ -206,17 +206,17 @@ export const IOSTabBar: React.FC = () => {
               className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-[13px]">▶</div>
+            <div className="absolute inset-0 flex items-center justify-center text-[0.875rem]">▶</div>
           )}
           {ytPlaying && (
             <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate">
+          <div className="text-[0.75rem] font-bold text-slate-900 dark:text-white truncate">
             {ytTrack?.title}
           </div>
-          <div className="text-[10px] text-slate-500 dark:text-neutral-400 truncate">
+          <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate">
             {ytTrack?.channel || 'YouTube'}
           </div>
         </div>
@@ -263,10 +263,10 @@ export const IOSTabBar: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{currentTrack.title}</div>
-                <div className="text-[10px] text-slate-500 dark:text-neutral-400 truncate flex items-center gap-1">
+                <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate flex items-center gap-1">
                   <span>{currentTrack.artist}</span>
                   {activeLoungeClient && (
-                    <span className="text-[9px] px-1.5 rounded-sm bg-amber-500/10 text-amber-600 font-semibold">
+                    <span className="text-[0.6875rem] px-1.5 rounded-sm bg-amber-500/10 text-amber-600 font-semibold">
                       Para {activeLoungeClient.name.split(' ')[0]}
                     </span>
                   )}
@@ -288,7 +288,7 @@ export const IOSTabBar: React.FC = () => {
               <img src={currentTrack.coverUrl} alt={currentTrack.title} className="w-8 h-8 rounded-lg object-cover shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-bold truncate text-slate-900 dark:text-white">{currentTrack.title}</div>
-                <div className="text-[10px] text-slate-400 dark:text-neutral-400 truncate">{currentTrack.artist}</div>
+                <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-400 truncate">{currentTrack.artist}</div>
               </div>
               <span className="w-2 h-2 rounded-full bg-emerald-500 border-2 border-white dark:border-neutral-800 animate-pulse shrink-0" />
             </div>
@@ -299,7 +299,7 @@ export const IOSTabBar: React.FC = () => {
               <button onClick={nextLoungeTrack} className="w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition cursor-pointer">
                 <SkipForward className="w-3 h-3 fill-current" />
               </button>
-              <span className="text-[10px] text-slate-400 dark:text-neutral-500 ml-auto">Reproduciendo</span>
+              <span className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 ml-auto">Reproduciendo</span>
             </div>
           </>
         )}
@@ -325,7 +325,7 @@ export const IOSTabBar: React.FC = () => {
             </div>
             <div>
               <div className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Lalan AI</div>
-              <div className="text-[10px] text-slate-400 dark:text-neutral-500 font-medium tracking-wide uppercase">Studio & Lounge</div>
+              <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 font-medium tracking-wide uppercase">Studio & Lounge</div>
             </div>
           </div>
         </div>
@@ -349,7 +349,7 @@ export const IOSTabBar: React.FC = () => {
                 <Icon className={`w-5 h-5 shrink-0 transition-transform ${isActive ? 'stroke-[2.2] scale-110' : 'stroke-[1.8]'}`} />
                 <span className="text-sm font-medium flex-1 truncate">{tab.label}</span>
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-white text-[9px] font-extrabold flex items-center justify-center shrink-0 tabular-nums ${
+                  <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center shrink-0 tabular-nums ${
                     tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
                   }`}>
                     {tab.badge}
@@ -379,7 +379,7 @@ export const IOSTabBar: React.FC = () => {
             />
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold text-slate-800 dark:text-white truncate">{currentUser.name}</div>
-              <div className="text-[10px] text-slate-400 dark:text-neutral-500 truncate">{currentUser.roleTitle}</div>
+              <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 truncate">{currentUser.roleTitle}</div>
             </div>
             <div
               className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"
@@ -451,7 +451,7 @@ export const IOSTabBar: React.FC = () => {
                     {tab.badge !== undefined && tab.badge > 0 && (
                       <span
                         style={{ fontSize: tab.id === 'chats' ? '7px' : tab.id === 'calendar' ? '7.5px' : undefined }}
-                        className={`absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full text-white text-[8.5px] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 shadow-xs tabular-nums ${
+                        className={`absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 shadow-xs tabular-nums ${
                           tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
                         }`}
                       >
@@ -460,7 +460,7 @@ export const IOSTabBar: React.FC = () => {
                     )}
                   </div>
                   <span
-                    className={`text-[10px] font-semibold mt-1 tracking-tight transition-colors ${
+                    className={`text-[0.6875rem] font-semibold mt-1 tracking-tight transition-colors ${
                       isActive
                         ? 'text-[var(--primary)] font-bold'
                         : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200'

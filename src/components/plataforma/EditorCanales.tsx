@@ -26,7 +26,7 @@ const AYUDA: Record<string, { id: string; cuenta: string }> = {
   instagram: { id: 'ID de la cuenta profesional de Instagram', cuenta: 'ID de la página de Facebook vinculada' },
   messenger: { id: 'ID de la página de Facebook', cuenta: 'ID de la página (el mismo)' },
 };
-const campo = 'w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] font-mono';
+const campo = 'w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-mono';
 
 /**
  * Conectar o corregir un canal a mano, cuando el cliente no puede usar el
@@ -72,7 +72,7 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
   const secreto = (c: CanalFila, que: Vista['que']) => {
     const abierto = visible?.clave === `${c.id}:${que}` ? visible.valor : null;
     return (<>
-      <b className={`font-mono ${que === 'pin' ? 'tracking-widest' : 'break-all'} ${abierto && que === 'token' ? 'text-[10px] font-normal' : ''}`}>{abierto ?? (que === 'pin' ? '••••••' : '••••••••')}</b>
+      <b className={`font-mono ${que === 'pin' ? 'tracking-widest' : 'break-all'} ${abierto && que === 'token' ? 'text-[0.6875rem] font-normal' : ''}`}>{abierto ?? (que === 'pin' ? '••••••' : '••••••••')}</b>
       {esSuperAdmin && (
         <button type="button" title={abierto ? 'Ocultar' : 'Ver (queda anotado)'} onClick={() => void ver(c, que)} className="p-0.5 text-slate-400 hover:text-[var(--primary)] cursor-pointer shrink-0">
           {abierto ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -103,33 +103,33 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
     } finally { setGuardando(false); }
   };
 
-  if (!filas) return <div className="flex items-center gap-2 text-[12px] text-slate-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando canales…</div>;
+  if (!filas) return <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando canales…</div>;
   const variasSedes = new Set(filas.map((x) => x.locationId)).size > 1;
 
   return (
     <div className="space-y-2">
-      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Editor de canales</div>
+      <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Editor de canales</div>
       {filas.map((c) => {
         const k = clave(c);
         return (
-          <div key={k} className="rounded-xl border border-slate-200 dark:border-neutral-800 p-2.5 text-[12px]">
+          <div key={k} className="rounded-xl border border-slate-200 dark:border-neutral-800 p-2.5 text-[0.8125rem]">
             <div className="flex items-center gap-2">
               <b>{c.nombre}</b>{variasSedes && <span className="text-slate-500">· {c.sede}</span>}
               <span className="text-slate-500 font-mono truncate">{c.identificador ?? 'sin conectar'}</span>
-              {c.tieneToken && <span title="Tiene token guardado" className="flex items-center gap-0.5 text-[10px] text-emerald-600"><KeyRound className="w-3 h-3" /> token</span>}
+              {c.tieneToken && <span title="Tiene token guardado" className="flex items-center gap-0.5 text-[0.6875rem] text-emerald-600"><KeyRound className="w-3 h-3" /> token</span>}
               {abierto !== k && (
-                <button type="button" onClick={() => abrir(c)} className="ml-auto flex items-center gap-1 text-[11px] font-bold text-[var(--primary)] cursor-pointer">
+                <button type="button" onClick={() => abrir(c)} className="ml-auto flex items-center gap-1 text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">
                   <Pencil className="w-3 h-3" /> {c.identificador ? 'Editar' : 'Conectar'}
                 </button>
               )}
             </div>
             {c.conectadoEn && abierto !== k && (
-              <p className="text-[10px] text-slate-400 mt-0.5">
+              <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                 Conectado {COMO[c.conexion ?? ''] ?? ''} el {new Date(c.conectadoEn).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' })}{c.conectadoPor ? ` por ${c.conectadoPor}` : ''}
               </p>
             )}
             {c.channel === 'whatsapp' && c.identificador && (
-              <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+              <div className="mt-1 flex items-center gap-1.5 text-[0.75rem]">
                 <span className="text-slate-500">PIN de dos pasos:</span>
                 {c.tienePin ? secreto(c, 'pin') : (
                   <span className="text-slate-400">sin PIN guardado (número en coexistencia, conectado a mano o sin registrar)</span>
@@ -137,21 +137,21 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
               </div>
             )}
             {c.tieneToken && c.id && esSuperAdmin && abierto !== k && (
-              <div className="mt-1 flex items-start gap-1.5 text-[11px]">
+              <div className="mt-1 flex items-start gap-1.5 text-[0.75rem]">
                 <span className="text-slate-500 shrink-0">Token:</span>
                 {secreto(c, 'token')}
               </div>
             )}
             {abierto === k && (
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <label className="block"><span className="text-[10px] text-slate-500">{AYUDA[c.channel].id}</span>
+                <label className="block"><span className="text-[0.6875rem] text-slate-500">{AYUDA[c.channel].id}</span>
                   <input className={campo} inputMode="numeric" value={f.identificador} onChange={(e) => setF({ ...f, identificador: e.target.value })} /></label>
-                <label className="block"><span className="text-[10px] text-slate-500">{AYUDA[c.channel].cuenta}</span>
+                <label className="block"><span className="text-[0.6875rem] text-slate-500">{AYUDA[c.channel].cuenta}</span>
                   <input className={campo} inputMode="numeric" value={f.cuentaMeta} onChange={(e) => setF({ ...f, cuentaMeta: e.target.value })} /></label>
-                <label className="block sm:col-span-2"><span className="text-[10px] text-slate-500">Token de acceso {c.tieneToken ? '(ya hay uno guardado; escribe solo para reemplazarlo)' : ''}</span>
+                <label className="block sm:col-span-2"><span className="text-[0.6875rem] text-slate-500">Token de acceso {c.tieneToken ? '(ya hay uno guardado; escribe solo para reemplazarlo)' : ''}</span>
                   <input className={campo} type="password" autoComplete="off" value={f.token} placeholder={c.tieneToken ? '•••••••• guardado' : 'Pega el token'}
                     onChange={(e) => setF({ ...f, token: e.target.value, quitarToken: false })} /></label>
-                <div className="sm:col-span-2 flex flex-wrap items-center gap-4 text-[11px]">
+                <div className="sm:col-span-2 flex flex-wrap items-center gap-4 text-[0.75rem]">
                   <label className="flex items-center gap-1.5"><input type="checkbox" checked={f.encendido} onChange={(e) => setF({ ...f, encendido: e.target.checked })} /> Lalan contesta aquí</label>
                   {c.tieneToken && <label className="flex items-center gap-1.5 text-rose-600"><input type="checkbox" checked={f.quitarToken} onChange={(e) => setF({ ...f, quitarToken: e.target.checked, token: '' })} /> Borrar el token</label>}
                   <span className="ml-auto flex gap-2">
@@ -167,7 +167,7 @@ export const EditorCanales: React.FC<{ negocioId: string; alGuardar?: () => void
         );
       })}
       {vistas.length > 0 && (
-        <details className="text-[11px]">
+        <details className="text-[0.75rem]">
           <summary className="cursor-pointer text-slate-500">Quién ha visto secretos de este cliente</summary>
           <ul className="mt-1 space-y-0.5">
             {vistas.map((v) => (

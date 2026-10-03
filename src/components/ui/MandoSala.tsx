@@ -160,14 +160,14 @@ export const MandoSala: React.FC = () => {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">{a.nombre}</span>
+              <span className="text-[0.875rem] font-semibold text-slate-900 dark:text-white truncate">{a.nombre}</span>
               {esYo && (
-                <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400">
+                <span className="shrink-0 text-[0.6875rem] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400">
                   Este aparato
                 </span>
               )}
             </div>
-            <div className="text-[11px] text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
+            <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 flex-wrap">
               {a.activo ? (
                 a.silencioso ? (
                   <span className="inline-flex items-center gap-1 font-medium">
@@ -232,7 +232,7 @@ export const MandoSala: React.FC = () => {
           <div className="mt-2 pl-[2.6rem]">
             <button
               type="button" onClick={() => setAjustando(desplegado ? null : a.id)}
-              className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] transition cursor-pointer inline-flex items-center gap-1"
+              className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] transition cursor-pointer inline-flex items-center gap-1"
               aria-expanded={desplegado}
             >
               <SlidersHorizontal className="w-3 h-3" /> Ajuste fino
@@ -242,7 +242,7 @@ export const MandoSala: React.FC = () => {
 
         {desplegado && puedeAjustar && (
           <div className="mt-2 ml-[2.6rem] rounded-xl bg-slate-50 dark:bg-neutral-800/60 px-3 py-2.5">
-            <p className="text-[11px] text-slate-500 dark:text-neutral-400 leading-snug mb-2">
+            <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 leading-snug mb-2">
               Este aparato ya se corrige solo
               {a.autoMs !== 0 && <> (lleva medidos <b>{a.autoMs > 0 ? '+' : ''}{a.autoMs} ms</b>)</>}.
               Usa esto solo si aun así lo oyes desfasado: si va <b>detrás</b>, sube; si va <b>delante</b>, baja.
@@ -250,7 +250,7 @@ export const MandoSala: React.FC = () => {
             <div className="flex items-center gap-1.5 flex-wrap">
               {[-100, -20].map(d => (
                 <button key={d} type="button" onClick={() => ajustarAltavoz(a.id, a.retardoMs + d)}
-                  className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 cursor-pointer active:scale-95 transition">
+                  className="px-2 py-1 rounded-lg text-[0.75rem] font-bold bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 cursor-pointer active:scale-95 transition">
                   {d}
                 </button>
               ))}
@@ -259,20 +259,20 @@ export const MandoSala: React.FC = () => {
               </span>
               {[20, 100].map(d => (
                 <button key={d} type="button" onClick={() => ajustarAltavoz(a.id, a.retardoMs + d)}
-                  className="px-2 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 cursor-pointer active:scale-95 transition">
+                  className="px-2 py-1 rounded-lg text-[0.75rem] font-bold bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 cursor-pointer active:scale-95 transition">
                   +{d}
                 </button>
               ))}
               {a.retardoMs !== 0 && (
                 <button type="button" onClick={() => ajustarAltavoz(a.id, 0)}
-                  className="ml-auto text-[11px] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] cursor-pointer">
+                  className="ml-auto text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] cursor-pointer">
                   Quitar
                 </button>
               )}
             </div>
             <button
               type="button" onClick={realinear}
-              className="mt-2 w-full py-1.5 rounded-lg text-[11px] font-bold bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+              className="mt-2 w-full py-1.5 rounded-lg text-[0.75rem] font-bold bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/20 transition cursor-pointer inline-flex items-center justify-center gap-1.5"
             >
               <Crosshair className="w-3 h-3" /> Volver a alinear y escuchar
             </button>
@@ -296,11 +296,11 @@ export const MandoSala: React.FC = () => {
         <Speaker className={`w-4 h-4 shrink-0 ${
           encendidos ? 'text-[var(--primary)]' : 'text-slate-400 dark:text-neutral-500'
         }`} />
-        <span className="min-w-0 flex-1 text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+        <span className="min-w-0 flex-1 text-[0.875rem] font-semibold text-slate-900 dark:text-white truncate">
           {resumen()}
         </span>
         {!abierto && altavoces.length > 1 && (
-          <span className="shrink-0 text-[11px] text-slate-400 dark:text-neutral-500">Cambiar</span>
+          <span className="shrink-0 text-[0.75rem] text-slate-400 dark:text-neutral-500">Cambiar</span>
         )}
         <ChevronDown className={`w-4 h-4 shrink-0 text-slate-400 dark:text-neutral-500 transition-transform ${
           abierto ? 'rotate-180' : ''
@@ -309,7 +309,7 @@ export const MandoSala: React.FC = () => {
 
       {abierto && (
         altavoces.length === 0 ? (
-          <p className="px-3 pb-3 text-[11px] text-slate-500 dark:text-neutral-400 leading-snug">
+          <p className="px-3 pb-3 text-[0.75rem] text-slate-500 dark:text-neutral-400 leading-snug">
             Abre la pantalla de turnos o el reproductor del salón en el
             televisor (el enlace está en Ajustes) y aparecerá aquí para poder
             mandarle la música.
@@ -321,7 +321,7 @@ export const MandoSala: React.FC = () => {
               {altavoces.map(fila)}
             </ul>
             <div className="px-3 py-2 border-t border-slate-100 dark:border-neutral-800 flex items-center gap-3 flex-wrap">
-              <p className="text-[11px] text-slate-400 dark:text-neutral-500 leading-snug flex-1 min-w-[12rem]">
+              <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500 leading-snug flex-1 min-w-[12rem]">
                 {VARIOS_ALTAVOCES
                   ? (conSonido > 1
                       ? 'Varios altavoces en la misma sala se oyen con eco. Para varias pantallas, deja el sonido en una y pon las demás en solo imagen.'
@@ -331,7 +331,7 @@ export const MandoSala: React.FC = () => {
               {VARIOS_ALTAVOCES && encendidos > 1 && sonando && (
                 <button
                   type="button" onClick={realinear}
-                  className="shrink-0 text-[11px] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] transition cursor-pointer inline-flex items-center gap-1"
+                  className="shrink-0 text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 hover:text-[var(--primary)] transition cursor-pointer inline-flex items-center gap-1"
                 >
                   <Crosshair className="w-3 h-3" /> Volver a alinear
                 </button>

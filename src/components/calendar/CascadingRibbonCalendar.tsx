@@ -539,20 +539,20 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                       : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                   }`}
                 >
-                  <span className="text-[10px] uppercase font-semibold opacity-85">
+                  <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                     {yr === today.getFullYear() ? 'ACTUAL' : 'AÑO'}
                   </span>
                   <span className="text-sm font-extrabold mt-0.5">{yr}</span>
 
                   <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                    className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-blue-600/10 text-blue-600 dark:text-blue-400'
                     }`}
                   >
                     {yearEventsCount} eventos
                   </span>
 
-                  <span className="text-[8px] opacity-70 mt-0.5 flex items-center gap-0.5">
+                  <span className="text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
                     Ver Meses <ArrowRight className="w-2.5 h-2.5" />
                   </span>
                 </button>
@@ -580,20 +580,20 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                       : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                   }`}
                 >
-                  <span className="text-[10px] uppercase font-semibold opacity-85">
+                  <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                     {currentYear}
                   </span>
                   <span className="text-sm font-extrabold mt-0.5">{mo.shortName}</span>
 
                   <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                    className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-blue-600/10 text-blue-600 dark:text-blue-400'
                     }`}
                   >
                     {monthEventsCount} eventos
                   </span>
 
-                  <span className="text-[8px] opacity-70 mt-0.5 flex items-center gap-0.5">
+                  <span className="text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
                     Ver Semanas <ArrowRight className="w-2.5 h-2.5" />
                   </span>
                 </button>
@@ -621,7 +621,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                       : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                   }`}
                 >
-                  <span className="text-[10px] uppercase font-semibold opacity-85">
+                  <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                     {wk.label}
                   </span>
                   <span className="text-xs font-extrabold mt-0.5 whitespace-nowrap">
@@ -629,14 +629,14 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                   </span>
 
                   <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                    className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-blue-600/10 text-blue-600 dark:text-blue-400'
                     }`}
                   >
                     {weekEventsCount} eventos
                   </span>
 
-                  <span className="text-[8px] opacity-70 mt-0.5 flex items-center gap-0.5">
+                  <span className="text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
                     Ver Días <ArrowRight className="w-2.5 h-2.5" />
                   </span>
                 </button>
@@ -666,12 +666,12 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                   }`}
                 >
                   {isInSelectedWeek && !isSelectedDay && (
-                    <span className="text-[7.5px] uppercase font-black tracking-tighter opacity-80 -mt-1">
+                    <span className="text-[0.6875rem] uppercase font-black tracking-tighter opacity-80 -mt-1">
                       SEM {day.weekIndex + 1}
                     </span>
                   )}
 
-                  <span className="text-[10px] uppercase font-semibold opacity-85">
+                  <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                     {day.weekday}
                   </span>
                   <span className="text-sm font-extrabold mt-0.5">{day.dayNum}</span>

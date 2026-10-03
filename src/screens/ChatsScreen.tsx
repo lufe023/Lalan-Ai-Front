@@ -96,7 +96,7 @@ export const ChatsScreen: React.FC = () => {
           <button type="button" onClick={() => { pedirSeccionAjustes('chats'); navigateTo('settings'); }}
             className="w-full p-3 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-left cursor-pointer">
             <b className="text-xs text-slate-900 dark:text-white block">Conecta tu WhatsApp, Instagram o Facebook</b>
-            <span className="text-[11px] text-slate-600 dark:text-neutral-300">Aún no llega ningún mensaje porque no hay canales conectados. Toca aquí: se hace en Configuración, con un botón.</span>
+            <span className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Aún no llega ningún mensaje porque no hay canales conectados. Toca aquí: se hace en Configuración, con un botón.</span>
           </button>
         )}
         {/* Search Bar */}
@@ -167,12 +167,12 @@ export const ChatsScreen: React.FC = () => {
                   <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
                     {conv.clientName}
                   </h4>
-                  <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                  <span className="text-[0.6875rem] text-slate-400 font-medium shrink-0">
                     {conv.lastMessageAt ? horaDeMensaje(conv.lastMessageAt) : conv.lastMessageTime}
                   </span>
                 </div>
 
-                <p className="text-[11px] text-slate-500 dark:text-neutral-400 truncate mt-0.5">
+                <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate mt-0.5">
                   {conv.lastMessage}
                 </p>
 
@@ -183,7 +183,7 @@ export const ChatsScreen: React.FC = () => {
                   </div>
 
                   {conv.unreadCount > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-[var(--primary)] text-white text-[9px] font-extrabold">
+                    <span className="px-1.5 py-0.2 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold">
                       {conv.unreadCount} nuevo
                     </span>
                   )}

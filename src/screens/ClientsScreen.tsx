@@ -500,7 +500,7 @@ export const ClientsScreen: React.FC = () => {
     return (
       <span
         key={tag}
-        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${found.colorClass}`}
+        className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-bold border inline-flex items-center gap-1 ${found.colorClass}`}
       >
         <span>{found.icon}</span>
         <span>{found.label}</span>
@@ -655,13 +655,13 @@ export const ClientsScreen: React.FC = () => {
                         {client.name}
                       </h4>
                       {client.tags.includes('alergico_sensible') && (
-                        <span className="text-[10px] text-amber-500" title="Piel sensible o alergias">
+                        <span className="text-[0.6875rem] text-amber-500" title="Piel sensible o alergias">
                           ⚠️
                         </span>
                       )}
                     </div>
 
-                    <p className="text-[11px] text-slate-500 dark:text-neutral-400 truncate flex items-center gap-1 mt-0.5">
+                    <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate flex items-center gap-1 mt-0.5">
                       <Phone className="w-3 h-3 text-slate-400" />
                       <span>{client.phone}</span>
                       <span className="text-slate-300 dark:text-neutral-700">•</span>
@@ -671,7 +671,7 @@ export const ClientsScreen: React.FC = () => {
                     <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                       {client.tags.slice(0, 2).map(tag => getTagBadge(tag))}
                       {client.tags.length > 2 && (
-                        <span className="text-[9px] font-bold text-slate-400">
+                        <span className="text-[0.6875rem] font-bold text-slate-400">
                           +{client.tags.length - 2}
                         </span>
                       )}
@@ -680,10 +680,10 @@ export const ClientsScreen: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col items-end shrink-0 pl-2">
-                  <span className="text-[11px] font-black text-slate-900 dark:text-white">
+                  <span className="text-[0.75rem] font-black text-slate-900 dark:text-white">
                     {dinero(client.totalSpent)}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium">
+                  <span className="text-[0.6875rem] text-slate-400 font-medium">
                     {client.totalVisits} {client.totalVisits === 1 ? 'visita' : 'visitas'}
                   </span>
                   <ChevronRight className="w-4 h-4 text-slate-300 dark:text-neutral-600 mt-1" />
@@ -695,7 +695,7 @@ export const ClientsScreen: React.FC = () => {
             <div ref={centinelaRef} />
 
             {clientsHasMore && (
-              <div className="py-4 flex items-center justify-center gap-2 text-[11px] text-slate-400 dark:text-neutral-500">
+              <div className="py-4 flex items-center justify-center gap-2 text-[0.75rem] text-slate-400 dark:text-neutral-500">
                 <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 dark:border-neutral-700 border-t-[var(--primary)] animate-spin" />
                 Cargando más clientas…
               </div>
@@ -705,7 +705,7 @@ export const ClientsScreen: React.FC = () => {
                 el filtro de abajo solo ve lo cargado, y la respuesta del
                 servidor puede tardar un instante en sumarse. */}
             {!clientsHasMore && searchQuery.trim().length >= 2 && (
-              <div className="py-4 text-center text-[11px] text-slate-400 dark:text-neutral-500">
+              <div className="py-4 text-center text-[0.75rem] text-slate-400 dark:text-neutral-500">
                 Buscado en todo el directorio
               </div>
             )}
@@ -735,12 +735,12 @@ export const ClientsScreen: React.FC = () => {
                     {selectedClient.name}
                     {selectedClient.tags.includes('vip') && <span>👑</span>}
                   </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-neutral-400 flex items-center gap-1 mt-0.5">
+                  <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex items-center gap-1 mt-0.5">
                     <Phone className="w-3 h-3 text-slate-400" />
                     {selectedClient.phone}
                   </p>
                   {selectedClient.email && (
-                    <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1">
                       <Mail className="w-3 h-3 text-slate-400" />
                       {selectedClient.email}
                     </p>
@@ -760,20 +760,20 @@ export const ClientsScreen: React.FC = () => {
             {/* Loyalty Stats */}
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 text-center">
-                <span className="text-[9px] uppercase font-bold text-slate-400 block">Total Visitas</span>
+                <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block">Total Visitas</span>
                 <span className="text-sm font-black text-slate-800 dark:text-white mt-0.5 block">
                   {selectedClient.totalVisits}
                 </span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 text-center">
-                <span className="text-[9px] uppercase font-bold text-slate-400 block">Consumo Total</span>
+                <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block">Consumo Total</span>
                 <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
                   {dinero(selectedClient.totalSpent)}
                 </span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 text-center">
-                <span className="text-[9px] uppercase font-bold text-slate-400 block">Canal</span>
-                <span className="text-[11px] font-bold text-slate-800 dark:text-white mt-0.5 block capitalize">
+                <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block">Canal</span>
+                <span className="text-[0.75rem] font-bold text-slate-800 dark:text-white mt-0.5 block capitalize">
                   {selectedClient.preferredChannel}
                 </span>
               </div>
@@ -781,7 +781,7 @@ export const ClientsScreen: React.FC = () => {
 
             {/* Tags Container */}
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">
+              <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block mb-1.5">
                 Etiquetas & Perfil de Clienta
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -792,22 +792,22 @@ export const ClientsScreen: React.FC = () => {
             {/* Beauty & Styling Preferences */}
             {selectedClient.beautyNotes && (
               <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-slate-800 dark:text-rose-200">
-                <div className="flex items-center gap-1.5 font-bold text-[11px] text-rose-700 dark:text-rose-300 mb-1">
+                <div className="flex items-center gap-1.5 font-bold text-[0.75rem] text-rose-700 dark:text-rose-300 mb-1">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Preferencias de Belleza & Estilismo:</span>
                 </div>
-                <p className="text-[11px] leading-relaxed opacity-90">{selectedClient.beautyNotes}</p>
+                <p className="text-[0.75rem] leading-relaxed opacity-90">{selectedClient.beautyNotes}</p>
               </div>
             )}
 
             {/* Medical / Allergies Alert */}
             {selectedClient.medicalOrAllergyNotes && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-slate-800 dark:text-amber-200">
-                <div className="flex items-center gap-1.5 font-bold text-[11px] text-amber-700 dark:text-amber-300 mb-1">
+                <div className="flex items-center gap-1.5 font-bold text-[0.75rem] text-amber-700 dark:text-amber-300 mb-1">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                   <span>Alergias & Sensibilidades (Importante para Estilistas):</span>
                 </div>
-                <p className="text-[11px] leading-relaxed opacity-90">{selectedClient.medicalOrAllergyNotes}</p>
+                <p className="text-[0.75rem] leading-relaxed opacity-90">{selectedClient.medicalOrAllergyNotes}</p>
               </div>
             )}
 
@@ -825,14 +825,14 @@ export const ClientsScreen: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={handleOpenPrefPanel}
-                    className="px-2 py-1 rounded-full bg-white/70 dark:bg-neutral-800/70 text-slate-600 dark:text-neutral-300 text-[10px] font-bold flex items-center gap-1 border border-slate-200/60 dark:border-neutral-700/60 hover:border-slate-300 transition cursor-pointer"
+                    className="px-2 py-1 rounded-full bg-white/70 dark:bg-neutral-800/70 text-slate-600 dark:text-neutral-300 text-[0.6875rem] font-bold flex items-center gap-1 border border-slate-200/60 dark:border-neutral-700/60 hover:border-slate-300 transition cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Añadir</span>
                   </button>
                   <button
                     onClick={() => { playMusicForClient(selectedClient); setSelectedClient(null); }}
-                    className="px-2.5 py-1 rounded-full bg-[var(--primary)] text-white text-[10px] font-bold flex items-center gap-1 hover:scale-105 active:scale-95 transition shadow-xs cursor-pointer"
+                    className="px-2.5 py-1 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-bold flex items-center gap-1 hover:scale-105 active:scale-95 transition shadow-xs cursor-pointer"
                     title="Abrir Lounge para esta clienta"
                   >
                     <Music className="w-3 h-3" />
@@ -844,13 +844,13 @@ export const ClientsScreen: React.FC = () => {
               {/* Preferences body */}
               <div className="p-3 bg-white/60 dark:bg-neutral-900/60 space-y-2.5">
                 {loadingPrefs ? (
-                  <p className="text-[11px] text-slate-400 italic text-center py-2">Cargando preferencias…</p>
+                  <p className="text-[0.75rem] text-slate-400 italic text-center py-2">Cargando preferencias…</p>
                 ) : clientPrefs.length === 0 ? (
                   <div className="text-center py-3">
-                    <p className="text-[11px] text-slate-400 dark:text-neutral-500">Sin preferencias registradas aún.</p>
+                    <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500">Sin preferencias registradas aún.</p>
                     <button
                       onClick={handleOpenPrefPanel}
-                      className="mt-2 text-[11px] font-bold text-[var(--primary)] flex items-center gap-1 mx-auto cursor-pointer"
+                      className="mt-2 text-[0.75rem] font-bold text-[var(--primary)] flex items-center gap-1 mx-auto cursor-pointer"
                     >
                       <Plus className="w-3 h-3" /> Registrar primera preferencia
                     </button>
@@ -859,7 +859,7 @@ export const ClientsScreen: React.FC = () => {
                   <div className="space-y-2">
                     {clientPrefs.map(cat => (
                       <div key={cat.category.id}>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-neutral-500 flex items-center gap-1 mb-1">
+                        <span className="text-[0.6875rem] uppercase font-bold text-slate-400 dark:text-neutral-500 flex items-center gap-1 mb-1">
                           <span>{prefTypeIcon(cat.category.type, cat.category.icon)}</span>
                           <span>{cat.category.name}</span>
                         </span>
@@ -867,7 +867,7 @@ export const ClientsScreen: React.FC = () => {
                           {cat.items.map(item => (
                             <div
                               key={item.id}
-                              className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] font-semibold ${prefTypeColor(cat.category.type)}`}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[0.75rem] font-semibold ${prefTypeColor(cat.category.type)}`}
                             >
                               <span>{item.preference.value}</span>
                               {item.intensity && (
@@ -896,7 +896,7 @@ export const ClientsScreen: React.FC = () => {
                 {showPrefPanel && (
                   <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-neutral-800">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-slate-500">Catálogo de preferencias</span>
+                      <span className="text-[0.6875rem] uppercase font-bold text-slate-500">Catálogo de preferencias</span>
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={handleOpenCatalogMgr}
@@ -920,12 +920,12 @@ export const ClientsScreen: React.FC = () => {
                             onChange={e => setQuickValue(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleQuickCreatePref(); } }}
                             placeholder="Buscar o escribir una preferencia nueva…"
-                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-[var(--primary)] text-slate-900 dark:text-white"
+                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.75rem] border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-[var(--primary)] text-slate-900 dark:text-white"
                           />
                           <button
                             onClick={handleQuickCreatePref}
                             disabled={quickBusy || !quickValue.trim()}
-                            className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-40 cursor-pointer transition active:scale-95 whitespace-nowrap"
+                            className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-bold disabled:opacity-40 cursor-pointer transition active:scale-95 whitespace-nowrap"
                             title="Crear y añadir a esta clienta"
                           >
                             {quickBusy ? '…' : '+ Crear'}
@@ -936,7 +936,7 @@ export const ClientsScreen: React.FC = () => {
                           <select
                             value={quickCatId}
                             onChange={e => setQuickCatId(e.target.value)}
-                            className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
+                            className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.75rem] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
                           >
                             {mgCategories.map(c => (
                               <option key={c.id} value={c.id}>
@@ -955,12 +955,12 @@ export const ClientsScreen: React.FC = () => {
                               value={quickNewCatName}
                               onChange={e => setQuickNewCatName(e.target.value)}
                               placeholder="Nombre de la categoría (ej: Música)"
-                              className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] border border-slate-200 dark:border-neutral-700 focus:outline-none text-slate-900 dark:text-white"
+                              className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.75rem] border border-slate-200 dark:border-neutral-700 focus:outline-none text-slate-900 dark:text-white"
                             />
                             <select
                               value={quickNewCatType}
                               onChange={e => setQuickNewCatType(e.target.value)}
-                              className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
+                              className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.75rem] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
                             >
                               {([['music','🎵'],['drink','☕'],['food','🍓'],['style','✨'],['movie','🎬'],['other','⭐']] as [string,string][]).map(([v,l]) => (
                                 <option key={v} value={v}>{l}</option>
@@ -972,9 +972,9 @@ export const ClientsScreen: React.FC = () => {
                     )}
 
                     {!prefCatalogLoaded ? (
-                      <p className="text-[11px] text-slate-400 italic">Cargando catálogo…</p>
+                      <p className="text-[0.75rem] text-slate-400 italic">Cargando catálogo…</p>
                     ) : prefCatalog.length === 0 ? (
-                      <p className="text-[11px] text-slate-400 italic">
+                      <p className="text-[0.75rem] text-slate-400 italic">
                         Aún no hay opciones guardadas. Escribe arriba y presiona <b>Crear</b> para añadir la primera.
                       </p>
                     ) : (
@@ -989,7 +989,7 @@ export const ClientsScreen: React.FC = () => {
                           }, {})
                         ).map(([catId, { cat, items }]) => (
                           <div key={catId}>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1 mb-1">
+                            <span className="text-[0.6875rem] uppercase font-bold text-slate-400 flex items-center gap-1 mb-1">
                               <span>{prefTypeIcon(cat.type, cat.icon)}</span>
                               <span>{cat.name}</span>
                             </span>
@@ -1001,7 +1001,7 @@ export const ClientsScreen: React.FC = () => {
                                     key={p.id}
                                     disabled={already || addingPrefId === p.id}
                                     onClick={() => !already && handleAddPref(selectedClient.id, p.id)}
-                                    className={`px-2 py-1 rounded-full border text-[11px] font-semibold transition cursor-pointer ${
+                                    className={`px-2 py-1 rounded-full border text-[0.75rem] font-semibold transition cursor-pointer ${
                                       already
                                         ? 'opacity-40 cursor-not-allowed ' + prefTypeColor(cat.type)
                                         : addingPrefId === p.id
@@ -1051,21 +1051,21 @@ export const ClientsScreen: React.FC = () => {
 
             {/* Appointment History for this Client */}
             <div className="pt-2 border-t border-slate-200/80 dark:border-neutral-800">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">
+              <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block mb-2">
                 Historial de Citas ({clientAppointments.length})
               </span>
               {clientAppointments.length === 0 ? (
-                <p className="text-[11px] text-slate-400 italic">No tiene citas agendadas recientes.</p>
+                <p className="text-[0.75rem] text-slate-400 italic">No tiene citas agendadas recientes.</p>
               ) : (
                 <div className="space-y-1.5 max-h-36 overflow-y-auto hide-scrollbar">
                   {clientAppointments.map(apt => (
                     <div
                       key={apt.id}
-                      className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between text-[11px]"
+                      className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between text-[0.75rem]"
                     >
                       <div>
                         <span className="font-bold text-slate-800 dark:text-white block">{apt.serviceName}</span>
-                        <span className="text-[10px] text-slate-400">{apt.date} • {hora12(apt.time)} ({apt.staffName})</span>
+                        <span className="text-[0.6875rem] text-slate-400">{apt.date} • {hora12(apt.time)} ({apt.staffName})</span>
                       </div>
                       <span className="font-extrabold text-slate-700 dark:text-neutral-300">{dinero(apt.price, apt.currencyCode)}</span>
                     </div>
@@ -1083,7 +1083,7 @@ export const ClientsScreen: React.FC = () => {
                     setSelectedClient(null);
                   }
                 }}
-                className="w-full py-2 text-rose-500 hover:text-rose-600 font-semibold text-[11px] flex items-center justify-center gap-1 cursor-pointer"
+                className="w-full py-2 text-rose-500 hover:text-rose-600 font-semibold text-[0.75rem] flex items-center justify-center gap-1 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Eliminar Clienta del Directorio</span>
@@ -1104,7 +1104,7 @@ export const ClientsScreen: React.FC = () => {
 
           {/* API error banner */}
           {formApiError && (
-            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[11px] font-medium">
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[0.75rem] font-medium">
               <span className="mt-0.5 shrink-0">⚠️</span>
               <span>{formApiError}</span>
             </div>
@@ -1112,7 +1112,7 @@ export const ClientsScreen: React.FC = () => {
 
           {/* Nombre */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Nombre Completo <span className="text-rose-500">*</span>
             </label>
             <input
@@ -1126,7 +1126,7 @@ export const ClientsScreen: React.FC = () => {
               }`}
             />
             {formErrors.name && (
-              <p className="mt-1 text-[10px] text-rose-500 font-semibold flex items-center gap-1">
+              <p className="mt-1 text-[0.6875rem] text-rose-500 font-semibold flex items-center gap-1">
                 <span>●</span> {formErrors.name}
               </p>
             )}
@@ -1135,7 +1135,7 @@ export const ClientsScreen: React.FC = () => {
           {/* Teléfono + Canal */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Teléfono <span className="text-rose-500">*</span>
               </label>
               <input
@@ -1149,14 +1149,14 @@ export const ClientsScreen: React.FC = () => {
                 }`}
               />
               {formErrors.phone && (
-                <p className="mt-1 text-[10px] text-rose-500 font-semibold flex items-center gap-1">
+                <p className="mt-1 text-[0.6875rem] text-rose-500 font-semibold flex items-center gap-1">
                   <span>●</span> {formErrors.phone}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Canal Preferido
               </label>
               <select
@@ -1173,7 +1173,7 @@ export const ClientsScreen: React.FC = () => {
 
           {/* Email */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Correo Electrónico
               <span className="ml-1 font-normal text-slate-400">(opcional)</span>
             </label>
@@ -1189,7 +1189,7 @@ export const ClientsScreen: React.FC = () => {
 
           {/* Tags */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Perfil de Clienta
             </label>
             <div className="grid grid-cols-2 gap-1.5">
@@ -1200,7 +1200,7 @@ export const ClientsScreen: React.FC = () => {
                     key={tag.id}
                     type="button"
                     onClick={() => handleToggleTag(tag.id)}
-                    className={`px-2 py-1.5 rounded-xl text-[11px] font-bold text-left border flex items-center gap-1.5 transition ios-touch cursor-pointer ${
+                    className={`px-2 py-1.5 rounded-xl text-[0.75rem] font-bold text-left border flex items-center gap-1.5 transition ios-touch cursor-pointer ${
                       isSelected
                         ? `${tag.colorClass} border-current ring-1 ring-current`
                         : 'bg-slate-50 dark:bg-neutral-800/40 text-slate-500 border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
@@ -1216,7 +1216,7 @@ export const ClientsScreen: React.FC = () => {
 
           {/* Beauty Notes */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Preferencias de Belleza
               <span className="ml-1 font-normal text-slate-400">(uñas, tonos, aromas)</span>
             </label>
@@ -1231,7 +1231,7 @@ export const ClientsScreen: React.FC = () => {
 
           {/* Medical Notes */}
           <div>
-            <label className="block text-[11px] font-bold text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1">
+            <label className="block text-[0.75rem] font-bold text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1">
               <span>⚠️</span> Alergias o Cuidados Especiales
             </label>
             <textarea
@@ -1244,7 +1244,7 @@ export const ClientsScreen: React.FC = () => {
           </div>
 
           {/* Hint line */}
-          <p className="text-[10px] text-slate-400 dark:text-neutral-600 text-center">
+          <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-600 text-center">
             Los campos marcados con <span className="text-rose-500 font-bold">*</span> son obligatorios.
           </p>
 
@@ -1280,7 +1280,7 @@ export const ClientsScreen: React.FC = () => {
 
           {/* ── Nueva Categoría ─────────────────────────── */}
           <div className="rounded-xl border border-slate-200 dark:border-neutral-700 p-3 space-y-2.5">
-            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-neutral-400 flex items-center gap-1">
+            <span className="text-[0.6875rem] uppercase font-bold text-slate-500 dark:text-neutral-400 flex items-center gap-1">
               <Plus className="w-3 h-3" /> Nueva Categoría
             </span>
 
@@ -1289,14 +1289,14 @@ export const ClientsScreen: React.FC = () => {
               placeholder="Nombre (ej: Bebidas)"
               value={mgCatForm.name}
               onChange={e => setMgCatForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[12px] text-slate-900 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              className="w-full px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.8125rem] text-slate-900 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
 
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={mgCatForm.type}
                 onChange={e => setMgCatForm(f => ({ ...f, type: e.target.value }))}
-                className="px-2 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[12px] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
+                className="px-2 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.8125rem] text-slate-700 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none"
               >
                 {([['music','🎵 Música'],['drink','☕ Bebidas'],['food','🍓 Comida'],['style','✨ Estilo'],['movie','🎬 Películas'],['other','⭐ Otro']] as [string, string][]).map(([v, l]) => (
                   <option key={v} value={v}>{l}</option>
@@ -1307,13 +1307,13 @@ export const ClientsScreen: React.FC = () => {
                 placeholder="Emoji ícono"
                 value={mgCatForm.icon}
                 onChange={e => setMgCatForm(f => ({ ...f, icon: e.target.value }))}
-                className="px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[14px] text-slate-900 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none text-center"
+                className="px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.9375rem] text-slate-900 dark:text-white border border-slate-200 dark:border-neutral-700 focus:outline-none text-center"
                 maxLength={4}
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="text-[11px] text-slate-500 dark:text-neutral-400 shrink-0">Color:</label>
+              <label className="text-[0.75rem] text-slate-500 dark:text-neutral-400 shrink-0">Color:</label>
               <div className="flex gap-1.5 flex-wrap">
                 {['#6366f1','#f59e0b','#10b981','#f43f5e','#3b82f6','#8b5cf6','#64748b','#ec4899'].map(c => (
                   <button
@@ -1329,7 +1329,7 @@ export const ClientsScreen: React.FC = () => {
             <button
               onClick={handleMgCreateCat}
               disabled={mgAddingCat || !mgCatForm.name.trim()}
-              className="w-full py-2 rounded-lg bg-[var(--primary)] text-white font-bold text-[12px] disabled:opacity-50 cursor-pointer transition active:scale-95"
+              className="w-full py-2 rounded-lg bg-[var(--primary)] text-white font-bold text-[0.8125rem] disabled:opacity-50 cursor-pointer transition active:scale-95"
             >
               {mgAddingCat ? 'Creando…' : '+ Crear Categoría'}
             </button>
@@ -1337,9 +1337,9 @@ export const ClientsScreen: React.FC = () => {
 
           {/* ── Lista de Categorías ─────────────────────── */}
           {mgLoading ? (
-            <p className="text-[11px] text-slate-400 italic text-center py-4">Cargando categorías…</p>
+            <p className="text-[0.75rem] text-slate-400 italic text-center py-4">Cargando categorías…</p>
           ) : mgCategories.length === 0 ? (
-            <p className="text-[11px] text-slate-400 italic text-center py-4">No hay categorías aún. Crea la primera arriba.</p>
+            <p className="text-[0.75rem] text-slate-400 italic text-center py-4">No hay categorías aún. Crea la primera arriba.</p>
           ) : (
             <div className="space-y-2">
               {mgCategories.map(cat => (
@@ -1352,8 +1352,8 @@ export const ClientsScreen: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <span className="text-base leading-none">{cat.icon ?? prefTypeIcon(cat.type, cat.icon)}</span>
                       <div>
-                        <span className="text-[12px] font-bold text-slate-800 dark:text-white">{cat.name}</span>
-                        <span className="ml-1.5 text-[10px] text-slate-400">({cat.preferences.length})</span>
+                        <span className="text-[0.8125rem] font-bold text-slate-800 dark:text-white">{cat.name}</span>
+                        <span className="ml-1.5 text-[0.6875rem] text-slate-400">({cat.preferences.length})</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1377,13 +1377,13 @@ export const ClientsScreen: React.FC = () => {
                   {mgExpandedCatId === cat.id && (
                     <div className="px-3 py-2.5 space-y-2 bg-white dark:bg-neutral-900">
                       {cat.preferences.length === 0 ? (
-                        <p className="text-[11px] text-slate-400 italic">Sin opciones aún. Añade la primera abajo.</p>
+                        <p className="text-[0.75rem] text-slate-400 italic">Sin opciones aún. Añade la primera abajo.</p>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {cat.preferences.map(pref => (
                             <span
                               key={pref.id}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[11px] text-slate-700 dark:text-neutral-200 border border-slate-200 dark:border-neutral-700"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] text-slate-700 dark:text-neutral-200 border border-slate-200 dark:border-neutral-700"
                             >
                               {pref.value}
                               <button
@@ -1406,12 +1406,12 @@ export const ClientsScreen: React.FC = () => {
                           value={mgPrefInputs[cat.id] ?? ''}
                           onChange={e => setMgPrefInputs(prev => ({ ...prev, [cat.id]: e.target.value }))}
                           onKeyDown={e => { if (e.key === 'Enter') handleMgAddPref(cat.id); }}
-                          className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-[var(--primary)] text-slate-900 dark:text-white"
+                          className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.75rem] border border-slate-200 dark:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-[var(--primary)] text-slate-900 dark:text-white"
                         />
                         <button
                           onClick={() => handleMgAddPref(cat.id)}
                           disabled={mgAddingPrefCatId === cat.id || !(mgPrefInputs[cat.id] ?? '').trim()}
-                          className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-50 cursor-pointer transition active:scale-95"
+                          className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-bold disabled:opacity-50 cursor-pointer transition active:scale-95"
                         >
                           {mgAddingPrefCatId === cat.id ? '…' : '+'}
                         </button>

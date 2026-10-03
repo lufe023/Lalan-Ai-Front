@@ -82,7 +82,7 @@ export const PortadasPlataforma: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      <p className="text-[12px] text-slate-500 dark:text-neutral-400 leading-relaxed max-w-2xl">
+      <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 leading-relaxed max-w-2xl">
         Una ilustración por mes para la portada de los informes en PDF de todos los salones. Súbela <b>sin texto</b>: el título, el período y los datos los escribe el sistema encima.
         Vertical, idealmente 1240 × 1754 píxeles; deja el tercio de abajo más tranquilo. Los meses sin imagen usan el diseño de temporada.
       </p>
@@ -95,11 +95,11 @@ export const PortadasPlataforma: React.FC = () => {
               <div className="aspect-[1/1.414] bg-slate-100 dark:bg-neutral-800 relative">
                 {p
                   ? <img src={urlApi(`/plataforma/portadas/${mes}/imagen?v=${encodeURIComponent(p.actualizadoEn)}`)} alt={`Portada de ${nombre}`} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-                  : <span className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400 text-center px-2">Diseño de temporada</span>}
+                  : <span className="absolute inset-0 flex items-center justify-center text-[0.6875rem] text-slate-400 text-center px-2">Diseño de temporada</span>}
               </div>
               <div className="p-2">
-                <b className="text-[12px] block">{nombre}</b>
-                <span className="text-[10px] text-slate-500 block truncate">{p?.lema ?? TEMPORADA[i]}</span>
+                <b className="text-[0.8125rem] block">{nombre}</b>
+                <span className="text-[0.6875rem] text-slate-500 block truncate">{p?.lema ?? TEMPORADA[i]}</span>
               </div>
             </button>
           );
@@ -114,16 +114,16 @@ export const PortadasPlataforma: React.FC = () => {
                 {f.imagen
                   ? <img src={f.imagen} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   : actual ? <img src={urlApi(`/plataforma/portadas/${editando}/imagen?v=${encodeURIComponent(actual.actualizadoEn)}`)} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                  : <span className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400 text-center px-2">Sin imagen</span>}
+                  : <span className="absolute inset-0 flex items-center justify-center text-[0.6875rem] text-slate-400 text-center px-2">Sin imagen</span>}
               </div>
               <div className="flex-1 space-y-2">
                 <input ref={archivo} type="file" accept="image/jpeg,image/png" className="hidden" onChange={e => void elegir(e)} />
-                <button type="button" onClick={() => archivo.current?.click()} className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[12px] font-bold cursor-pointer">
+                <button type="button" onClick={() => archivo.current?.click()} className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold cursor-pointer">
                   <ImagePlus className="w-4 h-4" /> {actual || f.imagen ? 'Cambiar imagen' : 'Elegir imagen'}
                 </button>
-                <label className="block"><span className="text-[10px] text-slate-500">Lema del mes</span>
-                  <input value={f.lema} maxLength={60} onChange={e => setF({ ...f, lema: e.target.value })} className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px]" /></label>
-                <label className="flex items-center gap-2 text-[11px] text-slate-500">
+                <label className="block"><span className="text-[0.6875rem] text-slate-500">Lema del mes</span>
+                  <input value={f.lema} maxLength={60} onChange={e => setF({ ...f, lema: e.target.value })} className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem]" /></label>
+                <label className="flex items-center gap-2 text-[0.75rem] text-slate-500">
                   <input type="color" value={f.acento} onChange={e => setF({ ...f, acento: e.target.value })} className="w-9 h-9 rounded-lg border-0 bg-transparent" /> Color de los detalles
                 </label>
               </div>
@@ -133,16 +133,16 @@ export const PortadasPlataforma: React.FC = () => {
               {ocupado && <Loader2 className="w-4 h-4 animate-spin" />} Guardar portada
             </button>
             <div className="flex gap-2">
-              <button type="button" onClick={() => void ejemplo(editando)} className="flex-1 min-h-[40px] flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-neutral-700 text-[12px] font-bold cursor-pointer">
+              <button type="button" onClick={() => void ejemplo(editando)} className="flex-1 min-h-[40px] flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold cursor-pointer">
                 <FileDown className="w-4 h-4" /> Ver ejemplo en PDF
               </button>
               {actual && (
-                <button type="button" onClick={() => void quitar()} className="min-h-[40px] px-3 flex items-center gap-1.5 rounded-xl text-[12px] text-rose-600 cursor-pointer">
+                <button type="button" onClick={() => void quitar()} className="min-h-[40px] px-3 flex items-center gap-1.5 rounded-xl text-[0.8125rem] text-rose-600 cursor-pointer">
                   <Trash2 className="w-4 h-4" /> Quitar
                 </button>
               )}
             </div>
-            <p className="text-[10px] text-slate-400">El ejemplo usa la portada ya guardada; guarda primero si cambiaste algo.</p>
+            <p className="text-[0.6875rem] text-slate-400">El ejemplo usa la portada ya guardada; guarda primero si cambiaste algo.</p>
           </div>
         )}
       </IOSModal>

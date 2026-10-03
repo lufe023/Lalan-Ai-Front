@@ -228,7 +228,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                     Servir o vender
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[0.75rem] text-slate-400">
                     Entra a la comanda con su precio · 0.00 es cortesía
                   </p>
                 </div>
@@ -260,7 +260,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   <button
                     key={g.id}
                     onClick={() => setCartaTipo(g.id)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition ${
+                    className={`px-2.5 py-1 rounded-full text-[0.6875rem] font-bold whitespace-nowrap transition ${
                       cartaTipo === g.id
                         ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-2xs'
                         : 'text-slate-500 dark:text-neutral-400'
@@ -299,7 +299,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                       }`}
                     >
                       {!!enComanda && (
-                        <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1.5 rounded-full bg-[var(--primary)] text-white text-[10px] font-extrabold flex items-center justify-center tabular-nums">
+                        <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1.5 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold flex items-center justify-center tabular-nums">
                           {Number(enComanda.quantity)}
                         </span>
                       )}
@@ -307,7 +307,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                         <div className="text-xs font-bold text-slate-800 dark:text-neutral-100 leading-snug">
                           {p.name}
                         </div>
-                        <div className="text-[10px] text-slate-400 tabular-nums">
+                        <div className="text-[0.6875rem] text-slate-400 tabular-nums">
                           {plata(p.price)}
                           {p.stock === null
                             ? ' · servicio'
@@ -340,7 +340,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                         <button
                           disabled={agotado || saleBusy}
                           onClick={() => servir(p)}
-                          className="w-full py-2 rounded-lg bg-[var(--primary)] text-white text-[11px] font-extrabold hover:opacity-90 active:scale-98 transition disabled:opacity-40"
+                          className="w-full py-2 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-extrabold hover:opacity-90 active:scale-98 transition disabled:opacity-40"
                         >
                           Servir
                         </button>
@@ -358,7 +358,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 </p>
                 <button
                   onClick={() => navigateTo('catalog')}
-                  className="text-[11px] font-bold text-[var(--primary)]"
+                  className="text-[0.75rem] font-bold text-[var(--primary)]"
                 >
                   Agregarlos en Catálogo →
                 </button>
@@ -368,7 +368,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
             {!cartaBusca && ocultos > 0 && (
               <button
                 onClick={() => setVerTodo(true)}
-                className="w-full py-2 rounded-xl text-[11px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 transition"
+                className="w-full py-2 rounded-xl text-[0.75rem] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 transition"
               >
                 Ver {ocultos} más — o búscalo arriba
               </button>
@@ -376,7 +376,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
             {verTodo && !cartaBusca && (
               <button
                 onClick={() => setVerTodo(false)}
-                className="w-full py-2 rounded-xl text-[11px] font-bold text-slate-400 hover:text-slate-600 transition"
+                className="w-full py-2 rounded-xl text-[0.75rem] font-bold text-slate-400 hover:text-slate-600 transition"
               >
                 Mostrar menos
               </button>
@@ -400,7 +400,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                          siempre, sin forma de quitarla. */
                       <div
                         key={f.id}
-                        className={`shrink-0 flex items-center rounded-xl text-[11px] font-bold whitespace-nowrap transition ${
+                        className={`shrink-0 flex items-center rounded-xl text-[0.75rem] font-bold whitespace-nowrap transition ${
                           activa
                             ? 'bg-[var(--primary)] text-white'
                             : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
@@ -455,12 +455,12 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                             value={buscaClienta}
                             onChange={e => setBuscaClienta(e.target.value)}
                             placeholder="¿De quién es esta cuenta?"
-                            className="w-full pl-8 pr-2 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                            className="w-full pl-8 pr-2 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
                           />
                         </div>
                         <button
                           onClick={() => { setAsignando(null); setBuscaClienta(''); }}
-                          className="px-2 py-1.5 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-neutral-700 cursor-pointer"
+                          className="px-2 py-1.5 rounded-xl text-[0.75rem] font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-neutral-700 cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -474,13 +474,13 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                               const ok = await asignarClientaAFolio(activeSale.id, c.id);
                               if (ok) { setAsignando(null); setBuscaClienta(''); }
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] font-semibold text-slate-700 dark:text-neutral-200 hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-40 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-40 cursor-pointer"
                           >
                             {c.name}
                           </button>
                         ))}
                         {!clientasParaAsignar.length && (
-                          <p className="w-full py-2 text-center text-[11px] text-slate-400">
+                          <p className="w-full py-2 text-center text-[0.75rem] text-slate-400">
                             Ninguna clienta con ese nombre.
                           </p>
                         )}
@@ -489,7 +489,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   ) : (
                     <button
                       onClick={() => { setAsignando(activeSale.id); setBuscaClienta(''); }}
-                      className="w-full py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] font-bold text-slate-500 dark:text-neutral-400 flex items-center justify-center gap-1.5 hover:border-[var(--primary)] hover:text-[var(--primary)] transition cursor-pointer"
+                      className="w-full py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 flex items-center justify-center gap-1.5 hover:border-[var(--primary)] hover:text-[var(--primary)] transition cursor-pointer"
                     >
                       <UserCheck className="w-3.5 h-3.5" />
                       Asignar esta cuenta a una clienta
@@ -508,7 +508,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                     Comanda de {(activeSale?.clientName ?? activeSale?.label ?? activeLoungeClient?.name ?? 'Mostrador').split(' ')[0]}
                   </h3>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[0.75rem] text-slate-400">
                       {activeSale?.items?.length
                         ? `${activeSale.items.length} línea${activeSale.items.length === 1 ? '' : 's'}`
                         : 'Sin nada todavía'}
@@ -519,7 +519,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                       <button
                         onClick={() => setMostrarListas(v => !v)}
                         disabled={saleBusy}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 transition disabled:opacity-40 ${
+                        className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold flex items-center gap-1 transition disabled:opacity-40 ${
                           activeSale.priceList && !activeSale.priceList.isDefault
                             ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300'
                             : 'bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400'
@@ -535,12 +535,12 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
               </div>
               {!!activeSale?.total && (
                 <div className="text-right shrink-0">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold">Total</div>
+                  <div className="text-[0.6875rem] text-slate-400 uppercase font-bold">Total</div>
                   <div className="text-lg font-extrabold text-slate-900 dark:text-white tabular-nums">
                     {plata(activeSale.total)}
                   </div>
                   {Number(activeSale.discountTotal) > 0 && (
-                    <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 tabular-nums">
+                    <div className="text-[0.6875rem] font-bold text-violet-600 dark:text-violet-400 tabular-nums">
                       ahorró {plata(activeSale.discountTotal)}
                     </div>
                   )}
@@ -557,7 +557,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   className="overflow-hidden"
                 >
                   <div className="p-2 rounded-2xl bg-slate-50 dark:bg-neutral-800/50 space-y-1">
-                    <p className="text-[10px] text-slate-400 px-1">
+                    <p className="text-[0.6875rem] text-slate-400 px-1">
                       Cambiar la tarifa revalora las líneas al instante. Las
                       cortesías y lo ya pagado no se tocan.
                     </p>
@@ -570,7 +570,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                             await setSalePriceList(pl.id);
                             setMostrarListas(false);
                           }}
-                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40 ${
+                          className={`px-2.5 py-1.5 rounded-xl text-[0.75rem] font-bold transition disabled:opacity-40 ${
                             activeSale.priceListId === pl.id
                               ? 'bg-[var(--primary)] text-white'
                               : 'bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 hover:border-[var(--primary)]'
@@ -585,7 +585,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                           await setSalePriceList(null);
                           setMostrarListas(false);
                         }}
-                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition disabled:opacity-40 ${
+                        className={`px-2.5 py-1.5 rounded-xl text-[0.75rem] font-bold transition disabled:opacity-40 ${
                           !activeSale.priceListId
                             ? 'bg-slate-700 text-white'
                             : 'bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-500'
@@ -597,7 +597,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                     {!(priceLists ?? []).length && (
                       <button
                         onClick={() => navigateTo('price-lists')}
-                        className="w-full py-2 text-[11px] font-bold text-[var(--primary)]"
+                        className="w-full py-2 text-[0.75rem] font-bold text-[var(--primary)]"
                       >
                         No tienes listas creadas — créalas en Precios →
                       </button>
@@ -657,17 +657,17 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                             {it.label}
                           </span>
                           {prepagado && (
-                            <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-extrabold">
+                            <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-extrabold">
                               PAGADO EN LÍNEA
                             </span>
                           )}
                           {cortesia && (
-                            <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-extrabold">
+                            <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-extrabold">
                               CORTESÍA
                             </span>
                           )}
                           {!!it.discountPercent && (
-                            <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 font-extrabold">
+                            <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 font-extrabold">
                               −{Number(it.discountPercent).toFixed(0)}%
                             </span>
                           )}
@@ -718,7 +718,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                         </div>
                         {moviendo === it.id && (
                           <div className="w-full flex flex-wrap items-center gap-1 pt-2 pl-1">
-                            <span className="text-[10px] text-slate-400 mr-1">Pasar a:</span>
+                            <span className="text-[0.6875rem] text-slate-400 mr-1">Pasar a:</span>
                             {openFolios.filter(f => f.id !== activeSale?.id).map(f => (
                               <button
                                 key={f.id}
@@ -727,7 +727,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                                   await moveSaleItem(it.id, f.id);
                                   setMoviendo(null);
                                 }}
-                                className="px-2 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[10px] font-bold hover:bg-sky-100 transition disabled:opacity-40"
+                                className="px-2 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[0.6875rem] font-bold hover:bg-sky-100 transition disabled:opacity-40"
                               >
                                 {f.clientName ?? f.label ?? 'Cuenta'}
                               </button>
@@ -739,7 +739,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                                 if (nueva) { await moveSaleItem(it.id, nueva.id); }
                                 setMoviendo(null);
                               }}
-                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[10px] font-bold disabled:opacity-40"
+                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.6875rem] font-bold disabled:opacity-40"
                             >
                               + Cuenta nueva
                             </button>
@@ -752,7 +752,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 </motion.div>
 
                 {Number(activeSale.paidTotal) > 0 && (
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-neutral-400 pt-1">
+                  <div className="flex items-center justify-between text-[0.75rem] text-slate-500 dark:text-neutral-400 pt-1">
                     <span>Ya cobrado</span>
                     <span className="font-mono tabular-nums">
                       {plata(activeSale.paidTotal)}
@@ -788,7 +788,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   <button
                     onClick={() => (activeLoungeClient ? openSale({ clientId: activeLoungeClient.id }) : newCounterFolio())}
                     disabled={saleBusy}
-                    className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 disabled:opacity-40"
+                    className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 disabled:opacity-40"
                   >
                     Abrir comanda vacía
                   </button>
@@ -815,7 +815,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white">Cobrar consumo</h3>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[0.75rem] text-slate-400">
                       {activeSale.clientName ?? 'Mostrador'}
                     </p>
                   </div>
@@ -830,12 +830,12 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 {/* Lo que falta por cobrar, no el total: si ya hubo anticipo,
                     cobrar el total de nuevo sería cobrar dos veces. */}
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/50 space-y-1">
-                  <div className="flex justify-between text-[11px] text-slate-500 dark:text-neutral-400">
+                  <div className="flex justify-between text-[0.75rem] text-slate-500 dark:text-neutral-400">
                     <span>Total del consumo</span>
                     <span className="font-mono tabular-nums">{plata(activeSale.total)}</span>
                   </div>
                   {Number(activeSale.paidTotal) > 0 && (
-                    <div className="flex justify-between text-[11px] text-emerald-600 dark:text-emerald-400">
+                    <div className="flex justify-between text-[0.75rem] text-emerald-600 dark:text-emerald-400">
                       <span>Anticipo / ya cobrado</span>
                       <span className="font-mono tabular-nums">
                         −{plata(activeSale.paidTotal)}
@@ -851,7 +851,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 {pendiente > 0 ? (
                   <>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                         Método
                       </label>
                       <div className="grid grid-cols-4 gap-1 mt-1">
@@ -864,7 +864,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                           <button
                             key={m.id}
                             onClick={() => setCobroMetodo(m.id)}
-                            className={`py-2 rounded-xl text-[10px] font-bold transition ${
+                            className={`py-2 rounded-xl text-[0.6875rem] font-bold transition ${
                               cobroMetodo === m.id
                                 ? 'bg-[var(--primary)] text-white'
                                 : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'
@@ -881,7 +881,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                         por qué ver esto. */}
                     {(currencies?.length ?? 0) > 1 && cobroMetodo === 'cash' && (
                       <div>
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                           Paga con
                         </label>
                         <div className="flex flex-wrap gap-1 mt-1">
@@ -889,7 +889,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                             <button
                               key={c.id}
                               onClick={() => setCobroMoneda(c.code)}
-                              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition ${
+                              className={`px-2.5 py-1.5 rounded-xl text-[0.75rem] font-bold transition ${
                                 monedaActiva?.code === c.code
                                   ? 'bg-slate-800 dark:bg-neutral-200 text-white dark:text-neutral-900'
                                   : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'
@@ -900,7 +900,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                           ))}
                         </div>
                         {esExtranjera && (
-                          <p className="text-[10px] text-slate-400 mt-1">
+                          <p className="text-[0.6875rem] text-slate-400 mt-1">
                             1 {monedaActiva!.symbol} = {plata(tasa)} · la devuelta se da en {sim}
                           </p>
                         )}
@@ -932,7 +932,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                           Recibido {monedaActiva?.symbol ?? sim}
                         </label>
                         <input
@@ -944,7 +944,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                           Propina {sim}
                         </label>
                         <input
@@ -959,7 +959,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                     </div>
 
                     {(esExtranjera || vuelto > 0) && (
-                      <div className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-0.5 text-[11px]">
+                      <div className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-0.5 text-[0.75rem]">
                         {esExtranjera && (
                           <div className="flex justify-between text-slate-500 dark:text-neutral-400">
                             <span>Equivale a</span>
@@ -1029,7 +1029,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   {pendiente > 0 ? 'Cerrar sin cobrar el resto' : 'Cerrar consumo'}
                 </button>
 
-                <label className="flex items-center justify-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400 cursor-pointer">
+                <label className="flex items-center justify-center gap-2 text-[0.75rem] text-slate-500 dark:text-neutral-400 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={imprimirAlCerrar}
@@ -1040,7 +1040,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   Imprimir recibo al cerrar
                 </label>
 
-                <p className="text-[10px] text-center text-slate-400 leading-relaxed">
+                <p className="text-[0.6875rem] text-center text-slate-400 leading-relaxed">
                   Al cerrar se descuenta el inventario: la receta del servicio y
                   cada producto servido o vendido.
                 </p>

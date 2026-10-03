@@ -16,7 +16,7 @@ export interface PrellenadoNegocio { aplicacionId?: string; salon?: string; nomb
 
 interface ClaveNueva { nombre: string; email?: string | null; entraCon?: string[]; clave: string; telefono?: string | null; salon?: string }
 
-const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
+const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 const tarjeta = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]';
 const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -42,10 +42,10 @@ const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio |
   return (
     <form onSubmit={enviar} className={`${tarjeta} space-y-3 border-[var(--primary)]/50`}>
       <div className="flex justify-between items-center">
-        <b className="text-[14px]">Nuevo cliente{prellenado?.aplicacionId ? ' · desde el piloto' : ''}</b>
+        <b className="text-[0.9375rem]">Nuevo cliente{prellenado?.aplicacionId ? ' · desde el piloto' : ''}</b>
         <button type="button" onClick={onCancelar} aria-label="Cancelar" className="cursor-pointer"><X className="w-4 h-4 text-slate-400" /></button>
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">El salón</div>
+      <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">El salón</div>
       <div className="grid sm:grid-cols-2 gap-2">
         <input required minLength={2} placeholder="Nombre del salón" value={f.salon} onChange={(e) => setF({ ...f, salon: e.target.value })} className={campo} />
         <input placeholder="Nombre de la sede (si no, el del salón)" value={f.sede} onChange={(e) => setF({ ...f, sede: e.target.value })} className={campo} />
@@ -54,15 +54,15 @@ const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio |
           {activos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
         </select>
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">La dueña (entra como administración)</div>
+      <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">La dueña (entra como administración)</div>
       <div className="grid sm:grid-cols-3 gap-2">
         <input required minLength={2} placeholder="Nombre" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} className={campo} />
         <input required type="email" placeholder="Correo (con él entra)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={campo} />
         <input placeholder="WhatsApp (809…)" value={f.telefono} onChange={(e) => setF({ ...f, telefono: e.target.value })} className={campo} />
       </div>
-      <p className="text-[11px] text-slate-500">Se crea el salón con su primera sede en hora dominicana y pesos (se cambia en Ajustes), y una clave temporal para la dueña.</p>
-      {error && <p className="text-[12px] font-semibold text-rose-600" role="alert">{error}</p>}
-      <button type="submit" disabled={ocupado} className="px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[12px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+      <p className="text-[0.75rem] text-slate-500">Se crea el salón con su primera sede en hora dominicana y pesos (se cambia en Ajustes), y una clave temporal para la dueña.</p>
+      {error && <p className="text-[0.8125rem] font-semibold text-rose-600" role="alert">{error}</p>}
+      <button type="submit" disabled={ocupado} className="px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
         {ocupado && <Loader2 className="w-4 h-4 animate-spin" />} Crear cliente
       </button>
     </form>
@@ -84,8 +84,8 @@ const Excepciones: React.FC<{ d: NegocioDetalle; catalogo: CatalogoModulos; plan
       };
       return (
         <button key={m.id} type="button" onClick={alternar} className={`px-2.5 py-2 rounded-xl border text-left flex items-center justify-between gap-2 cursor-pointer ${tiene ? 'border-[var(--primary)]/60 bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700 opacity-60'}`}>
-          <span className="text-[12px] font-semibold text-slate-800 dark:text-neutral-100">{m.nombre}</span>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${extra ? 'bg-emerald-100 text-emerald-700' : quitado ? 'bg-rose-100 text-rose-700' : tiene ? 'bg-slate-100 text-slate-500 dark:bg-neutral-800' : 'text-slate-400'}`}>
+          <span className="text-[0.8125rem] font-semibold text-slate-800 dark:text-neutral-100">{m.nombre}</span>
+          <span className={`text-[0.6875rem] font-bold px-2 py-0.5 rounded-full ${extra ? 'bg-emerald-100 text-emerald-700' : quitado ? 'bg-rose-100 text-rose-700' : tiene ? 'bg-slate-100 text-slate-500 dark:bg-neutral-800' : 'text-slate-400'}`}>
             {extra ? 'De más' : quitado ? 'Quitado' : tiene ? 'Del plan' : 'No incluido'}
           </span>
         </button>
@@ -137,36 +137,36 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
     <div className={`${tarjeta} space-y-4`}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-[16px] font-extrabold text-slate-900 dark:text-white">{d.nombre}</h3>
-          <p className="text-[11px] text-slate-500">Cliente desde {fecha(d.creadoEn)} · {d.sedes.length} {d.sedes.length === 1 ? 'sede' : 'sedes'}</p>
+          <h3 className="text-[1.0625rem] font-extrabold text-slate-900 dark:text-white">{d.nombre}</h3>
+          <p className="text-[0.75rem] text-slate-500">Cliente desde {fecha(d.creadoEn)} · {d.sedes.length} {d.sedes.length === 1 ? 'sede' : 'sedes'}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button type="button" onClick={() => void entrar()} disabled={entrando}
-            className="px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 cursor-pointer" title="Abrir su app para configurarle especialistas, moneda, ajustes…">
+            className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold flex items-center gap-1 bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 cursor-pointer" title="Abrir su app para configurarle especialistas, moneda, ajustes…">
             {entrando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LifeBuoy className="w-3.5 h-3.5" />} Entrar a su salón
           </button>
           <button type="button" disabled={soloSoporte} onClick={() => { if (!d.activo || window.confirm(`¿Suspender ${d.nombre}? Nadie de ese salón podrá entrar hasta que lo actives.`)) void guardar({ active: !d.activo }); }}
-            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 cursor-pointer ${d.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+            className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold flex items-center gap-1 cursor-pointer ${d.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
             <Power className="w-3.5 h-3.5" /> {d.activo ? 'Activo' : 'Suspendido'}
           </button>
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="cursor-pointer"><X className="w-4 h-4 text-slate-400" /></button>
         </div>
       </div>
       {clave && <ClaveParaCompartir {...clave} onListo={() => setClave(null)} />}
-      {error && <p className="text-[12px] font-semibold text-rose-600" role="alert">{error}</p>}
+      {error && <p className="text-[0.8125rem] font-semibold text-rose-600" role="alert">{error}</p>}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Plan</div>
+          <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Plan</div>
           {soloSoporte ? <div className={campo}>{d.plan?.nombre ?? 'Sin plan'}</div> : (
           <select value={d.plan?.id ?? ''} onChange={(e) => void guardar({ planId: e.target.value })} className={campo}>
             {planes.map((p) => <option key={p.id} value={p.id}>{p.nombre}{p.activo ? '' : ' (retirado)'}</option>)}
           </select>)}
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pt-2">Uso</div>
+          <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 pt-2">Uso</div>
           <UsoDelPlan uso={d.uso} limites={d.efectivo.limites} />
         </div>
         <div className="space-y-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Límites propios <span className="normal-case font-normal">(vacío = los del plan)</span></div>
+          <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Límites propios <span className="normal-case font-normal">(vacío = los del plan)</span></div>
           <div className="grid grid-cols-2 gap-2">
             {RECURSOS.map((r: Recurso) => {
               const campoApi = { mensajesMes: 'limiteMensajesMes', sedes: 'limiteSedes', usuarios: 'limiteUsuarios', especialistas: 'limiteEspecialistas' }[r];
@@ -174,7 +174,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
               const delPlan = limitePlan ? (limitePlan as Limites)[r] : null;
               return (
                 <label key={r} className="space-y-1 block">
-                  <span className="text-[11px] text-slate-500">{NOMBRE_RECURSO[r]}</span>
+                  <span className="text-[0.75rem] text-slate-500">{NOMBRE_RECURSO[r]}</span>
                   <input type="number" min={0} disabled={soloSoporte} defaultValue={propio ?? ''} placeholder={delPlan === null ? 'Plan: sin límite' : `Plan: ${delPlan}`}
                     onBlur={(e) => { const v = e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))); if (v !== propio) void guardar({ [campoApi]: v }); }}
                     className={campo} />
@@ -186,7 +186,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
       </div>
 
       <div className="space-y-2">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Módulos de este cliente <span className="normal-case font-normal">(toca para darle uno de más o quitarle uno de su plan)</span></div>
+        <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Módulos de este cliente <span className="normal-case font-normal">(toca para darle uno de más o quitarle uno de su plan)</span></div>
         <div className={soloSoporte ? 'pointer-events-none' : ''}><Excepciones d={d} catalogo={catalogo} planModulos={planModulos} onCambio={(extra, quitados) => void guardar({ modulosExtra: extra, modulosQuitados: quitados })} /></div>
       </div>
 
@@ -198,30 +198,30 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Usuarios</div>
+          <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Usuarios</div>
           {d.usuarios.map((u) => (
-            <div key={u.id} className={`flex items-center gap-2 text-[12px] ${u.active ? '' : 'opacity-50'}`}>
+            <div key={u.id} className={`flex items-center gap-2 text-[0.8125rem] ${u.active ? '' : 'opacity-50'}`}>
               <div className="flex-1 min-w-0"><b>{u.name}</b> <span className="text-slate-400">· {u.role === 'admin' ? 'Administración' : u.role === 'assistant' ? 'Asistente' : u.role}</span>
-                <div className="text-[11px] text-slate-500 truncate">{[u.usuario, u.email].filter(Boolean).join(' · ')}{u.debeCambiarClave && <span className="text-amber-600"> · aún no entra</span>}{u.email && !u.correoConfirmadoEn && <span className="text-amber-600"> · correo sin confirmar</span>}</div></div>
+                <div className="text-[0.75rem] text-slate-500 truncate">{[u.usuario, u.email].filter(Boolean).join(' · ')}{u.debeCambiarClave && <span className="text-amber-600"> · aún no entra</span>}{u.email && !u.correoConfirmadoEn && <span className="text-amber-600"> · correo sin confirmar</span>}</div></div>
               <button type="button" onClick={() => void nuevaClave(u)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer" title="Clave temporal nueva"><KeyRound className="w-3.5 h-3.5 text-slate-500" /></button>
             </div>
           ))}
         </div>
         <div className="space-y-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Sedes</div>
-          {d.sedes.map((s) => <div key={s.id} className="flex items-center gap-1.5 text-[12px]"><MapPin className="w-3.5 h-3.5 text-slate-400" />{s.name}{s.address && <span className="text-slate-400"> · {s.address}</span>}</div>)}
+          <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Sedes</div>
+          {d.sedes.map((s) => <div key={s.id} className="flex items-center gap-1.5 text-[0.8125rem]"><MapPin className="w-3.5 h-3.5 text-slate-400" />{s.name}{s.address && <span className="text-slate-400"> · {s.address}</span>}</div>)}
           {!soloSoporte && <div className="flex gap-2">
             <input value={sede} onChange={(e) => setSede(e.target.value)} placeholder="Nueva sede (ej.: Naco)" className={campo} />
-            <button type="button" onClick={() => void agregarSede()} className="px-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold cursor-pointer shrink-0">Agregar</button>
+            <button type="button" onClick={() => void agregarSede()} className="px-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[0.75rem] font-bold cursor-pointer shrink-0">Agregar</button>
           </div>}
         </div>
       </div>
 
       {!soloSoporte && <div className="space-y-1.5">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tus notas (el salón no las ve)</div>
+        <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Tus notas (el salón no las ve)</div>
         <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} className={campo} />
         {notas !== (d.notasPlataforma ?? '') && (
-          <button type="button" onClick={() => void guardar({ notasPlataforma: notas })} className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"><Save className="w-3.5 h-3.5" /> Guardar notas</button>
+          <button type="button" onClick={() => void guardar({ notasPlataforma: notas })} className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-bold flex items-center gap-1 cursor-pointer"><Save className="w-3.5 h-3.5" /> Guardar notas</button>
         )}
       </div>}
     </div>
@@ -258,8 +258,8 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
   return (
     <div className="space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-slate-500 dark:text-neutral-400">{lista.length} {lista.length === 1 ? 'cliente' : 'clientes'} · {lista.filter((n) => n.activo).length} activos</p>
-        {!creando && !soloSoporte && <button type="button" onClick={() => { setCreando(true); setAbierto(null); }} className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[12px] font-bold flex items-center gap-1 cursor-pointer"><Plus className="w-4 h-4" /> Nuevo cliente</button>}
+        <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400">{lista.length} {lista.length === 1 ? 'cliente' : 'clientes'} · {lista.filter((n) => n.activo).length} activos</p>
+        {!creando && !soloSoporte && <button type="button" onClick={() => { setCreando(true); setAbierto(null); }} className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer"><Plus className="w-4 h-4" /> Nuevo cliente</button>}
       </div>
       {clave && <ClaveParaCompartir {...clave} onListo={() => setClave(null)} />}
       {creando && (
@@ -276,17 +276,17 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0"><Building2 className="w-4 h-4" /></div>
                 <div className="min-w-0">
-                  <div className="text-[14px] font-extrabold text-slate-900 dark:text-white truncate">{n.nombre}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{n.duena ? `${n.duena.name} · ${n.duena.email}` : 'Sin administración'}</div>
+                  <div className="text-[0.9375rem] font-extrabold text-slate-900 dark:text-white truncate">{n.nombre}</div>
+                  <div className="text-[0.75rem] text-slate-500 truncate">{n.duena ? `${n.duena.name} · ${n.duena.email}` : 'Sin administración'}</div>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
             </div>
             <div className="flex flex-wrap gap-1.5 mt-2.5 mb-2.5">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--primary)]/10 text-[var(--primary)]">{n.plan?.nombre ?? 'Sin plan'}</span>
-              {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
-              {!n.activo && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">Suspendido</span>}
-              {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}
+              <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-[var(--primary)]/10 text-[var(--primary)]">{n.plan?.nombre ?? 'Sin plan'}</span>
+              {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
+              {!n.activo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-rose-100 text-rose-700">Suspendido</span>}
+              {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}
             </div>
             <UsoDelPlan uso={n.uso} limites={n.limites} compacto />
           </button>

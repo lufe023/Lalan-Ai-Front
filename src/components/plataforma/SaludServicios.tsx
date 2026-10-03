@@ -51,7 +51,7 @@ export const SaludServicios: React.FC<{ onAbrirNegocio?: (id: string) => void }>
         <div>
           <h3 className="text-base font-bold flex items-center gap-2"><Activity className="w-4 h-4" /> Salud de los servicios</h3>
           <p className={`text-sm font-bold ${caidos ? 'text-rose-600' : avisos ? 'text-amber-600' : 'text-emerald-600'}`}>{resumen}</p>
-          <p className="text-[11px] text-slate-500">Se revisa sola cada 5 minutos. Si algo se cae o vuelve, te llega un correo.</p>
+          <p className="text-[0.75rem] text-slate-500">Se revisa sola cada 5 minutos. Si algo se cae o vuelve, te llega un correo.</p>
         </div>
         <button type="button" onClick={() => void revisarAhora()} disabled={revisando}
           className="px-3 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
@@ -66,24 +66,24 @@ export const SaludServicios: React.FC<{ onAbrirNegocio?: (id: string) => void }>
             <article key={s.id} className={`rounded-2xl border bg-white dark:bg-neutral-900 p-3 space-y-1.5 ${v.borde}`}>
               <div className="flex items-center justify-between gap-2">
                 <b className="text-sm">{s.nombre}</b>
-                <span className={`flex items-center gap-1 text-[11px] font-bold ${v.clase}`}><v.icono className="w-4 h-4" /> {v.texto}</span>
+                <span className={`flex items-center gap-1 text-[0.75rem] font-bold ${v.clase}`}><v.icono className="w-4 h-4" /> {v.texto}</span>
               </div>
               <p className="text-xs text-slate-700 dark:text-neutral-200">{s.detalle}</p>
               {s.enlaces && s.enlaces.length > 0 && (
                 <ul className="space-y-1">
                   {s.enlaces.map((e, i) => (
                     <li key={i}>
-                      <button type="button" onClick={() => onAbrirNegocio?.(e.negocioId)} className="text-left text-[11px] font-semibold text-[var(--primary)] hover:underline cursor-pointer">{e.texto} →</button>
+                      <button type="button" onClick={() => onAbrirNegocio?.(e.negocioId)} className="text-left text-[0.75rem] font-semibold text-[var(--primary)] hover:underline cursor-pointer">{e.texto} →</button>
                     </li>
                   ))}
                 </ul>
               )}
               {s.id === 'canales' && s.estado !== 'sin_configurar' && (
-                <button type="button" onClick={() => setVerCanales(v => !v)} className="text-[11px] font-bold text-[var(--primary)] hover:underline cursor-pointer" aria-expanded={verCanales}>
+                <button type="button" onClick={() => setVerCanales(v => !v)} className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline cursor-pointer" aria-expanded={verCanales}>
                   {verCanales ? 'Ocultar la lista' : 'Ver todos los canales →'}
                 </button>
               )}
-              <p className="text-[10px] text-slate-400">{s.descripcion}{s.ms !== null ? ` · ${s.ms} ms` : ''}{s.revisadoEn ? ` · revisado ${horaDe(s.revisadoEn)}` : ''}</p>
+              <p className="text-[0.6875rem] text-slate-400">{s.descripcion}{s.ms !== null ? ` · ${s.ms} ms` : ''}{s.revisadoEn ? ` · revisado ${horaDe(s.revisadoEn)}` : ''}</p>
             </article>
           );
         })}
@@ -101,7 +101,7 @@ export const SaludServicios: React.FC<{ onAbrirNegocio?: (id: string) => void }>
                 <li key={h.id} className="flex items-start gap-2 text-xs">
                   <v.icono className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${v.clase}`} />
                   <span className="flex-1"><b>{nombre(h.servicio)}</b> · {v.texto}{h.detalle ? ` — ${h.detalle}` : ''}</span>
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">{new Date(h.creadoEn).toLocaleDateString('es', { day: 'numeric', month: 'short' })}, {horaDe(h.creadoEn)}</span>
+                  <span className="text-[0.6875rem] text-slate-400 whitespace-nowrap">{new Date(h.creadoEn).toLocaleDateString('es', { day: 'numeric', month: 'short' })}, {horaDe(h.creadoEn)}</span>
                 </li>
               );
             })}

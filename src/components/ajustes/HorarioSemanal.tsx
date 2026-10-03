@@ -130,10 +130,10 @@ export const HorarioSemanal: React.FC<{
   if (enLinea && editando) {
     return (
       <div className="space-y-3">
-        <button type="button" onClick={() => setEditando(null)} className="text-[12px] font-bold text-[var(--primary)] ios-touch">
+        <button type="button" onClick={() => setEditando(null)} className="text-[0.8125rem] font-bold text-[var(--primary)] ios-touch">
           ‹ Volver a la semana
         </button>
-        <p className="text-[15px] font-bold text-slate-900 dark:text-white">{nombreDe(editando.dia)}</p>
+        <p className="text-[1rem] font-bold text-slate-900 dark:text-white">{nombreDe(editando.dia)}</p>
         <ContenidoDia dia={editando} habitual={habitual} semana={semana} onGuardar={guardarDia} persona={persona} />
       </div>
     );
@@ -146,7 +146,7 @@ export const HorarioSemanal: React.FC<{
           <CalendarDays className="w-4 h-4 text-[var(--primary)]" />
           <span>{titulo}</span>
         </div>
-        <span className="text-[10px] text-slate-400">Toca un día para cambiarlo</span>
+        <span className="text-[0.6875rem] text-slate-400">Toca un día para cambiarlo</span>
       </div>
 
       <ul className="rounded-xl border border-slate-200/70 dark:border-neutral-700/70 divide-y divide-slate-200/70 dark:divide-neutral-800 overflow-hidden">
@@ -157,15 +157,15 @@ export const HorarioSemanal: React.FC<{
               onClick={() => setEditando(d)}
               className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left ios-touch"
             >
-              <span className={`w-20 shrink-0 text-[12px] font-bold ${d.abierto ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-neutral-500'}`}>
+              <span className={`w-20 shrink-0 text-[0.8125rem] font-bold ${d.abierto ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-neutral-500'}`}>
                 {nombreDe(d.dia)}
               </span>
               {d.abierto ? (
-                <span className="flex flex-col text-[12px] font-semibold text-slate-700 dark:text-slate-200 tabular-nums leading-snug">
+                <span className="flex flex-col text-[0.8125rem] font-semibold text-slate-700 dark:text-slate-200 tabular-nums leading-snug">
                   {d.tramos.map((t, i) => <span key={i}>{rango(t)}</span>)}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 dark:text-neutral-500">
+                <span className="inline-flex items-center gap-1 text-[0.75rem] font-semibold text-slate-400 dark:text-neutral-500">
                   <Moon className="w-3 h-3" /> {textoApagado}
                 </span>
               )}
@@ -236,7 +236,7 @@ const ContenidoDia: React.FC<{
   const cuantos = tambien.length + 1;
   const textoGuardar = cuantos === 1 ? `Guardar ${nombreDe(dia.dia).toLowerCase()}` : `Guardar en ${cuantos} días`;
   const chip = (activo: boolean) =>
-    `px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ios-touch ${
+    `px-3 py-1.5 rounded-full text-[0.75rem] font-bold border transition-colors ios-touch ${
       activo
         ? 'bg-[var(--primary)] border-[var(--primary)] text-white'
         : 'bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300'
@@ -247,10 +247,10 @@ const ContenidoDia: React.FC<{
         {/* Abierto o cerrado */}
         <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
           <div>
-            <p className="text-[13px] font-bold text-slate-800 dark:text-white">
+            <p className="text-[0.875rem] font-bold text-slate-800 dark:text-white">
               {persona ? (abierto ? 'Trabaja este día' : 'No trabaja este día') : (abierto ? 'Abre este día' : 'Cerrado este día')}
             </p>
-            <p className="text-[11px] text-slate-500 dark:text-neutral-400">
+            <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
               {persona
                 ? (abierto ? `Lalan le agenda a ${persona} solo dentro de estos turnos.` : `Lalan no le agenda citas a ${persona} este día.`)
                 : (abierto ? 'Lalan agenda solo dentro de estos turnos.' : 'Lalan no ofrece citas este día, pero sigue contestando.')}
@@ -262,7 +262,7 @@ const ContenidoDia: React.FC<{
         {abierto && (
           <>
             <div className="space-y-2">
-              <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Jornada</p>
+              <p className="text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">Jornada</p>
               <div className="flex flex-wrap gap-1.5">
                 {TIPOS_DE_JORNADA.map(t => (
                   <button key={t.id} type="button" onClick={() => elegirJornada(t.id)} className={chip(tipoActual === t.id)}>
@@ -276,7 +276,7 @@ const ContenidoDia: React.FC<{
               {tramos.map((t, i) => (
                 <div key={i} className="p-3 rounded-xl border border-slate-200/70 dark:border-neutral-700/70 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    <p className="text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">
                       {tramos.length === 1 ? 'Horario' : `Turno ${i + 1}`}
                     </p>
                     {tramos.length > 1 && (
@@ -287,9 +287,9 @@ const ContenidoDia: React.FC<{
                     )}
                   </div>
                   <div className="grid grid-cols-[4.5rem_1fr] items-center gap-x-2 gap-y-2">
-                    <span className="text-[11px] text-slate-500 dark:text-neutral-400">Abre</span>
+                    <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Abre</span>
                     <SelectorHora value={t.desde} onChange={v => cambiarTramo(i, 'desde', v)} paso={15} etiqueta={`Turno ${i + 1}: abre`} />
-                    <span className="text-[11px] text-slate-500 dark:text-neutral-400">Cierra</span>
+                    <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Cierra</span>
                     <SelectorHora value={t.hasta} onChange={v => cambiarTramo(i, 'hasta', v)} paso={15} etiqueta={`Turno ${i + 1}: cierra`} />
                   </div>
                 </div>
@@ -297,20 +297,20 @@ const ContenidoDia: React.FC<{
 
               {tramos.length < MAXIMO_TURNOS && (
                 <button type="button" onClick={agregarTramo}
-                  className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-600 text-[12px] font-bold text-[var(--primary)] flex items-center justify-center gap-1 ios-touch">
+                  className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-600 text-[0.8125rem] font-bold text-[var(--primary)] flex items-center justify-center gap-1 ios-touch">
                   <Plus className="w-3.5 h-3.5" />
                   {tramos.length === 1 ? 'Agregar otro turno (cierras y vuelves a abrir)' : 'Agregar otro turno'}
                 </button>
               )}
 
-              {problema && <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">{problema}</p>}
+              {problema && <p className="text-[0.75rem] font-semibold text-amber-600 dark:text-amber-400">{problema}</p>}
             </div>
           </>
         )}
 
         {/* Copiar a otros días */}
         <div className="space-y-2 pt-3 border-t border-slate-200/70 dark:border-neutral-800">
-          <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Usar este mismo horario también el…</p>
+          <p className="text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">Usar este mismo horario también el…</p>
           <div className="flex flex-wrap gap-1.5">
             {otros.map(d => {
               const actual = semana.find(x => x.dia === d);
@@ -330,7 +330,7 @@ const ContenidoDia: React.FC<{
           </div>
           <div className="flex flex-wrap gap-3">
             {GRUPOS_DE_DIAS.map(g => (
-              <button key={g.id} type="button" onClick={() => elegirGrupo(g.dias)} className="text-[11px] font-bold text-[var(--primary)] ios-touch">
+              <button key={g.id} type="button" onClick={() => elegirGrupo(g.dias)} className="text-[0.75rem] font-bold text-[var(--primary)] ios-touch">
                 {g.descripcion}
               </button>
             ))}
@@ -341,7 +341,7 @@ const ContenidoDia: React.FC<{
           type="button"
           disabled={!!problema}
           onClick={guardar}
-          className="w-full py-3 rounded-xl bg-[var(--primary)] text-white text-[13px] font-bold ios-touch disabled:opacity-40"
+          className="w-full py-3 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold ios-touch disabled:opacity-40"
         >
           {textoGuardar}
         </button>

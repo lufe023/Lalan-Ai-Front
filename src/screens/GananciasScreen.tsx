@@ -422,8 +422,8 @@ export const GananciasScreen: React.FC = () => {
         {/* Mode toggle + export */}
         <div className="flex items-center justify-between mt-3 mb-4 bg-white dark:bg-neutral-900 rounded-2xl p-3 border border-slate-200 dark:border-neutral-800">
           <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider">Modo de vista</p>
-            <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">
+            <p className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider">Modo de vista</p>
+            <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 mt-0.5">
               {mode === 'bruto' ? 'Antes de descontar insumos' : 'Después de descontar insumos'}
             </p>
           </div>
@@ -431,7 +431,7 @@ export const GananciasScreen: React.FC = () => {
             <div className="flex bg-slate-100 dark:bg-neutral-800 rounded-xl p-0.5 gap-0.5">
               {(['bruto', 'neto'] as RevenueMode[]).map(m => (
                 <button key={m} onClick={() => setMode(m)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition ios-touch cursor-pointer capitalize ${mode === m ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-400 dark:text-neutral-500'}`}>
+                  className={`px-3 py-1.5 rounded-lg text-[0.75rem] font-bold transition ios-touch cursor-pointer capitalize ${mode === m ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-400 dark:text-neutral-500'}`}>
                   {m}
                 </button>
               ))}
@@ -439,7 +439,7 @@ export const GananciasScreen: React.FC = () => {
             <button
               onClick={exportToExcel}
               title="Exportar a Excel"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-[11px] font-bold transition cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-[0.75rem] font-bold transition cursor-pointer shadow-xs"
             >
               <Download className="w-3.5 h-3.5" />
               Excel
@@ -453,18 +453,18 @@ export const GananciasScreen: React.FC = () => {
           className="bg-white dark:bg-neutral-900 rounded-2xl p-4 border border-slate-200 dark:border-neutral-800 mb-4">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+              <p className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
                 {mode === 'bruto' ? 'Ingresos brutos' : 'Ganancias netas'}
               </p>
               <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {dinero(totalRevenue)}
               </div>
-              <p className="text-[11px] text-slate-400 dark:text-neutral-500 mt-1">
+              <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500 mt-1">
                 {count} {count === 1 ? 'venta cobrada' : 'ventas cobradas'}
                 {Number(informe?.cortesias ?? 0) > 0 && ` · ${informe.cortesias} cortesías`}
               </p>
             </div>
-            <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold ${
+            <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[0.75rem] font-bold ${
               mode === 'neto'
                 ? margin >= 35 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                   : margin >= 15 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -479,11 +479,11 @@ export const GananciasScreen: React.FC = () => {
           {mode === 'neto' && (
             <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-neutral-800">
               <div className="text-center">
-                <p className="text-[10px] text-slate-400 dark:text-neutral-500">Ingresos brutos</p>
+                <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500">Ingresos brutos</p>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{dinero(bruto)}</p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] text-slate-400 dark:text-neutral-500">Costo de insumos</p>
+                <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500">Costo de insumos</p>
                 <p className="text-sm font-bold text-red-500 dark:text-red-400">-{dinero(costoTotal)}</p>
               </div>
             </div>
@@ -556,7 +556,7 @@ export const GananciasScreen: React.FC = () => {
               </svg>
             </div>
           ) : (
-            <div className="mt-3 py-3 text-center text-[11px] text-slate-400 dark:text-neutral-500">
+            <div className="mt-3 py-3 text-center text-[0.75rem] text-slate-400 dark:text-neutral-500">
               Sin ventas cobradas en este período
             </div>
           )}
@@ -565,7 +565,7 @@ export const GananciasScreen: React.FC = () => {
         {mode === 'bruto' && (
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/70 dark:border-amber-800/40 mb-4">
             <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+            <p className="text-[0.75rem] text-amber-700 dark:text-amber-300 leading-relaxed">
               El <strong>neto</strong> descuenta el costo de insumos configurados en Catálogo → Receta de cada servicio. Actívalo para ver tu ganancia real.
             </p>
           </div>
@@ -590,7 +590,7 @@ export const GananciasScreen: React.FC = () => {
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{dinero(display)}</span>
-                      <span className="text-[10px] text-slate-400 ml-1">({svc.count} {svc.count === 1 ? 'vez' : 'veces'})</span>
+                      <span className="text-[0.6875rem] text-slate-400 ml-1">({svc.count} {svc.count === 1 ? 'vez' : 'veces'})</span>
                     </div>
                   </div>
                   <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -598,7 +598,7 @@ export const GananciasScreen: React.FC = () => {
                       style={{ width: `${Math.min(pct, 100)}%`, background: mode === 'bruto' ? 'var(--primary)' : '#10b981' }} />
                   </div>
                   {mode === 'neto' && svc.cost > 0 && (
-                    <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1">
+                    <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 mt-1">
                       Insumos: -{dinero(svc.cost)} · Bruto: {dinero(svc.bruto)}
                     </p>
                   )}
@@ -630,7 +630,7 @@ export const GananciasScreen: React.FC = () => {
                       <span className="text-xs font-bold text-slate-900 dark:text-white">
                         {dinero(display)}
                       </span>
-                      <span className="text-[10px] text-slate-400 ml-1">
+                      <span className="text-[0.6875rem] text-slate-400 ml-1">
                         ({p.count} {p.count === 1 ? 'unidad' : 'unidades'})
                       </span>
                     </div>
@@ -640,7 +640,7 @@ export const GananciasScreen: React.FC = () => {
                       style={{ width: `${Math.min(pct, 100)}%`, background: mode === 'bruto' ? '#f59e0b' : '#10b981' }} />
                   </div>
                   {mode === 'neto' && p.cost > 0 && (
-                    <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1">
+                    <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 mt-1">
                       Costo: -{dinero(p.cost)} · Margen {p.margen}%
                     </p>
                   )}
@@ -655,10 +655,10 @@ export const GananciasScreen: React.FC = () => {
           <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-slate-200 dark:border-neutral-800 p-4 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider">
+                <p className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider">
                   Cortesías
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                   {informe.cortesias} servidas · lo que te cuesta ser amable
                 </p>
               </div>
@@ -686,16 +686,16 @@ export const GananciasScreen: React.FC = () => {
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[9px] font-bold text-violet-600 dark:text-violet-400">
+                        <span className="text-[0.6875rem] font-bold text-violet-600 dark:text-violet-400">
                           {staff.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </span>
                       </div>
                       <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{staff.name}</span>
-                      {isTop && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">★ Top</span>}
+                      {isTop && <span className="text-[0.6875rem] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex-shrink-0">★ Top</span>}
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
                       <span className="text-xs font-bold text-slate-900 dark:text-white">{dinero(display)}</span>
-                      <span className="text-[10px] text-slate-400 ml-1">({staff.count} {staff.count === 1 ? 'servicio' : 'servicios'})</span>
+                      <span className="text-[0.6875rem] text-slate-400 ml-1">({staff.count} {staff.count === 1 ? 'servicio' : 'servicios'})</span>
                     </div>
                   </div>
                   <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -703,7 +703,7 @@ export const GananciasScreen: React.FC = () => {
                       style={{ width: `${Math.min(pct, 100)}%`, background: '#8b5cf6' }} />
                   </div>
                   {mode === 'neto' && staff.cost > 0 && (
-                    <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-1">
+                    <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 mt-1">
                       Insumos: -{dinero(staff.cost)} · Bruto: {dinero(staff.bruto)}
                     </p>
                   )}
@@ -729,21 +729,21 @@ export const GananciasScreen: React.FC = () => {
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-6 h-6 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[9px] font-bold text-sky-600 dark:text-sky-400">
+                        <span className="text-[0.6875rem] font-bold text-sky-600 dark:text-sky-400">
                           {client.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                         </span>
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{client.name}</span>
-                          {isTopSpender && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 flex-shrink-0">💰 Top gasto</span>}
-                          {isMostRecurring && !isTopSpender && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 flex-shrink-0">🔁 Más recurrente</span>}
+                          {isTopSpender && <span className="text-[0.6875rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 flex-shrink-0">💰 Top gasto</span>}
+                          {isMostRecurring && !isTopSpender && <span className="text-[0.6875rem] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 flex-shrink-0">🔁 Más recurrente</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-slate-400">{client.count} {client.count === 1 ? 'visita' : 'visitas'}</span>
-                          {client.preferredHour && <span className="text-[10px] text-slate-400">· prefiere {client.preferredHour}</span>}
+                          <span className="text-[0.6875rem] text-slate-400">{client.count} {client.count === 1 ? 'visita' : 'visitas'}</span>
+                          {client.preferredHour && <span className="text-[0.6875rem] text-slate-400">· prefiere {client.preferredHour}</span>}
                           {client.services.length > 0 && (
-                            <span className="text-[10px] text-slate-400 truncate max-w-[140px]">· {client.services.slice(0, 2).join(', ')}{client.services.length > 2 ? ` +${client.services.length - 2}` : ''}</span>
+                            <span className="text-[0.6875rem] text-slate-400 truncate max-w-[140px]">· {client.services.slice(0, 2).join(', ')}{client.services.length > 2 ? ` +${client.services.length - 2}` : ''}</span>
                           )}
                         </div>
                       </div>
@@ -760,7 +760,7 @@ export const GananciasScreen: React.FC = () => {
               );
             })}
             {clientBreakdown.length > 8 && (
-              <div className="px-4 py-2.5 text-center text-[10px] text-slate-400 dark:text-neutral-500 border-t border-slate-50 dark:border-neutral-800/50">
+              <div className="px-4 py-2.5 text-center text-[0.6875rem] text-slate-400 dark:text-neutral-500 border-t border-slate-50 dark:border-neutral-800/50">
                 +{clientBreakdown.length - 8} clientes más · exporta a Excel para ver todos
               </div>
             )}

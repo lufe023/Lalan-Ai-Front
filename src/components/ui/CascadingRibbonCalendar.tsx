@@ -365,10 +365,10 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                 onClick={() => handleSelectYear(yr)}
                 className={`min-w-[88px] py-2 px-2 rounded-xl flex flex-col items-center justify-center transition shrink-0 cursor-pointer ${isSel ? ACT : IDLE}`}
               >
-                <span className="text-[9px] uppercase font-semibold opacity-80">{yr === today.getFullYear() ? 'ACTUAL' : 'AÑO'}</span>
+                <span className="text-[0.6875rem] uppercase font-semibold opacity-80">{yr === today.getFullYear() ? 'ACTUAL' : 'AÑO'}</span>
                 <span className="text-sm font-extrabold mt-0.5">{yr}</span>
-                <span className={`text-[9px] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
-                <span className="text-[8px] opacity-60 mt-0.5 flex items-center gap-0.5">Ver Meses <ArrowRight className="w-2 h-2" /></span>
+                <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
+                <span className="text-[0.6875rem] opacity-60 mt-0.5 flex items-center gap-0.5">Ver Meses <ArrowRight className="w-2 h-2" /></span>
               </button>
             );
           })}
@@ -385,10 +385,10 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                 onClick={() => handleSelectMonth(mo.index)}
                 className={`min-w-[78px] py-2 px-2 rounded-xl flex flex-col items-center justify-center transition shrink-0 cursor-pointer ${isSel ? ACT : mo.isCurrent ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200/60' : IDLE}`}
               >
-                <span className="text-[9px] uppercase font-semibold opacity-80">{currentYear}</span>
+                <span className="text-[0.6875rem] uppercase font-semibold opacity-80">{currentYear}</span>
                 <span className="text-sm font-extrabold mt-0.5">{mo.shortName}</span>
-                <span className={`text-[9px] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
-                <span className="text-[8px] opacity-60 mt-0.5 flex items-center gap-0.5">Semanas <ArrowRight className="w-2 h-2" /></span>
+                <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
+                <span className="text-[0.6875rem] opacity-60 mt-0.5 flex items-center gap-0.5">Semanas <ArrowRight className="w-2 h-2" /></span>
               </button>
             );
           })}
@@ -405,10 +405,10 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                 onClick={() => handleSelectWeek(idx)}
                 className={`min-w-[100px] py-2 px-2 rounded-xl flex flex-col items-center justify-center transition shrink-0 cursor-pointer ${isSel ? ACT : wk.isCurrentWeek ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200/60' : IDLE}`}
               >
-                <span className="text-[9px] uppercase font-semibold opacity-80">{wk.label}</span>
+                <span className="text-[0.6875rem] uppercase font-semibold opacity-80">{wk.label}</span>
                 <span className="text-xs font-extrabold mt-0.5 whitespace-nowrap">{wk.rangeLabel}</span>
-                <span className={`text-[9px] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
-                <span className="text-[8px] opacity-60 mt-0.5 flex items-center gap-0.5">Ver Días <ArrowRight className="w-2 h-2" /></span>
+                <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
+                <span className="text-[0.6875rem] opacity-60 mt-0.5 flex items-center gap-0.5">Ver Días <ArrowRight className="w-2 h-2" /></span>
               </button>
             );
           })}
@@ -431,7 +431,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                     : IDLE
                 }`}
               >
-                <span className="text-[9px] uppercase font-semibold opacity-85 leading-none">{day.weekday}</span>
+                <span className="text-[0.6875rem] uppercase font-semibold opacity-85 leading-none">{day.weekday}</span>
                 <span className="text-sm font-extrabold mt-0.5 leading-none">{day.dayNum}</span>
                 {count > 0 && (
                   <span className={`w-1.5 h-1.5 rounded-full mt-1 ${isSel ? 'bg-white' : 'bg-[var(--primary)]'}`} />

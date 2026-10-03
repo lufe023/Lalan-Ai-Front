@@ -150,7 +150,7 @@ export const BotsControlScreen: React.FC = () => {
 
       <PageContent className="space-y-4">
         {/* Aquí solo se muestra lo que de verdad pasó: cada número sale de la base */}
-        <p className="text-[11px] text-slate-500 dark:text-neutral-400 px-1 leading-relaxed">
+        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 px-1 leading-relaxed">
           Cada canal se enciende por separado. Encendido, {agente} contesta sola; apagado, no le escribe a nadie
           y, si abajo están activas las sugerencias, solo te propone respuestas. Una conversación que {agente} pasa
           a una persona queda en tus manos hasta que se la devuelvas desde el chat.
@@ -181,7 +181,7 @@ export const BotsControlScreen: React.FC = () => {
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                       {bot.name}
                     </h4>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[0.6875rem] text-slate-400">
                       {bot.channelIdentifier ? haceCuanto(bot.actividad.ultimaRespuesta) : 'sin cuenta conectada'}
                     </span>
                   </div>
@@ -189,7 +189,7 @@ export const BotsControlScreen: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-[10px] font-extrabold ${
+                    className={`text-[0.6875rem] font-extrabold ${
                       bot.enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
                     }`}
                   >
@@ -208,7 +208,7 @@ export const BotsControlScreen: React.FC = () => {
                   la dueña usa los botones "Conectar" de arriba */}
               {currentUser?.role === 'super_admin' ? (
               <div className="pt-2 border-t border-slate-100 dark:border-neutral-800/80">
-                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                <label className="block text-[0.6875rem] font-bold uppercase text-slate-400 mb-1">
                   Cuenta de Meta conectada
                 </label>
                 <input
@@ -220,10 +220,10 @@ export const BotsControlScreen: React.FC = () => {
                   placeholder="Sin conectar"
                   className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">{AYUDA_CUENTA[bot.id]}</p>
+                <p className="text-[0.6875rem] text-slate-400 mt-1">{AYUDA_CUENTA[bot.id]}</p>
               </div>
               ) : !bot.channelIdentifier && (
-                <p className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 text-[11px] text-slate-500">
+                <p className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 text-[0.75rem] text-slate-500">
                   Sin conectar: usa el botón de {bot.name} de arriba.
                 </p>
               )}
@@ -247,7 +247,7 @@ export const BotsControlScreen: React.FC = () => {
                     disabled={!t.accion}
                     className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-left disabled:cursor-default enabled:hover:bg-amber-50 enabled:cursor-pointer"
                   >
-                    <span className="text-[9px] uppercase font-bold text-slate-400 block">{t.titulo}</span>
+                    <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block">{t.titulo}</span>
                     <span className={`text-sm font-extrabold tabular-nums ${t.clase}`}>{t.valor}</span>
                   </button>
                 ))}
@@ -265,7 +265,7 @@ export const BotsControlScreen: React.FC = () => {
                 Parámetros de Agendamiento IA
               </h3>
             </div>
-            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+            <span className="text-[0.6875rem] font-bold text-purple-600 dark:text-purple-400">
             </span>
           </div>
 
@@ -275,7 +275,7 @@ export const BotsControlScreen: React.FC = () => {
               <div className="text-xs font-bold text-slate-900 dark:text-white">
                 Agendamiento 100% Autónomo
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 El bot bloquea el horario directamente sin requerir confirmación humana.
               </div>
             </div>
@@ -293,7 +293,7 @@ export const BotsControlScreen: React.FC = () => {
               <div className="text-xs font-bold text-slate-900 dark:text-white">
                 Exigir {settings.depositPercent}% de anticipo
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Al agendar, {agente} le dice a la clienta cuánto es el anticipo ({settings.depositPercent}% del total). El porcentaje se cambia en Ajustes.
               </div>
             </div>
@@ -307,7 +307,7 @@ export const BotsControlScreen: React.FC = () => {
 
           {/* La asistente: cómo se llama */}
           <div className="py-1.5 border-b border-slate-100 dark:border-neutral-800/80">
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Nombre de la asistente
             </label>
             <input
@@ -330,7 +330,7 @@ export const BotsControlScreen: React.FC = () => {
               <div className="text-xs font-bold text-slate-900 dark:text-white">
                 Sugerencias cuando {agente} no atiende
               </div>
-              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Con un canal apagado o un chat en manos de una persona, {agente} sigue leyendo y te propone
                 respuestas. Cada sugerencia consume lo mismo que una respuesta; apagado, {agente} no gasta nada.
               </div>
@@ -348,7 +348,7 @@ export const BotsControlScreen: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-bold text-slate-900 dark:text-white">Avisarme por WhatsApp</div>
-                <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                   Cuando {agente} pase un chat a una persona o agende una cita sin especialista, te llega un WhatsApp
                   (plantilla aprobada por Meta). Es el único mensaje que el sistema manda sin que le escriban.
                 </div>
@@ -362,7 +362,7 @@ export const BotsControlScreen: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Cómo te saluda</label>
+                <label className="block text-[0.6875rem] font-bold text-slate-500 mb-0.5">Cómo te saluda</label>
                 <input
                   type="text"
                   value={nombreAviso}
@@ -374,7 +374,7 @@ export const BotsControlScreen: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-0.5">WhatsApp, con código de país</label>
+                <label className="block text-[0.6875rem] font-bold text-slate-500 mb-0.5">WhatsApp, con código de país</label>
                 <input
                   type="tel"
                   inputMode="numeric"
@@ -397,7 +397,7 @@ export const BotsControlScreen: React.FC = () => {
               type="button"
               onClick={probarAviso}
               disabled={probandoAviso || !settings.alertPhone}
-              className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-[11px] font-bold text-slate-700 dark:text-neutral-200 disabled:opacity-50 cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200 disabled:opacity-50 cursor-pointer"
             >
               {probandoAviso ? 'Enviando…' : 'Enviar aviso de prueba'}
             </button>
@@ -408,7 +408,7 @@ export const BotsControlScreen: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-bold text-slate-900 dark:text-white">Recordatorios de cita</div>
-                <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                   {conRecordatorios
                     ? `${agente} le recuerda la cita a la clienta por WhatsApp. Si ella contesta que necesita cambiarla, ${agente} la reagenda. Cada recordatorio que sale fuera de una conversación abierta tiene un costo pequeño en Meta.`
                     : 'Incluidos en el Plan Salón y en el Plan Lounge. Escríbenos para activarlos.'}
@@ -424,16 +424,16 @@ export const BotsControlScreen: React.FC = () => {
             </div>
             {conRecordatorios && settings.remindersEnabled && (
               <div className="grid sm:grid-cols-2 gap-2">
-                <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[11px] font-semibold text-slate-700 dark:text-neutral-200">
+                <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">
                   <span>El día antes, a la hora de la cita</span>
                   <IOSToggle id="toggle-recordatorio-dia" checked={settings.reminderDayBefore} onChange={val => updateSettings({ reminderDayBefore: val })} activeColor="#9333ea" />
                 </label>
-                <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[11px] font-semibold text-slate-700 dark:text-neutral-200">
+                <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">
                   <span>Unas horas antes</span>
                   <select
                     value={settings.reminderHoursBefore}
                     onChange={e => updateSettings({ reminderHoursBefore: Number(e.target.value) })}
-                    className="px-2 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] dark:[color-scheme:dark]"
+                    className="px-2 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] dark:[color-scheme:dark]"
                   >
                     {HORAS_RECORDATORIO.map(o => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                   </select>
@@ -445,7 +445,7 @@ export const BotsControlScreen: React.FC = () => {
           {/* Instrucciones para todo el salón (todas las sedes) */}
           {esDireccion && (
             <div className="py-1.5 border-b border-slate-100 dark:border-neutral-800/80">
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Instrucciones de {agente} para todas las sedes
               </label>
               <textarea
@@ -460,7 +460,7 @@ export const BotsControlScreen: React.FC = () => {
                 placeholder={`Vacío: todas las sedes usan las instrucciones base.`}
                 className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] resize-y"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[0.6875rem] text-slate-400 mt-1">
                 Valen para todas las sucursales, salvo las que escriban las suyas abajo.
               </p>
             </div>
@@ -468,7 +468,7 @@ export const BotsControlScreen: React.FC = () => {
 
           {/* Instrucciones propias de la sede */}
           <div className="py-1.5 border-b border-slate-100 dark:border-neutral-800/80">
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Instrucciones de {agente} solo para esta sede
             </label>
             <textarea
@@ -490,7 +490,7 @@ export const BotsControlScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setVerBase(v => !v)}
-                  className="flex items-center gap-1 text-[10px] font-bold text-[var(--primary)] cursor-pointer"
+                  className="flex items-center gap-1 text-[0.6875rem] font-bold text-[var(--primary)] cursor-pointer"
                 >
                   <FileText className="w-3 h-3" /> {verBase ? 'Ocultar' : 'Ver'} las instrucciones base
                 </button>
@@ -498,7 +498,7 @@ export const BotsControlScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setInstrucciones(promptBase)}
-                    className="text-[10px] font-bold text-slate-600 dark:text-neutral-300 underline cursor-pointer"
+                    className="text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300 underline cursor-pointer"
                   >
                     Partir de ellas para escribir las mías
                   </button>
@@ -506,7 +506,7 @@ export const BotsControlScreen: React.FC = () => {
               </div>
             )}
             {verBase && promptBase && (
-              <pre className="mt-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[10px] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans max-h-64 overflow-y-auto">
+              <pre className="mt-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans max-h-64 overflow-y-auto">
                 {promptBase}
               </pre>
             )}
@@ -515,32 +515,32 @@ export const BotsControlScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setVerFijo(v => !v)}
-                  className="flex items-center gap-1 text-[10px] font-bold text-[var(--primary)] cursor-pointer"
+                  className="flex items-center gap-1 text-[0.6875rem] font-bold text-[var(--primary)] cursor-pointer"
                 >
                   <FileText className="w-3 h-3" /> {verFijo ? 'Ocultar' : 'Ver'} lo que {agente} recibe además de tus instrucciones
                 </button>
                 {verFijo && (
                   <div className="mt-1.5 space-y-2">
                     <div>
-                      <div className="text-[10px] font-bold text-slate-600 dark:text-neutral-300">
+                      <div className="text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300">
                         Políticas del salón (salen de los parámetros: cambian solas si cambias un parámetro)
                       </div>
-                      <pre className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[10px] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans">{fijo.politicas}</pre>
+                      <pre className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans">{fijo.politicas}</pre>
                     </div>
                     <div>
-                      <div className="text-[10px] font-bold text-slate-600 dark:text-neutral-300">
+                      <div className="text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300">
                         Reglas de trabajo (fijas: son las que hacen que agende bien y no invente)
                       </div>
-                      <pre className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[10px] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans max-h-72 overflow-y-auto">{fijo.reglas}</pre>
+                      <pre className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans max-h-72 overflow-y-auto">{fijo.reglas}</pre>
                     </div>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[0.6875rem] text-slate-400">
                       Además recibe la lista de servicios con precios, el equipo y quién hace qué, la ficha de la clienta y la conversación.
                     </p>
                   </div>
                 )}
               </div>
             )}
-            <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+            <p className="text-[0.6875rem] text-slate-400 mt-1 leading-relaxed">
               Puedes usar {'{{agente}}'}, {'{{negocio}}'}, {'{{sede}}'}, {'{{horario}}'},{' '}
               {'{{zona_horaria}}'}, {'{{fecha_actual}}'}, {'{{tono}}'} y {'{{clienta}}'}: se rellenan
               solos con los datos del salón en cada conversación.
@@ -549,7 +549,7 @@ export const BotsControlScreen: React.FC = () => {
 
           {/* Setting 3: AI Tone */}
           <div className="pt-1">
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Tono de Personalidad del Bot de Salón
             </label>
             <select

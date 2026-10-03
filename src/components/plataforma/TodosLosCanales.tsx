@@ -49,7 +49,7 @@ export const TodosLosCanales: React.FC<{ onAbrirNegocio?: (id: string) => void; 
       <header className="flex items-center justify-between gap-2">
         <div>
           <h4 className="text-sm font-bold">Canales de los clientes</h4>
-          {datos?.revisadoEn && <p className="text-[10px] text-slate-400">Revisados {horaDe(datos.revisadoEn)} · toca un cliente para abrir su ficha</p>}
+          {datos?.revisadoEn && <p className="text-[0.6875rem] text-slate-400">Revisados {horaDe(datos.revisadoEn)} · toca un cliente para abrir su ficha</p>}
         </div>
         <button type="button" onClick={onCerrar} aria-label="Cerrar lista" className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><X className="w-4 h-4" /></button>
       </header>
@@ -57,7 +57,7 @@ export const TodosLosCanales: React.FC<{ onAbrirNegocio?: (id: string) => void; 
         <div className="flex gap-1.5 overflow-x-auto" role="radiogroup" aria-label="Filtro">
           {FILTROS.map(f => (
             <button key={f.id} type="button" role="radio" aria-checked={filtro === f.id} onClick={() => setFiltro(f.id)}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap cursor-pointer ${filtro === f.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'}`}>
+              className={`px-3 py-1 rounded-full text-[0.75rem] font-bold whitespace-nowrap cursor-pointer ${filtro === f.id ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'}`}>
               {f.texto} <span className="opacity-60">{cuenta[f.id] ?? 0}</span>
             </button>
           ))}
@@ -73,7 +73,7 @@ export const TodosLosCanales: React.FC<{ onAbrirNegocio?: (id: string) => void; 
         : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead><tr className="text-left text-[10px] uppercase tracking-wide text-slate-400">
+              <thead><tr className="text-left text-[0.6875rem] uppercase tracking-wide text-slate-400">
                 <th className="py-1.5 pr-3">Cliente</th><th className="py-1.5 pr-3">Canal</th><th className="py-1.5 pr-3">Estado</th><th className="py-1.5 text-right">Última clienta</th>
               </tr></thead>
               <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
@@ -81,8 +81,8 @@ export const TodosLosCanales: React.FC<{ onAbrirNegocio?: (id: string) => void; 
                   const v = ICONO[c.estado];
                   return (
                     <tr key={c.id} onClick={() => onAbrirNegocio?.(c.negocioId)} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-neutral-800/50">
-                      <td className="py-2 pr-3"><b>{c.negocio}</b><div className="text-[10px] text-slate-400">{c.sede}</div></td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{NOMBRE[c.canal] ?? c.canal}<div className="text-[10px] text-slate-400">{c.nombreEnMeta ?? c.identificador ?? '—'}</div></td>
+                      <td className="py-2 pr-3"><b>{c.negocio}</b><div className="text-[0.6875rem] text-slate-400">{c.sede}</div></td>
+                      <td className="py-2 pr-3 whitespace-nowrap">{NOMBRE[c.canal] ?? c.canal}<div className="text-[0.6875rem] text-slate-400">{c.nombreEnMeta ?? c.identificador ?? '—'}</div></td>
                       <td className="py-2 pr-3"><span className={`inline-flex items-center gap-1 ${v.c}`}><v.i className="w-3.5 h-3.5 shrink-0" /></span> {c.detalle}{!c.encendido ? ' · Lalan apagada' : ''}</td>
                       <td className="py-2 text-right whitespace-nowrap text-slate-500">{c.ultimoMensaje ? `${new Date(c.ultimoMensaje).toLocaleDateString('es', { day: 'numeric', month: 'short' })}, ${horaDe(c.ultimoMensaje)}` : 'nunca'}</td>
                     </tr>

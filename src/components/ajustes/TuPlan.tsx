@@ -22,18 +22,18 @@ export const TuPlan: React.FC = () => {
           <div className="w-8 h-8 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><BadgeCheck className="w-4 h-4" /></div>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">Tu plan · {miPlan.plan?.nombre ?? 'Sin plan'}</h3>
-            <p className="text-[10px] text-slate-500 dark:text-neutral-400">Lo que incluye y cuánto llevas usado este mes</p>
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Lo que incluye y cuánto llevas usado este mes</p>
           </div>
         </div>
-        <a href={`https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(pedir)}`} target="_blank" rel="noopener" className="text-[11px] font-bold text-[var(--primary)] hover:underline shrink-0">Mejorar mi plan</a>
+        <a href={`https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(pedir)}`} target="_blank" rel="noopener" className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline shrink-0">Mejorar mi plan</a>
       </div>
       <UsoDelPlan uso={miPlan.uso} limites={miPlan.limites} />
       <div className="grid sm:grid-cols-2 gap-1.5">
-        {miPlan.siempreIncluido.map((s) => <div key={s} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-neutral-300"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-px" />{s}</div>)}
+        {miPlan.siempreIncluido.map((s) => <div key={s} className="flex items-start gap-1.5 text-[0.75rem] text-slate-600 dark:text-neutral-300"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-px" />{s}</div>)}
         {catalogo?.modulos.map((m) => {
           const si = miPlan.modulos.includes(m.id);
           return (
-            <div key={m.id} className={`flex items-start gap-1.5 text-[11px] ${si ? 'text-slate-600 dark:text-neutral-300' : 'text-slate-400 dark:text-neutral-600'}`} title={m.descripcion}>
+            <div key={m.id} className={`flex items-start gap-1.5 text-[0.75rem] ${si ? 'text-slate-600 dark:text-neutral-300' : 'text-slate-400 dark:text-neutral-600'}`} title={m.descripcion}>
               {si ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-px" /> : <Lock className="w-3.5 h-3.5 shrink-0 mt-px" />}{m.nombre}
             </div>
           );

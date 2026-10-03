@@ -1026,7 +1026,7 @@ export const LoungePlayerScreen: React.FC = () => {
           <div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-bold tracking-wider uppercase text-slate-400 dark:text-neutral-500">
+              <span className="text-[0.75rem] font-bold tracking-wider uppercase text-slate-400 dark:text-neutral-500">
                 Salón Lounge & Experiencia VIP
               </span>
             </div>
@@ -1123,12 +1123,12 @@ export const LoungePlayerScreen: React.FC = () => {
                           <div className="text-xs font-bold flex items-center gap-1.5">
                             {c.name}
                             {pos === 0 && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/25 font-semibold">
+                              <span className="text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-white/25 font-semibold">
                                 En el sillón
                               </span>
                             )}
                           </div>
-                          <div className="text-[10px] opacity-80">
+                          <div className="text-[0.6875rem] opacity-80">
                             {c.totalVisits > 0 ? `${c.totalVisits} visitas` : 'Primera visita'}
                           </div>
                         </div>
@@ -1142,7 +1142,7 @@ export const LoungePlayerScreen: React.FC = () => {
               </div>
 
               {(loungeClients.length > 1 || selectedPlaylistIds.length > 0) && (
-                <p className="text-[10px] text-slate-400 mt-2 px-1">
+                <p className="text-[0.6875rem] text-slate-400 mt-2 px-1">
                   La cola se rearma sola con cada cambio.
                 </p>
               )}
@@ -1223,7 +1223,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         {i === 0 && (
                           <span
                             title="En el sillón"
-                            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--primary)] text-white text-[8px] flex items-center justify-center ring-2 ring-white dark:ring-neutral-900"
+                            className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] flex items-center justify-center ring-2 ring-white dark:ring-neutral-900"
                           >
                             ★
                           </span>
@@ -1232,7 +1232,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     ))}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[11px] font-medium text-slate-400 dark:text-neutral-500">
+                    <div className="text-[0.75rem] font-medium text-slate-400 dark:text-neutral-500">
                       {loungeClients.length > 1 ? 'Sonando para el salón' : 'Sonando para la cita de'}
                     </div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
@@ -1241,7 +1241,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         : activeLoungeClient.name}
                     </div>
                     {loungeClients.length > 1 && (
-                      <div className="text-[10px] text-slate-400 dark:text-neutral-500">
+                      <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500">
                         {activeLoungeClient.name.split(' ')[0]} en el sillón
                       </div>
                     )}
@@ -1249,7 +1249,7 @@ export const LoungePlayerScreen: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 text-[10px] font-semibold text-slate-600 dark:text-neutral-300">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] font-semibold text-slate-600 dark:text-neutral-300">
                     <Sparkles className="w-2.5 h-2.5 text-amber-500" />
                     {prefMusic[0] ?? 'Sin género'}
                   </span>
@@ -1260,7 +1260,7 @@ export const LoungePlayerScreen: React.FC = () => {
             {/* Listas guardadas — a la vista, no escondidas en el desplegable */}
             {playlists.length > 0 && (
               <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs">
-                <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-neutral-500 mb-2 px-0.5 flex items-center gap-1.5">
+                <div className="text-[0.6875rem] uppercase font-bold text-slate-400 dark:text-neutral-500 mb-2 px-0.5 flex items-center gap-1.5">
                   <BookmarkPlus className="w-3 h-3" />
                   Listas guardadas
                   <span className="ml-auto normal-case font-medium text-slate-400">
@@ -1279,7 +1279,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         title={on
                           ? `Quitar «${pl.name}» de la cola`
                           : pl.clientId ? `Lista fija de ${pl.client?.name ?? 'clienta'}` : 'Lista del salón'}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                        className={`px-2.5 py-1 rounded-full text-[0.75rem] font-bold border transition cursor-pointer flex items-center gap-1 ${
                           on
                             ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
                             : 'bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-300 border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)]/50'
@@ -1323,7 +1323,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   })}
                 </div>
                 <div className="flex items-center gap-2 mt-1.5 px-1">
-                  <p className="text-[10px] text-slate-400 flex-1">
+                  <p className="text-[0.6875rem] text-slate-400 flex-1">
                     📌 fijas de una clienta · ⭐ del salón. Las fijas ya se suman solas a su clienta.
                   </p>
                   {(selectedPlaylistIds.length > 0 || loungeClients.length > 0) && (
@@ -1334,7 +1334,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         showToast('Cola vacía', 'Se quitaron todas las clientas y listas.', 'info');
                       }}
                       title="Quitar todas las clientas y listas de la cola"
-                      className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 dark:text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
+                      className="shrink-0 px-2 py-1 rounded-lg text-[0.6875rem] font-bold text-slate-500 dark:text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
                     >
                       Vaciar cola
                     </button>
@@ -1353,7 +1353,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   key={key}
                   disabled={!enabled}
                   onClick={() => setSource(key)}
-                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                  className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                     source === key
                       ? 'bg-white dark:bg-neutral-900 text-[var(--primary)] shadow-xs'
                       : 'text-slate-500 dark:text-neutral-400 hover:text-slate-700'
@@ -1368,7 +1368,7 @@ export const LoungePlayerScreen: React.FC = () => {
               <button
                 disabled
                 title="Próximamente"
-                className="px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-400 opacity-40 cursor-not-allowed"
+                className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold text-slate-400 opacity-40 cursor-not-allowed"
               >
                 Spotify
               </button>
@@ -1417,7 +1417,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   {alineando && (
                     <div className="absolute inset-0 z-10 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-center px-4">
                       <span className="w-6 h-6 rounded-full border-2 border-white/20 border-t-white/80 animate-spin" />
-                      <span className="text-[11px] font-semibold text-white/80">
+                      <span className="text-[0.75rem] font-semibold text-white/80">
                         Sincronizando con el salón…
                       </span>
                     </div>
@@ -1460,7 +1460,7 @@ export const LoungePlayerScreen: React.FC = () => {
                       <button
                         key={label}
                         onClick={() => setYtShowVideo(val)}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold flex items-center gap-1 transition cursor-pointer ${
                           ytShowVideo === val
                             ? 'bg-white dark:bg-neutral-900 text-[var(--primary)] shadow-xs'
                             : 'text-slate-500 dark:text-neutral-400 hover:text-slate-700'
@@ -1497,7 +1497,7 @@ export const LoungePlayerScreen: React.FC = () => {
               {isYt && ytTrack && (
                 <button
                   onClick={() => setSaveTargets([ytTrack])}
-                  className="mt-2 mx-auto px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/70 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] transition cursor-pointer"
+                  className="mt-2 mx-auto px-3 py-1 rounded-full text-[0.6875rem] font-bold flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/70 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] transition cursor-pointer"
                 >
                   <BookmarkPlus className="w-3 h-3" />
                   Guardar en lista
@@ -1520,7 +1520,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   // Nada de artista viejo mientras no sepamos qué suena: una línea que "respira"
                   <div className="mt-1.5 flex flex-col items-center gap-1">
                     <span className="h-3 w-32 rounded-full bg-slate-200 dark:bg-neutral-800 animate-pulse" />
-                    <span className="text-[11px] text-slate-400">Preguntando al aparato del salón qué está sonando</span>
+                    <span className="text-[0.75rem] text-slate-400">Preguntando al aparato del salón qué está sonando</span>
                   </div>
                 ) : (
                   <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 mt-0.5 truncate">
@@ -1530,14 +1530,14 @@ export const LoungePlayerScreen: React.FC = () => {
 
                 {/* Source badge */}
                 <div className="mt-2 flex items-center justify-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300">
+                  <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold uppercase tracking-wider bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300">
                     {enPantalla.sourceLabel}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-[var(--primary)] bg-[var(--primary)]/10">
+                  <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold text-[var(--primary)] bg-[var(--primary)]/10">
                     {enPantalla.vibe}
                   </span>
                   {isYt && (
-                    <span className="text-[10px] font-semibold text-slate-400">
+                    <span className="text-[0.6875rem] font-semibold text-slate-400">
                       {ytIndex + 1}/{ytQueue.length}
                     </span>
                   )}
@@ -1568,7 +1568,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     className="w-full h-1.5 bg-slate-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[var(--primary)]"
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 dark:text-neutral-500 mt-1.5 px-0.5">
+                <div className="flex items-center justify-between text-[0.75rem] font-semibold text-slate-400 dark:text-neutral-500 mt-1.5 px-0.5">
                   <span>{formatTime(enPantalla.time)}</span>
                   <span>-{formatTime(Math.max(0, enPantalla.duration - enPantalla.time))}</span>
                 </div>
@@ -1646,14 +1646,14 @@ export const LoungePlayerScreen: React.FC = () => {
                 <div className="w-full max-w-xs flex items-center justify-center gap-1.5 mt-3 px-3">
                   <button
                     onClick={() => ordenar('video', true)}
-                    className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer flex items-center justify-center gap-1"
+                    className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer flex items-center justify-center gap-1"
                     title="Poner el vídeo en grande en la pantalla del salón"
                   >
                     <Maximize2 className="w-3 h-3" /> Vídeo
                   </button>
                   <button
                     onClick={() => ordenar('video', false)}
-                    className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer flex items-center justify-center gap-1"
+                    className="flex-1 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer flex items-center justify-center gap-1"
                     title="Quitar el vídeo y volver a los turnos"
                   >
                     <Minimize2 className="w-3 h-3" /> Turnos
@@ -1663,7 +1663,7 @@ export const LoungePlayerScreen: React.FC = () => {
                       y el navegador puede negarla. */}
                   <button
                     onClick={() => ordenar('pantalla', true)}
-                    className={`px-2.5 py-1.5 rounded-lg text-[12px] font-bold transition cursor-pointer ${
+                    className={`px-2.5 py-1.5 rounded-lg text-[0.8125rem] font-bold transition cursor-pointer ${
                       musicaSala.sala.completa
                         ? 'bg-[var(--primary)] text-white'
                         : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
@@ -1674,7 +1674,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   </button>
                   <button
                     onClick={() => ordenar('pantalla', false)}
-                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[12px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.8125rem] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
                     title="Salir de la pantalla completa del navegador"
                   >
                     ⤢
@@ -1711,14 +1711,14 @@ export const LoungePlayerScreen: React.FC = () => {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
                   A continuación en el salón ({isYt ? ytQueue.length : loungeTracks.length})
                 </h3>
-                <span className="text-[11px] font-semibold text-[var(--primary)] flex items-center gap-1.5 flex-wrap justify-end">
+                <span className="text-[0.75rem] font-semibold text-[var(--primary)] flex items-center gap-1.5 flex-wrap justify-end">
                   {isYt && ytShuffle && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[10px]">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[0.6875rem]">
                       <Shuffle className="w-2.5 h-2.5" /> Orden barajado
                     </span>
                   )}
                   {isYt && ytRepeatMode === 'one' && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-[10px]">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-[0.6875rem]">
                       <Repeat1 className="w-2.5 h-2.5" /> Repitiendo una
                     </span>
                   )}
@@ -1730,13 +1730,13 @@ export const LoungePlayerScreen: React.FC = () => {
                             picked.map(v => ytQueue.find(t => t.videoId === v)).filter(Boolean) as any[],
                           )}
                           disabled={!picked.length}
-                          className="px-2 py-0.5 rounded-full bg-[var(--primary)] text-white text-[10px] font-bold disabled:opacity-40 cursor-pointer"
+                          className="px-2 py-0.5 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-bold disabled:opacity-40 cursor-pointer"
                         >
                           Guardar {picked.length || ''}
                         </button>
                         <button
                           onClick={exitPickMode}
-                          className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 text-[10px] font-bold cursor-pointer"
+                          className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 text-[0.6875rem] font-bold cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -1745,7 +1745,7 @@ export const LoungePlayerScreen: React.FC = () => {
                       <button
                         onClick={() => setPickMode(true)}
                         title="Marcar varias canciones para guardarlas en una lista"
-                        className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 text-[10px] font-bold hover:text-[var(--primary)] transition cursor-pointer"
+                        className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 text-[0.6875rem] font-bold hover:text-[var(--primary)] transition cursor-pointer"
                       >
                         Elegir varias
                       </button>
@@ -1768,7 +1768,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     <span
                       key={b.clientId}
                       title={b.preferences.length ? b.preferences.join(' · ') : 'Lista guardada'}
-                      className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--accent)]/10 text-[var(--primary)] border border-[var(--primary)]/25 flex items-center gap-1"
+                      className="px-2 py-0.5 rounded-full text-[0.75rem] font-semibold bg-[var(--accent)]/10 text-[var(--primary)] border border-[var(--primary)]/25 flex items-center gap-1"
                     >
                       <span>{b.kind === 'playlist' ? '⭐' : ''}</span>
                       {b.clientName.split(' ')[0]}
@@ -1790,7 +1790,7 @@ export const LoungePlayerScreen: React.FC = () => {
 
                   {ytBlocks.length > 1 && (
                     <span className="flex items-center gap-1 flex-wrap ml-auto">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">
+                      <span className="text-[0.6875rem] uppercase font-bold text-slate-400 shrink-0">
                         Repartir
                       </span>
                       {([
@@ -1802,7 +1802,7 @@ export const LoungePlayerScreen: React.FC = () => {
                           key={mode}
                           onClick={() => setYtMixMode(mode)}
                           title={hint}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                          className={`px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold transition cursor-pointer border ${
                             ytMixMode === mode
                               ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
                               : 'bg-white dark:bg-neutral-900 text-slate-500 dark:text-neutral-400 border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)]/50'
@@ -1888,7 +1888,7 @@ export const LoungePlayerScreen: React.FC = () => {
                           ) : (
                             /* Posición real en la cola: con aleatorio activo
                                esto refleja el orden barajado, no el original */
-                            <span className={`w-4 text-[11px] font-mono shrink-0 tabular-nums ${
+                            <span className={`w-4 text-[0.75rem] font-mono shrink-0 tabular-nums ${
                               isCurrent ? 'text-[var(--primary)] font-bold' : 'text-slate-400 dark:text-neutral-600'
                             }`}>
                               {pos + 1}
@@ -1920,18 +1920,18 @@ export const LoungePlayerScreen: React.FC = () => {
                             }`}>
                               {t.title}
                             </div>
-                            <div className="text-[11px] text-slate-400 dark:text-neutral-500 truncate flex items-center gap-1.5">
+                            <div className="text-[0.75rem] text-slate-400 dark:text-neutral-500 truncate flex items-center gap-1.5">
                               <span className="truncate">{t.channel || 'YouTube'}</span>
                               {/* De quién es este gusto, cuando el salón es compartido */}
                               {ytBlocks.length > 1 && t.clientName && !t.peticionId && (
-                                <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-bold">
+                                <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-bold">
                                   {t.clientName.split(' ')[0]}
                                 </span>
                               )}
                               {/* Pedida por una clienta desde el QR de la pared */}
                               {t.peticionId && (
                                 <span
-                                  className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 font-bold flex items-center gap-1"
+                                  className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 font-bold flex items-center gap-1"
                                   title="La pidió una clienta desde el código QR"
                                 >
                                   <Heart className="w-2.5 h-2.5" />
@@ -1943,15 +1943,15 @@ export const LoungePlayerScreen: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {rota ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 font-semibold flex items-center gap-1">
+                            <span className="text-[0.6875rem] px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 font-semibold flex items-center gap-1">
                               <Ban className="w-3 h-3" /> No disponible
                             </span>
                           ) : isCurrent && enPantalla.playing ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold">
+                            <span className="text-[0.6875rem] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold">
                               Sonando
                             </span>
                           ) : null}
-                          <span className={`text-[11px] font-mono ${rota ? 'text-slate-300 dark:text-neutral-700' : 'text-slate-400'}`}>
+                          <span className={`text-[0.75rem] font-mono ${rota ? 'text-slate-300 dark:text-neutral-700' : 'text-slate-400'}`}>
                             {t.durationSeconds ? formatTime(t.durationSeconds) : '—'}
                           </span>
                           {/* Quitar una petición que aún no ha sonado. stopPropagation:
@@ -2002,7 +2002,7 @@ export const LoungePlayerScreen: React.FC = () => {
                           >
                             {track.title}
                           </div>
-                          <div className="text-[11px] text-slate-400 dark:text-neutral-500 truncate">
+                          <div className="text-[0.75rem] text-slate-400 dark:text-neutral-500 truncate">
                             {track.artist}
                           </div>
                         </div>
@@ -2010,11 +2010,11 @@ export const LoungePlayerScreen: React.FC = () => {
 
                       <div className="flex items-center gap-2 shrink-0">
                         {track.dedicatedForClientName && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold">
+                          <span className="text-[0.6875rem] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold">
                             Para {track.dedicatedForClientName.split(' ')[0]}
                           </span>
                         )}
-                        <span className="text-[11px] font-mono text-slate-400">
+                        <span className="text-[0.75rem] font-mono text-slate-400">
                           {formatTime(track.durationSeconds)}
                         </span>
                       </div>
@@ -2050,7 +2050,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         <h2 className="text-base font-bold text-slate-900 dark:text-white">
                           {activeLoungeClient.name}
                         </h2>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--primary)]/10 text-[var(--primary)]">
+                        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-[var(--primary)]/10 text-[var(--primary)]">
                           VIP Lounge
                         </span>
                       </div>
@@ -2063,7 +2063,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   {/* Ambiente de cabina — toca para cambiar, se guarda solo.
                       Si no hay dato lo decimos, no inventamos un valor. */}
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-neutral-800">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-2">
                       Ambiente de cabina
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
@@ -2082,7 +2082,7 @@ export const LoungePlayerScreen: React.FC = () => {
                             className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/40 hover:bg-slate-100 dark:hover:bg-neutral-800 transition active:scale-98 disabled:opacity-50"
                           >
                             <Icono className={`w-3.5 h-3.5 mx-auto mb-1 ${tono}`} />
-                            <div className="text-[10px] text-slate-400 font-medium">{campo.label}</div>
+                            <div className="text-[0.6875rem] text-slate-400 font-medium">{campo.label}</div>
                             <div
                               className={`text-xs font-bold capitalize ${
                                 valor
@@ -2113,14 +2113,14 @@ export const LoungePlayerScreen: React.FC = () => {
                         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                           Lo que le gusta
                         </h3>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[0.75rem] text-slate-400">
                           Sus gustos, tengas el producto o no
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => setPickerTipo('drink')}
-                      className="shrink-0 px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
+                      className="shrink-0 px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
                     >
                       <Plus className="w-3 h-3" />
                       Agregar
@@ -2145,12 +2145,12 @@ export const LoungePlayerScreen: React.FC = () => {
                           >
                             <span>{g.value}</span>
                             {!prod && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-800/60 font-extrabold">
+                              <span className="text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-800/60 font-extrabold">
                                 no lo vendes
                               </span>
                             )}
                             {prod && agotado && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-200/70 dark:bg-red-800/60 font-extrabold">
+                              <span className="text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-red-200/70 dark:bg-red-800/60 font-extrabold">
                                 agotado
                               </span>
                             )}
@@ -2190,13 +2190,13 @@ export const LoungePlayerScreen: React.FC = () => {
                     <div className="text-xs font-bold text-slate-900 dark:text-white">
                       Gusto musical
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-neutral-400 truncate">
+                    <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">
                       {prefMusic.length
                         ? prefMusic.join(' · ')
                         : 'Sin géneros registrados — tócalo para configurarlo'}
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-[var(--primary)] shrink-0">
+                  <span className="text-[0.6875rem] font-bold text-[var(--primary)] shrink-0">
                     Reproductor →
                   </span>
                 </button>
@@ -2211,7 +2211,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         <button
                           key={r}
                           onClick={() => setBitacoraRango(r)}
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition ${
+                          className={`px-2.5 py-1 rounded-full text-[0.6875rem] font-bold transition ${
                             bitacoraRango === r
                               ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-2xs'
                               : 'text-slate-500 dark:text-neutral-400'
@@ -2224,7 +2224,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   </div>
 
                   {/* Filtro: solo esta clienta o todo el salón */}
-                  <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-neutral-400 cursor-pointer">
+                  <label className="flex items-center gap-2 text-[0.75rem] text-slate-500 dark:text-neutral-400 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={bitacoraSoloClienta}
@@ -2245,7 +2245,7 @@ export const LoungePlayerScreen: React.FC = () => {
                       {agruparPorDia(loungeEvents).map(grupo => (
                         <div key={grupo.dia}>
                           {bitacoraRango === 'all' && (
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-neutral-600 mb-1">
+                            <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-300 dark:text-neutral-600 mb-1">
                               {grupo.dia}
                             </div>
                           )}
@@ -2269,18 +2269,18 @@ export const LoungePlayerScreen: React.FC = () => {
                                       {ev.label}
                                     </span>
                                     {ev.clientName && !bitacoraSoloClienta && (
-                                      <span className="text-[10px] text-slate-400 shrink-0">
+                                      <span className="text-[0.6875rem] text-slate-400 shrink-0">
                                         ({ev.clientName.split(' ')[0]})
                                       </span>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     {ev.amount ? (
-                                      <span className="text-[11px] font-bold text-amber-600">
+                                      <span className="text-[0.75rem] font-bold text-amber-600">
                                         {Number(ev.amount).toFixed(2)}
                                       </span>
                                     ) : null}
-                                    <span className="text-[11px] font-mono text-slate-400">
+                                    <span className="text-[0.75rem] font-mono text-slate-400">
                                       {new Date(ev.createdAt).toLocaleTimeString('es', {
                                         hour: 'numeric', hour12: true, minute: '2-digit',
                                       })}
@@ -2300,7 +2300,7 @@ export const LoungePlayerScreen: React.FC = () => {
                             clientId: bitacoraSoloClienta ? activeLoungeClient.id : undefined,
                           })}
                           disabled={loungeEventsLoading}
-                          className="w-full py-2 rounded-xl text-[11px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 transition disabled:opacity-40"
+                          className="w-full py-2 rounded-xl text-[0.75rem] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 transition disabled:opacity-40"
                         >
                           {loungeEventsLoading ? 'Cargando…' : 'Ver más atrás'}
                         </button>
@@ -2355,7 +2355,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white/80">YouTube Lounge</p>
-                    <p className="text-[11px] text-white/40 mt-0.5">
+                    <p className="text-[0.75rem] text-white/40 mt-0.5">
                       Pega un enlace o elige un género abajo para empezar
                     </p>
                   </div>
@@ -2374,14 +2374,14 @@ export const LoungePlayerScreen: React.FC = () => {
                     </h3>
                   </div>
                   {queueInfo.total > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/25">
+                    <span className="text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/25">
                       {queueInfo.total} temas en fila
                     </span>
                   )}
                 </div>
 
                 {queueInfo.loading ? (
-                  <p className="text-[11px] text-slate-400 italic">Armando la lista desde sus gustos…</p>
+                  <p className="text-[0.75rem] text-slate-400 italic">Armando la lista desde sus gustos…</p>
                 ) : ytBlocks.length > 0 ? (
                   <>
                     {/* Resumen simple: los controles viven en el Reproductor */}
@@ -2390,7 +2390,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         <span
                           key={b.clientId}
                           title={b.preferences.length ? b.preferences.join(' · ') : 'Lista guardada'}
-                          className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/25"
+                          className="px-2 py-0.5 rounded-full text-[0.75rem] font-semibold bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/25"
                         >
                           {b.clientName.split(' ')[0]} <span className="opacity-60">×{b.tracks.length}</span>
                         </span>
@@ -2400,7 +2400,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     {/* Cómo repartir la música — lo decide el salón */}
                     {ytBlocks.length > 1 && (
                       <div className="pt-1.5 space-y-1.5">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">
+                        <span className="text-[0.6875rem] uppercase font-bold text-slate-400">
                           Cómo repartir la música
                         </span>
                         <div className="flex flex-wrap gap-1">
@@ -2413,7 +2413,7 @@ export const LoungePlayerScreen: React.FC = () => {
                               key={mode}
                               onClick={() => setYtMixMode(mode)}
                               title={hint}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                              className={`px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold transition cursor-pointer border ${
                                 ytMixMode === mode
                                   ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
                                   : 'bg-white dark:bg-neutral-900 text-slate-500 dark:text-neutral-400 border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)]/50'
@@ -2426,16 +2426,16 @@ export const LoungePlayerScreen: React.FC = () => {
                       </div>
                     )}
 
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[0.6875rem] text-slate-400">
                       Se reproducen una tras otra y la lista se repite sola. No hay que tocar nada.
                     </p>
                   </>
                 ) : !queueInfo.configured ? (
-                  <p className="text-[11px] text-amber-500">
+                  <p className="text-[0.75rem] text-amber-500">
                     Falta <b>YOUTUBE_API_KEY</b> en el backend para que el sistema busque la música solo.
                   </p>
                 ) : (
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[0.75rem] text-slate-400">
                     {queueInfo.reason ?? 'Sin música registrada para esta clienta.'}
                   </p>
                 )}
@@ -2450,7 +2450,7 @@ export const LoungePlayerScreen: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">Pegar enlace de YouTube</h3>
-                  <p className="text-[11px] text-slate-400">Video, playlist o ID directo</p>
+                  <p className="text-[0.75rem] text-slate-400">Video, playlist o ID directo</p>
                 </div>
               </div>
 
@@ -2474,13 +2474,13 @@ export const LoungePlayerScreen: React.FC = () => {
               </div>
 
               {youtubeError && (
-                <p className="text-[11px] text-red-500 font-medium px-1">{youtubeError}</p>
+                <p className="text-[0.75rem] text-red-500 font-medium px-1">{youtubeError}</p>
               )}
 
               {activeLoungeClient && (
                 <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/20">
                   <Sparkles className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
-                  <p className="text-[11px] text-[var(--primary)] font-medium">
+                  <p className="text-[0.75rem] text-[var(--primary)] font-medium">
                     Sugerido para {activeLoungeClient.name.split(' ')[0]}: {suggestedMusic} · {suggestedDrink}
                     {prefMusic.length > 1 && (
                       <span className="opacity-70"> · +{prefMusic.length - 1} más</span>
@@ -2512,7 +2512,7 @@ export const LoungePlayerScreen: React.FC = () => {
                       <div className={`text-xs font-bold ${isActive ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
                         {genre.label}
                       </div>
-                      <div className={`text-[10px] mt-0.5 line-clamp-1 ${isActive ? 'text-white/70' : 'text-slate-400'}`}>
+                      <div className={`text-[0.6875rem] mt-0.5 line-clamp-1 ${isActive ? 'text-white/70' : 'text-slate-400'}`}>
                         {genre.desc}
                       </div>
                     </button>
@@ -2586,14 +2586,14 @@ export const LoungePlayerScreen: React.FC = () => {
               </div>
 
               {editingList.clientId && editingList.client && (
-                <p className="text-[11px] text-slate-400 mb-2 px-1">
+                <p className="text-[0.75rem] text-slate-400 mb-2 px-1">
                   Lista fija de {editingList.client.name} — suena siempre en su turno.
                 </p>
               )}
 
               {/* Canciones */}
               {editingList.tracks.length === 0 ? (
-                <p className="text-[11px] text-slate-400 italic py-6 text-center">
+                <p className="text-[0.75rem] text-slate-400 italic py-6 text-center">
                   Esta lista está vacía. Añade canciones desde el reproductor.
                 </p>
               ) : (
@@ -2610,7 +2610,7 @@ export const LoungePlayerScreen: React.FC = () => {
                           transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 480, damping: 38 }}
                           className="flex items-center gap-2 py-2 px-1 border-b border-slate-100 dark:border-neutral-800/80 last:border-b-0"
                         >
-                          <span className="w-4 text-[11px] font-mono text-slate-400 tabular-nums shrink-0">
+                          <span className="w-4 text-[0.75rem] font-mono text-slate-400 tabular-nums shrink-0">
                             {i + 1}
                           </span>
                           {t.thumbnail ? (
@@ -2619,10 +2619,10 @@ export const LoungePlayerScreen: React.FC = () => {
                             <div className="w-9 h-9 rounded-lg bg-red-600/10 flex items-center justify-center shrink-0 text-xs">▶</div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <div className="text-[11px] font-semibold truncate text-slate-800 dark:text-neutral-200">
+                            <div className="text-[0.75rem] font-semibold truncate text-slate-800 dark:text-neutral-200">
                               {t.title}
                             </div>
-                            <div className="text-[10px] text-slate-400 truncate">{t.channel || 'YouTube'}</div>
+                            <div className="text-[0.6875rem] text-slate-400 truncate">{t.channel || 'YouTube'}</div>
                           </div>
 
                           <div className="flex items-center gap-0.5 shrink-0">
@@ -2659,7 +2659,7 @@ export const LoungePlayerScreen: React.FC = () => {
 
               {/* Pie */}
               <div className="flex items-center justify-between gap-2 pt-3 mt-2 border-t border-slate-100 dark:border-neutral-800">
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[0.6875rem] text-slate-400">
                   {editingList.tracks.length} canción{editingList.tracks.length === 1 ? '' : 'es'}
                 </span>
                 <button
@@ -2669,7 +2669,7 @@ export const LoungePlayerScreen: React.FC = () => {
                       setEditingListId(null);
                     }
                   }}
-                  className="px-3 py-1.5 rounded-xl text-[11px] font-bold text-rose-500 hover:bg-rose-500/10 transition cursor-pointer flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold text-rose-500 hover:bg-rose-500/10 transition cursor-pointer flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Eliminar lista
@@ -2706,7 +2706,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                     Guardar {saveTargets.length === 1 ? 'canción' : `${saveTargets.length} canciones`}
                   </h3>
-                  <p className="text-[11px] text-slate-400 truncate">
+                  <p className="text-[0.75rem] text-slate-400 truncate">
                     {saveTargets.length === 1
                       ? saveTargets[0].title
                       : saveTargets.slice(0, 2).map((t: any) => t.title.slice(0, 22)).join(' · ') + '…'}
@@ -2723,7 +2723,7 @@ export const LoungePlayerScreen: React.FC = () => {
               {/* Listas existentes */}
               <div className="max-h-52 overflow-y-auto hide-scrollbar space-y-1">
                 {playlists.length === 0 && (
-                  <p className="text-[11px] text-slate-400 italic px-1 py-2">
+                  <p className="text-[0.75rem] text-slate-400 italic px-1 py-2">
                     Aún no tienes listas. Crea la primera abajo.
                   </p>
                 )}
@@ -2746,13 +2746,13 @@ export const LoungePlayerScreen: React.FC = () => {
                         <span className="truncate font-semibold">{pl.name}</span>
                         <span className="opacity-50">({pl.tracks.length})</span>
                         {pl.clientId && pl.client && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
+                          <span className="text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] shrink-0">
                             {pl.client.name.split(' ')[0]}
                           </span>
                         )}
                       </span>
                       {savingTo === pl.id
-                        ? <span className="text-[10px] shrink-0">…</span>
+                        ? <span className="text-[0.6875rem] shrink-0">…</span>
                         : allIn
                         ? <Check className="w-3.5 h-3.5 shrink-0" />
                         : <Plus className="w-3.5 h-3.5 shrink-0 opacity-50" />}
@@ -2795,7 +2795,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     const pl = existente ?? await createPlaylist(`Fijas de ${nombre}`, activeLoungeClient.id);
                     if (pl) await commitSave(pl.id, pl.name);
                   }}
-                  className="w-full mt-2 px-3 py-2 rounded-xl text-[11px] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 transition cursor-pointer"
+                  className="w-full mt-2 px-3 py-2 rounded-xl text-[0.75rem] font-bold text-[var(--primary)] bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 transition cursor-pointer"
                 >
                   📌 Fijar a {activeLoungeClient.name.split(' ')[0]} — sonará siempre en su turno
                 </button>
@@ -2827,7 +2827,7 @@ export const LoungePlayerScreen: React.FC = () => {
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                     {pickerTipo === 'drink' ? 'Agregar bebida' : 'Agregar aperitivo'}
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[0.75rem] text-slate-400">
                     Del catálogo del salón, para {activeLoungeClient?.name.split(' ')[0]}
                   </p>
                 </div>

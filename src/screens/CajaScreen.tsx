@@ -223,7 +223,7 @@ export const CajaScreen: React.FC = () => {
                 {/* En rojo y sin pedir permiso: cada número es una clienta que
                     se puede ir sin pagar. */}
                 {t.pendientes > 0 && (
-                  <span className="min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center tabular-nums shadow-sm">
+                  <span className="min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[0.6875rem] font-extrabold flex items-center justify-center tabular-nums shadow-sm">
                     {t.pendientes}
                   </span>
                 )}
@@ -238,7 +238,7 @@ export const CajaScreen: React.FC = () => {
             <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                     Cobrando a
                   </div>
                   <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
@@ -249,7 +249,7 @@ export const CajaScreen: React.FC = () => {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => { setEligiendoClienta(v => !v); setBusca(''); }}
-                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
                   >
                     <Users className="w-3 h-3" />
                     Clienta
@@ -257,7 +257,7 @@ export const CajaScreen: React.FC = () => {
                   <button
                     onClick={() => newCounterFolio()}
                     title="Cuenta de mostrador, sin clienta"
-                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
                   >
                     <UserPlus className="w-3 h-3" />
                     Mostrador
@@ -285,13 +285,13 @@ export const CajaScreen: React.FC = () => {
                           setEligiendoClienta(false);
                           setBusca('');
                         }}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-semibold text-slate-700 dark:text-neutral-200 hover:border-[var(--primary)] hover:text-[var(--primary)] transition"
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 hover:border-[var(--primary)] hover:text-[var(--primary)] transition"
                       >
                         {c.name}
                       </button>
                     ))}
                     {!clientasFiltradas.length && (
-                      <p className="w-full py-3 text-center text-[11px] text-slate-400">
+                      <p className="w-full py-3 text-center text-[0.75rem] text-slate-400">
                         Ninguna clienta con ese nombre.
                       </p>
                     )}
@@ -320,7 +320,7 @@ export const CajaScreen: React.FC = () => {
                       ? `${abiertas.length} comanda${abiertas.length === 1 ? '' : 's'} sin cobrar`
                       : 'Todo cobrado'}
                   </div>
-                  <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                  <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                     {abiertas.length
                       ? `${plata(abiertas.reduce((t, x) => t + x.saldo, 0))} en la calle ahora mismo`
                       : 'No hay ninguna cuenta abierta con saldo.'}
@@ -344,7 +344,7 @@ export const CajaScreen: React.FC = () => {
                           <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {f.clientName ?? f.label ?? 'Mostrador'}
                           </div>
-                          <div className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                          <div className="text-[0.6875rem] text-slate-400 flex items-center gap-1.5 flex-wrap">
                             <span className={`inline-flex items-center gap-1 ${vieja ? 'text-red-500 font-bold' : ''}`}>
                               <Clock className="w-2.5 h-2.5" />
                               {minutos < 60
@@ -369,7 +369,7 @@ export const CajaScreen: React.FC = () => {
                           </span>
                           <button
                             onClick={() => { void selectFolio(f.id); setVista('cobrar'); }}
-                            className="px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition cursor-pointer"
+                            className="px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold hover:opacity-90 transition cursor-pointer"
                           >
                             Cobrar
                           </button>
@@ -400,7 +400,7 @@ export const CajaScreen: React.FC = () => {
                         <div className="text-xs font-bold text-slate-900 dark:text-white">
                           Caja abierta
                         </div>
-                        <div className="text-[11px] text-slate-400">
+                        <div className="text-[0.75rem] text-slate-400">
                           {turno.openedByName ?? 'Sin nombre'} ·{' '}
                           {new Date(turno.openedAt).toLocaleString('es', {
                             day: '2-digit', month: 'short',
@@ -410,7 +410,7 @@ export const CajaScreen: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] text-slate-400 uppercase font-bold">
+                      <div className="text-[0.6875rem] text-slate-400 uppercase font-bold">
                         Debe haber
                       </div>
                       <div className="text-lg font-extrabold text-slate-900 dark:text-white tabular-nums">
@@ -420,7 +420,7 @@ export const CajaScreen: React.FC = () => {
                   </div>
 
                   {/* Cómo se llegó a ese número */}
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-1 text-[11px]">
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-1 text-[0.75rem]">
                     {([
                       ['Fondo inicial', turno.resumen?.openingFloat, false],
                       ['Efectivo recibido', turno.resumen?.efectivoRecibido, false],
@@ -447,7 +447,7 @@ export const CajaScreen: React.FC = () => {
                       ['Propinas', turno.resumen?.propinas ?? 0, true],
                     ].map(([l, v, esPlata]) => (
                       <div key={String(l)} className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/40">
-                        <div className="text-[10px] text-slate-400 font-medium">{String(l)}</div>
+                        <div className="text-[0.6875rem] text-slate-400 font-medium">{String(l)}</div>
                         <div className="text-xs font-bold text-slate-800 dark:text-neutral-200 tabular-nums">
                           {esPlata ? plata(v) : String(v)}
                         </div>
@@ -460,7 +460,7 @@ export const CajaScreen: React.FC = () => {
                       {Object.entries(turno.resumen.porMetodo).map(([m, d]: any) => (
                         <span
                           key={m}
-                          className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[10px] font-bold text-slate-600 dark:text-neutral-300"
+                          className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300"
                         >
                           {({ cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transf.', other: 'Otro' } as any)[m] ?? m}
                           {' · '}
@@ -476,7 +476,7 @@ export const CajaScreen: React.FC = () => {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                     Movimientos de efectivo
                   </h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[0.75rem] text-slate-400 leading-relaxed">
                     Todo lo que entra o sale de la gaveta sin ser una venta:
                     un retiro a la bóveda, el café que se compró con plata de
                     caja, un adelanto. Sin registrarlo, el arqueo siempre
@@ -511,7 +511,7 @@ export const CajaScreen: React.FC = () => {
                         <button
                           key={k}
                           onClick={() => setMov(p => ({ ...p, kind: k }))}
-                          className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition ${
+                          className={`px-2 py-1.5 rounded-lg text-[0.6875rem] font-bold transition ${
                             mov.kind === k
                               ? k === 'in' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
                               : 'text-slate-500'
@@ -525,20 +525,20 @@ export const CajaScreen: React.FC = () => {
                       value={mov.reason}
                       onChange={e => setMov(p => ({ ...p, reason: e.target.value }))}
                       placeholder="Motivo — retiro a bóveda, compra…"
-                      className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                      className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
                     />
                     <input
                       type="number"
                       value={mov.amount}
                       onChange={e => setMov(p => ({ ...p, amount: e.target.value }))}
                       placeholder="0.00"
-                      className="w-24 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-mono tabular-nums text-right text-slate-900 dark:text-white"
+                      className="w-24 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-mono tabular-nums text-right text-slate-900 dark:text-white"
                     />
                   </div>
                   <button
                     onClick={registrarMovimiento}
                     disabled={ocupado || !Number(mov.amount) || !mov.reason.trim()}
-                    className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 flex items-center justify-center gap-1 disabled:opacity-40 transition"
+                    className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 flex items-center justify-center gap-1 disabled:opacity-40 transition"
                   >
                     <Plus className="w-3 h-3" />
                     Registrar movimiento
@@ -557,7 +557,7 @@ export const CajaScreen: React.FC = () => {
                         .filter(d => d.active !== false)
                         .map(d => (
                           <div key={d.id} className="flex items-center gap-2">
-                            <span className="w-16 shrink-0 text-[11px] font-bold text-slate-600 dark:text-neutral-300 tabular-nums">
+                            <span className="w-16 shrink-0 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 tabular-nums">
                               {baseCurrency.symbol}{Number(d.value).toLocaleString()}
                             </span>
                             <input
@@ -566,24 +566,24 @@ export const CajaScreen: React.FC = () => {
                               value={conteo[d.id] ?? ''}
                               onChange={e => setConteo(p => ({ ...p, [d.id]: e.target.value }))}
                               placeholder="0"
-                              className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-mono tabular-nums text-right text-slate-900 dark:text-white"
+                              className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-mono tabular-nums text-right text-slate-900 dark:text-white"
                             />
                           </div>
                         ))}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[0.75rem] text-slate-400">
                       No hay billetes registrados. Agrégalos en Ajustes → Monedas
                       y Billetes para contar más rápido.
                     </p>
                   )}
 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-1">
-                    <div className="flex justify-between text-[11px] text-slate-500 dark:text-neutral-400">
+                    <div className="flex justify-between text-[0.75rem] text-slate-500 dark:text-neutral-400">
                       <span>Contado</span>
                       <span className="font-mono tabular-nums">{plata(contado)}</span>
                     </div>
-                    <div className="flex justify-between text-[11px] text-slate-500 dark:text-neutral-400">
+                    <div className="flex justify-between text-[0.75rem] text-slate-500 dark:text-neutral-400">
                       <span>Debería haber</span>
                       <span className="font-mono tabular-nums">{plata(esperado)}</span>
                     </div>
@@ -607,7 +607,7 @@ export const CajaScreen: React.FC = () => {
                     value={notaCierre}
                     onChange={e => setNotaCierre(e.target.value)}
                     placeholder="Nota del cierre (opcional)"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
                   />
 
                   <button
@@ -618,7 +618,7 @@ export const CajaScreen: React.FC = () => {
                     <Lock className="w-3.5 h-3.5" />
                     Cerrar caja
                   </button>
-                  <p className="text-[10px] text-center text-slate-400 leading-relaxed">
+                  <p className="text-[0.6875rem] text-center text-slate-400 leading-relaxed">
                     El descuadre se guarda tal como salió. No se corrige el
                     número — un arqueo que siempre cuadra no detecta nada.
                   </p>
@@ -635,13 +635,13 @@ export const CajaScreen: React.FC = () => {
                     <div className="text-xs font-bold text-slate-900 dark:text-white">
                       Caja cerrada
                     </div>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[0.75rem] text-slate-400">
                       Puedes cobrar igual, pero esos pagos no entrarán en ningún arqueo.
                     </p>
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                     Fondo inicial {sim}
                   </label>
                   <input
@@ -665,7 +665,7 @@ export const CajaScreen: React.FC = () => {
 
             {/* Historial de turnos */}
             <div className="p-2 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs">
-              <h3 className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <h3 className="px-2 py-1.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
                 Cierres anteriores
               </h3>
               {historial.length ? (
@@ -682,13 +682,13 @@ export const CajaScreen: React.FC = () => {
                               hour: 'numeric', hour12: true, minute: '2-digit',
                             })}
                           </div>
-                          <div className="text-[10px] text-slate-400 truncate">
+                          <div className="text-[0.6875rem] text-slate-400 truncate">
                             {h.closedByName ?? 'Sin nombre'} · contó {plata(h.countedCash)} de{' '}
                             {plata(h.expectedCash)}
                             {h.notes ? ` · ${h.notes}` : ''}
                           </div>
                         </div>
-                        <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-extrabold tabular-nums ${
+                        <span className={`shrink-0 px-2 py-1 rounded-lg text-[0.6875rem] font-extrabold tabular-nums ${
                           cuadra
                             ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
                             : dif < 0

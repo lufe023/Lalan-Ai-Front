@@ -66,29 +66,29 @@ export const RecetaDelPreparado: React.FC<{
 
   return (
     <div className="space-y-3">
-      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-[10px] text-slate-600 dark:text-neutral-300 leading-relaxed">
+      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-[0.6875rem] text-slate-600 dark:text-neutral-300 leading-relaxed">
         <b className="text-amber-700 dark:text-amber-400">Una porción lleva…</b> Al servirlo salen estos insumos del inventario.
         Cada 1 o 2 semanas cuenta los insumos de verdad y ajusta: la diferencia es la merma.
       </div>
 
       {receta.length === 0 && (
-        <p className="text-[11px] text-slate-400 text-center py-2">Sin ingredientes todavía.</p>
+        <p className="text-[0.75rem] text-slate-400 text-center py-2">Sin ingredientes todavía.</p>
       )}
       {receta.map((l, i) => {
         const insumo = productos.find(p => p.id === l.ingredientId);
         return (
           <div key={l.ingredientId} className="flex items-center gap-2">
-            <span className="flex-1 min-w-0 truncate text-[12px] font-semibold text-slate-800 dark:text-slate-200">
+            <span className="flex-1 min-w-0 truncate text-[0.8125rem] font-semibold text-slate-800 dark:text-slate-200">
               {insumo?.name ?? l.nombre ?? 'Insumo'}
               {insumo?.unit === UNIDAD_POR_PIEZA && insumo.unitQty ? (
-                <span className="block text-[9px] font-normal text-slate-400">se compra en unidades de {insumo.unitQty} {insumo.unitQtyUnit ?? ''}</span>
+                <span className="block text-[0.6875rem] font-normal text-slate-400">se compra en unidades de {insumo.unitQty} {insumo.unitQtyUnit ?? ''}</span>
               ) : null}
             </span>
             <input type="number" min="0" step="0.001" value={l.quantity} aria-label="Cantidad por porción"
               onChange={e => cambiar(i, { quantity: Number(e.target.value) })}
-              className="w-20 px-2 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-right font-bold text-[12px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
+              className="w-20 px-2 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-right font-bold text-[0.8125rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
             <select value={l.unit} onChange={e => cambiar(i, { unit: e.target.value })} aria-label="Unidad"
-              className="px-2 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-semibold">
+              className="px-2 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-semibold">
               {UNIDADES.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
             </select>
             <button type="button" onClick={() => onChange(receta.filter((_, j) => j !== i))} aria-label="Quitar"
@@ -101,23 +101,23 @@ export const RecetaDelPreparado: React.FC<{
 
       <div className="flex gap-2">
         <select value={nuevo} onChange={e => setNuevo(e.target.value)}
-          className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px]">
+          className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem]">
           <option value="">Elegir insumo…</option>
           {candidatos.filter(p => !receta.some(l => l.ingredientId === p.id)).map(p => (
             <option key={p.id} value={p.id}>{p.name}{p.supplyOnly ? '' : ' (también se vende)'}</option>
           ))}
         </select>
         <button type="button" disabled={!nuevo} onClick={agregar}
-          className="px-3 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-40 flex items-center gap-1 cursor-pointer">
+          className="px-3 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold disabled:opacity-40 flex items-center gap-1 cursor-pointer">
           <Plus className="w-3.5 h-3.5" /> Agregar
         </button>
       </div>
       {candidatos.length === 0 && (
-        <p className="text-[10px] text-slate-400">Primero crea los insumos (por ejemplo "Salchichón de lomo") como productos de tipo <b>Insumo</b>.</p>
+        <p className="text-[0.6875rem] text-slate-400">Primero crea los insumos (por ejemplo "Salchichón de lomo") como productos de tipo <b>Insumo</b>.</p>
       )}
 
       {receta.length > 0 && (
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[11px]">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[0.75rem]">
           <span className="flex items-center gap-1.5 text-slate-600 dark:text-neutral-300">
             <ChefHat className="w-3.5 h-3.5" /> Cuesta hacerlo: <b className="tabular-nums">{dinero(costo)}</b>
           </span>
@@ -129,7 +129,7 @@ export const RecetaDelPreparado: React.FC<{
         </div>
       )}
       {faltanCostos && (
-        <p className="text-[10px] text-amber-600">A algún insumo le falta el costo de compra: el costo real es mayor. Ponlo en ese producto.</p>
+        <p className="text-[0.6875rem] text-amber-600">A algún insumo le falta el costo de compra: el costo real es mayor. Ponlo en ese producto.</p>
       )}
     </div>
   );

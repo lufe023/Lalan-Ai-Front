@@ -76,24 +76,24 @@ const Titulo: React.FC<{ icono?: React.ReactNode; texto: string; nota?: React.Re
       {icono}
       <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{texto}</h3>
     </div>
-    {nota && <span className="text-[10px] text-slate-400 shrink-0">{nota}</span>}
+    {nota && <span className="text-[0.6875rem] text-slate-400 shrink-0">{nota}</span>}
   </div>
 );
 
 /** Sube, baja o no hay con qué comparar. Nunca un "+0 %" inventado. */
 const Variacion: React.FC<{ c: Comparado; contra: string }> = ({ c, contra }) => {
   if (c.variacion === null) {
-    return <span className="text-[10px] text-slate-400" title={`No hubo nada ${contra} con qué comparar`}>Sin datos de {contra}</span>;
+    return <span className="text-[0.6875rem] text-slate-400" title={`No hubo nada ${contra} con qué comparar`}>Sin datos de {contra}</span>;
   }
   const sube = c.variacion > 0;
   const igual = c.variacion === 0;
   const Icono = igual ? Minus : sube ? ArrowUpRight : ArrowDownRight;
   const color = igual ? 'text-slate-500' : sube ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${color}`} title={`Antes: ${c.anterior.toLocaleString('es-DO')}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[0.75rem] font-semibold ${color}`} title={`Antes: ${c.anterior.toLocaleString('es-DO')}`}>
       <Icono className="w-3.5 h-3.5" />
       {sube ? '+' : ''}{c.variacion}%
-      <span className="text-slate-400 font-normal text-[10px] ml-0.5">vs. {contra}</span>
+      <span className="text-slate-400 font-normal text-[0.6875rem] ml-0.5">vs. {contra}</span>
     </span>
   );
 };
@@ -107,10 +107,10 @@ const Kpi: React.FC<{ titulo: string; valor: string; comparado?: Comparado; cont
     transition={{ delay }}
     className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs flex flex-col gap-1.5 min-w-0"
   >
-    <span className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400">{titulo}</span>
+    <span className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400">{titulo}</span>
     <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums truncate">{valor}</span>
     {comparado && <Variacion c={comparado} contra={contra} />}
-    {pie && <div className="text-[10px] text-slate-500 dark:text-neutral-400 leading-snug">{pie}</div>}
+    {pie && <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-snug">{pie}</div>}
   </motion.div>
 );
 
@@ -126,12 +126,12 @@ const Dato: React.FC<{ etiqueta: string; valor: React.ReactNode; detalle?: React
   }[tono];
   return (
     <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 min-w-0">
-      <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-neutral-400">
+      <div className="flex items-center gap-1 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
         {icono}
         <span className="truncate">{etiqueta}</span>
       </div>
       <div className={`text-base font-extrabold tabular-nums mt-0.5 ${color}`}>{valor}</div>
-      {detalle && <div className="text-[10px] text-slate-400 dark:text-neutral-500 leading-snug mt-0.5">{detalle}</div>}
+      {detalle && <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 leading-snug mt-0.5">{detalle}</div>}
     </div>
   );
 };
@@ -149,7 +149,7 @@ const Barras: React.FC<{
   icono?: (b: Barra) => React.ReactNode;
   onClick?: (b: Barra) => void;
 }> = ({ filas, valor, vacio, icono, onClick }) => {
-  if (!filas.length) return <p className="text-[11px] text-slate-400 dark:text-neutral-500 text-center py-4">{vacio}</p>;
+  if (!filas.length) return <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500 text-center py-4">{vacio}</p>;
   const mayor = Math.max(...filas.map(f => f.citas), 1);
   return (
     <div className="space-y-2.5">
@@ -165,7 +165,7 @@ const Barras: React.FC<{
               {icono?.(f)}
               <span className="truncate group-hover:underline">{f.nombre}</span>
             </span>
-            <span className="shrink-0 text-[11px] text-slate-500 dark:text-neutral-400 tabular-nums">{valor(f)}</span>
+            <span className="shrink-0 text-[0.75rem] text-slate-500 dark:text-neutral-400 tabular-nums">{valor(f)}</span>
           </div>
           <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-neutral-800 overflow-hidden">
             <motion.div
@@ -192,7 +192,7 @@ function horasConMovimiento<T extends { citas: number }>(horas: T[]): T[] {
 
 const Columnas: React.FC<{ columnas: { clave: string; etiqueta: string; citas: number; ayuda: string }[] }> = ({ columnas }) => {
   const mayor = Math.max(...columnas.map(c => c.citas), 0);
-  if (!mayor) return <p className="text-[11px] text-slate-400 dark:text-neutral-500 text-center py-6">Sin citas en este período</p>;
+  if (!mayor) return <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500 text-center py-6">Sin citas en este período</p>;
   /* Muchas columnas (las horas): etiqueta una sí y una no, para que se lean completas */
   const apretadas = columnas.length > 10;
   return (
@@ -201,7 +201,7 @@ const Columnas: React.FC<{ columnas: { clave: string; etiqueta: string; citas: n
         const pico = c.citas === mayor;
         return (
           <div key={c.clave} className="flex-1 min-w-0 h-full flex flex-col items-center justify-end gap-1" title={c.ayuda}>
-            <span className={`text-[10px] tabular-nums ${c.citas ? 'text-slate-600 dark:text-neutral-300 font-semibold' : 'text-transparent'}`}>
+            <span className={`text-[0.6875rem] tabular-nums ${c.citas ? 'text-slate-600 dark:text-neutral-300 font-semibold' : 'text-transparent'}`}>
               {c.citas || 0}
             </span>
             <div className="w-full flex-1 flex items-end">
@@ -214,7 +214,7 @@ const Columnas: React.FC<{ columnas: { clave: string; etiqueta: string; citas: n
                 }`}
               />
             </div>
-            <span className={`text-[10px] text-slate-500 dark:text-neutral-400 whitespace-nowrap text-center ${apretadas && i % 2 ? 'invisible' : ''}`}>{c.etiqueta}</span>
+            <span className={`text-[0.6875rem] text-slate-500 dark:text-neutral-400 whitespace-nowrap text-center ${apretadas && i % 2 ? 'invisible' : ''}`}>{c.etiqueta}</span>
           </div>
         );
       })}
@@ -302,7 +302,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
     <>
       {!!d.monedasSinTasa?.length && (
         <Tarjeta className="border-amber-300 dark:border-amber-800/60">
-          <div className="flex items-start gap-2 text-[11px] text-amber-700 dark:text-amber-400">
+          <div className="flex items-start gap-2 text-[0.75rem] text-amber-700 dark:text-amber-400">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
               Hay citas con precio en {d.monedasSinTasa.join(', ')} y esa moneda no está en Ajustes → Monedas: esos montos se
@@ -365,7 +365,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
             </div>
             <div className="min-w-0">
               <h3 className="text-xs font-bold text-slate-900 dark:text-white">Lo que hizo {d.agente}</h3>
-              <p className="text-[11px] text-slate-500 dark:text-neutral-400 truncate">
+              <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">
                 {ia.citasAgendadas.actual
                   ? `Agendó ${plural(ia.citasAgendadas.actual, 'cita', 'citas')}: el ${ia.parteDeLasCitas}% de las que se agendaron`
                   : 'Todavía no agendó citas en este período'}
@@ -510,22 +510,22 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
                 {clientas.nuevas > 0 && <div className="h-full bg-[var(--primary)]" style={{ width: `${(clientas.nuevas / totalClientas) * 100}%` }} />}
                 {clientas.recurrentes > 0 && <div className="h-full bg-[var(--primary)] opacity-40" style={{ width: `${(clientas.recurrentes / totalClientas) * 100}%` }} />}
               </div>
-              <div className="flex gap-4 mt-1.5 text-[10px] text-slate-500 dark:text-neutral-400">
+              <div className="flex gap-4 mt-1.5 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--primary)]" /> Nuevas {clientas.nuevas}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--primary)] opacity-40" /> Volvieron {clientas.recurrentes}</span>
               </div>
             </>
           ) : (
-            <p className="text-[11px] text-slate-400 text-center py-2">Sin clientas atendidas en este período</p>
+            <p className="text-[0.75rem] text-slate-400 text-center py-2">Sin clientas atendidas en este período</p>
           )}
           <div className="mt-4">
-            <p className="text-[11px] font-semibold text-slate-700 dark:text-neutral-300 mb-1.5">Las que más dejaron en caja</p>
+            <p className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-300 mb-1.5">Las que más dejaron en caja</p>
             {clientas.mejores.length ? (
               <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
                 {clientas.mejores.map((c, i) => (
                   <li key={c.id} className="flex items-center justify-between py-1.5 text-xs">
                     <span className="flex items-center gap-2 min-w-0">
-                      <span className="w-4 text-[10px] text-slate-400 tabular-nums">{i + 1}</span>
+                      <span className="w-4 text-[0.6875rem] text-slate-400 tabular-nums">{i + 1}</span>
                       <span className="truncate text-slate-800 dark:text-slate-200">{c.nombre}</span>
                     </span>
                     <span className="shrink-0 font-semibold tabular-nums text-slate-900 dark:text-white">{dinero(c.monto)}</span>
@@ -533,7 +533,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
                 ))}
               </ul>
             ) : (
-              <p className="text-[11px] text-slate-400">Aparecen cuando se cobra a clientas con ficha.</p>
+              <p className="text-[0.75rem] text-slate-400">Aparecen cuando se cobra a clientas con ficha.</p>
             )}
           </div>
         </Tarjeta>
@@ -546,25 +546,25 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
           />
           {clientas.enRiesgo.total ? (
             <>
-              <p className="text-[11px] text-slate-500 dark:text-neutral-400 mb-2">
+              <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mb-2">
                 {plural(clientas.enRiesgo.total, 'clienta venía', 'clientas venían')} y no ha{clientas.enRiesgo.total === 1 ? '' : 'n'} vuelto ni tiene{clientas.enRiesgo.total === 1 ? '' : 'n'} cita. Un mensaje a tiempo las recupera.
               </p>
               <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
                 {clientas.enRiesgo.lista.map(c => (
                   <li key={c.id} className="flex items-center justify-between py-1.5 text-xs">
                     <span className="truncate text-slate-800 dark:text-slate-200">{c.nombre}</span>
-                    <span className="shrink-0 text-[11px] text-slate-500 tabular-nums">
+                    <span className="shrink-0 text-[0.75rem] text-slate-500 tabular-nums">
                       hace {c.dias} días · {plural(c.visitas, 'visita', 'visitas')}
                     </span>
                   </li>
                 ))}
               </ul>
-              <button onClick={() => navigateTo('clients')} className="mt-2 text-[11px] font-semibold text-[var(--primary)] hover:opacity-70">
+              <button onClick={() => navigateTo('clients')} className="mt-2 text-[0.75rem] font-semibold text-[var(--primary)] hover:opacity-70">
                 Ir a clientas →
               </button>
             </>
           ) : (
-            <p className="text-[11px] text-slate-400 py-2">Ninguna: todas tus clientas habituales han vuelto o tienen cita.</p>
+            <p className="text-[0.75rem] text-slate-400 py-2">Ninguna: todas tus clientas habituales han vuelto o tienen cita.</p>
           )}
         </Tarjeta>
       </div>

@@ -73,11 +73,11 @@ export const OtrosNegocios: React.FC = () => {
                 <b className="text-sm">{nombreDe(cat.tiposNegocio, o.tipoNegocio)}</b>
                 {o.negocio && <span className="text-xs text-slate-500">· {o.negocio}</span>}
                 {o.nombre && <span className="text-xs text-slate-500">· {o.nombre}</span>}
-                <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold ${COLOR_ESTADO[o.estado]}`}>{nombreDe(estados, o.estado)}</span>
+                <span className={`ml-auto px-2 py-0.5 rounded-full text-[0.6875rem] font-bold ${COLOR_ESTADO[o.estado]}`}>{nombreDe(estados, o.estado)}</span>
               </div>
               {o.queAutomatizar.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {o.queAutomatizar.map((q) => <span key={q} className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-neutral-800">{nombreDe(cat.queAutomatizar, q)}</span>)}
+                  {o.queAutomatizar.map((q) => <span key={q} className="px-2 py-0.5 rounded-full text-[0.6875rem] bg-slate-100 dark:bg-neutral-800">{nombreDe(cat.queAutomatizar, q)}</span>)}
                 </div>
               )}
               {o.detalle && <p className="text-xs text-slate-600 dark:text-neutral-300">{o.detalle}</p>}

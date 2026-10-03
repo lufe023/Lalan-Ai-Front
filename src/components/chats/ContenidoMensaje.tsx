@@ -63,7 +63,7 @@ export const ContenidoMensaje: React.FC<{
   return (
     <div className="space-y-1.5">
       {msg.eliminado && (
-        <p className={`flex items-center gap-1 text-[10px] font-bold ${sobreColor ? 'text-amber-200' : 'text-amber-600'}`}>
+        <p className={`flex items-center gap-1 text-[0.6875rem] font-bold ${sobreColor ? 'text-amber-200' : 'text-amber-600'}`}>
           <EyeOff className="w-3 h-3" /> Eliminado por la clienta · solo lo ves tú como super admin
         </p>
       )}
@@ -79,7 +79,7 @@ export const ContenidoMensaje: React.FC<{
                 </a>
               )
           ) : (
-            <div className={`h-40 w-56 max-w-full rounded-xl flex items-center justify-center text-[11px] ${sobreColor ? 'bg-white/10' : 'bg-slate-100 dark:bg-neutral-700/60'} ${suave}`}>
+            <div className={`h-40 w-56 max-w-full rounded-xl flex items-center justify-center text-[0.75rem] ${sobreColor ? 'bg-white/10' : 'bg-slate-100 dark:bg-neutral-700/60'} ${suave}`}>
               {error ? 'No se pudo cargar' : 'Cargando…'}
             </div>
           )
@@ -100,7 +100,7 @@ export const ContenidoMensaje: React.FC<{
               <button
                 type="button"
                 onClick={() => void descargarArchivo(`/conversations/mensajes/${msg.id}/archivo`, `nota-de-voz.${EXTENSION_AUDIO[(a.mime ?? '').split(';')[0]] ?? 'ogg'}`)}
-                className={`flex items-center gap-1 text-[10px] font-bold ${suave}`}
+                className={`flex items-center gap-1 text-[0.6875rem] font-bold ${suave}`}
               >
                 <Download className="w-3 h-3" /> Descargar
               </button>
@@ -112,7 +112,7 @@ export const ContenidoMensaje: React.FC<{
       )}
 
       {a?.transcripcion && (
-        <p className={`text-[10.5px] leading-snug ${suave}`}>
+        <p className={`text-[0.75rem] leading-snug ${suave}`}>
           <span className="font-bold">Dice: </span>«{a.transcripcion}»
         </p>
       )}
@@ -130,7 +130,7 @@ export const ContenidoMensaje: React.FC<{
       )}
 
       {a?.descripcion && (
-        <p className={`text-[10.5px] leading-snug ${suave}`}>
+        <p className={`text-[0.75rem] leading-snug ${suave}`}>
           <span className="font-bold">Lalan ve: </span>{a.descripcion}
         </p>
       )}
@@ -143,7 +143,7 @@ export const ContenidoMensaje: React.FC<{
 /** El emoji con que reaccionó, pegado al borde de la burbuja */
 export const ReaccionDeMensaje: React.FC<{ emoji?: string | null; aLaDerecha: boolean }> = ({ emoji, aLaDerecha }) =>
   emoji ? (
-    <span className={`-mt-2 ${aLaDerecha ? 'mr-2' : 'ml-2'} px-1.5 py-0.5 rounded-full text-[12px] leading-none bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 shadow-xs`}>
+    <span className={`-mt-2 ${aLaDerecha ? 'mr-2' : 'ml-2'} px-1.5 py-0.5 rounded-full text-[0.8125rem] leading-none bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 shadow-xs`}>
       {emoji}
     </span>
   ) : null;
@@ -161,7 +161,7 @@ export const OrigenDelChat: React.FC<{ mensajes: ChatMessage[] }> = ({ mensajes 
   const { texto, Icono } = ORIGENES[o.tipo] ?? ORIGENES.enlace;
   return (
     <div className="flex justify-center">
-      <div className="px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-900 text-[11px] text-sky-800 dark:text-sky-200 flex items-center gap-1.5 max-w-[90%]">
+      <div className="px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-900 text-[0.75rem] text-sky-800 dark:text-sky-200 flex items-center gap-1.5 max-w-[90%]">
         <Icono className="w-3.5 h-3.5 shrink-0" />
         <span className="font-semibold">{texto}</span>
         {o.titulo && <span className="truncate opacity-80">· {o.titulo}</span>}

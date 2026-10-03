@@ -173,9 +173,9 @@ export const PeticionesMusica: React.FC = () => {
   };
 
   if (error && !r) {
-    return <p className="text-[11px] text-slate-400">No se pudieron cargar las peticiones de canciones.</p>;
+    return <p className="text-[0.75rem] text-slate-400">No se pudieron cargar las peticiones de canciones.</p>;
   }
-  if (!r) return <p className="text-[11px] text-slate-400">Cargando…</p>;
+  if (!r) return <p className="text-[0.75rem] text-slate-400">Cargando…</p>;
 
   const apagado = limite === 0;
   const btnPaso =
@@ -185,7 +185,7 @@ export const PeticionesMusica: React.FC = () => {
     <div className="space-y-4">
       {/* ── Cuánto puede pedir cada persona ───────────────────── */}
       <div className="space-y-2">
-        <div className="text-[11px] font-bold text-slate-700 dark:text-neutral-200">Canciones por persona</div>
+        <div className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">Canciones por persona</div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
             <button
@@ -205,13 +205,13 @@ export const PeticionesMusica: React.FC = () => {
             ><Plus className="w-4 h-4" /></button>
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-neutral-400">
+          <div className="flex items-center gap-1.5 text-[0.75rem] text-slate-500 dark:text-neutral-400">
             cada
             <select
               value={ventana}
               disabled={!esAdmin || apagado}
               onChange={e => guardarConfig({ ventanaHoras: Number(e.target.value) })}
-              className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-bold text-slate-700 dark:text-neutral-200 outline-none disabled:opacity-40"
+              className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200 outline-none disabled:opacity-40"
             >
               {(VENTANAS.includes(ventana) ? VENTANAS : [...VENTANAS, ventana].sort((a, b) => a - b)).map(h => (
                 <option key={h} value={h}>{h} {h === 1 ? 'hora' : 'horas'}</option>
@@ -219,7 +219,7 @@ export const PeticionesMusica: React.FC = () => {
             </select>
           </div>
         </div>
-        <p className="text-[10px] text-slate-400 leading-relaxed">
+        <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
           {apagado
             ? 'Los pedidos están desactivados: las clientas ven el aviso de que hoy elige el salón.'
             : `Cada persona puede pedir ${limite} ${limite === 1 ? 'canción' : 'canciones'} y se le renueva una por una a las ${ventana} ${ventana === 1 ? 'hora' : 'horas'} de haberla pedido. Pon 0 para desactivar los pedidos.`}
@@ -233,7 +233,7 @@ export const PeticionesMusica: React.FC = () => {
           type="button"
           disabled={!esAdmin}
           onClick={() => (confirmando === 'todas' ? void reiniciar() : pedirConfirmacion('todas'))}
-          className={`px-3 py-2 rounded-xl text-[11px] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+          className={`px-3 py-2 rounded-xl text-[0.75rem] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 ${
             confirmando === 'todas'
               ? 'bg-rose-500 text-white'
               : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700'
@@ -242,20 +242,20 @@ export const PeticionesMusica: React.FC = () => {
           <RotateCcw className="w-3.5 h-3.5" />
           {confirmando === 'todas' ? 'Toca otra vez para confirmar' : 'Reiniciar a todas'}
         </button>
-        <span className="text-[10px] text-slate-400">
+        <span className="text-[0.6875rem] text-slate-400">
           Todas vuelven a tener sus {limite} canciones. Lo que ya está en la fila se queda.
         </span>
       </div>
 
       {/* ── Quién ha pedido ───────────────────────────────────── */}
       <div className="pt-3 border-t border-slate-100 dark:border-neutral-800 space-y-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+        <div className="flex items-center gap-1.5 text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">
           <Users className="w-3.5 h-3.5 text-slate-400" /> Quién ha pedido
           <span className="font-normal text-slate-400">· últimas {ventana} {ventana === 1 ? 'hora' : 'horas'}</span>
         </div>
 
         {r.personas.length === 0 ? (
-          <p className="text-[11px] text-slate-400">Todavía nadie ha pedido canciones en esta ventana.</p>
+          <p className="text-[0.75rem] text-slate-400">Todavía nadie ha pedido canciones en esta ventana.</p>
         ) : (
           <div className="space-y-1.5">
             {r.personas.map(p => {
@@ -267,14 +267,14 @@ export const PeticionesMusica: React.FC = () => {
                       <span className="text-xs font-bold text-slate-800 dark:text-neutral-100 truncate">
                         {p.nombre ?? 'Sin nombre'}
                       </span>
-                      <span className="text-[10px] font-mono text-slate-400">#{p.codigo}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      <span className="text-[0.6875rem] font-mono text-slate-400">#{p.codigo}</span>
+                      <span className={`text-[0.6875rem] font-bold px-1.5 py-0.5 rounded-full ${
                         agotada ? 'bg-amber-500/15 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'
                       }`}>
                         {p.usadas}/{limite}
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                    <div className="text-[0.6875rem] text-slate-400 truncate mt-0.5">
                       {p.canciones.map(c => c.title).join(' · ')} · {hace(p.ultima)}
                     </div>
                   </div>
@@ -283,7 +283,7 @@ export const PeticionesMusica: React.FC = () => {
                     disabled={!esAdmin || p.usadas === 0}
                     onClick={() => void reiniciar(p)}
                     title={p.usadas === 0 ? 'Ya tiene toda su cuota' : 'Devolverle sus canciones'}
-                    className="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
+                    className="shrink-0 px-2.5 py-1.5 rounded-lg text-[0.75rem] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
                   >
                     <RotateCcw className="w-3 h-3" /> Reiniciar
                   </button>
@@ -296,17 +296,17 @@ export const PeticionesMusica: React.FC = () => {
 
       {/* ── La fila que espera ────────────────────────────────── */}
       <div className="pt-3 border-t border-slate-100 dark:border-neutral-800 space-y-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+        <div className="flex items-center gap-1.5 text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">
           <ListMusic className="w-3.5 h-3.5 text-slate-400" /> En la fila del salón
           <span className="font-normal text-slate-400">· {r.pendientes.length}</span>
         </div>
         {r.pendientes.length === 0 ? (
-          <p className="text-[11px] text-slate-400">No hay canciones pedidas esperando.</p>
+          <p className="text-[0.75rem] text-slate-400">No hay canciones pedidas esperando.</p>
         ) : (
           <div className="space-y-1">
             {r.pendientes.map((p, i) => (
               <div key={p.id} className="flex items-center gap-2.5 py-1.5">
-                <span className="w-4 text-[11px] font-mono text-slate-400 tabular-nums shrink-0">{i + 1}</span>
+                <span className="w-4 text-[0.75rem] font-mono text-slate-400 tabular-nums shrink-0">{i + 1}</span>
                 {p.thumbnail ? (
                   <img src={p.thumbnail} alt="" loading="lazy" className="w-9 h-9 rounded-lg object-cover shrink-0" />
                 ) : (
@@ -316,7 +316,7 @@ export const PeticionesMusica: React.FC = () => {
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-slate-800 dark:text-neutral-100 truncate">{p.title}</div>
-                  <div className="text-[10px] text-slate-400 truncate">
+                  <div className="text-[0.6875rem] text-slate-400 truncate">
                     {p.guestName ?? 'Sin nombre'} · {hace(p.createdAt)}
                   </div>
                 </div>
@@ -340,12 +340,12 @@ export const PeticionesMusica: React.FC = () => {
           )}
         </div>
         <div className="min-w-0 flex-1 space-y-2">
-          <div className="text-[11px] font-bold text-slate-700 dark:text-neutral-200">Enlace para las clientas</div>
-          <p className="text-[10px] text-slate-400 leading-relaxed">
+          <div className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">Enlace para las clientas</div>
+          <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
             Es el mismo que muestra el QR de la pantalla de turnos. Puedes imprimirlo para las mesas.
             Solo sirve para pedir canciones y ver qué suena: no da acceso a nada más.
           </p>
-          <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[10px] font-mono break-all text-slate-500 dark:text-neutral-400">
+          <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] font-mono break-all text-slate-500 dark:text-neutral-400">
             {url}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -355,17 +355,17 @@ export const PeticionesMusica: React.FC = () => {
                 try { await navigator.clipboard.writeText(url); showToast('Enlace copiado', 'Listo para pegar.', 'success'); }
                 catch { showToast('No se pudo copiar', 'Selecciónalo y cópialo a mano.', 'warning'); }
               }}
-              className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold hover:opacity-90 transition cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[0.75rem] font-bold hover:opacity-90 transition cursor-pointer"
             >Copiar enlace</button>
             <button
               type="button" onClick={() => window.open(url, '_blank', 'noopener')}
-              className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.75rem] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
             >Ver como clienta</button>
             <button
               type="button"
               disabled={!esAdmin}
               onClick={() => (confirmando === 'enlace' ? void rotarEnlace() : pedirConfirmacion('enlace'))}
-              className={`px-3 py-2 rounded-xl text-[11px] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`px-3 py-2 rounded-xl text-[0.75rem] font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 confirmando === 'enlace' ? 'bg-rose-500 text-white' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-500/10'
               }`}
             >

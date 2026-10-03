@@ -63,7 +63,7 @@ export const CalorApp: React.FC<{ pantalla: string; dispositivo: string; desde?:
     return () => { vivo = false; };
   }, [pantalla, dispositivo, desde, negocio]);
   return (
-    <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-[300] px-4 py-2 rounded-full bg-[#1C1216] text-white text-[12px] font-bold shadow-lg flex items-center gap-3">
+    <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-[300] px-4 py-2 rounded-full bg-[#1C1216] text-white text-[0.8125rem] font-bold shadow-lg flex items-center gap-3">
       {texto}<i className="inline-block w-24 h-2 rounded-full" style={{ background: 'linear-gradient(90deg,#3B82F6,#22C55E,#FACC15,#EF4444)' }} />poco → mucho
     </div>
   );

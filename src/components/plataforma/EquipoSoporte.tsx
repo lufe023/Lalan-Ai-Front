@@ -53,8 +53,8 @@ export const EquipoSoporte: React.FC = () => {
       {clave && <ClaveParaCompartir nombre={clave.nombre} email={clave.email} clave={clave.clave} onListo={() => setClave(null)} />}
 
       <form onSubmit={crear} className="grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end rounded-2xl border border-slate-200 dark:border-neutral-800 p-3">
-        <label className="text-[11px] font-bold">Nombre<input value={nombre} onChange={e => setNombre(e.target.value)} maxLength={80} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-sm font-normal" /></label>
-        <label className="text-[11px] font-bold">Correo<input type="email" value={correo} onChange={e => setCorreo(e.target.value)} maxLength={120} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-sm font-normal" /></label>
+        <label className="text-[0.75rem] font-bold">Nombre<input value={nombre} onChange={e => setNombre(e.target.value)} maxLength={80} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-sm font-normal" /></label>
+        <label className="text-[0.75rem] font-bold">Correo<input type="email" value={correo} onChange={e => setCorreo(e.target.value)} maxLength={120} className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-sm font-normal" /></label>
         <button type="submit" disabled={guardando} className="px-4 py-2 rounded-xl bg-[var(--primary)] text-white text-sm font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
           {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />} Agregar
         </button>
@@ -68,7 +68,7 @@ export const EquipoSoporte: React.FC = () => {
             {equipo.map(m => (
               <li key={m.id} className="rounded-2xl border border-slate-200 dark:border-neutral-800 p-3 flex flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-0"><b className="text-sm">{m.name}</b><div className="text-xs text-slate-500 truncate">{m.email}</div></div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-neutral-800'}`}>{m.active ? 'Activo' : 'Apagado'}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-bold ${m.active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-neutral-800'}`}>{m.active ? 'Activo' : 'Apagado'}</span>
                 <button type="button" onClick={() => void nuevaClave(m)} className="text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 cursor-pointer"><KeyRound className="w-3.5 h-3.5" /> Clave temporal</button>
                 <button type="button" onClick={() => void alternar(m)} className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 cursor-pointer">{m.active ? 'Apagar' : 'Reactivar'}</button>
               </li>

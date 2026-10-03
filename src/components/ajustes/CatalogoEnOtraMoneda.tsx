@@ -47,11 +47,11 @@ export const CatalogoEnOtraMoneda: React.FC = () => {
   if (!resumen?.monedas.length) return null;
   return (
     <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/60 dark:bg-amber-950/20 space-y-2.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+      <div className="flex items-center gap-1.5 text-[0.75rem] font-bold text-amber-800 dark:text-amber-300">
         <ArrowRightLeft className="w-3.5 h-3.5" /> Parte del catálogo tiene precios en otra moneda
       </div>
       {resumen.monedas.map(m => (
-        <div key={m.moneda} className="space-y-1.5 text-[11px] text-slate-600 dark:text-neutral-300">
+        <div key={m.moneda} className="space-y-1.5 text-[0.75rem] text-slate-600 dark:text-neutral-300">
           <p>
             <b>{m.servicios} servicios</b> y <b>{m.productos} productos</b> tienen el precio en <b>{m.moneda}</b>.
             {m.tasa == null
@@ -60,23 +60,23 @@ export const CatalogoEnOtraMoneda: React.FC = () => {
           </p>
           {m.tasa != null && (
             <>
-              <ul className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <ul className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 {m.ejemplos.map(e => (
                   <li key={e.nombre}>{e.nombre}: {enSuMoneda(e.antes, m.moneda)} → {e.despues == null ? '—' : enSuMoneda(e.despues, resumen.base)}</li>
                 ))}
               </ul>
               {confirmar === m.moneda ? (
                 <div className="flex gap-2 items-center">
-                  <span className="text-[10px] text-slate-500">Se convierten precio, variantes y costo de compra, redondeados. Las citas y ventas ya hechas no cambian.</span>
-                  <button type="button" onClick={() => setConfirmar(null)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold text-slate-500 cursor-pointer">Cancelar</button>
+                  <span className="text-[0.6875rem] text-slate-500">Se convierten precio, variantes y costo de compra, redondeados. Las citas y ventas ya hechas no cambian.</span>
+                  <button type="button" onClick={() => setConfirmar(null)} className="px-2.5 py-1.5 rounded-lg text-[0.6875rem] font-semibold text-slate-500 cursor-pointer">Cancelar</button>
                   <button type="button" disabled={!!pasando} onClick={() => void pasar(m.moneda)}
-                    className="px-2.5 py-1.5 rounded-lg bg-amber-600 text-white text-[10px] font-bold disabled:opacity-50 cursor-pointer shrink-0">
+                    className="px-2.5 py-1.5 rounded-lg bg-amber-600 text-white text-[0.6875rem] font-bold disabled:opacity-50 cursor-pointer shrink-0">
                     {pasando ? 'Pasando…' : `Sí, pasar a ${resumen.base}`}
                   </button>
                 </div>
               ) : (
                 <button type="button" onClick={() => setConfirmar(m.moneda)}
-                  className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-amber-300 dark:border-amber-800 text-[10px] font-bold text-amber-800 dark:text-amber-300 cursor-pointer">
+                  className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-amber-300 dark:border-amber-800 text-[0.6875rem] font-bold text-amber-800 dark:text-amber-300 cursor-pointer">
                   Pasar el catálogo de {m.moneda} a {resumen.base} (tasa {m.tasa.toLocaleString('es-DO', { maximumFractionDigits: 4 })})
                 </button>
               )}

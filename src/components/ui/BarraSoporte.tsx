@@ -5,7 +5,7 @@ import { salirDeSoporte } from '../../services/soporte';
 /** Siempre a la vista mientras se está dentro del salón de un cliente */
 export const BarraSoporte: React.FC<{ negocio: string }> = ({ negocio }) => (
   <div
-    className="fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2 pl-3 pr-1 py-1 rounded-full bg-amber-500 text-white shadow-lg text-[12px] font-bold max-w-[92vw] top-safe-offset"
+    className="fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2 pl-3 pr-1 py-1 rounded-full bg-amber-500 text-white shadow-lg text-[0.8125rem] font-bold max-w-[92vw] top-safe-offset"
     style={{ top: 'var(--banner-safe-top, max(calc(env(safe-area-inset-top, 0px) + 8px), 52px))' }}
   >
     <LifeBuoy className="w-4 h-4 shrink-0" />

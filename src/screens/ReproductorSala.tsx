@@ -98,7 +98,7 @@ export const ReproductorSala: React.FC<{ token: string }> = ({ token }) => {
                   />
                 ))}
               </span>
-              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-400/80">
+              <span className="text-[0.75rem] font-bold uppercase tracking-widest text-emerald-400/80">
                 {enVivo ? (sala.sonando ? 'Sonando' : 'En pausa') : 'Sin enlace'}
               </span>
             </div>

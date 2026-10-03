@@ -78,7 +78,7 @@ export const ActivarAccesoRapidoModal: React.FC<Props> = ({ isOpen, onClose }) =
           {/* Security guarantee pill */}
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 flex items-start gap-2.5 mb-5">
             <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-            <div className="text-[11px] text-slate-600 dark:text-neutral-300 leading-tight">
+            <div className="text-[0.75rem] text-slate-600 dark:text-neutral-300 leading-tight">
               <span className="font-semibold text-slate-800 dark:text-white block mb-0.5">Seguridad vinculada al dispositivo</span>
               El acceso solo funciona en este equipo físico. No puede ser utilizado desde ningún otro teléfono o computadora.
             </div>

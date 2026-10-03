@@ -82,7 +82,7 @@ export const PWAInstallBanner: React.FC = () => {
         <div className="flex items-center gap-1.5 shrink-0 ml-2">
           <button
             onClick={handleInstallClick}
-            className="px-2.5 py-1 rounded-md bg-white text-[var(--primary)] font-bold text-[11px] shadow-xs hover:bg-slate-50 transition cursor-pointer"
+            className="px-2.5 py-1 rounded-md bg-white text-[var(--primary)] font-bold text-[0.75rem] shadow-xs hover:bg-slate-50 transition cursor-pointer"
           >
             {isIOS ? 'Cómo instalar' : 'Instalar'}
           </button>
@@ -139,7 +139,7 @@ export const PWAInstallBanner: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-slate-800 dark:text-neutral-200">1. Toca Compartir</span>
-                    <p className="text-slate-500 dark:text-neutral-400 text-[11px] mt-0.5">
+                    <p className="text-slate-500 dark:text-neutral-400 text-[0.75rem] mt-0.5">
                       En la barra inferior de Safari, toca el botón con el cuadrado y la flecha hacia arriba.
                     </p>
                   </div>
@@ -151,7 +151,7 @@ export const PWAInstallBanner: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-bold text-slate-800 dark:text-neutral-200">2. Elige "Agregar al inicio"</span>
-                    <p className="text-slate-500 dark:text-neutral-400 text-[11px] mt-0.5">
+                    <p className="text-slate-500 dark:text-neutral-400 text-[0.75rem] mt-0.5">
                       Desliza hacia abajo en el menú y selecciona <strong>"Agregar al inicio"</strong> (o <em>Add to Home Screen</em>).
                     </p>
                   </div>

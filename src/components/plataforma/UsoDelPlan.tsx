@@ -10,7 +10,7 @@ export const UsoDelPlan: React.FC<{ uso: Uso; limites: Limites; compacto?: boole
       const color = !tope ? 'bg-slate-300 dark:bg-neutral-700' : p >= 100 ? 'bg-rose-500' : p >= 80 ? 'bg-amber-500' : 'bg-[var(--primary)]';
       return (
         <div key={r}>
-          <div className="flex justify-between text-[11px]">
+          <div className="flex justify-between text-[0.75rem]">
             <span className="text-slate-600 dark:text-neutral-300">{NOMBRE_RECURSO[r]}</span>
             <span className="tabular-nums font-semibold text-slate-900 dark:text-white">
               {uso[r].toLocaleString('es-DO')} {tope !== null ? <span className="text-slate-400 font-normal">de {tope.toLocaleString('es-DO')}</span> : <span className="text-slate-400 font-normal">· sin límite</span>}

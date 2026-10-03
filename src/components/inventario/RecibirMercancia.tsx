@@ -7,7 +7,7 @@ import { IOSModal } from '../ui/IOSModal';
 interface Lote { id: string; lotNumber: string | null; expiresAt: string | null; remaining: number | string; receivedAt: string }
 export interface ProductoARecibir { id: string; name: string; unit?: string; costPrice?: number | null }
 
-const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[13px]';
+const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.875rem]';
 const fecha = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' }) : 'sin fecha');
 
 /**
@@ -49,13 +49,13 @@ export const RecibirMercancia: React.FC<{ producto: ProductoARecibir | null; onC
     <IOSModal isOpen={!!producto} onClose={onClose} title="Recibir mercancía" subtitle={producto?.name} fixedHeight={false}>
       <div className="space-y-3 p-1">
         <div className="grid grid-cols-2 gap-2">
-          <label><span className="text-[11px] text-slate-500">Cantidad ({producto?.unit ?? 'unid.'})</span>
+          <label><span className="text-[0.75rem] text-slate-500">Cantidad ({producto?.unit ?? 'unid.'})</span>
             <input className={campo} inputMode="decimal" autoFocus value={f.cantidad} onChange={e => setF({ ...f, cantidad: e.target.value.replace(/[^\d.]/g, '') })} /></label>
-          <label><span className="text-[11px] text-slate-500">Costo por unidad (opcional)</span>
+          <label><span className="text-[0.75rem] text-slate-500">Costo por unidad (opcional)</span>
             <input className={campo} inputMode="decimal" value={f.costo} onChange={e => setF({ ...f, costo: e.target.value.replace(/[^\d.]/g, '') })} /></label>
-          <label><span className="text-[11px] text-slate-500">Vence (si aplica)</span>
+          <label><span className="text-[0.75rem] text-slate-500">Vence (si aplica)</span>
             <input type="date" className={campo} value={f.vence} onChange={e => setF({ ...f, vence: e.target.value })} /></label>
-          <label><span className="text-[11px] text-slate-500">Número de lote (opcional)</span>
+          <label><span className="text-[0.75rem] text-slate-500">Número de lote (opcional)</span>
             <input className={campo} value={f.lote} onChange={e => setF({ ...f, lote: e.target.value })} /></label>
         </div>
         <button type="button" disabled={guardando || !(Number(f.cantidad) > 0)} onClick={() => void guardar()}
@@ -63,7 +63,7 @@ export const RecibirMercancia: React.FC<{ producto: ProductoARecibir | null; onC
           {guardando && <Loader2 className="w-4 h-4 animate-spin" />} Sumar al inventario
         </button>
         {conExistencia.length > 0 && (
-          <div className="text-[11px]">
+          <div className="text-[0.75rem]">
             <p className="font-bold text-slate-500 mb-1">Lo que ya tienes (se gasta primero lo que vence antes)</p>
             <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
               {conExistencia.map(l => (

@@ -88,7 +88,7 @@ export const HorarioEspecialista: React.FC<{
   };
 
   const chip = (activo: boolean) =>
-    `px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ios-touch ${
+    `px-3 py-1.5 rounded-full text-[0.75rem] font-bold border transition-colors ios-touch ${
       activo ? 'bg-[var(--primary)] border-[var(--primary)] text-white'
         : 'bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300'}`;
   const campo = 'w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white text-sm dark:[color-scheme:dark]';
@@ -109,7 +109,7 @@ export const HorarioEspecialista: React.FC<{
             size="sm"
           />
           {modo === 'salon' ? (
-            <p className="text-[11px] text-slate-500 dark:text-neutral-400 leading-relaxed">
+            <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 leading-relaxed">
               {nombre} trabaja todo el horario del salón. Si viene solo algunos días o en otro horario, elige «Horario propio».
             </p>
           ) : (
@@ -123,7 +123,7 @@ export const HorarioEspecialista: React.FC<{
                 enLinea
               />
               {fuera.length > 0 && (
-                <p className="flex gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <p className="flex gap-1.5 text-[0.75rem] font-semibold text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
                   <span>
                     El {fuera.map(d => DIAS_SEMANA[d].nombre.toLowerCase()).join(', ')} su horario se sale del del salón.
@@ -141,7 +141,7 @@ export const HorarioEspecialista: React.FC<{
             <p className="text-xs font-bold text-slate-800 dark:text-white">Días que no viene</p>
             {!anotando && (
               <button type="button" onClick={() => { setAnotando(true); setAfectadas(null); }}
-                className="text-[12px] font-bold text-[var(--primary)] flex items-center gap-1 ios-touch">
+                className="text-[0.8125rem] font-bold text-[var(--primary)] flex items-center gap-1 ios-touch">
                 <Plus className="w-3.5 h-3.5" /> Anotar
               </button>
             )}
@@ -149,15 +149,15 @@ export const HorarioEspecialista: React.FC<{
 
           {afectadas && (
             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 space-y-1">
-              <p className="text-[12px] font-bold text-amber-800 dark:text-amber-300">
+              <p className="text-[0.8125rem] font-bold text-amber-800 dark:text-amber-300">
                 {nombre} tiene {afectadas.length} {afectadas.length === 1 ? 'cita' : 'citas'} en esas fechas
               </p>
               {afectadas.map(c => (
-                <p key={c.id} className="text-[11px] text-amber-700 dark:text-amber-400">
+                <p key={c.id} className="text-[0.75rem] text-amber-700 dark:text-amber-400">
                   {fechaCorta(c.startsAt.slice(0, 10))} · {new Date(c.startsAt).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit', hour12: true })} — {c.clientName}{c.serviceName ? ` · ${c.serviceName}` : ''}
                 </p>
               ))}
-              <p className="text-[11px] text-amber-700 dark:text-amber-400">Muévelas o pásaselas a otra persona desde la Agenda.</p>
+              <p className="text-[0.75rem] text-amber-700 dark:text-amber-400">Muévelas o pásaselas a otra persona desde la Agenda.</p>
             </div>
           )}
 
@@ -172,27 +172,27 @@ export const HorarioEspecialista: React.FC<{
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="space-y-1">
-                  <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">Desde</span>
+                  <span className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">Desde</span>
                   <input type="date" value={nueva.desde} min={hoyLocal()}
                     onChange={e => setNueva(n => ({ ...n, desde: e.target.value, hasta: n.hasta < e.target.value ? e.target.value : n.hasta }))}
                     className={campo} />
                 </label>
                 <label className="space-y-1">
-                  <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">Hasta (incluido)</span>
+                  <span className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">Hasta (incluido)</span>
                   <input type="date" value={nueva.hasta} min={nueva.desde} onChange={e => setNueva(n => ({ ...n, hasta: e.target.value }))} className={campo} />
                 </label>
               </div>
               {unSoloDia && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-semibold text-slate-700 dark:text-slate-200">Solo unas horas</span>
+                    <span className="text-[0.8125rem] font-semibold text-slate-700 dark:text-slate-200">Solo unas horas</span>
                     <IOSToggle checked={nueva.soloHoras} onChange={v => setNueva(n => ({ ...n, soloHoras: v }))} />
                   </div>
                   {nueva.soloHoras && (
                     <div className="grid grid-cols-[4.5rem_1fr] items-center gap-x-2 gap-y-2">
-                      <span className="text-[11px] text-slate-500">Sale</span>
+                      <span className="text-[0.75rem] text-slate-500">Sale</span>
                       <SelectorHora value={nueva.horaDesde} onChange={v => setNueva(n => ({ ...n, horaDesde: v }))} paso={15} />
-                      <span className="text-[11px] text-slate-500">Regresa</span>
+                      <span className="text-[0.75rem] text-slate-500">Regresa</span>
                       <SelectorHora value={nueva.horaHasta} onChange={v => setNueva(n => ({ ...n, horaHasta: v }))} paso={15} />
                     </div>
                   )}
@@ -200,14 +200,14 @@ export const HorarioEspecialista: React.FC<{
               )}
               <input value={nueva.nota} onChange={e => setNueva(n => ({ ...n, nota: e.target.value }))} maxLength={200}
                 placeholder="Nota para el equipo (opcional, la clienta no la ve)" className={campo} />
-              {problema && <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">{problema}</p>}
+              {problema && <p className="text-[0.75rem] font-semibold text-amber-600 dark:text-amber-400">{problema}</p>}
               <div className="flex gap-2">
                 <button type="button" onClick={() => setAnotando(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[12px] font-bold text-slate-600 dark:text-slate-300 ios-touch">
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.8125rem] font-bold text-slate-600 dark:text-slate-300 ios-touch">
                   Cancelar
                 </button>
                 <button type="button" disabled={!!problema || guardando} onClick={anotar}
-                  className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[12px] font-bold ios-touch disabled:opacity-40">
+                  className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold ios-touch disabled:opacity-40">
                   {guardando ? 'Guardando…' : 'Guardar'}
                 </button>
               </div>
@@ -220,8 +220,8 @@ export const HorarioEspecialista: React.FC<{
                 <li key={a.id} className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
                   <span className="text-base">{motivos.find(m => m.id === a.motivo)?.emoji ?? '•'}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-slate-800 dark:text-slate-100">{motivo(a.motivo)}</p>
-                    <p className="text-[11px] text-slate-500 dark:text-neutral-400 truncate">
+                    <p className="text-[0.8125rem] font-bold text-slate-800 dark:text-slate-100">{motivo(a.motivo)}</p>
+                    <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">
                       {cuandoNoViene(a)}{a.nota ? ` · ${a.nota}` : ''}
                     </p>
                   </div>
@@ -233,7 +233,7 @@ export const HorarioEspecialista: React.FC<{
               ))}
             </ul>
           ) : !anotando && (
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[0.75rem] text-slate-400">
               Nada anotado. Vacaciones, un día libre o unas horas: anótalo aquí y Lalan no le agenda esos ratos.
             </p>
           )}

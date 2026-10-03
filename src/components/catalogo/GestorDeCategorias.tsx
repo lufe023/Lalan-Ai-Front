@@ -19,7 +19,7 @@ export const GestorDeCategorias: React.FC<{ kind: TipoCategoria; abierto: boolea
       subtitle="Los cambios se guardan al salir de cada campo">
       <div className="space-y-2 text-xs pb-4">
         {kind === 'service' && (
-          <p className="text-[11px] text-slate-500 dark:text-neutral-400 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 leading-relaxed">
             Una categoría nueva aparece sola en Ajustes → Zonas: marca en qué zona se atiende y Lalan sabrá a quién darle la cita.
           </p>
         )}
@@ -56,7 +56,7 @@ const Fila: React.FC<{ c: CategoriaCatalogo }> = ({ c }) => {
           onChange={e => setNombre(e.target.value)}
           onBlur={() => nombre.trim() && nombre.trim() !== c.name && void guardar({ name: nombre.trim() })}
           className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
-        <span className="text-[10px] text-slate-400 shrink-0 tabular-nums" title="Servicios o productos activos dentro">{c.usos}</span>
+        <span className="text-[0.6875rem] text-slate-400 shrink-0 tabular-nums" title="Servicios o productos activos dentro">{c.usos}</span>
         <button type="button" onClick={() => void guardar({ active: !c.active })} title={c.active ? 'Desactivar' : 'Activar'}
           className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer">
           {c.active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -71,7 +71,7 @@ const Fila: React.FC<{ c: CategoriaCatalogo }> = ({ c }) => {
           {OPCIONES_LOUNGE.map(o => (
             <button key={o.id} type="button" title={o.ayuda}
               onClick={() => o.id !== c.loungeRole && void guardar({ loungeRole: o.id as PapelEnLounge })}
-              className={`px-2 py-1 rounded-lg border text-[10px] font-semibold transition cursor-pointer ${
+              className={`px-2 py-1 rounded-lg border text-[0.6875rem] font-semibold transition cursor-pointer ${
                 c.loungeRole === o.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-500'
               }`}>
               {o.label}

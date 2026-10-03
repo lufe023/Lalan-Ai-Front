@@ -18,7 +18,7 @@ interface Grupo {
 const ADMINISTRACION: UserRole[] = ['admin', 'super_admin'];
 
 export const GRUPOS_AJUSTES: Grupo[] = [
-  { id: 'cuenta', titulo: 'Mi cuenta', resumen: 'Notificaciones de este teléfono, entrar con 1 toque y cerrar sesión', icono: UserCircle2, color: 'bg-slate-500' },
+  { id: 'cuenta', titulo: 'Mi cuenta', resumen: 'Tamaño de la letra, notificaciones, entrar con 1 toque y cerrar sesión', icono: UserCircle2, color: 'bg-slate-500' },
   { id: 'plan', titulo: 'Mi plan', resumen: 'Lo que incluye y cuánto llevas usado este mes', icono: Sparkles, color: 'bg-amber-500', roles: ADMINISTRACION },
   { id: 'equipo', titulo: 'Equipo', resumen: 'Quién entra a la app y a quién le llega cada aviso', icono: Users, color: 'bg-sky-500', roles: ADMINISTRACION },
   { id: 'salon', titulo: 'El salón', resumen: 'Horario de la semana, citas, zonas y especialistas', icono: Store, color: 'bg-emerald-500', roles: ADMINISTRACION },
@@ -55,8 +55,8 @@ export const MenuAjustes: React.FC<{ rol?: UserRole; onAbrir: (s: SeccionAjustes
           className="w-full px-3.5 py-3 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-neutral-800/60 ios-touch cursor-pointer">
           <span className={`w-8 h-8 rounded-xl ${g.color} text-white flex items-center justify-center shrink-0`}><Icono className="w-4 h-4" /></span>
           <span className="flex-1 min-w-0">
-            <span className="block text-[13px] font-bold text-slate-900 dark:text-white">{g.titulo}</span>
-            <span className="block text-[11px] text-slate-500 dark:text-neutral-400 truncate">{g.resumen}</span>
+            <span className="block text-[0.875rem] font-bold text-slate-900 dark:text-white">{g.titulo}</span>
+            <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">{g.resumen}</span>
           </span>
           {g.id === 'cuenta' && avisoNotificaciones && <BellRing className="w-4 h-4 text-amber-500 shrink-0" aria-label="Notificaciones sin activar" />}
           <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />

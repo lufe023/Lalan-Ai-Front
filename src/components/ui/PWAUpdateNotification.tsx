@@ -96,7 +96,7 @@ export const PWAUpdateNotification: React.FC = () => {
             <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
             <div className="flex-1 min-w-0 leading-tight">
               <div className="text-sm font-bold">Hay una versión nueva</div>
-              <div className="text-[11px] opacity-70">Tarda un segundo. Si no, se pone sola al salir de la app.</div>
+              <div className="text-[0.75rem] opacity-70">Tarda un segundo. Si no, se pone sola al salir de la app.</div>
             </div>
             <button
               type="button"

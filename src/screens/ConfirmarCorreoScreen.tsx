@@ -78,7 +78,7 @@ export const ConfirmarCorreoScreen: React.FC = () => {
     } catch (err) { setError((err as Error).message); } finally { setOcupado(false); }
   };
 
-  const Error = error ? <p className="text-[12px] font-semibold text-rose-600" role="alert">{error}</p> : null;
+  const Error = error ? <p className="text-[0.8125rem] font-semibold text-rose-600" role="alert">{error}</p> : null;
 
   return (
     <div
@@ -90,47 +90,47 @@ export const ConfirmarCorreoScreen: React.FC = () => {
           <div className="space-y-3 text-center py-4">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
             <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">¡Correo confirmado!</h1>
-            <p className="text-[13px] text-slate-500 dark:text-neutral-400">Ya puedes recibir tus informes y cambiar tu clave tú misma si la olvidas.</p>
+            <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400">Ya puedes recibir tus informes y cambiar tu clave tú misma si la olvidas.</p>
           </div>
         ) : editando ? (
           <form onSubmit={corregir} className="space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><Pencil className="w-6 h-6" /></div>
             <div>
               <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">Corrige tu correo</h1>
-              <p className="text-[13px] text-slate-500 dark:text-neutral-400 mt-1">Te mandamos un código nuevo a la dirección que escribas.</p>
+              <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 mt-1">Te mandamos un código nuevo a la dirección que escribas.</p>
             </div>
             <input type="email" value={nuevo} onChange={(e) => setNuevo(e.target.value)} placeholder="tu@correo.com" autoComplete="email" autoCapitalize="none" className={campo} />
             {Error}
             <button type="submit" disabled={ocupado} className="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer">
               {ocupado && <Loader2 className="w-4 h-4 animate-spin" />} Guardar y enviarme el código
             </button>
-            <button type="button" onClick={() => { setEditando(false); setError(''); }} className="w-full text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer">Cancelar</button>
+            <button type="button" onClick={() => { setEditando(false); setError(''); }} className="w-full text-[0.8125rem] text-slate-400 hover:text-slate-600 cursor-pointer">Cancelar</button>
           </form>
         ) : (
           <form onSubmit={confirmar} className="space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><MailCheck className="w-6 h-6" /></div>
             <div>
               <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">Confirma tu correo</h1>
-              <p className="text-[13px] text-slate-500 dark:text-neutral-400 mt-1">
+              <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 mt-1">
                 Te mandamos un código de 6 números a <b className="text-slate-700 dark:text-neutral-200 break-all">{correo}</b>.
                 {obligatoria ? ' Ahí te llegan los informes y los códigos para cambiar tu clave.' : ' Así podrás cambiar tu clave tú misma si la olvidas.'}
               </p>
             </div>
             <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={codigo} onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ''))}
               placeholder="Código de 6 números" className={`${campo} text-center text-xl tracking-[.4em] font-bold`} />
-            {aviso && !error && <p className="text-[12px] text-slate-500 dark:text-neutral-400">{aviso}</p>}
+            {aviso && !error && <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400">{aviso}</p>}
             {Error}
             <button type="submit" disabled={ocupado} className="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer">
               {ocupado && <Loader2 className="w-4 h-4 animate-spin" />} Confirmar
             </button>
-            <div className="flex items-center justify-between text-[12px]">
+            <div className="flex items-center justify-between text-[0.8125rem]">
               <button type="button" onClick={() => void pedir()} disabled={ocupado} className="text-slate-500 hover:text-[var(--primary)] cursor-pointer">Enviar otro código</button>
               <button type="button" onClick={() => { setNuevo(correo); setEditando(true); setError(''); }} className="text-slate-500 hover:text-[var(--primary)] cursor-pointer">El correo está mal</button>
             </div>
             {obligatoria ? (
-              <button type="button" onClick={logout} className="w-full text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer">Salir</button>
+              <button type="button" onClick={logout} className="w-full text-[0.8125rem] text-slate-400 hover:text-slate-600 cursor-pointer">Salir</button>
             ) : (
-              <button type="button" onClick={() => { omitirConfirmacion(currentUser?.id); correoListo(); }} className="w-full text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer">Ahora no</button>
+              <button type="button" onClick={() => { omitirConfirmacion(currentUser?.id); correoListo(); }} className="w-full text-[0.8125rem] text-slate-400 hover:text-slate-600 cursor-pointer">Ahora no</button>
             )}
           </form>
         )}

@@ -25,7 +25,7 @@ export const LoQueLalanSabe: React.FC<{ clienteId: string }> = ({ clienteId }) =
   const hoy = new Date().toISOString().slice(0, 10);
   return (
     <div className="p-3 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20">
-      <div className="flex items-center gap-1.5 font-bold text-[11px] text-[var(--primary)] mb-2">
+      <div className="flex items-center gap-1.5 font-bold text-[0.75rem] text-[var(--primary)] mb-2">
         <Sparkles className="w-3.5 h-3.5" /> Lo que Lalan sabe de ella
       </div>
       <ul className="space-y-1.5">
@@ -34,11 +34,11 @@ export const LoQueLalanSabe: React.FC<{ clienteId: string }> = ({ clienteId }) =
           const fecha = s.fechaEvento ? new Date(`${s.fechaEvento.slice(0, 10)}T12:00:00`) : null;
           const viene = s.fechaEvento && s.fechaEvento.slice(0, 10) >= hoy;
           return (
-            <li key={s.id} className="flex items-start gap-2 text-[12px]">
+            <li key={s.id} className="flex items-start gap-2 text-[0.8125rem]">
               <span className="shrink-0">{t?.emoji ?? '•'}</span>
               <span className="flex-1 min-w-0">
                 <span className="text-slate-800 dark:text-neutral-100">{s.valor}</span>
-                <span className="block text-[10px] text-slate-500">
+                <span className="block text-[0.6875rem] text-slate-500">
                   {t?.descripcion ?? s.tipo}
                   {fecha && <> · <b className={viene ? 'text-[var(--primary)]' : ''}>{fecha.toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' })}</b></>}
                   {' · '}anotado el {new Date(s.creadoEn).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}

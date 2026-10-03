@@ -161,19 +161,19 @@ export const CitasReportScreen: React.FC = () => {
         <Tarjeta className="p-4 mt-3 mb-4">
           <div className="flex items-start justify-between mb-3">
             <div>
-              <p className="text-[11px] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
+              <p className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
                 Citas en el período
               </p>
               <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {informe?.total ?? 0}
               </div>
-              <p className="text-[11px] text-slate-400 dark:text-neutral-500 mt-1">
+              <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500 mt-1">
                 {informe?.horasAgendadas ?? 0} h agendadas ·{' '}
                 {informe?.duracionPromedio ?? 0} min promedio
               </p>
             </div>
             {Number(informe?.tasaCancelacion ?? 0) > 0 && (
-              <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 ${
+              <span className={`px-2.5 py-1 rounded-full text-[0.75rem] font-bold flex items-center gap-1 ${
                 Number(informe.tasaCancelacion) > 15
                   ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
                   : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
@@ -191,7 +191,7 @@ export const CitasReportScreen: React.FC = () => {
               ['Canceladas', informe?.canceladas ?? 0],
             ].map(([l, v]) => (
               <div key={String(l)}>
-                <div className="text-[10px] text-slate-400 font-medium">{String(l)}</div>
+                <div className="text-[0.6875rem] text-slate-400 font-medium">{String(l)}</div>
                 <div className="text-sm font-bold text-slate-800 dark:text-neutral-200 tabular-nums">
                   {String(v)}
                 </div>
@@ -200,7 +200,7 @@ export const CitasReportScreen: React.FC = () => {
           </div>
 
           {informe?.duracionRealPromedio != null && (
-            <p className="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-neutral-800">
+            <p className="text-[0.6875rem] text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-neutral-800">
               Duración real promedio: <strong>{informe.duracionRealPromedio} min</strong> contra{' '}
               {informe.duracionPromedio} agendados
               {informe.duracionRealPromedio > informe.duracionPromedio
@@ -222,25 +222,25 @@ export const CitasReportScreen: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Vendido aparte</div>
+                <div className="text-[0.6875rem] text-slate-400 uppercase font-bold">Vendido aparte</div>
                 <div className="text-lg font-extrabold text-slate-900 dark:text-white tabular-nums">
                   {plata(informe.consumoExtra)}
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[0.6875rem] text-slate-400">
                   {plata(informe.consumoPromedioPorCita)} por cita
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Cortesías</div>
+                <div className="text-[0.6875rem] text-slate-400 uppercase font-bold">Cortesías</div>
                 <div className="text-lg font-extrabold text-amber-600 dark:text-amber-400 tabular-nums">
                   {informe.cortesiasServidas}
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[0.6875rem] text-slate-400">
                   costaron {plata(informe.costoExtra)}
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+            <p className="text-[0.6875rem] text-slate-400 mt-3 leading-relaxed">
               Esto es lo que se le sirvió a las clientas mientras estaban en el
               salón, además de su servicio. Es lo que de verdad cuesta atender
               a alguien.
@@ -259,7 +259,7 @@ export const CitasReportScreen: React.FC = () => {
                 </span>
               </div>
               {!!informe.horasPico?.length && (
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[0.6875rem] text-slate-400">
                   Pico: {informe.horasPico.map(hr12).join(' · ')}
                 </span>
               )}
@@ -272,7 +272,7 @@ export const CitasReportScreen: React.FC = () => {
                     style={{ height: `${(h.citas / maxHora) * 100}%`, minHeight: 4 }}
                     title={`${h.citas} citas`}
                   />
-                  <span className="text-[9px] text-slate-400 whitespace-nowrap">
+                  <span className="text-[0.6875rem] text-slate-400 whitespace-nowrap">
                     {hr12(h.hora)}
                   </span>
                 </div>
@@ -293,7 +293,7 @@ export const CitasReportScreen: React.FC = () => {
             <div className="p-4 space-y-2">
               {informe.porDiaSemana.map((d: any) => (
                 <div key={d.dia} className="flex items-center gap-2">
-                  <span className="w-8 text-[11px] font-semibold text-slate-500 capitalize">
+                  <span className="w-8 text-[0.75rem] font-semibold text-slate-500 capitalize">
                     {d.nombre}
                   </span>
                   <div className="flex-1 h-2 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -302,7 +302,7 @@ export const CitasReportScreen: React.FC = () => {
                       style={{ width: `${(d.citas / maxDia) * 100}%` }}
                     />
                   </div>
-                  <span className="w-16 text-right text-[11px] text-slate-400 tabular-nums">
+                  <span className="w-16 text-right text-[0.75rem] text-slate-400 tabular-nums">
                     {d.citas} · {(d.minutos / 60).toFixed(1)}h
                   </span>
                 </div>
@@ -329,7 +329,7 @@ export const CitasReportScreen: React.FC = () => {
                   </span>
                   <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums shrink-0">
                     {o.citas + o.canceladas}
-                    <span className="text-[10px] text-slate-400 font-normal ml-1">({o.porcentaje} %)</span>
+                    <span className="text-[0.6875rem] text-slate-400 font-normal ml-1">({o.porcentaje} %)</span>
                   </span>
                 </div>
                 <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -338,7 +338,7 @@ export const CitasReportScreen: React.FC = () => {
                     style={{ width: `${o.porcentaje}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
+                <p className="text-[0.6875rem] text-slate-400 mt-1">
                   {o.completadas} completada{o.completadas === 1 ? '' : 's'}
                   {o.canceladas > 0 && ` · ${o.canceladas} cancelada${o.canceladas === 1 ? '' : 's'} (${o.tasaCancelacion} %)`}
                   {` · facturó ${plata(o.facturado)}`}
@@ -354,7 +354,7 @@ export const CitasReportScreen: React.FC = () => {
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-4 h-4 text-amber-500" />
               <span className="text-xs font-bold text-slate-900 dark:text-white">Llegadas</span>
-              <span className="text-[10px] text-slate-400">({informe.llegadas.total} con hora de llegada registrada)</span>
+              <span className="text-[0.6875rem] text-slate-400">({informe.llegadas.total} con hora de llegada registrada)</span>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center">
               {[
@@ -364,11 +364,11 @@ export const CitasReportScreen: React.FC = () => {
               ].map(x => (
                 <div key={x.t} className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
                   <div className={`text-lg font-extrabold tabular-nums ${x.c}`}>{x.v}</div>
-                  <div className="text-[10px] text-slate-400">{x.t}</div>
+                  <div className="text-[0.6875rem] text-slate-400">{x.t}</div>
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">
+            <p className="text-[0.6875rem] text-slate-400 mt-2">
               {informe.llegadas.tarde > 0 && `Las que llegan tarde lo hacen, en promedio, ${informe.llegadas.promedioMinutosTarde} min después. `}
               {informe.llegadas.reprogramadas > 0 && `${informe.llegadas.reprogramadas} se atendieron en otro horario y la cita se movió a la hora real.`}
             </p>
@@ -392,7 +392,7 @@ export const CitasReportScreen: React.FC = () => {
                   </span>
                   <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums">
                     {e.horas}h
-                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                    <span className="text-[0.6875rem] text-slate-400 font-normal ml-1">
                       ({e.citas} citas)
                     </span>
                   </span>
@@ -407,7 +407,7 @@ export const CitasReportScreen: React.FC = () => {
                     }}
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
+                <p className="text-[0.6875rem] text-slate-400 mt-1">
                   {e.promedioMin} min por cita · facturó {plata(e.facturado)}
                   {e.canceladas > 0 && ` · ${e.canceladas} cancelada${e.canceladas === 1 ? '' : 's'}`}
                 </p>
@@ -431,7 +431,7 @@ export const CitasReportScreen: React.FC = () => {
                   <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                     {s.nombre}
                   </div>
-                  <div className="text-[10px] text-slate-400">
+                  <div className="text-[0.6875rem] text-slate-400">
                     {s.promedioMin} min · {s.horas}h en total
                     {s.canceladas > 0 && ` · ${s.canceladas} cancelada${s.canceladas === 1 ? '' : 's'}`}
                   </div>
@@ -454,7 +454,7 @@ export const CitasReportScreen: React.FC = () => {
         )}
 
         <div className="p-3 rounded-2xl bg-slate-100/60 dark:bg-neutral-900/60 mb-4">
-          <p className="text-[10px] text-slate-400 leading-relaxed flex items-start gap-1.5">
+          <p className="text-[0.6875rem] text-slate-400 leading-relaxed flex items-start gap-1.5">
             <TrendingUp className="w-3 h-3 mt-0.5 shrink-0" />
             Este informe cuenta por día de <strong>cita</strong>. El dinero se
             cuenta por día de <strong>cobro</strong> y vive en Ganancias — por eso

@@ -42,7 +42,7 @@ export const ProteccionDelChat: React.FC<{ conversacion: Conversation; puedeBloq
 
   const cuando = hasta ? new Date(hasta).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
   return (
-    <div className={`px-4 py-1.5 flex items-center gap-2 text-[10.5px] border-t ${bloqueada
+    <div className={`px-4 py-1.5 flex items-center gap-2 text-[0.75rem] border-t ${bloqueada
       ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200/70 dark:border-rose-900 text-rose-800 dark:text-rose-200'
       : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-900 text-amber-800 dark:text-amber-200'}`}>
       {bloqueada ? <Ban className="w-3.5 h-3.5 shrink-0" /> : <ShieldAlert className="w-3.5 h-3.5 shrink-0" />}

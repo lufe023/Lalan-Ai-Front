@@ -46,28 +46,28 @@ export const CambiarClaveScreen: React.FC = () => {
         <div className="w-12 h-12 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><KeyRound className="w-6 h-6" /></div>
         <div>
           <h1 className="text-lg font-extrabold text-slate-900 dark:text-white">Hola{currentUser ? `, ${currentUser.name.split(' ')[0]}` : ''} 👋</h1>
-          <p className="text-[13px] text-slate-500 dark:text-neutral-400 mt-1">Entraste con una clave temporal. Pon una tuya para seguir; solo tú la sabrás.</p>
+          <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 mt-1">Entraste con una clave temporal. Pon una tuya para seguir; solo tú la sabrás.</p>
         </div>
-        <label className="block text-[12px] font-semibold text-slate-600 dark:text-neutral-300 space-y-1.5">
+        <label className="block text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 space-y-1.5">
           <span>Clave temporal (la que te enviamos)</span>
           <input type={ver ? 'text' : 'password'} value={actual} onChange={(e) => setActual(e.target.value)} autoComplete="current-password" required className={campo} />
         </label>
-        <label className="block text-[12px] font-semibold text-slate-600 dark:text-neutral-300 space-y-1.5">
+        <label className="block text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 space-y-1.5">
           <span>Tu clave nueva</span>
           <input type={ver ? 'text' : 'password'} value={nueva} onChange={(e) => setNueva(e.target.value)} autoComplete="new-password" required minLength={LARGO_MINIMO} className={campo} />
         </label>
-        <label className="block text-[12px] font-semibold text-slate-600 dark:text-neutral-300 space-y-1.5">
+        <label className="block text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 space-y-1.5">
           <span>Repítela</span>
           <input type={ver ? 'text' : 'password'} value={repetir} onChange={(e) => setRepetir(e.target.value)} autoComplete="new-password" required className={campo} />
         </label>
-        <button type="button" onClick={() => setVer((v) => !v)} className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500 cursor-pointer">
+        <button type="button" onClick={() => setVer((v) => !v)} className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-slate-500 cursor-pointer">
           {ver ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}{ver ? 'Ocultar claves' : 'Ver claves'}
         </button>
-        {error && <p className="text-[12px] font-semibold text-rose-600" role="alert">{error}</p>}
+        {error && <p className="text-[0.8125rem] font-semibold text-rose-600" role="alert">{error}</p>}
         <button type="submit" disabled={guardando} className="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer">
           {guardando && <Loader2 className="w-4 h-4 animate-spin" />} Guardar y entrar
         </button>
-        <button type="button" onClick={logout} className="w-full text-[12px] text-slate-400 hover:text-slate-600 cursor-pointer">Salir</button>
+        <button type="button" onClick={logout} className="w-full text-[0.8125rem] text-slate-400 hover:text-slate-600 cursor-pointer">Salir</button>
       </form>
     </div>
   );

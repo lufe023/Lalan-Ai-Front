@@ -94,10 +94,10 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-white truncate">{toast.title}</div>
-                  <div className="text-[11px] text-neutral-300 truncate">{toast.message}</div>
+                  <div className="text-[0.75rem] text-neutral-300 truncate">{toast.message}</div>
                 </div>
               </div>
-              <span className="text-[10px] text-neutral-400 shrink-0">Toca para cerrar</span>
+              <span className="text-[0.6875rem] text-neutral-400 shrink-0">Toca para cerrar</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -161,7 +161,7 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
                     <HeartHandshake className="w-6 h-6 text-[var(--primary)]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--primary)]">
+                    <div className="text-[0.6875rem] font-bold uppercase tracking-widest text-[var(--primary)]">
                       {bienvenida.primeraVez ? 'Primera visita' : `Visita n.º ${bienvenida.visitas + 1}`}
                     </div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Llegó {bienvenida.nombre}</h3>
@@ -205,13 +205,13 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
                     </span>
                   </div>
                   {bienvenida.notas && (
-                    <p className="text-[11px] text-slate-500 dark:text-neutral-400 pl-6">Notas: {bienvenida.notas}</p>
+                    <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 pl-6">Notas: {bienvenida.notas}</p>
                   )}
                 </div>
 
                 {bienvenida.paraServir.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase text-slate-400">Para recibirla</div>
+                    <div className="text-[0.6875rem] font-bold uppercase text-slate-400">Para recibirla</div>
                     <div className="flex flex-wrap gap-2">
                       {bienvenida.paraServir.map(p => {
                         const hecho = servidos.includes(p.productoId);
@@ -273,27 +273,27 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
                     <div className="text-xs font-bold text-amber-900 dark:text-amber-100">
                       {a.tipo === 'cita' ? `Cita de ${a.cliente} sin especialista` : `${a.cliente} necesita a una persona`}
                     </div>
-                    <div className="text-[11px] text-amber-800/90 dark:text-amber-200/90 line-clamp-2">{a.motivo}</div>
+                    <div className="text-[0.75rem] text-amber-800/90 dark:text-amber-200/90 line-clamp-2">{a.motivo}</div>
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => {
                           if (a.tipo === 'cita') { descartarAviso(a.conversacionId); navigateTo('calendar'); }
                           else abrirConversacion(a.conversacionId);
                         }}
-                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold cursor-pointer"
+                        className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[0.75rem] font-bold cursor-pointer"
                       >
                         {a.tipo === 'cita' ? 'Ver en la agenda' : 'Abrir chat'}
                       </button>
                       <button
                         onClick={() => descartarAviso(a.conversacionId)}
-                        className="px-2 py-1 rounded-lg text-amber-800 dark:text-amber-200 text-[11px] font-semibold hover:bg-amber-100 dark:hover:bg-amber-900 cursor-pointer"
+                        className="px-2 py-1 rounded-lg text-amber-800 dark:text-amber-200 text-[0.75rem] font-semibold hover:bg-amber-100 dark:hover:bg-amber-900 cursor-pointer"
                       >
                         Luego
                       </button>
                       {permisoAvisos === 'default' && (
                         <button
                           onClick={pedirPermisoAvisos}
-                          className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-amber-800 dark:text-amber-200 underline cursor-pointer"
+                          className="ml-auto flex items-center gap-1 text-[0.6875rem] font-semibold text-amber-800 dark:text-amber-200 underline cursor-pointer"
                         >
                           <BellRing className="w-3 h-3" /> Avisarme también fuera de la app
                         </button>

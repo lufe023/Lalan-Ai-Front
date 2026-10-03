@@ -54,14 +54,14 @@ const ProductosLentos: React.FC = () => {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold flex items-center gap-2"><PackageSearch className="w-4 h-4 text-[var(--primary)]" /> Lo que tarda en venderse</h3>
-          <p className="text-[11px] text-slate-500 dark:text-neutral-400 max-w-prose">
+          <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 max-w-prose">
             Cuánto salió de cada producto (ventas y recetas) y cuántos días te dura lo que tienes a ese ritmo. Lo que no se mueve es dinero parado: ponlo en oferta, en un combo o deja de comprarlo.
           </p>
         </div>
         <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Periodo">
           {PERIODOS.map(p => (
             <button key={p} type="button" role="radio" aria-checked={dias === p} onClick={() => setDias(p)}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer ${dias === p ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'}`}>
+              className={`px-3 py-1 rounded-full text-[0.75rem] font-bold cursor-pointer ${dias === p ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'}`}>
               {p} días
             </button>
           ))}
@@ -73,11 +73,11 @@ const ProductosLentos: React.FC = () => {
       {datos && (
         <>
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Sin salir</div><div className="text-xl font-extrabold tabular-nums">{datos.resumen.dormidos}</div></div>
-            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Lentos</div><div className="text-xl font-extrabold tabular-nums">{datos.resumen.lentos}</div></div>
-            <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/60 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Dinero parado</div><div className="text-xl font-extrabold tabular-nums">{dinero(datos.resumen.dineroParado)}</div></div>
+            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Sin salir</div><div className="text-xl font-extrabold tabular-nums">{datos.resumen.dormidos}</div></div>
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Lentos</div><div className="text-xl font-extrabold tabular-nums">{datos.resumen.lentos}</div></div>
+            <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/60 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">Dinero parado</div><div className="text-xl font-extrabold tabular-nums">{dinero(datos.resumen.dineroParado)}</div></div>
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-neutral-300 cursor-pointer">
+          <label className="flex items-center gap-2 text-[0.75rem] text-slate-600 dark:text-neutral-300 cursor-pointer">
             <input type="checkbox" checked={conInsumos} onChange={e => setConInsumos(e.target.checked)} /> Incluir insumos (lo que se usa en los servicios)
           </label>
           {filas.length === 0 ? (
@@ -86,7 +86,7 @@ const ProductosLentos: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-left text-[10px] uppercase tracking-wide text-slate-400">
+                  <tr className="text-left text-[0.6875rem] uppercase tracking-wide text-slate-400">
                     <th className="py-2 pr-3 font-bold">Producto</th><th className="py-2 pr-3 font-bold">Estado</th>
                     <th className="py-2 pr-3 font-bold text-right">Hay</th><th className="py-2 pr-3 font-bold text-right">Salió en {datos.periodoDias} días</th>
                     <th className="py-2 pr-3 font-bold text-right">Te dura</th><th className="py-2 pr-3 font-bold text-right">Última salida</th>
@@ -96,8 +96,8 @@ const ProductosLentos: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
                   {filas.map(f => (
                     <tr key={f.id}>
-                      <td className="py-2 pr-3"><div className="font-semibold">{f.nombre}</div><div className="text-[10px] text-slate-400">{f.categoria}{f.insumo ? ' · insumo' : ''}</div></td>
-                      <td className="py-2 pr-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${ESTADO[f.estado].clase}`}>{ESTADO[f.estado].texto}</span></td>
+                      <td className="py-2 pr-3"><div className="font-semibold">{f.nombre}</div><div className="text-[0.6875rem] text-slate-400">{f.categoria}{f.insumo ? ' · insumo' : ''}</div></td>
+                      <td className="py-2 pr-3"><span className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-bold whitespace-nowrap ${ESTADO[f.estado].clase}`}>{ESTADO[f.estado].texto}</span></td>
                       <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">{f.existencia} {UNIDAD[f.unidad] ?? f.unidad}</td>
                       <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">{f.salioEnPeriodo} {UNIDAD[f.unidad] ?? f.unidad}</td>
                       <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">{f.diasInventario === null ? '—' : `${f.diasInventario} días`}</td>
@@ -109,7 +109,7 @@ const ProductosLentos: React.FC = () => {
               </table>
             </div>
           )}
-          <p className="text-[10px] text-slate-400">«Te dura» es lo que tienes dividido entre lo que sale al día. «Dinero parado» usa el costo de cada producto; si no tiene costo, sale en blanco.</p>
+          <p className="text-[0.6875rem] text-slate-400">«Te dura» es lo que tienes dividido entre lo que sale al día. «Dinero parado» usa el costo de cada producto; si no tiene costo, sale en blanco.</p>
         </>
       )}
     </section>
@@ -132,8 +132,8 @@ export const InformesScreen: React.FC = () => {
               className="text-left rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-[var(--primary)] transition cursor-pointer flex flex-col gap-2">
               <span className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><a.icono className="w-5 h-5" /></span>
               <span className="text-sm font-bold">{a.titulo}</span>
-              <span className="text-[11px] text-slate-500 dark:text-neutral-400 flex-1">{a.texto}</span>
-              <span className="text-[11px] font-bold text-[var(--primary)] flex items-center gap-1">Abrir <ArrowRight className="w-3.5 h-3.5" /></span>
+              <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex-1">{a.texto}</span>
+              <span className="text-[0.75rem] font-bold text-[var(--primary)] flex items-center gap-1">Abrir <ArrowRight className="w-3.5 h-3.5" /></span>
             </button>
           ))}
         </div>

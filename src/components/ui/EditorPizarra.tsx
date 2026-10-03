@@ -185,8 +185,8 @@ export const EditorPizarra: React.FC = () => {
                     : 'bg-white/10 border-white/15 hover:bg-white/20'
                 }`}
               >
-                <div className="text-[10px] leading-none">{info.icono}</div>
-                <div className="text-[9px] text-white/70 leading-tight truncate mt-0.5">
+                <div className="text-[0.6875rem] leading-none">{info.icono}</div>
+                <div className="text-[0.6875rem] text-white/70 leading-tight truncate mt-0.5">
                   {info.nombre}
                 </div>
               </button>
@@ -205,12 +205,12 @@ export const EditorPizarra: React.FC = () => {
             <button
               type="button"
               onClick={() => quitar(bloque.id)}
-              className="px-2 py-1 rounded-lg text-[11px] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center gap-1 transition cursor-pointer"
+              className="px-2 py-1 rounded-lg text-[0.75rem] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center gap-1 transition cursor-pointer"
             >
               <Trash2 className="w-3 h-3" /> Quitar
             </button>
           </div>
-          <p className="text-[10px] text-slate-400 leading-relaxed">
+          <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
             {infoDe(bloque.tipo).descripcion}
           </p>
 
@@ -234,7 +234,7 @@ export const EditorPizarra: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
+              <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
                 <Move className="w-3 h-3" /> Mover
               </div>
               <div className="flex items-center gap-1">
@@ -245,7 +245,7 @@ export const EditorPizarra: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
+              <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
                 <Maximize2 className="w-3 h-3" /> Tamaño
               </div>
               <div className="flex items-center gap-1">
@@ -258,7 +258,7 @@ export const EditorPizarra: React.FC = () => {
           </div>
         </div>
       ) : (
-        <p className="text-[11px] text-slate-400 text-center py-2">
+        <p className="text-[0.75rem] text-slate-400 text-center py-2">
           Toca un bloque para moverlo o cambiarle el tamaño.
         </p>
       )}
@@ -271,7 +271,7 @@ export const EditorPizarra: React.FC = () => {
             type="button"
             onClick={() => agregar(c.tipo)}
             title={c.descripcion}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-semibold text-slate-600 dark:text-neutral-300 flex items-center gap-1.5 hover:border-[var(--primary)] hover:text-[var(--primary)] transition cursor-pointer"
+            className="px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-semibold text-slate-600 dark:text-neutral-300 flex items-center gap-1.5 hover:border-[var(--primary)] hover:text-[var(--primary)] transition cursor-pointer"
           >
             <Plus className="w-3 h-3" /> {c.icono} {c.nombre}
           </button>
@@ -296,7 +296,7 @@ export const EditorPizarra: React.FC = () => {
           type="button"
           onClick={() => { setBloques(LAYOUT_POR_DEFECTO); setElegido(null); setSucio(true); }}
           title="Vuelve al diseño de fábrica (todavía hay que guardar)"
-          className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+          className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" /> Por defecto
         </button>

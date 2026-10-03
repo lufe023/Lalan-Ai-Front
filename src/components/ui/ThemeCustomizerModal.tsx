@@ -136,21 +136,21 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                   className="w-3 h-3 rounded-full shadow-xs"
                   style={{ backgroundColor: primaryColor }}
                 />
-                <span className="text-[11px] font-bold">Primario</span>
+                <span className="text-[0.75rem] font-bold">Primario</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-full shadow-xs"
                   style={{ backgroundColor: accentColor }}
                 />
-                <span className="text-[11px] font-bold">Acento</span>
+                <span className="text-[0.75rem] font-bold">Acento</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-full shadow-xs"
                   style={{ backgroundColor: tertiaryColor }}
                 />
-                <span className="text-[11px] font-bold">Terciario</span>
+                <span className="text-[0.75rem] font-bold">Terciario</span>
               </div>
             </div>
 
@@ -219,12 +219,12 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                           <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
                             <span>{preset.name}</span>
                             {preset.popular && (
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-500">
+                              <span className="text-[0.6875rem] font-extrabold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-500">
                                 Popular
                               </span>
                             )}
                           </h4>
-                          <p className="text-[10px] text-slate-500 dark:text-neutral-400 truncate">
+                          <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate">
                             {preset.subtitle}
                           </p>
                         </div>
@@ -278,7 +278,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                   <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--primary)]" />
                   <span>Personalizar Colores Manualmente (HEX)</span>
                 </div>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[0.75rem] text-slate-400">
                   {showCustomPickers ? 'Ocultar' : 'Ajustar 3 Tonos'}
                 </span>
               </button>
@@ -291,12 +291,12 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                       <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Color Primario
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                      <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                         Botones principales y elementos destacados
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-slate-500 uppercase">
+                      <span className="text-[0.75rem] font-mono text-slate-500 uppercase">
                         {primaryColor}
                       </span>
                       <input
@@ -314,12 +314,12 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                       <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Color Acento / Secundario
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                      <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                         Insignias, etiquetas y tonos complementarios
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-slate-500 uppercase">
+                      <span className="text-[0.75rem] font-mono text-slate-500 uppercase">
                         {accentColor}
                       </span>
                       <input
@@ -337,12 +337,12 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                       <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         Color Terciario / Tono Fondo
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                      <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                         Brillos suaves, luces y detalles sutiles
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-slate-500 uppercase">
+                      <span className="text-[0.75rem] font-mono text-slate-500 uppercase">
                         {tertiaryColor}
                       </span>
                       <input
@@ -358,7 +358,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
             </div>
 
             {/* Instant application footer note */}
-            <div className="py-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 dark:text-neutral-400 text-center font-medium">
+            <div className="py-2 flex items-center justify-center gap-1.5 text-[0.75rem] text-slate-500 dark:text-neutral-400 text-center font-medium">
               <span>Los cambios se aplican al instante</span>
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             </div>

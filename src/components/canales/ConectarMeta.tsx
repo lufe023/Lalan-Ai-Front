@@ -93,14 +93,14 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
     <div className={incrustado ? 'space-y-3 pb-1' : 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3'}>
       <div>
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Conecta tus cuentas</h3>
-        <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
           Toca el botón, entra con tu cuenta de Meta y acepta. Tus mensajes empiezan a llegar a Lalan al momento.
         </p>
       </div>
 
       {sedes.length > 1 && (
         <label className="block">
-          <span className="text-[10px] font-bold uppercase text-slate-400">Para la sede</span>
+          <span className="text-[0.6875rem] font-bold uppercase text-slate-400">Para la sede</span>
           <select value={sede} onChange={(e) => setSede(e.target.value)}
             className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white">
             {sedes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -136,7 +136,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
       </div>
 
       {cfg && (!cfg.whatsapp || !cfg.paginas) && (
-        <p className="text-[10px] text-slate-400">
+        <p className="text-[0.6875rem] text-slate-400">
           {currentUser?.role === 'super_admin'
             ? 'Faltan META_APP_ID, META_APP_SECRET o las configuraciones de Meta en el servidor.'
             : 'Muy pronto: estamos terminando la verificación con Meta. Mientras tanto, el equipo de Lalan te lo conecta.'}
@@ -147,13 +147,13 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
         <div className="space-y-2 p-1">
           <button type="button" onClick={() => void whatsapp(false)}
             className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] cursor-pointer">
-            <b className="text-sm block">Un número solo para el salón <span className="text-[10px] text-emerald-600 font-bold">Recomendado</span></b>
-            <span className="text-[11px] text-slate-500">Un chip que no está en ninguna app de WhatsApp. Meta te manda un código por SMS o llamada.</span>
+            <b className="text-sm block">Un número solo para el salón <span className="text-[0.6875rem] text-emerald-600 font-bold">Recomendado</span></b>
+            <span className="text-[0.75rem] text-slate-500">Un chip que no está en ninguna app de WhatsApp. Meta te manda un código por SMS o llamada.</span>
           </button>
           <button type="button" onClick={() => void whatsapp(true)}
             className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] cursor-pointer">
             <b className="text-sm block">Usar el número que ya tengo en WhatsApp Business</b>
-            <span className="text-[11px] text-slate-500">Sigues usando la app en tu teléfono y Lalan contesta a la vez. Si le escribes a una clienta desde el teléfono, Lalan se aparta de esa conversación. Tendrás que escanear un código con el teléfono.</span>
+            <span className="text-[0.75rem] text-slate-500">Sigues usando la app en tu teléfono y Lalan contesta a la vez. Si le escribes a una clienta desde el teléfono, Lalan se aparta de esa conversación. Tendrás que escanear un código con el teléfono.</span>
           </button>
         </div>
       </IOSModal>
@@ -170,7 +170,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
               <Facebook className="w-5 h-5 text-[#1877F2] shrink-0" />
               <span className="flex-1 min-w-0">
                 <b className="text-sm block truncate">{p.nombre}</b>
-                <span className="text-[11px] text-slate-500">{p.instagram ? `Instagram vinculado: ${p.instagram}` : 'Sin Instagram profesional vinculado'}</span>
+                <span className="text-[0.75rem] text-slate-500">{p.instagram ? `Instagram vinculado: ${p.instagram}` : 'Sin Instagram profesional vinculado'}</span>
               </span>
               {ocupado && <Loader2 className="w-4 h-4 animate-spin" />}
             </button>

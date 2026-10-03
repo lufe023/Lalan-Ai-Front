@@ -74,8 +74,8 @@ const Tarjeta: React.FC<{ className?: string; children: React.ReactNode }> = ({ 
 );
 const Titulo: React.FC<{ children: React.ReactNode; ayuda?: string }> = ({ children, ayuda }) => (
   <div className="mb-3">
-    <h3 className="text-[13px] font-bold text-slate-900 dark:text-white">{children}</h3>
-    {ayuda && <p className="text-[11px] text-slate-500 dark:text-neutral-400 mt-0.5">{ayuda}</p>}
+    <h3 className="text-[0.875rem] font-bold text-slate-900 dark:text-white">{children}</h3>
+    {ayuda && <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mt-0.5">{ayuda}</p>}
   </div>
 );
 
@@ -83,26 +83,26 @@ const Cifra: React.FC<{ icon: React.FC<{ className?: string }>; titulo: string; 
   const cambio = antes !== undefined && ahora !== undefined && antes > 0 ? Math.round(((ahora - antes) / antes) * 100) : null;
   return (
     <Tarjeta>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-neutral-400"><I className="w-3.5 h-3.5" />{titulo}</div>
+      <div className="flex items-center gap-1.5 text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400"><I className="w-3.5 h-3.5" />{titulo}</div>
       <div className="text-2xl font-extrabold tabular-nums text-slate-900 dark:text-white mt-1">{valor}</div>
       {cambio !== null ? (
-        <div className={`text-[11px] font-bold flex items-center gap-1 mt-0.5 ${cambio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <div className={`text-[0.75rem] font-bold flex items-center gap-1 mt-0.5 ${cambio >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
           {cambio >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}{cambio >= 0 ? '+' : ''}{cambio} % vs. el periodo anterior
         </div>
-      ) : nota ? <div className="text-[11px] text-slate-500 dark:text-neutral-400 mt-0.5">{nota}</div> : null}
+      ) : nota ? <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mt-0.5">{nota}</div> : null}
     </Tarjeta>
   );
 };
 
 /** Una lista con barras, la forma más fácil de leer "quién aporta más" */
 const Barras: React.FC<{ filas: { etiqueta: React.ReactNode; valor: number }[]; total: number; vacio?: string }> = ({ filas, total, vacio = 'Sin datos todavía' }) => {
-  if (!filas.length) return <p className="text-[11px] text-slate-400">{vacio}</p>;
+  if (!filas.length) return <p className="text-[0.75rem] text-slate-400">{vacio}</p>;
   const max = Math.max(...filas.map((f) => f.valor), 1);
   return (
     <div className="space-y-2">
       {filas.map((f, i) => (
         <div key={i}>
-          <div className="flex justify-between gap-3 text-[12px]">
+          <div className="flex justify-between gap-3 text-[0.8125rem]">
             <span className="text-slate-700 dark:text-neutral-200 truncate">{f.etiqueta}</span>
             <span className="tabular-nums font-semibold text-slate-900 dark:text-white shrink-0">{miles(f.valor)} <span className="text-slate-400 font-normal">· {pct(f.valor, total)} %</span></span>
           </div>
@@ -118,13 +118,13 @@ const Barras: React.FC<{ filas: { etiqueta: React.ReactNode; valor: number }[]; 
 /** Visitas por día: columnas con el valor al pasar el dedo */
 const PorDia: React.FC<{ datos: ResumenLanding['porDia'] }> = ({ datos }) => {
   const [marcado, setMarcado] = useState<number | null>(null);
-  if (!datos.length) return <p className="text-[11px] text-slate-400">Todavía no hay visitas en este periodo.</p>;
+  if (!datos.length) return <p className="text-[0.75rem] text-slate-400">Todavía no hay visitas en este periodo.</p>;
   const max = Math.max(...datos.map((d) => d.visitas), 1);
   const fmt = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-DO', { weekday: 'short', day: 'numeric', month: 'short' });
   const sel = marcado !== null ? datos[marcado] : datos[datos.length - 1];
   return (
     <div>
-      <div className="text-[11px] text-slate-500 dark:text-neutral-400 mb-2 h-4">
+      <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mb-2 h-4">
         <b className="text-slate-900 dark:text-white">{fmt(sel.fecha)}</b> · {miles(sel.visitas)} visitas · {miles(sel.visitantes)} personas
       </div>
       <div className="flex items-end gap-[3px] h-28" onMouseLeave={() => setMarcado(null)}>
@@ -136,7 +136,7 @@ const PorDia: React.FC<{ datos: ResumenLanding['porDia'] }> = ({ datos }) => {
           </button>
         ))}
       </div>
-      <div className="flex justify-between text-[10px] text-slate-400 mt-1"><span>{fmt(datos[0].fecha)}</span><span>{fmt(datos[datos.length - 1].fecha)}</span></div>
+      <div className="flex justify-between text-[0.6875rem] text-slate-400 mt-1"><span>{fmt(datos[0].fecha)}</span><span>{fmt(datos[datos.length - 1].fecha)}</span></div>
     </div>
   );
 };
@@ -149,7 +149,7 @@ const CalorHoras: React.FC<{ datos: ResumenLanding['calorHoras'] }> = ({ datos }
   const pico = datos.reduce<{ dia: number; hora: number; visitas: number } | null>((m, d) => (!m || d.visitas > m.visitas ? d : m), null);
   return (
     <div>
-      <p className="text-[11px] text-slate-500 dark:text-neutral-400 mb-2 h-4">
+      <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mb-2 h-4">
         {marcado
           ? <>{DIAS[marcado.dia]} a las {hora12(marcado.hora)}: <b className="text-slate-900 dark:text-white">{miles(mapa.get(`${marcado.dia}-${marcado.hora}`) ?? 0)} visitas</b></>
           : pico ? <>Momento de más visitas: <b className="text-slate-900 dark:text-white">{DIAS[pico.dia]} a las {hora12(pico.hora)}</b></> : 'Sin visitas todavía'}
@@ -158,7 +158,7 @@ const CalorHoras: React.FC<{ datos: ResumenLanding['calorHoras'] }> = ({ datos }
         <div className="min-w-[520px]">
           {DIAS.map((nombre, dia) => (
             <div key={dia} className="flex items-center gap-1 mb-[3px]">
-              <span className="w-8 text-[10px] text-slate-400 shrink-0">{nombre}</span>
+              <span className="w-8 text-[0.6875rem] text-slate-400 shrink-0">{nombre}</span>
               {Array.from({ length: 24 }, (_, hora) => {
                 const v = mapa.get(`${dia}-${hora}`) ?? 0;
                 return (
@@ -169,7 +169,7 @@ const CalorHoras: React.FC<{ datos: ResumenLanding['calorHoras'] }> = ({ datos }
               })}
             </div>
           ))}
-          <div className="flex gap-1 pl-9 text-[9px] text-slate-400">
+          <div className="flex gap-1 pl-9 text-[0.6875rem] text-slate-400">
             {[0, 6, 12, 18].map((h) => <span key={h} className="flex-1">{hora12(h)}</span>)}
           </div>
         </div>
@@ -253,7 +253,7 @@ export const PlataformaScreen: React.FC = () => {
                 <Barras total={datos.visitas} filas={datos.paises.map((p) => ({ etiqueta: <>{bandera(p.id)} {nombrePais(p.id)}</>, valor: p.visitas }))} />
                 {datos.ciudades.length > 0 && (
                   <>
-                    <div className="text-[11px] font-semibold text-slate-500 mt-4 mb-2">Ciudades</div>
+                    <div className="text-[0.75rem] font-semibold text-slate-500 mt-4 mb-2">Ciudades</div>
                     <Barras total={datos.visitas} filas={datos.ciudades.map((c) => ({ etiqueta: `${c.id}${c.pais ? ` · ${c.pais}` : ''}`, valor: c.visitas }))} />
                   </>
                 )}
@@ -267,14 +267,14 @@ export const PlataformaScreen: React.FC = () => {
                       <div key={d.id} className="rounded-xl bg-slate-50 dark:bg-neutral-800/60 p-2.5 text-center">
                         <d.icon className="w-4 h-4 mx-auto text-[var(--primary)]" />
                         <div className="text-lg font-extrabold tabular-nums text-slate-900 dark:text-white">{pct(v, totalDisp)} %</div>
-                        <div className="text-[10px] text-slate-500">{d.label} · {miles(v)}</div>
+                        <div className="text-[0.6875rem] text-slate-500">{d.label} · {miles(v)}</div>
                       </div>
                     );
                   })}
                 </div>
-                <div className="text-[11px] font-semibold text-slate-500 mb-2">Navegadores</div>
+                <div className="text-[0.75rem] font-semibold text-slate-500 mb-2">Navegadores</div>
                 <Barras total={datos.visitas} filas={datos.navegadores.map((n) => ({ etiqueta: n.id, valor: n.visitas }))} />
-                <div className="text-[11px] font-semibold text-slate-500 mt-4 mb-2">Sistemas</div>
+                <div className="text-[0.75rem] font-semibold text-slate-500 mt-4 mb-2">Sistemas</div>
                 <Barras total={datos.visitas} filas={datos.sistemas.map((n) => ({ etiqueta: n.id, valor: n.visitas }))} />
               </Tarjeta>
               <Tarjeta>
@@ -291,7 +291,7 @@ export const PlataformaScreen: React.FC = () => {
               <div className="space-y-3">
                 <Tarjeta>
                   <Titulo>La historia animada</Titulo>
-                  <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div className="grid grid-cols-2 gap-2 text-[0.8125rem]">
                     {[
                       { i: PlayCircle, t: 'La reprodujeron', v: datos.historia.inicios },
                       { i: CheckCircle2, t: 'Llegaron al final', v: datos.historia.finales, n: `${pct(datos.historia.finales, datos.historia.inicios)} %` },
@@ -301,20 +301,20 @@ export const PlataformaScreen: React.FC = () => {
                       { i: Eye, t: 'Visitas que la vieron', v: datos.historia.visitasQueLaVieron, n: `${pct(datos.historia.visitasQueLaVieron, datos.visitas)} %` },
                     ].map((x) => (
                       <div key={x.t} className="rounded-xl bg-slate-50 dark:bg-neutral-800/60 p-2.5">
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500"><x.i className="w-3 h-3" />{x.t}</div>
-                        <div className="text-base font-extrabold tabular-nums text-slate-900 dark:text-white">{miles(x.v)} {x.n && <span className="text-[10px] font-semibold text-slate-400">· {x.n}</span>}</div>
+                        <div className="flex items-center gap-1 text-[0.6875rem] text-slate-500"><x.i className="w-3 h-3" />{x.t}</div>
+                        <div className="text-base font-extrabold tabular-nums text-slate-900 dark:text-white">{miles(x.v)} {x.n && <span className="text-[0.6875rem] font-semibold text-slate-400">· {x.n}</span>}</div>
                       </div>
                     ))}
                   </div>
                 </Tarjeta>
                 <Tarjeta>
                   <Titulo>El formulario del piloto</Titulo>
-                  <p className="text-[12px] text-slate-600 dark:text-neutral-300">
+                  <p className="text-[0.8125rem] text-slate-600 dark:text-neutral-300">
                     <b className="text-slate-900 dark:text-white">{miles(datos.piloto.abrieron)}</b> empezaron a llenarlo y <b className="text-slate-900 dark:text-white">{miles(datos.piloto.aplicaciones)}</b> lo enviaron
                     {datos.piloto.abrieron > 0 && <> ({pct(datos.piloto.aplicaciones, datos.piloto.abrieron)} %)</>}.
                   </p>
                   {datos.piloto.nuevas > 0 && (
-                    <button onClick={() => setPestana('piloto')} className="mt-2 text-[12px] font-bold text-[var(--primary)] hover:underline">{datos.piloto.nuevas} sin contactar →</button>
+                    <button onClick={() => setPestana('piloto')} className="mt-2 text-[0.8125rem] font-bold text-[var(--primary)] hover:underline">{datos.piloto.nuevas} sin contactar →</button>
                   )}
                 </Tarjeta>
               </div>
@@ -331,7 +331,7 @@ export const PlataformaScreen: React.FC = () => {
           <div className="flex gap-1.5">
             {([['landing', 'La landing'], ['app', 'La app por dentro']] as const).map(([id, nombre]) => (
               <button key={id} type="button" onClick={() => setOrigenCalor(id)}
-                className={`px-4 py-2 rounded-xl text-[12px] font-bold border cursor-pointer ${origenCalor === id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300'}`}>{nombre}</button>
+                className={`px-4 py-2 rounded-xl text-[0.8125rem] font-bold border cursor-pointer ${origenCalor === id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300'}`}>{nombre}</button>
             ))}
           </div>
         )}
@@ -342,16 +342,16 @@ export const PlataformaScreen: React.FC = () => {
               <div className="flex gap-1.5">
                 {DISPOSITIVOS.map((d) => (
                   <button key={d.id} onClick={() => setDispositivoCalor(d.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border cursor-pointer ${dispositivoCalor === d.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300'}`}>
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.8125rem] font-semibold border cursor-pointer ${dispositivoCalor === d.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300'}`}>
                     <d.icon className="w-3.5 h-3.5" />{d.label}
                   </button>
                 ))}
               </div>
-              <a href={urlCalor} target="_blank" rel="noopener" className="flex items-center gap-1 text-[12px] font-semibold text-[var(--primary)] hover:underline">
+              <a href={urlCalor} target="_blank" rel="noopener" className="flex items-center gap-1 text-[0.8125rem] font-semibold text-[var(--primary)] hover:underline">
                 <ExternalLink className="w-3.5 h-3.5" /> Abrir en otra pestaña
               </a>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-neutral-400 mb-3">Cada mancha es donde tocaron o hicieron clic: azul es poco, rojo es mucho. Se dibuja sobre la página tal como la ven en ese aparato.</p>
+            <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mb-3">Cada mancha es donde tocaron o hicieron clic: azul es poco, rojo es mucho. Se dibuja sobre la página tal como la ven en ese aparato.</p>
             <div className="rounded-xl overflow-auto bg-slate-100 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800" style={{ height: 'min(75vh, 900px)' }}>
               <iframe key={urlCalor} src={urlCalor} title="Mapa de calor de la landing" className="block mx-auto bg-white" style={{ width: anchoCalor, height: '100%', border: 0 }} />
             </div>

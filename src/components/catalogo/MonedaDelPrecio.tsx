@@ -14,7 +14,7 @@ export const MonedaDelPrecio: React.FC<{ value: string; onChange: (codigo: strin
   const activas = currencies.filter(c => c.active);
   const actual = (value || base).toUpperCase();
   return (
-    <div className="flex items-center gap-2 flex-wrap text-[10px]">
+    <div className="flex items-center gap-2 flex-wrap text-[0.6875rem]">
       <span className="text-slate-500 dark:text-neutral-400 font-semibold">Precios en</span>
       <select value={actual} onChange={e => onChange(e.target.value)} aria-label="Moneda de los precios"
         className="px-2 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 font-bold text-slate-800 dark:text-white">

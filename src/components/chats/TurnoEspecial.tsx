@@ -40,7 +40,7 @@ export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutoriza
 
   const cuando = hasta ? new Date(hasta).toLocaleString('es-DO', { weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
   return (
-    <div className={`px-4 py-1.5 flex items-center gap-2 text-[10.5px] border-t ${vigente
+    <div className={`px-4 py-1.5 flex items-center gap-2 text-[0.75rem] border-t ${vigente
       ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-200/70 dark:border-violet-900 text-violet-800 dark:text-violet-200'
       : 'bg-white dark:bg-neutral-950 border-slate-100 dark:border-neutral-900 text-slate-500 dark:text-neutral-400'}`}>
       <CalendarClock className="w-3.5 h-3.5 shrink-0" />

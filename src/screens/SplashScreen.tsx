@@ -104,7 +104,7 @@ export const SplashScreen: React.FC = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[11px] font-medium tracking-wide text-neutral-200"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[0.75rem] font-medium tracking-wide text-neutral-200"
       >
         <Sparkles className="w-3.5 h-3.5 text-[var(--primary)] animate-spin" />
         <span>Live Assistant for Logistics, Appointments & Networking</span>
@@ -213,7 +213,7 @@ export const SplashScreen: React.FC = () => {
                 />
               </div>
 
-              <span className="text-[11px] text-neutral-400 font-mono tracking-tight text-center">
+              <span className="text-[0.75rem] text-neutral-400 font-mono tracking-tight text-center">
                 {loadingStep}
               </span>
 
@@ -221,7 +221,7 @@ export const SplashScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={closeSplash}
-                className="mt-4 text-[10px] text-neutral-500 hover:text-neutral-300 transition uppercase tracking-widest cursor-pointer py-1 px-3"
+                className="mt-4 text-[0.6875rem] text-neutral-500 hover:text-neutral-300 transition uppercase tracking-widest cursor-pointer py-1 px-3"
               >
                 Entrar directamente →
               </button>

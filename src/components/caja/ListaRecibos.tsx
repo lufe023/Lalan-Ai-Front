@@ -119,7 +119,7 @@ export const ListaRecibos: React.FC<{ plata: (n: any) => string; onReimprimir: (
     return grupos;
   }, [items]);
 
-  const chip = (activo: boolean) => `px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap cursor-pointer transition ${activo ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 hover:border-slate-300'}`;
+  const chip = (activo: boolean) => `px-3 py-1.5 rounded-full text-[0.75rem] font-bold whitespace-nowrap cursor-pointer transition ${activo ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 hover:border-slate-300'}`;
   const campoFecha = 'px-2.5 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white dark:[color-scheme:dark]';
 
   return (
@@ -147,7 +147,7 @@ export const ListaRecibos: React.FC<{ plata: (n: any) => string; onReimprimir: (
         ))}
       </div>
       {periodo === 'rango' && (
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+        <div className="flex flex-wrap items-center gap-2 text-[0.75rem] text-slate-500">
           <label className="flex items-center gap-1.5">Desde <input type="date" value={desdeTxt} max={hastaTxt} onChange={e => setDesdeTxt(e.target.value)} className={campoFecha} /></label>
           <label className="flex items-center gap-1.5">Hasta <input type="date" value={hastaTxt} min={desdeTxt} onChange={e => setHastaTxt(e.target.value)} className={campoFecha} /></label>
         </div>
@@ -170,13 +170,13 @@ export const ListaRecibos: React.FC<{ plata: (n: any) => string; onReimprimir: (
         )}
         {porDia.map(g => (
           <section key={g.dia} aria-label={g.titulo}>
-            <h4 className="sticky top-0 z-[1] px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm first-letter:uppercase">{g.titulo}</h4>
+            <h4 className="sticky top-0 z-[1] px-2 pt-3 pb-1 text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm first-letter:uppercase">{g.titulo}</h4>
             <div className="divide-y divide-slate-100 dark:divide-neutral-800">
               {g.filas.map(r => (
                 <div key={r.id} className="p-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-xs font-bold text-slate-800 dark:text-neutral-100 truncate">{r.clientName ?? r.label ?? 'Mostrador'}</div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className="text-[0.6875rem] text-slate-400">
                       <span className="font-mono">#{String(r.id).slice(-8).toUpperCase()}</span> · {horaDe(r.closedAt ?? r.openedAt)} · {r.items?.length ?? 0} {r.items?.length === 1 ? 'línea' : 'líneas'}
                     </div>
                   </div>
@@ -194,7 +194,7 @@ export const ListaRecibos: React.FC<{ plata: (n: any) => string; onReimprimir: (
         ))}
         <div ref={fondo} aria-hidden="true" />
         {cargando && <p className="py-4 flex items-center justify-center gap-2 text-xs text-slate-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…</p>}
-        {!cargando && !hayMas && items.length > POR_PAGINA && <p className="py-3 text-center text-[10px] text-slate-400">Son todos los recibos de este periodo.</p>}
+        {!cargando && !hayMas && items.length > POR_PAGINA && <p className="py-3 text-center text-[0.6875rem] text-slate-400">Son todos los recibos de este periodo.</p>}
       </div>
     </div>
   );

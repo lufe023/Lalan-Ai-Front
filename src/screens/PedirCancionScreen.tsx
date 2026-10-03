@@ -318,14 +318,14 @@ export const PedirCancionScreen: React.FC<{ token: string }> = ({ token }) => {
 
           {estado.habilitado && (
             <div className="flex flex-col items-end shrink-0">
-              <span className={`text-[11px] lg:text-xs font-bold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
+              <span className={`text-[0.75rem] lg:text-xs font-bold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
                 restantes > 0
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                   : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
               }`}>
                 {restantes} de {estado.limite} disponibles
               </span>
-              <span className="text-[10px] lg:text-[11px] text-white/40 mt-0.5">
+              <span className="text-[0.6875rem] lg:text-[0.75rem] text-white/40 mt-0.5">
                 cada {estado.ventanaHoras} {estado.ventanaHoras === 1 ? 'hora' : 'horas'}
               </span>
             </div>
@@ -349,7 +349,7 @@ export const PedirCancionScreen: React.FC<{ token: string }> = ({ token }) => {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[10px] lg:text-[11px] uppercase font-bold text-white/50 tracking-wider">
+                  <span className="text-[0.6875rem] lg:text-[0.75rem] uppercase font-bold text-white/50 tracking-wider">
                     Sonando en el salón
                   </span>
                 </div>
@@ -470,7 +470,7 @@ export const PedirCancionScreen: React.FC<{ token: string }> = ({ token }) => {
               {seleccion && (
                 <div className="p-4 rounded-2xl bg-[var(--primary)]/10 border border-[var(--primary)]/30 space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--primary)]">
+                    <span className="text-[0.75rem] font-bold uppercase tracking-wider text-[var(--primary)]">
                       Canción seleccionada
                     </span>
                     <button onClick={() => setSeleccion(null)} className="text-xs text-white/50 hover:text-white cursor-pointer">
@@ -555,7 +555,7 @@ export const PedirCancionScreen: React.FC<{ token: string }> = ({ token }) => {
                     <p className="text-sm font-bold text-white truncate">{m.title}</p>
                     <p className="text-xs text-white/40 truncate">{m.channel}</p>
                   </div>
-                  <span className={`text-[10px] lg:text-[11px] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
+                  <span className={`text-[0.6875rem] lg:text-[0.75rem] font-bold px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${
                     m.estado === 'played'
                       ? 'bg-white/5 text-white/40'
                       : m.posicion === 1
@@ -567,13 +567,13 @@ export const PedirCancionScreen: React.FC<{ token: string }> = ({ token }) => {
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-white/30 px-1">Tu código: {estado.codigo}</p>
+            <p className="text-[0.75rem] text-white/30 px-1">Tu código: {estado.codigo}</p>
           </section>
         )}
       </main>
 
       {/* ── Pie ── */}
-      <footer className="border-t border-white/10 bg-neutral-900/40 text-[11px] text-white/40">
+      <footer className="border-t border-white/10 bg-neutral-900/40 text-[0.75rem] text-white/40">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-center gap-1.5 text-center">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           <span>Sin registro ni contraseña · Cuota por dispositivo</span>

@@ -50,6 +50,7 @@ import { PeticionesMusica } from '../components/ui/PeticionesMusica';
 import { TuPlan } from '../components/ajustes/TuPlan';
 import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
 import { AvisosEquipo } from '../components/ajustes/AvisosEquipo';
+import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPedida } from '../components/ajustes/MenuAjustes';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
@@ -319,6 +320,7 @@ export const SettingsScreen: React.FC = () => {
         {!seccion && <MenuAjustes rol={currentUser?.role} onAbrir={abrirSeccion} />}
         {seccion === 'cuenta' && (
           <>
+            <TamanoLetraSelector />
         {/* Todo el equipo puede activar las notificaciones: la dueña decide qué le llega a cada quien */}
         {currentUser?.role !== 'support' && <ActivarNotificaciones />}
         {/* SECTION 5: ACCOUNT & PROFILE ACTIONS */}
@@ -340,7 +342,7 @@ export const SettingsScreen: React.FC = () => {
                 <div className="font-bold text-xs text-slate-900 dark:text-white">
                   {currentUser.name}
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+                <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                   {currentUser.roleTitle}
                 </div>
               </div>
@@ -358,7 +360,7 @@ export const SettingsScreen: React.FC = () => {
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                     Acceso Rápido (1 toque)
                   </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+                  <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                     {quickReg.isRegistered
                       ? `Vinculado a este ${quickReg.deviceName || 'dispositivo'}`
                       : 'No configurado en este dispositivo'}
@@ -370,7 +372,7 @@ export const SettingsScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleDesvincularDispositivo}
-                  className="px-2.5 py-1 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400 text-[10px] font-bold hover:bg-red-500/25 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-red-500/15 text-red-600 dark:text-red-400 text-[0.6875rem] font-bold hover:bg-red-500/25 transition cursor-pointer"
                 >
                   Desvincular
                 </button>
@@ -378,13 +380,13 @@ export const SettingsScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleVincularDispositivo}
-                  className="px-3 py-1 rounded-lg bg-[var(--primary)] text-white text-[10px] font-bold hover:opacity-90 transition cursor-pointer shadow-xs"
+                  className="px-3 py-1 rounded-lg bg-[var(--primary)] text-white text-[0.6875rem] font-bold hover:opacity-90 transition cursor-pointer shadow-xs"
                 >
                   Vincular
                 </button>
               )}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-neutral-400 leading-tight">
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-tight">
               {quickReg.isRegistered
                 ? 'Este teléfono puede entrar al salón sin volver a ingresar contraseña.'
                 : 'Actívalo para entrar a tu salón con un solo toque desde este equipo.'}
@@ -395,7 +397,7 @@ export const SettingsScreen: React.FC = () => {
           <div className="flex items-center justify-between py-3 px-0.5 border-b border-slate-100 dark:border-neutral-800 mb-1">
             <div>
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Ocultar pantalla de inicio</p>
-              <p className="text-[10px] text-slate-400 dark:text-neutral-500 mt-0.5">Salta el splash al recargar la app</p>
+              <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 mt-0.5">Salta el splash al recargar la app</p>
             </div>
             <button
               onClick={toggleSkipSplash}
@@ -451,11 +453,11 @@ export const SettingsScreen: React.FC = () => {
                 Parámetros del Salón de Belleza
               </h3>
             </div>
-            <span className="text-[10px] text-slate-400">Datos Públicos</span>
+            <span className="text-[0.6875rem] text-slate-400">Datos Públicos</span>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Nombre del Salón
             </label>
             <input
@@ -467,7 +469,7 @@ export const SettingsScreen: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Dirección Principal
             </label>
             <input
@@ -495,14 +497,14 @@ export const SettingsScreen: React.FC = () => {
             {/* 1. Buffer time between appointments */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                <label className="text-[0.75rem] font-bold text-slate-800 dark:text-slate-200">
                   Descanso / Preparación entre Citas
                 </label>
-                <span className="text-[11px] font-black text-[var(--primary)]">
+                <span className="text-[0.75rem] font-black text-[var(--primary)]">
                   {bufferTimeMinutes} minutos
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Pausa de descanso, esterilización y limpieza antes de iniciar la siguiente cita.
               </p>
               <div className="grid grid-cols-4 gap-1 pt-1">
@@ -511,7 +513,7 @@ export const SettingsScreen: React.FC = () => {
                     key={mins}
                     type="button"
                     onClick={() => setBufferTimeMinutes(mins)}
-                    className={`py-1 rounded-lg text-[10px] font-bold transition ios-touch cursor-pointer ${
+                    className={`py-1 rounded-lg text-[0.6875rem] font-bold transition ios-touch cursor-pointer ${
                       bufferTimeMinutes === mins
                         ? 'bg-[var(--primary)] text-white shadow-xs'
                         : 'bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300'
@@ -526,14 +528,14 @@ export const SettingsScreen: React.FC = () => {
             {/* 2. Default Appointment Duration */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                <label className="text-[0.75rem] font-bold text-slate-800 dark:text-slate-200">
                   Duración Estándar de Cita
                 </label>
-                <span className="text-[11px] font-black text-slate-900 dark:text-white">
+                <span className="text-[0.75rem] font-black text-slate-900 dark:text-white">
                   {defaultAppointmentDurationMinutes} minutos
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Tiempo base asignado en el calendario si el servicio no tiene una duración fija.
               </p>
               <div className="grid grid-cols-4 gap-1 pt-1">
@@ -542,7 +544,7 @@ export const SettingsScreen: React.FC = () => {
                     key={mins}
                     type="button"
                     onClick={() => setDefaultAppointmentDurationMinutes(mins)}
-                    className={`py-1 rounded-lg text-[10px] font-bold transition ios-touch cursor-pointer ${
+                    className={`py-1 rounded-lg text-[0.6875rem] font-bold transition ios-touch cursor-pointer ${
                       defaultAppointmentDurationMinutes === mins
                         ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
                         : 'bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300'
@@ -557,14 +559,14 @@ export const SettingsScreen: React.FC = () => {
             {/* 3. Grace Period (Tiempo de espera) */}
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                <label className="text-[0.75rem] font-bold text-slate-800 dark:text-slate-200">
                   Tolerancia de Gracia por Retraso
                 </label>
-                <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                <span className="text-[0.75rem] font-black text-emerald-600 dark:text-emerald-400">
                   {gracePeriodMinutes} minutos
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Tiempo de espera permitido si la clienta avisa que llegará tarde antes de cancelar el turno.
               </p>
               <div className="grid grid-cols-4 gap-1 pt-1">
@@ -573,7 +575,7 @@ export const SettingsScreen: React.FC = () => {
                     key={mins}
                     type="button"
                     onClick={() => setGracePeriodMinutes(mins)}
-                    className={`py-1 rounded-lg text-[10px] font-bold transition ios-touch cursor-pointer ${
+                    className={`py-1 rounded-lg text-[0.6875rem] font-bold transition ios-touch cursor-pointer ${
                       gracePeriodMinutes === mins
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : 'bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300'
@@ -588,7 +590,7 @@ export const SettingsScreen: React.FC = () => {
             {/* 4. Deposit Percentage */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Anticipo para Reservar (%)
                 </label>
                 <div className="flex items-center gap-1.5">
@@ -624,7 +626,7 @@ export const SettingsScreen: React.FC = () => {
               Zonas del Salón
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-400 leading-relaxed">
             Marca qué servicios se hacen en cada zona: con eso la asistente sabe qué especialistas
             pueden atender cada cita y a quién ofrecer. De aquí sale también el código del turno: el prefijo de la zona más el
             número del día. Una zona con prefijo <span className="font-bold">G</span> da
@@ -678,7 +680,7 @@ export const SettingsScreen: React.FC = () => {
                   title="Color en la pantalla de sala"
                   className="w-8 h-8 shrink-0 rounded-lg border border-slate-200 dark:border-neutral-700 cursor-pointer bg-transparent"
                 />
-                <span className="shrink-0 text-[10px] text-slate-400 tabular-nums hidden sm:block">
+                <span className="shrink-0 text-[0.6875rem] text-slate-400 tabular-nums hidden sm:block">
                   {z.staff?.length ?? 0} pers.
                 </span>
                 <button
@@ -692,7 +694,7 @@ export const SettingsScreen: React.FC = () => {
               </div>
               {/* Qué servicios se hacen aquí: así la asistente sabe quién atiende qué */}
               <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
-                <span className="text-[10px] text-slate-400 mr-0.5">Aquí se hace:</span>
+                <span className="text-[0.6875rem] text-slate-400 mr-0.5">Aquí se hace:</span>
                 {categoriasDe('service').map(c => {
                   const cat = c.key;
                   const marcadas = z.serviceCategories ?? [];
@@ -705,7 +707,7 @@ export const SettingsScreen: React.FC = () => {
                         id: z.id, name: z.name, prefix: z.prefix,
                         serviceCategories: activa ? marcadas.filter(c => c !== cat) : [...marcadas, cat],
                       })}
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-semibold border transition cursor-pointer ${
                         activa
                           ? 'bg-[var(--primary)] text-white border-transparent'
                           : 'bg-white dark:bg-neutral-900 text-slate-500 dark:text-neutral-400 border-slate-200 dark:border-neutral-700'
@@ -716,13 +718,13 @@ export const SettingsScreen: React.FC = () => {
                   );
                 })}
                 {!(z.serviceCategories ?? []).length && (
-                  <span className="text-[10px] text-slate-400 italic">de todo (sin marcar)</span>
+                  <span className="text-[0.6875rem] text-slate-400 italic">de todo (sin marcar)</span>
                 )}
               </div>
               </div>
             ))}
             {!(zonas ?? []).length && (
-              <p className="py-3 text-center text-[11px] text-slate-400">
+              <p className="py-3 text-center text-[0.75rem] text-slate-400">
                 Sin zonas todavía. Los turnos salen como T1, T2…
               </p>
             )}
@@ -756,7 +758,7 @@ export const SettingsScreen: React.FC = () => {
                 const ok = await guardarZona({ ...nuevaZona });
                 if (ok) setNuevaZona({ name: '', prefix: '', color: '#c4697d' });
               }}
-              className="shrink-0 px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="shrink-0 px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               Añadir
             </button>
@@ -771,7 +773,7 @@ export const SettingsScreen: React.FC = () => {
               Especialistas
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-400 leading-relaxed">
             Cada una con su especialidad y su zona. La zona es la que decide a
             qué cola entra un turno cuando no se elige a mano. Con el reloj
             pones su horario (si no es el del salón) y los días que no viene.
@@ -804,12 +806,12 @@ export const SettingsScreen: React.FC = () => {
                     if (v && v !== e.role) void guardarEspecialista({ id: e.id, name: e.name, role: v });
                   }}
                   placeholder="Especialidad"
-                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-600 dark:text-neutral-300"
+                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-600 dark:text-neutral-300"
                 />
                 <select
                   value={e.zoneId ?? ''}
                   onChange={ev => guardarEspecialista({ id: e.id, name: e.name, zoneId: ev.target.value || null })}
-                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-600 dark:text-neutral-300"
+                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-600 dark:text-neutral-300"
                 >
                   <option value="">Sin zona</option>
                   {(zonas ?? []).filter(z => z.active).map(z => (
@@ -837,7 +839,7 @@ export const SettingsScreen: React.FC = () => {
               </div>
             ))}
             {!(especialistas ?? []).length && (
-              <p className="py-3 text-center text-[11px] text-slate-400">
+              <p className="py-3 text-center text-[0.75rem] text-slate-400">
                 Todavía no hay nadie dado de alta.
               </p>
             )}
@@ -854,12 +856,12 @@ export const SettingsScreen: React.FC = () => {
               value={nuevaPersona.role}
               onChange={ev => setNuevaPersona(p => ({ ...p, role: ev.target.value }))}
               placeholder="Especialidad"
-              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
             />
             <select
               value={nuevaPersona.zoneId}
               onChange={ev => setNuevaPersona(p => ({ ...p, zoneId: ev.target.value }))}
-              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
             >
               <option value="">Sin zona</option>
               {(zonas ?? []).filter(z => z.active).map(z => (
@@ -877,7 +879,7 @@ export const SettingsScreen: React.FC = () => {
                 });
                 if (ok) setNuevaPersona({ name: '', role: '', zoneId: '' });
               }}
-              className="shrink-0 px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="shrink-0 px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               Añadir
             </button>
@@ -903,7 +905,7 @@ export const SettingsScreen: React.FC = () => {
           >
             <div>
               <div className="text-xs font-bold text-slate-900 dark:text-white">Canales, instrucciones y agenda</div>
-              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Encender cada canal, sugerencias, nombre, tono e instrucciones
               </div>
             </div>
@@ -915,7 +917,7 @@ export const SettingsScreen: React.FC = () => {
           >
             <div>
               <div className="text-xs font-bold text-slate-900 dark:text-white">Actividad reciente</div>
-              <div className="text-[10px] text-slate-500 dark:text-neutral-400">
+              <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Lo último que entró, lo que respondió, las citas que agendó y los chats que pasó a una persona
               </div>
             </div>
@@ -932,7 +934,7 @@ export const SettingsScreen: React.FC = () => {
                 Mensajes Automatizados del Bot
               </h3>
             </div>
-            <span className="text-[10px] text-slate-400">Meta Webhook Reply</span>
+            <span className="text-[0.6875rem] text-slate-400">Meta Webhook Reply</span>
           </div>
 
           {/* Channel Selector */}
@@ -949,7 +951,7 @@ export const SettingsScreen: React.FC = () => {
           />
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Mensaje de Bienvenida Inicial
             </label>
             <textarea
@@ -961,10 +963,10 @@ export const SettingsScreen: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               Aviso cuando el salón está cerrado
             </label>
-            <p className="text-[10px] text-slate-500 dark:text-neutral-400 mb-1.5">
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 mb-1.5">
               Lalan atiende y agenda a toda hora, también con el salón cerrado (solo ofrece horas en que abres).
               Este aviso solo le cuenta a la clienta que, si necesita a alguien del equipo, le escriben cuando abran.
             </p>
@@ -998,7 +1000,7 @@ export const SettingsScreen: React.FC = () => {
               Pantalla de Turnos
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-400 leading-relaxed">
             Abre esta dirección en el televisor o la tablet de la sala. No pide
             usuario ni contraseña, es de solo lectura y únicamente muestra el
             código, el nombre de pila y a dónde va cada clienta — ni teléfonos,
@@ -1017,14 +1019,14 @@ export const SettingsScreen: React.FC = () => {
               {qrPantalla ? (
                 <img src={qrPantalla} alt="QR de la pantalla" className="w-32 h-32" />
               ) : (
-                <div className="w-32 h-32 flex items-center justify-center text-[10px] text-slate-300">
+                <div className="w-32 h-32 flex items-center justify-center text-[0.6875rem] text-slate-300">
                   Generando…
                 </div>
               )}
             </div>
 
             <div className="min-w-0 flex-1 space-y-2">
-              <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-mono break-all text-slate-600 dark:text-neutral-300">
+              <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-mono break-all text-slate-600 dark:text-neutral-300">
                 {urlPantalla || 'Generando enlace…'}
               </div>
 
@@ -1040,7 +1042,7 @@ export const SettingsScreen: React.FC = () => {
                       showToast('No se pudo copiar', 'Selecciónalo y cópialo a mano.', 'warning');
                     }
                   }}
-                  className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[0.75rem] font-bold hover:opacity-90 transition disabled:opacity-40 cursor-pointer"
                 >
                   Copiar enlace
                 </button>
@@ -1048,7 +1050,7 @@ export const SettingsScreen: React.FC = () => {
                   type="button"
                   disabled={!urlPantalla}
                   onClick={() => window.open(urlPantalla, '_blank', 'noopener')}
-                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40 cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.75rem] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40 cursor-pointer"
                 >
                   Abrir ahora
                 </button>
@@ -1069,13 +1071,13 @@ export const SettingsScreen: React.FC = () => {
                       showToast('No se pudo cambiar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
                     } finally { setRotando(false); }
                   }}
-                  className="px-3 py-2 rounded-xl text-[11px] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-[0.75rem] font-bold text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
                 >
                   {rotando ? 'Cambiando…' : 'Cambiar enlace'}
                 </button>
               </div>
 
-              <p className="text-[10px] text-slate-400 leading-relaxed">
+              <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                 Si se pierde la tablet, cambia el enlace: el anterior deja de
                 servir en ese mismo instante.
               </p>
@@ -1086,15 +1088,15 @@ export const SettingsScreen: React.FC = () => {
                   encendido todo el día a la vista de cualquiera: ahí no se
                   deja una sesión abierta con la agenda y la caja dentro. */}
               <div className="mt-3 pt-3 border-t border-slate-100 dark:border-neutral-800">
-                <div className="text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+                <div className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">
                   Reproductor del salón
                 </div>
-                <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
+                <p className="text-[0.6875rem] text-slate-400 leading-relaxed mt-0.5">
                   Abre esto en el aparato conectado a los altavoces. Suena ahí
                   y se controla desde el Lounge de cualquier teléfono con
                   permiso. No pide sesión y no enseña ningún dato.
                 </p>
-                <div className="mt-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[10px] font-mono text-slate-500 dark:text-neutral-400 break-all">
+                <div className="mt-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] font-mono text-slate-500 dark:text-neutral-400 break-all">
                   {urlReproductor || 'Generando enlace…'}
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1109,7 +1111,7 @@ export const SettingsScreen: React.FC = () => {
                         showToast('No se pudo copiar', 'Selecciónalo y cópialo a mano.', 'warning');
                       }
                     }}
-                    className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 transition disabled:opacity-40 cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold hover:opacity-90 transition disabled:opacity-40 cursor-pointer"
                   >
                     Copiar enlace
                   </button>
@@ -1117,7 +1119,7 @@ export const SettingsScreen: React.FC = () => {
                     type="button"
                     disabled={!urlReproductor}
                     onClick={() => window.open(urlReproductor, '_blank', 'noopener')}
-                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40 cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.75rem] font-bold hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40 cursor-pointer"
                   >
                     Abrir ahora
                   </button>
@@ -1130,7 +1132,7 @@ export const SettingsScreen: React.FC = () => {
           <div className="pt-3 mt-1 border-t border-slate-100 dark:border-neutral-800 space-y-2">
             <div className="flex items-center gap-1.5">
               <Volume2 className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+              <span className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                 Al llamar un turno
               </span>
             </div>
@@ -1146,7 +1148,7 @@ export const SettingsScreen: React.FC = () => {
                   key={valor}
                   type="button"
                   onClick={() => guardarAnuncio(valor, vozPantalla)}
-                  className={`py-2 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-0.5 transition cursor-pointer ${
+                  className={`py-2 rounded-xl border text-[0.75rem] font-bold flex flex-col items-center gap-0.5 transition cursor-pointer ${
                     modoAnuncio === valor
                       ? 'bg-[var(--primary)]/10 border-[var(--primary)]/30 text-[var(--primary)]'
                       : 'bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-500 dark:text-neutral-400 hover:border-[var(--primary)]/40'
@@ -1164,7 +1166,7 @@ export const SettingsScreen: React.FC = () => {
                   <select
                     value={vozPantalla}
                     onChange={e => guardarAnuncio(modoAnuncio, e.target.value)}
-                    className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
                   >
                     <option value="">Voz automática (español)</option>
                     {voces.map(v => (
@@ -1174,7 +1176,7 @@ export const SettingsScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => decir(fraseDeTurno('G15', 'Camila', 'Carlos M.'), { voz: vozPantalla })}
-                    className="shrink-0 px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+                    className="shrink-0 px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition cursor-pointer"
                   >
                     Probar
                   </button>
@@ -1182,7 +1184,7 @@ export const SettingsScreen: React.FC = () => {
                 {/* Esto hay que decirlo: las voces las instala el sistema
                     operativo, no la web. La lista de aquí es la de ESTE
                     aparato, no la del televisor. */}
-                <p className="text-[10px] text-slate-400 leading-relaxed">
+                <p className="text-[0.6875rem] text-slate-400 leading-relaxed">
                   Estas son las voces de <span className="font-semibold">este</span> dispositivo.
                   El televisor puede tener otras: si la elegida no está allí, usará
                   cualquier voz en español. Prueba el botón en el propio televisor
@@ -1201,13 +1203,13 @@ export const SettingsScreen: React.FC = () => {
                   className="mt-0.5 w-4 h-4 accent-[var(--primary)] cursor-pointer shrink-0"
                 />
                 <span className="min-w-0">
-                  <span className="block text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+                  <span className="block text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">
                     La pantalla también pone la música
                   </span>
                   {/* Este es el caso del salón con UN televisor: sin esto
                       habría que elegir entre poner los turnos o poner la
                       música, y ninguna de las dos es aceptable. */}
-                  <span className="block text-[10px] text-slate-400 leading-relaxed">
+                  <span className="block text-[0.6875rem] text-slate-400 leading-relaxed">
                     Para el salón de un solo televisor. La pared se vuelve el altavoz:
                     muestra la portada y el vídeo queda escondido detrás, con un botón
                     para verlo en pantalla completa.
@@ -1223,10 +1225,10 @@ export const SettingsScreen: React.FC = () => {
                   className="mt-0.5 w-4 h-4 accent-[var(--primary)] cursor-pointer shrink-0"
                 />
                 <span className="min-w-0">
-                  <span className="block text-[11px] font-bold text-slate-700 dark:text-neutral-200">
+                  <span className="block text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">
                     Bajar la música al llamar
                   </span>
-                  <span className="block text-[10px] text-slate-400 leading-relaxed">
+                  <span className="block text-[0.6875rem] text-slate-400 leading-relaxed">
                     La música baja unos segundos mientras se anuncia el turno y
                     vuelve sola. Si tu música ya está baja, esto sobra.
                   </span>
@@ -1244,7 +1246,7 @@ export const SettingsScreen: React.FC = () => {
               Canciones pedidas por las clientas
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-400 leading-relaxed">
             Las clientas escanean el QR de la pantalla de turnos y piden canciones
             desde su teléfono, sin registrarse. Cada canción entra en la cola del
             salón detrás de la que está sonando.
@@ -1264,7 +1266,7 @@ export const SettingsScreen: React.FC = () => {
               Monedas y Billetes
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-400 leading-relaxed">
             La caja vive en una sola moneda base. Las demás se registran con su
             tasa — cuántas unidades de la base vale una de ellas — y sirven para
             que una clienta pueda pagar en dólares un servicio en pesos.
@@ -1287,20 +1289,20 @@ export const SettingsScreen: React.FC = () => {
                         {c.symbol} {c.code}
                       </span>
                       {c.isBase && (
-                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-[var(--primary)] text-white">
+                        <span className="px-1.5 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-[var(--primary)] text-white">
                           BASE
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 truncate">{c.name}</p>
+                    <p className="text-[0.75rem] text-slate-400 truncate">{c.name}</p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {c.isBase ? (
-                      <span className="text-[11px] text-slate-400">tasa 1.00</span>
+                      <span className="text-[0.75rem] text-slate-400">tasa 1.00</span>
                     ) : (
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-slate-400">1 {c.code} =</span>
+                        <span className="text-[0.6875rem] text-slate-400">1 {c.code} =</span>
                         <input
                           type="number"
                           step="0.01"
@@ -1313,7 +1315,7 @@ export const SettingsScreen: React.FC = () => {
                           }}
                           className="w-20 px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs font-mono tabular-nums text-right text-slate-900 dark:text-white"
                         />
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[0.6875rem] text-slate-400">
                           {baseCurrency?.code}
                         </span>
                       </div>
@@ -1323,7 +1325,7 @@ export const SettingsScreen: React.FC = () => {
                         <button
                           onClick={() => saveCurrency({ id: c.id, isBase: true })}
                           title="Hacerla la moneda base del salón"
-                          className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition"
+                          className="px-2 py-1 rounded-lg text-[0.6875rem] font-bold text-slate-500 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition"
                         >
                           Hacer base
                         </button>
@@ -1343,7 +1345,7 @@ export const SettingsScreen: React.FC = () => {
                   {(c.denominations ?? []).filter(d => d.active !== false).map(d => (
                     <span
                       key={d.id}
-                      className="group pl-2 pr-1 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 tabular-nums flex items-center gap-1"
+                      className="group pl-2 pr-1 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 tabular-nums flex items-center gap-1"
                     >
                       {c.symbol}{Number(d.value).toLocaleString()}
                       <button
@@ -1367,7 +1369,7 @@ export const SettingsScreen: React.FC = () => {
                         setNuevoBillete(p => ({ ...p, [c.id]: '' }));
                       }
                     }}
-                    className="w-24 px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+                    className="w-24 px-2 py-1 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-dashed border-slate-300 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -1383,20 +1385,20 @@ export const SettingsScreen: React.FC = () => {
               onChange={e => setNuevaMoneda(p => ({ ...p, code: e.target.value.toUpperCase() }))}
               placeholder="USD"
               maxLength={4}
-              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-bold uppercase text-slate-900 dark:text-white"
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-bold uppercase text-slate-900 dark:text-white"
             />
             <input
               value={nuevaMoneda.symbol}
               onChange={e => setNuevaMoneda(p => ({ ...p, symbol: e.target.value }))}
               placeholder="US$"
               maxLength={4}
-              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
             />
             <input
               value={nuevaMoneda.name}
               onChange={e => setNuevaMoneda(p => ({ ...p, name: e.target.value }))}
               placeholder="Dólar"
-              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] text-slate-900 dark:text-white"
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
             />
             <input
               type="number"
@@ -1404,7 +1406,7 @@ export const SettingsScreen: React.FC = () => {
               value={nuevaMoneda.rateToBase}
               onChange={e => setNuevaMoneda(p => ({ ...p, rateToBase: e.target.value }))}
               placeholder="60"
-              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[11px] font-mono tabular-nums text-slate-900 dark:text-white"
+              className="px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-mono tabular-nums text-slate-900 dark:text-white"
             />
           </div>
           <button
@@ -1419,7 +1421,7 @@ export const SettingsScreen: React.FC = () => {
               setNuevaMoneda({ code: '', symbol: '', name: '', rateToBase: '' });
             }}
             disabled={!nuevaMoneda.code.trim()}
-            className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[11px] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40"
+            className="w-full py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40"
           >
             Agregar moneda
           </button>
@@ -1433,14 +1435,14 @@ export const SettingsScreen: React.FC = () => {
               Recibos e Impresión
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-400 leading-relaxed">
             El recibo se manda al diálogo de impresión del navegador, así que
             funciona con cualquier impresora instalada en la computadora —
             térmica o matricial — sin instalar nada aparte.
           </p>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
               Ancho del papel
             </label>
             <div className="flex gap-2 mt-1">
@@ -1455,7 +1457,7 @@ export const SettingsScreen: React.FC = () => {
                   }`}
                 >
                   {mm}mm
-                  <span className="block text-[9px] font-normal opacity-70">
+                  <span className="block text-[0.6875rem] font-normal opacity-70">
                     {mm === 58 ? 'térmica chica' : 'estándar POS'}
                   </span>
                 </button>
@@ -1464,7 +1466,7 @@ export const SettingsScreen: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
               Pie del recibo
             </label>
             <input
@@ -1476,7 +1478,7 @@ export const SettingsScreen: React.FC = () => {
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
               RNC / Identificación fiscal
             </label>
             <input
@@ -1503,7 +1505,7 @@ export const SettingsScreen: React.FC = () => {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">
                   Personalización de Tema & 3 Colores
                 </h3>
-                <p className="text-[10px] text-slate-500 dark:text-neutral-400">
+                <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                   Primario · Acento / Secundario · Terciario
                 </p>
               </div>
@@ -1512,7 +1514,7 @@ export const SettingsScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowThemeModal(true)}
-              className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white font-bold text-[10px] flex items-center gap-1 shadow-xs ios-touch cursor-pointer hover:opacity-90"
+              className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white font-bold text-[0.6875rem] flex items-center gap-1 shadow-xs ios-touch cursor-pointer hover:opacity-90"
             >
               <Sparkles className="w-3 h-3" />
               <span>Ver Paletas</span>
@@ -1521,7 +1523,7 @@ export const SettingsScreen: React.FC = () => {
 
           {/* Theme Mode Selector (Claro / Oscuro / Sistema) */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
+            <label className="block text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 mb-1.5">
               Modo de Pantalla
             </label>
             <div className="grid grid-cols-3 gap-1.5">
@@ -1557,27 +1559,27 @@ export const SettingsScreen: React.FC = () => {
                   className="w-3 h-3 rounded-full shadow-xs"
                   style={{ backgroundColor: primaryColor }}
                 />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Primario</span>
+                <span className="text-[0.6875rem] font-bold text-slate-700 dark:text-slate-300">Primario</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-full shadow-xs"
                   style={{ backgroundColor: accentColor }}
                 />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Acento</span>
+                <span className="text-[0.6875rem] font-bold text-slate-700 dark:text-slate-300">Acento</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span
                   className="w-3 h-3 rounded-full shadow-xs"
                   style={{ backgroundColor: tertiaryColor }}
                 />
-                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">Terciario</span>
+                <span className="text-[0.6875rem] font-bold text-slate-700 dark:text-slate-300">Terciario</span>
               </div>
             </div>
 
             <button
               onClick={() => setShowCustomPickers(!showCustomPickers)}
-              className="text-[10px] font-bold text-[var(--primary)] hover:underline flex items-center gap-1"
+              className="text-[0.6875rem] font-bold text-[var(--primary)] hover:underline flex items-center gap-1"
             >
               <SlidersHorizontal className="w-3 h-3" />
               <span>{showCustomPickers ? 'Ocultar HEX' : 'Editar HEX'}</span>
@@ -1588,7 +1590,7 @@ export const SettingsScreen: React.FC = () => {
           {showCustomPickers && (
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-200/80 dark:border-neutral-700/80 grid grid-cols-3 gap-2">
               <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[0.6875rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Primario
                 </label>
                 <div className="flex items-center justify-center gap-1.5">
@@ -1598,14 +1600,14 @@ export const SettingsScreen: React.FC = () => {
                     onChange={e => setPrimaryColor(e.target.value)}
                     className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
                   />
-                  <span className="text-[10px] font-mono uppercase text-slate-500">
+                  <span className="text-[0.6875rem] font-mono uppercase text-slate-500">
                     {primaryColor}
                   </span>
                 </div>
               </div>
 
               <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[0.6875rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Acento
                 </label>
                 <div className="flex items-center justify-center gap-1.5">
@@ -1615,14 +1617,14 @@ export const SettingsScreen: React.FC = () => {
                     onChange={e => setAccentColor(e.target.value)}
                     className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
                   />
-                  <span className="text-[10px] font-mono uppercase text-slate-500">
+                  <span className="text-[0.6875rem] font-mono uppercase text-slate-500">
                     {accentColor}
                   </span>
                 </div>
               </div>
 
               <div className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200/60 dark:border-neutral-800 text-center">
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[0.6875rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Terciario
                 </label>
                 <div className="flex items-center justify-center gap-1.5">
@@ -1632,7 +1634,7 @@ export const SettingsScreen: React.FC = () => {
                     onChange={e => setTertiaryColor(e.target.value)}
                     className="w-5 h-5 rounded-full border-0 cursor-pointer p-0 bg-transparent"
                   />
-                  <span className="text-[10px] font-mono uppercase text-slate-500">
+                  <span className="text-[0.6875rem] font-mono uppercase text-slate-500">
                     {tertiaryColor}
                   </span>
                 </div>
@@ -1642,7 +1644,7 @@ export const SettingsScreen: React.FC = () => {
 
           {/* Quick 1-Click Preset Palettes Grid */}
           <div className="space-y-2">
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">
               Combinaciones Listas (1 Clic):
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1665,15 +1667,15 @@ export const SettingsScreen: React.FC = () => {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-base shrink-0">{preset.icon}</span>
                       <div className="min-w-0">
-                        <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
+                        <div className="text-[0.75rem] font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
                           <span>{preset.name}</span>
                           {isSelected && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold">
+                            <span className="text-[0.6875rem] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold">
                               Activo
                             </span>
                           )}
                         </div>
-                        <div className="text-[9.5px] text-slate-500 dark:text-neutral-400 truncate">
+                        <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate">
                           {preset.subtitle}
                         </div>
                       </div>
@@ -1726,7 +1728,7 @@ export const SettingsScreen: React.FC = () => {
         title="Actividad reciente"
         subtitle="Lo último que pasó en los chats del salón"
       >
-        <div className="space-y-1.5 text-[11px]">
+        <div className="space-y-1.5 text-[0.75rem]">
           {actividad === null && <p className="text-slate-400 text-center py-6">Cargando…</p>}
           {actividad?.length === 0 && (
             <p className="text-slate-400 text-center py-6">Todavía no hay actividad en los chats.</p>
@@ -1743,7 +1745,7 @@ export const SettingsScreen: React.FC = () => {
                 onClick={() => { if (ev.conversacionId) { setShowLogsModal(false); abrirConversacion(ev.conversacionId); } }}
                 className="w-full text-left p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/70 dark:border-neutral-800 enabled:hover:border-[var(--primary)] enabled:cursor-pointer"
               >
-                <div className="flex items-center justify-between gap-2 text-[10px]">
+                <div className="flex items-center justify-between gap-2 text-[0.6875rem]">
                   <span className={`px-1.5 rounded font-bold ${estilo.clase}`}>{estilo.titulo}</span>
                   <span className="text-slate-400 tabular-nums">{ev.canal.descripcion} · {cuando}</span>
                 </div>

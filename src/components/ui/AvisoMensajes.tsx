@@ -35,7 +35,7 @@ export const AvisoMensajes: React.FC = () => {
   return (
     <div
       role="status"
-      className={`mx-3 mt-3 lg:mx-6 flex items-start gap-3 rounded-2xl px-4 py-3 text-[13px] leading-snug shadow-sm border ${
+      className={`mx-3 mt-3 lg:mx-6 flex items-start gap-3 rounded-2xl px-4 py-3 text-[0.875rem] leading-snug shadow-sm border ${
         agotado
           ? 'bg-rose-50 border-rose-200 text-rose-900 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-100'
           : 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950/60 dark:border-amber-800 dark:text-amber-100'

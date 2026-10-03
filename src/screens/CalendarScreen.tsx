@@ -283,32 +283,32 @@ export const CalendarScreen: React.FC = () => {
       : apt?.createdByName?.split(' ')[0] ?? null;
     switch (status) {
       case 'confirmed': return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
           <UserCheck className="w-3 h-3" />Confirmada{quien ? ` · ${quien}` : ''}
         </span>
       );
       case 'confirmed_by_ai': return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center gap-1">
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center gap-1">
           <Bot className="w-3 h-3" />Confirmada · {settings.aiAgentName || 'IA'}
         </span>
       );
       case 'attending': return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center gap-1">
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center gap-1">
           <Sparkles className="w-3 h-3 animate-spin" />En Atención
         </span>
       );
       case 'completed': return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
           <CheckCircle2 className="w-3 h-3" />Completada
         </span>
       );
       case 'pending': return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center gap-1">
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center gap-1">
           <Clock className="w-3 h-3" />Pendiente
         </span>
       );
       case 'cancelled': return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400">Cancelada</span>
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400">Cancelada</span>
       );
     }
   };
@@ -362,7 +362,7 @@ export const CalendarScreen: React.FC = () => {
                     .filter(x => !x.hoy.trabaja || x.hoy.detalle?.startsWith('Sale'));
                   if (!noVienen.length || !semanaSalon.find(d => d.dia === new Date(`${currentDateStr}T12:00:00Z`).getUTCDay())?.abierto) return null;
                   return (
-                    <div className="px-3 py-2 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-900 text-[11px] text-sky-900 dark:text-sky-200">
+                    <div className="px-3 py-2 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-900 text-[0.75rem] text-sky-900 dark:text-sky-200">
                       <span className="font-bold">Este día: </span>
                       {noVienen.map(x => `${x.e.name.split(' ')[0]} (${(x.hoy.detalle ?? '').toLowerCase()})`).join(' · ')}
                     </div>
@@ -429,11 +429,11 @@ export const CalendarScreen: React.FC = () => {
                         <div className="flex flex-col items-center justify-center min-w-[50px] pt-0.5">
                           <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">{hora12(apt.time)}</span>
                           {granularity !== 'days' && (
-                            <span className="text-[9px] text-slate-400 font-medium">
+                            <span className="text-[0.6875rem] text-slate-400 font-medium">
                               {new Date(apt.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                             </span>
                           )}
-                          <span className="text-[10px] text-slate-400 font-medium">{apt.durationMinutes} min</span>
+                          <span className="text-[0.6875rem] text-slate-400 font-medium">{apt.durationMinutes} min</span>
                         </div>
                         <div className="w-1 self-stretch rounded-full shrink-0 bg-[var(--primary)] opacity-70" />
                         <div className="flex-1 min-w-0">
@@ -441,18 +441,18 @@ export const CalendarScreen: React.FC = () => {
                             <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">{apt.clientName}</h4>
                             <div className="flex items-center gap-1 shrink-0">
                               {apt.fueraDeHorario && (
-                                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-violet-500/15 text-violet-700 dark:text-violet-300" title="Se agendó fuera del horario, con autorización">
+                                <span className="px-1.5 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-violet-500/15 text-violet-700 dark:text-violet-300" title="Se agendó fuera del horario, con autorización">
                                   Fuera de horario
                                 </span>
                               )}
                               {getStatusBadge(apt.status, apt)}
                             </div>
                           </div>
-                          <p className="text-[11px] font-medium text-slate-600 dark:text-neutral-300 truncate mt-0.5 flex items-center gap-1">
+                          <p className="text-[0.75rem] font-medium text-slate-600 dark:text-neutral-300 truncate mt-0.5 flex items-center gap-1">
                             {getServiceCategoryIcon(apt.serviceCategory)}
                             <span>{apt.serviceName}</span>
                           </p>
-                          <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 pt-1 border-t border-slate-100 dark:border-neutral-800/60">
+                          <div className="flex items-center justify-between text-[0.6875rem] text-slate-400 mt-1.5 pt-1 border-t border-slate-100 dark:border-neutral-800/60">
                             <span>{apt.staffName}</span>
                             <span className="font-semibold text-slate-700 dark:text-slate-300">{dinero(apt.price, apt.currencyCode)}</span>
                           </div>
@@ -524,7 +524,7 @@ export const CalendarScreen: React.FC = () => {
                 type="button"
                 onClick={onClick}
                 disabled={ocupado || esActual}
-                className={`h-16 px-3 rounded-2xl border text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
+                className={`h-16 px-3 rounded-2xl border text-[0.75rem] font-bold flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
                   listo
                     ? `${c.solido} text-white border-transparent shadow-sm`
                     : esActual
@@ -574,7 +574,7 @@ export const CalendarScreen: React.FC = () => {
                   <h4 className="font-bold text-base text-slate-900 dark:text-white truncate leading-tight">
                     {activeAppointment.clientName}
                   </h4>
-                  <p className="text-slate-500 dark:text-neutral-400 text-[11px] flex items-center gap-1.5 mt-0.5">
+                  <p className="text-slate-500 dark:text-neutral-400 text-[0.75rem] flex items-center gap-1.5 mt-0.5">
                     <Phone className="w-3 h-3 shrink-0" />
                     <span className="truncate">{activeAppointment.clientPhone}</span>
                     <span className="text-slate-300 dark:text-neutral-700">·</span>
@@ -587,11 +587,11 @@ export const CalendarScreen: React.FC = () => {
               {/* ── Qué ─────────────────────────────────────────────────── */}
               <div className="rounded-3xl border border-slate-200/80 dark:border-neutral-800 overflow-hidden">
                 <div className="px-4 py-3.5">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Servicio</span>
+                  <span className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400">Servicio</span>
                   <div className="font-bold text-sm text-slate-900 dark:text-white mt-0.5">
                     {activeAppointment.serviceName}
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 mt-1">
+                  <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex items-center gap-1.5 mt-1">
                     <Clock className="w-3 h-3 shrink-0" />
                     {activeAppointment.durationMinutes} min
                     <span className="text-slate-300 dark:text-neutral-700">·</span>
@@ -603,17 +603,17 @@ export const CalendarScreen: React.FC = () => {
                     pregunta real cuando la clienta se está por ir. */}
                 <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-neutral-800 border-t border-slate-100 dark:border-neutral-800 bg-slate-50/60 dark:bg-neutral-800/30">
                   <div className="px-4 py-3">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total</span>
+                    <span className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400 block">Total</span>
                     <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{dinero(total, activeAppointment.currencyCode)}</span>
                   </div>
                   <div className="px-4 py-3">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Anticipo</span>
+                    <span className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400 block">Anticipo</span>
                     <span className={`text-sm font-bold tabular-nums ${
                       anticipo > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
                     }`}>{dinero(anticipo, activeAppointment.currencyCode)}</span>
                   </div>
                   <div className="px-4 py-3">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Falta</span>
+                    <span className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400 block">Falta</span>
                     <span className={`text-sm font-bold tabular-nums ${
                       falta > 0 ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'
                     }`}>
@@ -624,8 +624,8 @@ export const CalendarScreen: React.FC = () => {
               </div>
 
               {activeAppointment.notes && (
-                <div className="px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
-                  <span className="font-bold uppercase tracking-wider text-[10px] block mb-1 opacity-70">Notas</span>
+                <div className="px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 text-[0.75rem] leading-relaxed">
+                  <span className="font-bold uppercase tracking-wider text-[0.6875rem] block mb-1 opacity-70">Notas</span>
                   {activeAppointment.notes}
                 </div>
               )}
@@ -649,7 +649,7 @@ export const CalendarScreen: React.FC = () => {
                       : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/40'
                   }`}>
                     <div className="min-w-0">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                      <span className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400 block">
                         Comanda
                       </span>
                       <span className={`text-xs font-bold ${
@@ -670,7 +670,7 @@ export const CalendarScreen: React.FC = () => {
                           void selectFolio(folio.id);
                           navigateTo('caja');
                         }}
-                        className="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[11px] font-bold hover:opacity-90 cursor-pointer transition"
+                        className="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold hover:opacity-90 cursor-pointer transition"
                       >
                         Ir a cobrar
                       </button>
@@ -684,7 +684,7 @@ export const CalendarScreen: React.FC = () => {
                           setAccion(null);
                           if (v) showToast?.('Comanda abierta', 'El servicio ya está en la cuenta.', 'success');
                         }}
-                        className={`shrink-0 px-3 py-1.5 rounded-xl bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1.5 transition ${
+                        className={`shrink-0 px-3 py-1.5 rounded-xl bg-rose-500 text-white text-[0.75rem] font-bold flex items-center gap-1.5 transition ${
                           ocupado ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'
                         }`}
                       >
@@ -699,7 +699,7 @@ export const CalendarScreen: React.FC = () => {
 
               {/* ── Acciones ────────────────────────────────────────────── */}
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2 px-1">
+                <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 block mb-2 px-1">
                   Actualizar estado
                 </span>
                 <div className="grid grid-cols-3 gap-2">
@@ -722,13 +722,13 @@ export const CalendarScreen: React.FC = () => {
                 <div className="flex justify-end pt-3 mt-3 border-t border-slate-100 dark:border-neutral-800/80">
                   {confirmarBorrar ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                      <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
                         ¿Borrar esta cita? No se puede deshacer.
                       </span>
                       <button
                         type="button"
                         onClick={() => setConfirmarBorrar(false)}
-                        className="px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer transition"
+                        className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer transition"
                       >
                         No
                       </button>
@@ -748,7 +748,7 @@ export const CalendarScreen: React.FC = () => {
                             setConfirmarBorrar(false);
                           }
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-rose-500 text-white text-[11px] font-bold flex items-center gap-1.5 hover:opacity-90 cursor-pointer transition disabled:opacity-50"
+                        className="px-3 py-1.5 rounded-xl bg-rose-500 text-white text-[0.75rem] font-bold flex items-center gap-1.5 hover:opacity-90 cursor-pointer transition disabled:opacity-50"
                       >
                         {accion?.clave === 'delete'
                           ? <><Loader2 className="w-3 h-3 animate-spin" />Borrando…</>
@@ -760,7 +760,7 @@ export const CalendarScreen: React.FC = () => {
                       type="button"
                       onClick={() => setConfirmarBorrar(true)}
                       disabled={ocupado}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold text-slate-400 flex items-center gap-1.5 transition ${
+                      className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-semibold text-slate-400 flex items-center gap-1.5 transition ${
                         ocupado ? 'opacity-35 cursor-not-allowed'
                           : 'cursor-pointer hover:text-rose-500 hover:bg-rose-500/10'
                       }`}
@@ -784,7 +784,7 @@ export const CalendarScreen: React.FC = () => {
       >
         <form onSubmit={handleCreateAppointment} className="space-y-3 text-xs">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Cliente del CRM (opcional)</label>
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Cliente del CRM (opcional)</label>
             <select value={selectedClientId} onChange={e => handleSelectClient(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none">
               <option value="">-- Nueva clienta --</option>
@@ -792,23 +792,23 @@ export const CalendarScreen: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre *</label>
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre *</label>
             <input type="text" required placeholder="Ej: Camila Restrepo" value={newClientName}
               onChange={e => { setNewClientName(e.target.value); if (selectedClientId) setSelectedClientId(''); }}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>
               <input type="tel" placeholder="+52 55..." value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none" />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Hora</label>
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Hora</label>
               <SelectorHora value={newTime} onChange={v => { setNewTime(v); setErrorAlAgendar(null); }} />
             </div>
           </div>
-          <div className={`px-3 py-2 rounded-xl text-[11px] ${fueraDeHorario
+          <div className={`px-3 py-2 rounded-xl text-[0.75rem] ${fueraDeHorario
             ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
             : 'bg-slate-50 dark:bg-neutral-800/60 text-slate-500 dark:text-neutral-400'}`}>
             {!turnosDelDia.length
@@ -819,7 +819,7 @@ export const CalendarScreen: React.FC = () => {
                 </>}
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Servicio</label>
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Servicio</label>
             <select value={newServiceId} onChange={e => handleServiceChange(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none">
               {services.map(s => <option key={s.id} value={s.id}>{s.name} ({dinero(s.price, s.currencyCode)} · {s.durationMinutes} min)</option>)}
@@ -829,13 +829,13 @@ export const CalendarScreen: React.FC = () => {
             const srv = services.find(s => s.id === newServiceId);
             if (srv?.priceTiers && srv.priceTiers.length > 1) return (
               <div className="p-2.5 rounded-xl bg-rose-50/60 dark:bg-neutral-800 border border-rose-200/60 dark:border-neutral-700 space-y-1.5">
-                <label className="block text-[11px] font-bold text-slate-800 dark:text-slate-200">Tarifas</label>
+                <label className="block text-[0.75rem] font-bold text-slate-800 dark:text-slate-200">Tarifas</label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {srv.priceTiers.map((tier, i) => (
                     <button key={i} type="button" onClick={() => { setSelectedTierName(tier.name); setCustomPrice(tier.price); }}
                       className={`p-2 rounded-lg text-left border transition ios-touch cursor-pointer ${selectedTierName === tier.name || (!selectedTierName && i === 0) ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-slate-300'}`}>
-                      <div className="font-bold text-[11px] truncate">{tier.name}</div>
-                      <div className="text-[10px] opacity-90">{dinero(tier.price, srv.currencyCode)}</div>
+                      <div className="font-bold text-[0.75rem] truncate">{tier.name}</div>
+                      <div className="text-[0.6875rem] opacity-90">{dinero(tier.price, srv.currencyCode)}</div>
                     </button>
                   ))}
                 </div>
@@ -845,7 +845,7 @@ export const CalendarScreen: React.FC = () => {
           })()}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Especialista</label>
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Especialista</label>
               <select value={newStaff} onChange={e => { setNewStaff(e.target.value); setErrorAlAgendar(null); }}
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none">
                 <option value="">Por asignar</option>
@@ -860,7 +860,7 @@ export const CalendarScreen: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Canal</label>
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Canal</label>
               <select value={newChannel} onChange={e => setNewChannel(e.target.value as any)}
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none">
                 <option value="whatsapp">WhatsApp</option>
@@ -870,11 +870,11 @@ export const CalendarScreen: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Notas</label>
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Notas</label>
             <textarea rows={2} placeholder="Ej: Glitter, alergia a acrílico..." value={newNotes} onChange={e => setNewNotes(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none" />
           </div>
-          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between text-[11px]">
+          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between text-[0.75rem]">
             <span className="text-slate-500 dark:text-neutral-400">Anticipo ({settings.depositPercent || 30}%):</span>
             <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
               ${Math.round((() => { const srv = services.find(s => s.id === newServiceId); return customPrice !== null ? customPrice : (srv?.priceTiers?.[0]?.price ?? srv?.price ?? 0); })() * ((settings.depositPercent || 30) / 100))}
@@ -887,7 +887,7 @@ export const CalendarScreen: React.FC = () => {
             </button>
           )}
           {errorAlAgendar && (
-            <p className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-[12px] font-semibold text-rose-700 dark:text-rose-300">{errorAlAgendar}</p>
+            <p className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-[0.8125rem] font-semibold text-rose-700 dark:text-rose-300">{errorAlAgendar}</p>
           )}
           <button type="submit" disabled={fueraDeHorario || agendando}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
@@ -1005,7 +1005,7 @@ export const CalendarScreen: React.FC = () => {
                   Dejar la comanda abierta
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400 text-center mt-3">
+              <p className="text-[0.6875rem] text-slate-400 text-center mt-3">
                 Si la dejas abierta va a seguir contando en el aviso rojo de Caja.
               </p>
             </motion.div>

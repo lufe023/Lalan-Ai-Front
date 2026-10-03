@@ -185,10 +185,10 @@ const MainAppContent: React.FC = () => {
 
               {/* ── Desktop footer (hidden on mobile) ── */}
               <footer id="pie-app" className="hidden lg:flex shrink-0 items-center justify-between px-8 py-2.5 border-t border-slate-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50">
-                <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-600 tracking-wide">
+                <span className="text-[0.75rem] font-medium text-slate-400 dark:text-neutral-600 tracking-wide">
                   © {CURRENT_YEAR} Gomez Santana Solutions Group SRL
                 </span>
-                <span className="text-[11px] text-slate-300 dark:text-neutral-700">
+                <span className="text-[0.75rem] text-slate-300 dark:text-neutral-700">
                   Lalan AI Studio & Lounge
                 </span>
               </footer>

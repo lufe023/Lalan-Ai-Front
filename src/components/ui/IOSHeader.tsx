@@ -79,7 +79,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-[var(--primary)]" />
             <span className="text-xs font-bold tracking-tight text-slate-800 dark:text-neutral-200">Lalan AI</span>
-            <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">
+            <span className="text-[0.6875rem] text-slate-400 font-normal hidden sm:inline">
               • {currentUser?.roleTitle || 'Asistente'}
             </span>
           </div>
@@ -150,7 +150,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
                         <div className="text-xs font-bold text-slate-800 dark:text-white truncate">{currentUser.name}</div>
                         <div className="flex items-center gap-1 mt-0.5">
                           {getRoleIcon(currentUser.role)}
-                          <span className="text-[10px] text-slate-500 dark:text-neutral-400">
+                          <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                             {currentUser.roleTitle || roleLabel[currentUser.role] || currentUser.role}
                           </span>
                         </div>
@@ -160,14 +160,14 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
                     <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 flex items-center justify-between">
                       <button
                         onClick={() => { setShowUserMenu(false); triggerSplash(); }}
-                        className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 p-1.5 rounded-lg transition"
+                        className="flex items-center gap-1 text-[0.75rem] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 p-1.5 rounded-lg transition"
                       >
                         <RotateCcw className="w-3 h-3" />
                         <span>Splash</span>
                       </button>
                       <button
                         onClick={() => { setShowUserMenu(false); logout(); }}
-                        className="flex items-center gap-1 text-[11px] text-rose-500 hover:text-rose-600 font-semibold p-1.5 rounded-lg transition"
+                        className="flex items-center gap-1 text-[0.75rem] text-rose-500 hover:text-rose-600 font-semibold p-1.5 rounded-lg transition"
                       >
                         <LogOut className="w-3 h-3" />
                         <span>Cerrar sesión</span>

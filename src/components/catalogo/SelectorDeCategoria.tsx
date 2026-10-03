@@ -52,16 +52,16 @@ export const SelectorDeCategoria: React.FC<{
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Categoría</label>
+        <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Categoría</label>
         <button type="button" onClick={() => setGestionando(true)}
-          className="flex items-center gap-1 text-[10px] font-semibold text-[var(--primary)] hover:opacity-70 cursor-pointer">
+          className="flex items-center gap-1 text-[0.6875rem] font-semibold text-[var(--primary)] hover:opacity-70 cursor-pointer">
           <Settings2 className="w-3 h-3" /> Administrar
         </button>
       </div>
 
       {/* Una categoría desactivada que el producto todavía tiene: se enseña para no perderla de vista */}
       {actual && !actual.active && (
-        <p className="text-[10px] text-amber-600 mb-1.5">Está en "{actual.name}", que está desactivada. Elige otra o actívala en Administrar.</p>
+        <p className="text-[0.6875rem] text-amber-600 mb-1.5">Está en "{actual.name}", que está desactivada. Elige otra o actívala en Administrar.</p>
       )}
 
       <div className="grid grid-cols-2 gap-2">
@@ -75,10 +75,10 @@ export const SelectorDeCategoria: React.FC<{
                   : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300 hover:border-slate-300 dark:hover:border-neutral-600'
               }`}>
               <span className="text-base shrink-0">{cat.icon || ICONO_POR_DEFECTO[kind]}</span>
-              <span className="text-[11px] leading-tight flex-1">
+              <span className="text-[0.75rem] leading-tight flex-1">
                 {cat.name}
                 {cat.loungeRole !== 'none' && (
-                  <span className="block text-[9px] font-normal text-slate-400">Lounge · {cat.loungeRole === 'drink' ? 'bebida' : 'comida'}</span>
+                  <span className="block text-[0.6875rem] font-normal text-slate-400">Lounge · {cat.loungeRole === 'drink' ? 'bebida' : 'comida'}</span>
                 )}
               </span>
               {elegida && <Check className="w-3.5 h-3.5 shrink-0" />}
@@ -87,7 +87,7 @@ export const SelectorDeCategoria: React.FC<{
         })}
         {!creando && (
           <button type="button" onClick={() => setCreando(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[11px] font-semibold text-slate-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition cursor-pointer">
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 text-[0.75rem] font-semibold text-slate-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition cursor-pointer">
             <Plus className="w-3.5 h-3.5" /> Nueva categoría
           </button>
         )}
@@ -102,31 +102,31 @@ export const SelectorDeCategoria: React.FC<{
             <input value={nombre} onChange={e => setNombre(e.target.value)} maxLength={LARGO_NOMBRE} autoFocus
               placeholder={kind === 'service' ? 'Ej: Cejas y pestañas' : 'Ej: Picaderas'}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void crear(); } }}
-              className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
+              className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
           </div>
           {kind === 'product' && (
             <div>
-              <p className="text-[10px] font-semibold text-slate-500 mb-1">¿Va en el menú del Lounge?</p>
+              <p className="text-[0.6875rem] font-semibold text-slate-500 mb-1">¿Va en el menú del Lounge?</p>
               <div className="grid grid-cols-3 gap-1.5">
                 {OPCIONES_LOUNGE.map(o => (
                   <button key={o.id} type="button" onClick={() => setPapel(o.id)} title={o.ayuda}
-                    className={`px-2 py-1.5 rounded-lg border text-[10px] font-semibold transition cursor-pointer ${
+                    className={`px-2 py-1.5 rounded-lg border text-[0.6875rem] font-semibold transition cursor-pointer ${
                       papel === o.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300'
                     }`}>
                     {o.label}
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">{OPCIONES_LOUNGE.find(o => o.id === papel)?.ayuda}</p>
+              <p className="text-[0.6875rem] text-slate-400 mt-1">{OPCIONES_LOUNGE.find(o => o.id === papel)?.ayuda}</p>
             </div>
           )}
           <div className="flex gap-2">
             <button type="button" onClick={() => { setCreando(false); setNombre(''); setIcono(''); }}
-              className="px-3 py-2 rounded-lg text-[11px] font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer flex items-center gap-1">
+              className="px-3 py-2 rounded-lg text-[0.75rem] font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer flex items-center gap-1">
               <X className="w-3 h-3" /> Cancelar
             </button>
             <button type="button" disabled={!nombre.trim() || guardando} onClick={() => void crear()}
-              className="flex-1 py-2 rounded-lg bg-[var(--primary)] text-white text-[11px] font-bold disabled:opacity-40 cursor-pointer">
+              className="flex-1 py-2 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-bold disabled:opacity-40 cursor-pointer">
               {guardando ? 'Creando…' : 'Crear y elegir'}
             </button>
           </div>

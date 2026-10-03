@@ -472,41 +472,41 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
       : apt?.createdByName?.split(' ')[0] ?? null;
     switch (status) {
       case 'confirmed': return (
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
           <UserCheck className="w-3 h-3" />Confirmada{quien ? ` · ${quien}` : ''}
         </span>
       );
       case 'confirmed_by_ai':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center gap-1">
+          <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center gap-1">
             <Bot className="w-3 h-3" />
             Confirmada · {settings.aiAgentName || 'IA'}
           </span>
         );
       case 'attending':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center gap-1">
+          <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center gap-1">
             <Sparkles className="w-3 h-3 animate-spin" />
             En Atención
           </span>
         );
       case 'completed':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+          <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" />
             Completada
           </span>
         );
       case 'pending':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center gap-1">
+          <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center gap-1">
             <Clock className="w-3 h-3" />
             Pendiente
           </span>
         );
       case 'cancelled':
         return (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400">
+          <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400">
             Cancelada
           </span>
         );
@@ -709,13 +709,13 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                         : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                     }`}
                   >
-                    <span className="text-[10px] uppercase font-semibold opacity-85">
+                    <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                       {yr === today.getFullYear() ? 'ACTUAL' : 'AÑO'}
                     </span>
                     <span className="text-sm font-extrabold mt-0.5">{yr}</span>
 
                     <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                      className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                         isSelected
                           ? 'bg-white/20 text-white'
                           : 'bg-[var(--primary)]/10 text-[var(--primary)]'
@@ -724,7 +724,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                       {yearAptCount} citas
                     </span>
 
-                    <span className="text-[8px] opacity-70 mt-0.5 flex items-center gap-0.5">
+                    <span className="text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
                       Ver Meses <ArrowRight className="w-2.5 h-2.5" />
                     </span>
                   </button>
@@ -756,13 +756,13 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                         : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                     }`}
                   >
-                    <span className="text-[10px] uppercase font-semibold opacity-85">
+                    <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                       {currentYear}
                     </span>
                     <span className="text-sm font-extrabold mt-0.5">{mo.shortName}</span>
 
                     <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                      className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                         isSelected
                           ? 'bg-white/20 text-white'
                           : 'bg-[var(--primary)]/10 text-[var(--primary)]'
@@ -771,7 +771,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                       {monthAptCount} citas
                     </span>
 
-                    <span className="text-[8px] opacity-70 mt-0.5 flex items-center gap-0.5">
+                    <span className="text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
                       Ver Semanas <ArrowRight className="w-2.5 h-2.5" />
                     </span>
                   </button>
@@ -805,7 +805,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                         : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                     }`}
                   >
-                    <span className="text-[10px] uppercase font-semibold opacity-85">
+                    <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                       {wk.label}
                     </span>
                     <span className="text-xs font-extrabold mt-0.5 whitespace-nowrap">
@@ -813,7 +813,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                     </span>
 
                     <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                      className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                         isSelected
                           ? 'bg-white/20 text-white'
                           : 'bg-[var(--primary)]/10 text-[var(--primary)]'
@@ -822,7 +822,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                       {weekAptCount} citas
                     </span>
 
-                    <span className="text-[8px] opacity-70 mt-0.5 flex items-center gap-0.5">
+                    <span className="text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
                       Ver Días <ArrowRight className="w-2.5 h-2.5" />
                     </span>
                   </button>
@@ -857,12 +857,12 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                   >
                     {/* Tiny indicator for belonging to the filtered week */}
                     {isInSelectedWeek && !isSelectedDay && (
-                      <span className="text-[7.5px] uppercase font-black tracking-tighter opacity-80 -mt-1">
+                      <span className="text-[0.6875rem] uppercase font-black tracking-tighter opacity-80 -mt-1">
                         SEM {day.weekIndex + 1}
                       </span>
                     )}
 
-                    <span className="text-[10px] uppercase font-semibold opacity-85">
+                    <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
                       {day.weekday}
                     </span>
                     <span className="text-sm font-extrabold mt-0.5">{day.dayNum}</span>
@@ -887,7 +887,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
             Displays current cascade status + service category chips
         ========================================================================== */}
         <div className="flex items-center justify-between gap-2 px-1 text-xs">
-          <div className="flex items-center gap-1 text-slate-500 dark:text-neutral-400 text-[11px] font-medium truncate">
+          <div className="flex items-center gap-1 text-slate-500 dark:text-neutral-400 text-[0.75rem] font-medium truncate">
             {granularity === 'days' ? (
               <span>
                 Citas de <strong className="text-slate-800 dark:text-white font-bold">{selectedDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</strong>
@@ -915,7 +915,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
           {granularity === 'days' && (
             <button
               onClick={() => setGranularity('weeks')}
-              className="text-[11px] font-bold text-[var(--primary)] hover:underline whitespace-nowrap cursor-pointer"
+              className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline whitespace-nowrap cursor-pointer"
             >
               Ver toda la semana ({activeWeekTotalApts})
             </button>
@@ -1004,7 +1004,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                             if (wkIdx !== -1) setSelectedWeekIndex(wkIdx);
                             setGranularity('days');
                           }}
-                          className="text-[11px] font-bold text-[var(--primary)] hover:underline flex items-center gap-0.5 cursor-pointer"
+                          className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline flex items-center gap-0.5 cursor-pointer"
                         >
                           Ver día <ArrowRight className="w-3 h-3" />
                         </button>
@@ -1018,10 +1018,10 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-neutral-800 flex flex-col items-center justify-center shrink-0 border border-slate-200/60 dark:border-neutral-700/60">
-                              <span className="text-[11px] font-black text-slate-800 dark:text-white leading-none">
+                              <span className="text-[0.75rem] font-black text-slate-800 dark:text-white leading-none">
                                 {hora12(apt.time)}
                               </span>
-                              <span className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                              <span className="text-[0.6875rem] text-slate-400 font-semibold mt-0.5">
                                 {apt.durationMinutes}m
                               </span>
                             </div>
@@ -1030,10 +1030,10 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                               <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                                 {apt.clientName}
                               </div>
-                              <div className="text-[11px] text-slate-500 dark:text-neutral-400 truncate">
+                              <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">
                                 {apt.serviceName}
                               </div>
-                              <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                              <div className="text-[0.6875rem] text-slate-400 flex items-center gap-2 mt-0.5">
                                 <span>{apt.staffName}</span>
                                 <span>•</span>
                                 <span className="font-bold text-slate-700 dark:text-neutral-200">
@@ -1064,7 +1064,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                       <span className="text-xs font-black text-slate-800 dark:text-white">
                         {hora12(apt.time)}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">
+                      <span className="text-[0.6875rem] text-slate-400 font-semibold">
                         {apt.durationMinutes}m
                       </span>
                     </div>
@@ -1076,7 +1076,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                       <div className="text-xs text-slate-500 dark:text-neutral-400 truncate">
                         {apt.serviceName}
                       </div>
-                      <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-1">
+                      <div className="text-[0.75rem] text-slate-400 flex items-center gap-2 mt-1">
                         <span className="flex items-center gap-1">
                           <User className="w-3 h-3" /> {apt.staffName}
                         </span>
@@ -1085,7 +1085,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                           {dinero(apt.price, apt.currencyCode)}
                         </span>
                         {apt.selectedPriceTierName && (
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[0.6875rem] text-slate-400">
                             ({apt.selectedPriceTierName})
                           </span>
                         )}
@@ -1095,7 +1095,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
 
                   <div className="shrink-0 flex flex-col items-end gap-2">
                     {getStatusBadge(apt.status, apt)}
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <span className="text-[0.6875rem] uppercase font-bold text-slate-400 tracking-wider">
                       {apt.channel}
                     </span>
                   </div>
@@ -1131,43 +1131,43 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
 
             <div className="grid grid-cols-2 gap-2.5">
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Servicio</span>
+                <span className="text-[0.6875rem] font-bold text-slate-400 uppercase">Servicio</span>
                 <p className="font-bold text-slate-800 dark:text-white mt-0.5">
                   {activeAppointment.serviceName}
                 </p>
                 {activeAppointment.selectedPriceTierName && (
-                  <p className="text-[10px] text-[var(--primary)] font-semibold mt-0.5">
+                  <p className="text-[0.6875rem] text-[var(--primary)] font-semibold mt-0.5">
                     {activeAppointment.selectedPriceTierName}
                   </p>
                 )}
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Fecha y Hora</span>
+                <span className="text-[0.6875rem] font-bold text-slate-400 uppercase">Fecha y Hora</span>
                 <p className="font-bold text-slate-800 dark:text-white mt-0.5">
                   {activeAppointment.date} • {hora12(activeAppointment.time)}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                   Duración: {activeAppointment.durationMinutes} min
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Total & Anticipo</span>
+                <span className="text-[0.6875rem] font-bold text-slate-400 uppercase">Total & Anticipo</span>
                 <p className="font-extrabold text-slate-900 dark:text-white mt-0.5 text-sm">
                   {dinero(activeAppointment.price, activeAppointment.currencyCode)}
                 </p>
-                <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                <p className="text-[0.6875rem] text-emerald-600 font-semibold mt-0.5">
                   Anticipo pagado: {dinero(activeAppointment.depositPaid, activeAppointment.currencyCode)}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Especialista</span>
+                <span className="text-[0.6875rem] font-bold text-slate-400 uppercase">Especialista</span>
                 <p className="font-bold text-slate-800 dark:text-white mt-0.5">
                   {activeAppointment.staffName}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5 capitalize">
+                <p className="text-[0.6875rem] text-slate-400 mt-0.5 capitalize">
                   Vía: {activeAppointment.channel}
                 </p>
               </div>
@@ -1175,7 +1175,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
 
             {activeAppointment.notes && (
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Notas</span>
+                <span className="text-[0.6875rem] font-bold text-slate-400 uppercase">Notas</span>
                 <p className="text-slate-600 dark:text-neutral-300 mt-0.5">
                   {activeAppointment.notes}
                 </p>
@@ -1184,7 +1184,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
 
             {/* Quick Status Update Actions */}
             <div className="pt-2 border-t border-slate-200 dark:border-neutral-700 flex flex-col gap-2">
-              <span className="text-[11px] font-bold text-slate-400 uppercase">Cambiar Estado</span>
+              <span className="text-[0.75rem] font-bold text-slate-400 uppercase">Cambiar Estado</span>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => {
@@ -1231,7 +1231,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
           <form onSubmit={handleCreateAppointment} className="space-y-3.5 text-xs">
             {/* Quick Client Picker */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                 Clienta (Seleccionar o Escribir)
               </label>
               <select
@@ -1250,7 +1250,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+                <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                   Nombre
                 </label>
                 <input
@@ -1264,7 +1264,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+                <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                   Teléfono / WhatsApp
                 </label>
                 <input
@@ -1280,7 +1280,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
 
             {/* Service & Price Tier */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                 Servicio
               </label>
               <select
@@ -1302,7 +1302,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
               if (srv && srv.priceTiers && srv.priceTiers.length > 0) {
                 return (
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+                    <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                       Tabla de Precios Escalonados (Price Tiers)
                     </label>
                     <div className="grid grid-cols-2 gap-1.5">
@@ -1322,7 +1322,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                                 : 'bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-300'
                             }`}
                           >
-                            <div className="text-[11px] truncate">{tier.name}</div>
+                            <div className="text-[0.75rem] truncate">{tier.name}</div>
                             <div className="text-xs font-extrabold mt-0.5">{dinero(tier.price, srv.currencyCode)}</div>
                           </button>
                         );
@@ -1337,14 +1337,14 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
             {/* Time & Specialist */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+                <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                   Hora
                 </label>
                 <SelectorHora value={newTime} onChange={setNewTime} />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+                <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                   Especialista
                 </label>
                 <select
@@ -1361,7 +1361,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                 Fecha Seleccionada
               </label>
               <input
@@ -1381,7 +1381,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                 Canal de Reserva
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -1407,7 +1407,7 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
+              <label className="block text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase mb-1">
                 Notas de la Cita
               </label>
               <textarea

@@ -45,21 +45,21 @@ const cuando = (p: Preferencia) => p.frecuencia === 'nunca' || !p.activo ? 'No s
 /** Un informe, pintado igual que llega por WhatsApp pero con aire */
 const VistaInforme: React.FC<{ informe: Informe; pensando?: boolean }> = ({ informe, pensando }) => (
   <div className="space-y-3">
-    <p className="text-[11px] text-slate-500">{informe.periodo}{informe.sede ? ` · ${informe.sede}` : ''}</p>
+    <p className="text-[0.75rem] text-slate-500">{informe.periodo}{informe.sede ? ` · ${informe.sede}` : ''}</p>
     {(informe.nota || pensando) && (
       <section className="rounded-2xl bg-[var(--primary)]/10 p-3">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--primary)] mb-1">Lo que Lalan notó</h4>
+        <h4 className="text-[0.6875rem] font-bold uppercase tracking-wider text-[var(--primary)] mb-1">Lo que Lalan notó</h4>
         {informe.nota
-          ? <p className="text-[12px] leading-relaxed text-slate-700 dark:text-neutral-200">{informe.nota}</p>
-          : <p className="text-[12px] text-slate-500 flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando…</p>}
+          ? <p className="text-[0.8125rem] leading-relaxed text-slate-700 dark:text-neutral-200">{informe.nota}</p>
+          : <p className="text-[0.8125rem] text-slate-500 flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando…</p>}
       </section>
     )}
     {informe.secciones.filter(s => s.lineas.length || s.vacio).map(s => (
       <section key={s.id} className="rounded-2xl border border-slate-200/80 dark:border-neutral-800 p-3">
         <h4 className="text-xs font-bold mb-1.5">{s.emoji} {s.titulo}</h4>
         {s.lineas.length
-          ? <ul className="space-y-1 text-[12px] text-slate-700 dark:text-neutral-300">{s.lineas.map((l, i) => <li key={i} className="tabular-nums">{l}</li>)}</ul>
-          : <p className="text-[12px] text-slate-400 italic">{s.vacio}</p>}
+          ? <ul className="space-y-1 text-[0.8125rem] text-slate-700 dark:text-neutral-300">{s.lineas.map((l, i) => <li key={i} className="tabular-nums">{l}</li>)}</ul>
+          : <p className="text-[0.8125rem] text-slate-400 italic">{s.vacio}</p>}
       </section>
     ))}
   </div>
@@ -213,17 +213,17 @@ export const InformesDeLalan: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-[var(--primary)]" /> Informes de Lalan</h3>
-          <p className="text-[11px] text-slate-500 dark:text-neutral-400">Te llegan solos. También puedes verlos cuando quieras.</p>
+          <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Te llegan solos. También puedes verlos cuando quieras.</p>
         </div>
-        <button type="button" onClick={() => setProgramando(true)} className="text-[11px] font-bold flex items-center gap-1 text-[var(--primary)] cursor-pointer">
+        <button type="button" onClick={() => setProgramando(true)} className="text-[0.75rem] font-bold flex items-center gap-1 text-[var(--primary)] cursor-pointer">
           <Settings2 className="w-3.5 h-3.5" /> Cuándo y por dónde
         </button>
       </div>
 
       {avisos.length > 0 && (
         <div className="rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 divide-y divide-slate-100 dark:divide-neutral-800">
-          <div className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-            Te llegaron {sinLeer > 0 && <span className="px-1.5 rounded-full bg-[var(--primary)] text-white text-[10px]">{sinLeer} nuevos</span>}
+          <div className="px-4 py-2.5 text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            Te llegaron {sinLeer > 0 && <span className="px-1.5 rounded-full bg-[var(--primary)] text-white text-[0.6875rem]">{sinLeer} nuevos</span>}
           </div>
           {avisos.slice(0, 5).map(a => {
             const Icono = ICONO[a.tipo] ?? Sparkles;
@@ -231,10 +231,10 @@ export const InformesDeLalan: React.FC = () => {
               <button key={a.id} type="button" onClick={() => abrirAviso(a)} className="w-full text-left px-4 py-2.5 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-neutral-800/50 cursor-pointer">
                 <Icono className={`w-4 h-4 mt-0.5 shrink-0 ${a.leidoEn ? 'text-slate-400' : 'text-[var(--primary)]'}`} />
                 <span className="flex-1 min-w-0">
-                  <span className={`block text-[12px] truncate ${a.leidoEn ? '' : 'font-bold'}`}>{a.titulo}</span>
-                  <span className="block text-[11px] text-slate-500 truncate">{a.resumen}</span>
+                  <span className={`block text-[0.8125rem] truncate ${a.leidoEn ? '' : 'font-bold'}`}>{a.titulo}</span>
+                  <span className="block text-[0.75rem] text-slate-500 truncate">{a.resumen}</span>
                 </span>
-                <span className="text-[10px] text-slate-400 shrink-0">{new Date(a.creadoEn).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}</span>
+                <span className="text-[0.6875rem] text-slate-400 shrink-0">{new Date(a.creadoEn).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}</span>
               </button>
             );
           })}
@@ -248,8 +248,8 @@ export const InformesDeLalan: React.FC = () => {
             <button key={p.id} type="button" onClick={() => void ver(p.id)} className="text-left rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-[var(--primary)] transition cursor-pointer flex flex-col gap-2">
               <span className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><Icono className="w-5 h-5" /></span>
               <span className="text-sm font-bold">{p.nombre}</span>
-              <span className="text-[11px] text-slate-500 dark:text-neutral-400 flex-1">{p.descripcion}</span>
-              <span className="text-[10px] text-slate-400 flex items-center gap-1"><CalendarClock className="w-3 h-3" /> {cuando(p)}</span>
+              <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex-1">{p.descripcion}</span>
+              <span className="text-[0.6875rem] text-slate-400 flex items-center gap-1"><CalendarClock className="w-3 h-3" /> {cuando(p)}</span>
             </button>
           );
         })}
@@ -262,11 +262,11 @@ export const InformesDeLalan: React.FC = () => {
             <div className="flex flex-wrap gap-2">
               {abierto && PERIODOS_DE[abierto.tipo].map(p => (
                 <button key={p.id} type="button" onClick={() => { setPeriodo(p.id); if (abierto) void ver(abierto.tipo, p.id); }}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer ${periodo === p.id ? 'bg-[var(--primary)] text-white' : 'bg-slate-100 dark:bg-neutral-800'}`}>{p.texto}</button>
+                  className={`px-3 py-1.5 rounded-full text-[0.75rem] font-bold cursor-pointer ${periodo === p.id ? 'bg-[var(--primary)] text-white' : 'bg-slate-100 dark:bg-neutral-800'}`}>{p.texto}</button>
               ))}
               {sedes.length > 1 && (
                 <select value={sede} onChange={e => { setSede(e.target.value); if (abierto) void ver(abierto.tipo, periodo, e.target.value); }}
-                  className="px-2 py-1.5 rounded-full text-[11px] bg-slate-100 dark:bg-neutral-800 border-0">
+                  className="px-2 py-1.5 rounded-full text-[0.75rem] bg-slate-100 dark:bg-neutral-800 border-0">
                   <option value="">Todas las sedes</option>
                   {sedes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -287,13 +287,13 @@ export const InformesDeLalan: React.FC = () => {
                 className="w-full mb-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] text-white text-sm font-bold disabled:opacity-50 cursor-pointer">
                 {bajando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Descargar en PDF
               </button>
-              <button type="button" onClick={() => void bajarExcel()} className="w-full mb-1 min-h-[40px] flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[12px] font-bold cursor-pointer">
+              <button type="button" onClick={() => void bajarExcel()} className="w-full mb-1 min-h-[40px] flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold cursor-pointer">
                 <FileDown className="w-4 h-4" /> Descargar en Excel
               </button>
-              <span className="text-[11px] text-slate-500 w-full">Mándamelo:</span>
+              <span className="text-[0.75rem] text-slate-500 w-full">Mándamelo:</span>
               {CANALES.filter(c => c.id !== 'whatsapp' || tieneWhatsapp).map(c => (
                 <button key={c.id} type="button" disabled={!!enviando} onClick={() => void mandar(c.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[12px] font-bold disabled:opacity-50 cursor-pointer">
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold disabled:opacity-50 cursor-pointer">
                   {enviando === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <c.Icono className="w-3.5 h-3.5" />} {c.texto}
                 </button>
               ))}
@@ -305,19 +305,19 @@ export const InformesDeLalan: React.FC = () => {
       {/* Enlazar cada gusto con el producto que lo cumple */}
       <IOSModal isOpen={!!enlazando} onClose={() => { setEnlazando(null); if (abierto?.tipo === 'gustos') void ver('gustos'); }} title="Gustos y productos" subtitle="¿Con qué producto cumples cada gusto?">
         <div className="space-y-2 p-1">
-          <p className="text-[11px] text-slate-500 leading-relaxed">Lo que no tenga producto aparece en "Te lo piden y no lo tienes". Si lo empiezas a vender, créalo en el catálogo y enlázalo aquí.</p>
-          {enlazando?.gustos.length === 0 && <p className="text-[12px] text-slate-500">Todavía no hay gustos de bebida o comida guardados. Lalan los va anotando en las conversaciones.</p>}
+          <p className="text-[0.75rem] text-slate-500 leading-relaxed">Lo que no tenga producto aparece en "Te lo piden y no lo tienes". Si lo empiezas a vender, créalo en el catálogo y enlázalo aquí.</p>
+          {enlazando?.gustos.length === 0 && <p className="text-[0.8125rem] text-slate-500">Todavía no hay gustos de bebida o comida guardados. Lalan los va anotando en las conversaciones.</p>}
           {enlazando?.gustos.map(g => (
             <div key={g.id} className="rounded-xl border border-slate-200 dark:border-neutral-800 p-2.5 space-y-1.5">
-              <div className="flex items-center justify-between gap-2 text-[12px]">
+              <div className="flex items-center justify-between gap-2 text-[0.8125rem]">
                 <b>{g.valor}</b><span className="text-slate-500">{g.clientas} {g.clientas === 1 ? 'clienta' : 'clientas'} · {g.categoria}</span>
               </div>
-              <select value={g.producto?.id ?? ''} onChange={e => void enlazar(g, e.target.value || null)} className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[12px]">
+              <select value={g.producto?.id ?? ''} onChange={e => void enlazar(g, e.target.value || null)} className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem]">
                 <option value="">No lo tengo</option>
                 {enlazando.productos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               {!g.producto && g.sugerencia && (
-                <button type="button" onClick={() => void enlazar(g, g.sugerencia!.id)} className="text-[11px] font-bold text-[var(--primary)] cursor-pointer">
+                <button type="button" onClick={() => void enlazar(g, g.sugerencia!.id)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">
                   ¿Es «{g.sugerencia.name}»? Enlazar
                 </button>
               )}
@@ -330,20 +330,20 @@ export const InformesDeLalan: React.FC = () => {
       <IOSModal isOpen={programando} onClose={() => setProgramando(false)} title="Lo que Lalan te avisa" subtitle="Cuándo y por dónde te llega cada informe">
         <div className="space-y-3 p-1">
           <ActivarNotificaciones />
-          <p className="text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-[0.75rem] text-slate-500 leading-relaxed">
             En la app y por correo es gratis. Por WhatsApp también lo es si le escribiste a Lalan en las últimas 24 horas; si no, WhatsApp cobra por iniciar la conversación, así que solo se usa si lo activas abajo.
           </p>
           {disponibles.map(p => (
             <section key={p.id} className="rounded-2xl border border-slate-200/80 dark:border-neutral-800 p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <b className="text-[13px]">{p.nombre}</b>
+                <b className="text-[0.875rem]">{p.nombre}</b>
                 <select value={p.activo ? p.frecuencia : 'nunca'} onChange={e => void guardar(p, { frecuencia: e.target.value as Frecuencia, activo: e.target.value !== 'nunca' })}
-                  className="px-2 py-1 rounded-lg text-[11px] bg-slate-100 dark:bg-neutral-800 border-0">
+                  className="px-2 py-1 rounded-lg text-[0.75rem] bg-slate-100 dark:bg-neutral-800 border-0">
                   {FRECUENCIAS.map(f => <option key={f.id} value={f.id}>{f.texto}</option>)}
                 </select>
               </div>
               {p.activo && p.frecuencia !== 'nunca' && (<>
-                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <div className="flex flex-wrap items-center gap-2 text-[0.75rem]">
                   {p.frecuencia === 'semanal' && (
                     <select value={p.diaSemana ?? 1} onChange={e => void guardar(p, { diaSemana: Number(e.target.value) })} className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 border-0">
                       {DIAS.map((d, i) => <option key={d} value={i}>Los {d}</option>)}
@@ -356,7 +356,7 @@ export const InformesDeLalan: React.FC = () => {
                   )}
                   <SelectorHora value={aHHMM(p.minuto)} paso={30} onChange={v => void guardar(p, { minuto: aMinutos(v) })} />
                   {p.soloSiHayAlgo && <span className="text-slate-400">Solo si hay algo que atender</span>}
-                  <span className="w-full text-[10px] text-slate-400">
+                  <span className="w-full text-[0.6875rem] text-slate-400">
                     {p.ultimoEnvio
                       ? `Última revisión: ${new Date(p.ultimoEnvio).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}, ${new Date(p.ultimoEnvio).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit', hour12: true })}`
                       : 'Todavía no ha salido'}
@@ -367,14 +367,14 @@ export const InformesDeLalan: React.FC = () => {
                     const on = p.canales.includes(c.id);
                     return (
                       <button key={c.id} type="button" onClick={() => void guardar(p, { canales: on ? p.canales.filter(x => x !== c.id) : [...p.canales, c.id] })}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border cursor-pointer ${on ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-500'}`}>
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[0.75rem] font-bold border cursor-pointer ${on ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-500'}`}>
                         <c.Icono className="w-3.5 h-3.5" /> {c.texto}
                       </button>
                     );
                   })}
                 </div>
                 {p.canales.includes('whatsapp') && (
-                  <label className="flex items-start gap-2 text-[11px] text-slate-600 dark:text-neutral-300">
+                  <label className="flex items-start gap-2 text-[0.75rem] text-slate-600 dark:text-neutral-300">
                     <input type="checkbox" className="mt-0.5" checked={p.plantillaSiCerrada} onChange={e => void guardar(p, { plantillaSiCerrada: e.target.checked })} />
                     <span>Si no le he escrito a Lalan en 24 horas, mandármelo igual por WhatsApp. <b>Tiene costo de WhatsApp</b> por cada envío.</span>
                   </label>
@@ -382,7 +382,7 @@ export const InformesDeLalan: React.FC = () => {
               </>)}
             </section>
           ))}
-          {!tieneWhatsapp && <p className="text-[11px] text-slate-400">Para recibirlos por WhatsApp, pon tu número en Lalan en los chats → Aviso a la dueña.</p>}
+          {!tieneWhatsapp && <p className="text-[0.75rem] text-slate-400">Para recibirlos por WhatsApp, pon tu número en Lalan en los chats → Aviso a la dueña.</p>}
         </div>
       </IOSModal>
     </div>
