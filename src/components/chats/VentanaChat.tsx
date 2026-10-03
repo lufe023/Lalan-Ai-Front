@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useDeslizarParaVolver } from '../../hooks/useDeslizarParaVolver';
 import { motion } from 'motion/react';
 import { AlertTriangle, Bot, Check, CheckCheck, Clock, Minus, Send, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
 import { api } from '../../services/api';
@@ -106,6 +107,8 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
   const activeConversation = conversations.find(c => c.id === conversacionId);
   const { currentUser } = useAuth();
   const esSuperAdmin = currentUser?.role === 'super_admin';
+  // Deslizar desde el borde izquierdo = Volver a la lista de chats
+  useDeslizarParaVolver(onCerrar, !flotante);
   const puedeAutorizarTurno = esSuperAdmin || currentUser?.role === 'admin';
   const activeConversationId = conversacionId;
 

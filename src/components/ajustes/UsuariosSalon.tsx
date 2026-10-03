@@ -59,6 +59,16 @@ export const UsuariosSalon: React.FC = () => {
     } catch (err) { setError((err as Error).message); } finally { setOcupado(false); }
   };
 
+  /** Administración necesita correo: si no tiene, se le pide aquí mismo en vez de fallar */
+  const cambiarRol = async (u: UsuarioSalon, role: UsuarioSalon['role']) => {
+    if (role === 'admin' && !u.email) {
+      setError(`Para hacer administradora a ${u.name.split(' ')[0]}, primero ponle su correo (ahí le llegan los informes). Escríbelo abajo y guarda; luego cambia el rol.`);
+      setEditandoAcceso({ id: u.id, datos: { email: '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono) } });
+      return;
+    }
+    await editar(u, { role });
+  };
+
   const guardarAcceso = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editandoAcceso) return;
@@ -179,7 +189,7 @@ export const UsuariosSalon: React.FC = () => {
                     </form>
                   )}
                 </div>
-                <select value={u.role} disabled={yo} onChange={(e) => void editar(u, { role: e.target.value as UsuarioSalon['role'] })}
+                <select value={u.role} disabled={yo} onChange={(e) => void cambiarRol(u, e.target.value as UsuarioSalon['role'])}
                   className="text-[0.75rem] rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" aria-label="Rol">
                   {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>

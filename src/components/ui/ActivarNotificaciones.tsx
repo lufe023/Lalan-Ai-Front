@@ -54,7 +54,7 @@ export const ActivarNotificaciones: React.FC = () => {
             </button>
           ) : (<>
             <button type="button" disabled={ocupado} onClick={() => void probarNotificacion().then(r => showToast(r.llegaron ? 'Enviada' : 'No llegó', r.llegaron ? 'Mira la pantalla del teléfono.' : 'Vuelve a activarlas.', r.llegaron ? 'success' : 'warning'))}
-              className="min-h-[40px] px-3 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold cursor-pointer">Probar</button>
+              className="min-h-[40px] px-3 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold text-slate-800 dark:text-neutral-100 cursor-pointer">Probar</button>
             <button type="button" disabled={ocupado} onClick={() => void apagar()} className="min-h-[40px] px-3 rounded-xl text-[0.8125rem] text-slate-500 cursor-pointer">Apagar en este aparato</button>
           </>)}
         </div>

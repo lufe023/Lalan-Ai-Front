@@ -18,14 +18,15 @@ interface Grupo {
 const ADMINISTRACION: UserRole[] = ['admin', 'super_admin'];
 
 export const GRUPOS_AJUSTES: Grupo[] = [
-  { id: 'cuenta', titulo: 'Mi cuenta', resumen: 'Tamaño de la letra, notificaciones, entrar con 1 toque y cerrar sesión', icono: UserCircle2, color: 'bg-slate-500' },
+  { id: 'cuenta', titulo: 'Mi cuenta', resumen: 'Notificaciones de este teléfono, entrar con 1 toque y cerrar sesión', icono: UserCircle2, color: 'bg-slate-500' },
   { id: 'plan', titulo: 'Mi plan', resumen: 'Lo que incluye y cuánto llevas usado este mes', icono: Sparkles, color: 'bg-amber-500', roles: ADMINISTRACION },
   { id: 'equipo', titulo: 'Equipo', resumen: 'Quién entra a la app y a quién le llega cada aviso', icono: Users, color: 'bg-sky-500', roles: ADMINISTRACION },
   { id: 'salon', titulo: 'El salón', resumen: 'Horario de la semana, citas, zonas y especialistas', icono: Store, color: 'bg-emerald-500', roles: ADMINISTRACION },
   { id: 'chats', titulo: 'Lalan en los chats', resumen: 'Conectar WhatsApp, Instagram y Messenger; mensajes automáticos', icono: Bot, color: 'bg-purple-500', roles: ADMINISTRACION },
   { id: 'sala', titulo: 'Sala y Lounge', resumen: 'Pantalla de turnos en la pared y canciones que piden las clientas', icono: Monitor, color: 'bg-indigo-500', roles: ADMINISTRACION },
   { id: 'caja', titulo: 'Caja', resumen: 'Monedas, billetes, recibos e impresión', icono: Wallet, color: 'bg-teal-500', roles: ADMINISTRACION },
-  { id: 'apariencia', titulo: 'Apariencia', resumen: 'Tema claro u oscuro y los colores del salón', icono: Palette, color: 'bg-rose-500', roles: ADMINISTRACION },
+  // Es de cada teléfono (no cambia nada del salón): la ve todo el equipo
+  { id: 'apariencia', titulo: 'Apariencia', resumen: 'Tamaño de la letra, tema claro u oscuro y colores', icono: Palette, color: 'bg-rose-500' },
 ];
 
 export function gruposPara(rol?: UserRole) {

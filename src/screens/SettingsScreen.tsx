@@ -320,7 +320,6 @@ export const SettingsScreen: React.FC = () => {
         {!seccion && <MenuAjustes rol={currentUser?.role} onAbrir={abrirSeccion} />}
         {seccion === 'cuenta' && (
           <>
-            <TamanoLetraSelector />
         {/* Todo el equipo puede activar las notificaciones: la dueña decide qué le llega a cada quien */}
         {currentUser?.role !== 'support' && <ActivarNotificaciones />}
         {/* SECTION 5: ACCOUNT & PROFILE ACTIONS */}
@@ -1494,6 +1493,7 @@ export const SettingsScreen: React.FC = () => {
         )}
         {seccion === 'apariencia' && (
           <>
+            <TamanoLetraSelector />
         {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
