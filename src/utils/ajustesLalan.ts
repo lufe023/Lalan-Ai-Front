@@ -25,6 +25,9 @@ export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
   estiloEsfera: 'aurora', colorEsfera: 'marca', ritmoEsfera: 1,
 };
 
+/** Las voces en español de Aura-2 (mismas que el servidor: asistente-ajustes.contrato.ts) */
+export const VOCES_AURA = ['celeste', 'carina', 'diana', 'selena', 'estrella', 'sirio', 'nestor', 'alvaro', 'aquila', 'javier'];
+
 let actuales: AjustesLalan = { ...AJUSTES_LALAN_POR_DEFECTO };
 
 export function ajustesLalan(): AjustesLalan { return actuales; }

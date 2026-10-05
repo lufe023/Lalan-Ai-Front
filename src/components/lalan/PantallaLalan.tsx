@@ -6,11 +6,12 @@ import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
 import { useAuth } from '../../context/AuthContext';
 import { useEscucha } from '../../hooks/useEscucha';
-import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA, type Pausa } from '../../utils/ajustesLalan';
+import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA, VOCES_AURA, type Pausa } from '../../utils/ajustesLalan';
 import { PAPEL_TAPIZ_SALON } from './papelTapiz';
 import {
   alCargarVoces, callarLalan, callarSiempre, contextoDeAudio, decirComoLalan, despertarVoz, estaCallada, guardarPausa, guardarSeguirEscuchando,
-  guardarVoz, hayVoz, lalanHablando, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, vozDeLalan, vocesEnEspanol,
+  auraElegida, guardarVoz, hayVoz, lalanHablando, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, usaVozDeNube,
+  vozDeLalan, vozDeNube, vocesEnEspanol,
 } from '../../utils/vozLalan';
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
 
@@ -96,7 +97,8 @@ export const PantallaLalan: React.FC = () => {
   const calladaAhora = useRef(callada);
   calladaAhora.current = callada;
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>(vocesEnEspanol);
-  const [vozActual, setVozActual] = useState<string | null>(() => vozDeLalan()?.name ?? null);
+  // Lo elegido en este aparato: "nube…" (la voz natural) o el nombre de una voz del teléfono
+  const [vozActual, setVozActual] = useState<string | null>(() => (usaVozDeNube() ? vozDeNube(auraElegida()) : vozDeLalan()?.name ?? null));
   const [resolviendo, setResolviendo] = useState<string | null>(null);
   const [aj, setAj] = useState<AjustesLalan>(ajustesLalan);
   // Lo que eligió este aparato; si nunca eligió, vale lo global (Plataforma → Lalan)
@@ -123,7 +125,9 @@ export const PantallaLalan: React.FC = () => {
     return () => window.removeEventListener(EVENTO_ABRIR, abrir);
   }, []);
 
-  useEffect(() => alCargarVoces(() => { setVoces(vocesEnEspanol()); setVozActual(vozDeLalan()?.name ?? null); }), []);
+  useEffect(() => alCargarVoces(() => { setVoces(vocesEnEspanol()); if (!usaVozDeNube()) setVozActual(vozDeLalan()?.name ?? null); }), []);
+  // Los ajustes llegan después de abrir: si Plataforma tiene la voz natural, el menú la marca
+  useEffect(() => { setVozActual(usaVozDeNube() ? vozDeNube(auraElegida()) : vozDeLalan()?.name ?? null); }, [aj.motorVoz]);
 
   // Lo que mide la parte de abajo: la conversación deja ese espacio al final para que nada quede tapado
   useEffect(() => {
@@ -402,9 +406,29 @@ export const PantallaLalan: React.FC = () => {
                       </div>
                       <div className="text-[0.6875rem] text-slate-400 mt-1">{(msDePausa(pausa, aj) / 1000).toLocaleString('es-DO')} segundos de silencio y te respondo.</div>
                     </div>
+                    {/* La voz natural (de pago) solo aparece si Plataforma la tiene encendida */}
+                    {aj.motorVoz !== 'aparato' && !callada && (
+                      <div className="px-3 pt-2 pb-1">
+                        <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Voz natural</div>
+                        <div className="max-h-52 overflow-y-auto -mx-1">
+                          {(aj.motorVoz === 'aura2' ? VOCES_AURA : [null]).map((aura) => {
+                            const id = vozDeNube(aura);
+                            const elegida = vozActual === id || (aura === aj.vozAura && vozActual === vozDeNube(null));
+                            return (
+                              <button key={id} type="button" onClick={() => elegirVoz(id)}
+                                className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                                <span className="w-4 shrink-0">{elegida && <Check className="w-4 h-4 text-[var(--primary)]" />}</span>
+                                <span className="flex-1 truncate">{aura ? aura[0].toUpperCase() + aura.slice(1) : 'Voz de la nube'}</span>
+                                {aura === aj.vozAura && <span className="text-[0.6875rem] text-slate-400 shrink-0">la de siempre</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     {voces.length > 0 && !callada && (
                       <div className="px-3 pt-2 pb-1">
-                        <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Voz en este aparato</div>
+                        <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{aj.motorVoz !== 'aparato' ? 'Voz del teléfono (gratis)' : 'Voz en este aparato'}</div>
                         <div className="max-h-52 overflow-y-auto -mx-1">
                           {voces.map((v) => (
                             <button key={v.name} type="button" onClick={() => elegirVoz(v.name)}

@@ -29,6 +29,24 @@ export function vocesEnEspanol(): SpeechSynthesisVoice[] {
 export function vozGuardada(): string | null {
   try { return localStorage.getItem(CLAVE_VOZ); } catch { return null; }
 }
+
+/**
+ * Lo que eligió esta persona: una voz del aparato (gratis) o la voz natural
+ * de la nube (la de pago que activa Plataforma), guardada como "nube" o
+ * "nube:celeste". Si nunca eligió y Plataforma tiene encendida la nube, la nube.
+ */
+const PREFIJO_NUBE = 'nube';
+export const vozDeNube = (aura?: string | null) => (aura ? `${PREFIJO_NUBE}:${aura}` : PREFIJO_NUBE);
+export function usaVozDeNube(): boolean {
+  if (ajustesLalan().motorVoz === 'aparato') return false;
+  const g = vozGuardada();
+  return !g || g === PREFIJO_NUBE || g.startsWith(`${PREFIJO_NUBE}:`);
+}
+/** La voz de Aura-2 que eligió (null = la de Plataforma) */
+export function auraElegida(): string | null {
+  const g = vozGuardada();
+  return g?.startsWith(`${PREFIJO_NUBE}:`) ? g.slice(PREFIJO_NUBE.length + 1) : null;
+}
 export function guardarVoz(nombre: string | null) {
   try { if (nombre) localStorage.setItem(CLAVE_VOZ, nombre); else localStorage.removeItem(CLAVE_VOZ); } catch { /* sin almacenamiento: usa la preferida */ }
 }
@@ -100,7 +118,8 @@ export function vozDeLalan(): SpeechSynthesisVoice | null {
   const voces = vocesEnEspanol();
   if (!voces.length) return vocesDisponibles()[0] ?? null;
   const guardada = vozGuardada();
-  const exacta = guardada ? voces.find((v) => v.name === guardada) : null;
+  // "nube…" no es una voz del aparato: aquí vale la preferida
+  const exacta = guardada && !guardada.startsWith(PREFIJO_NUBE) ? voces.find((v) => v.name === guardada) : null;
   if (exacta) return exacta;
   // Las preferidas las pone el super admin (Plataforma → Lalan), en orden
   const norma = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -177,7 +196,8 @@ async function decirConNube(partes: string[], mio: number, alHablar?: () => void
     ? [primera.slice(0, corte + 1).trim(), primera.slice(corte + 1).trim(), ...resto].filter(Boolean)
     : partes;
   const audios = lista.map((t) => {
-    const p = pedirAudio('/asistente/voz-lalan', { texto: t }, control.signal);
+    const aura = ajustesLalan().motorVoz === 'aura2' ? auraElegida() : null;
+    const p = pedirAudio('/asistente/voz-lalan', aura ? { texto: t, voz: aura } : { texto: t }, control.signal);
     p.catch(() => undefined);
     return p;
   });
@@ -215,7 +235,7 @@ export async function decirComoLalan(texto: string, alHablar?: () => void): Prom
   if (!texto.trim()) return;
   const mio = ++turno;
   let partes = trozos(texto);
-  if (ajustesLalan().motorVoz !== 'aparato') {
+  if (usaVozDeNube()) {
     partes = await decirConNube(partes, mio, alHablar);
     if (!partes.length || mio !== turno) return;
   }
