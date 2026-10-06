@@ -37,6 +37,7 @@ import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
 import { BotonLalan, PantallaLalan } from './components/lalan/PantallaLalan';
 import { Bienvenida } from './components/bienvenida/Bienvenida';
 import { AvisoBienvenida } from './components/bienvenida/AvisoBienvenida';
+import { RetornoInstagram } from './components/canales/RetornoInstagram';
 import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
@@ -163,6 +164,7 @@ const MainAppContent: React.FC = () => {
           <div className="flex-1 w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
             {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} />}
             <ChatsFlotantes />
+            <RetornoInstagram />
             <PantallaLalan />
             {/* La Bienvenida: configurar el salón paso a paso (se abre sola la primera vez) */}
             <Bienvenida />

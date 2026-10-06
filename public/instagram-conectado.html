@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conectando Instagram · Lalan AI</title><meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+:root{--fondo:#FCF8F9;--tinta:#251A1F;--tinta2:#5E4B53;--rosa:#C46B7C}
+@media (prefers-color-scheme:dark){:root{--fondo:#120C0F;--tinta:#F7ECEF;--tinta2:#D2BFC6;--rosa:#E393A3}}
+html{color-scheme:light dark}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--fondo);color:var(--tinta);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;padding:16px;box-sizing:border-box}
+p{color:var(--tinta2);max-width:32ch;margin:8px auto}a{color:var(--rosa);font-weight:700}
+</style></head><body>
+<main><h1 style="font-size:1.3rem;margin:0">Conectando tu Instagram…</h1><p id="texto">Un momento, te devolvemos a Lalan.</p></main>
+<script>
+// Instagram vuelve aquí con ?code=…&state=… (o ?error=… si la dueña canceló).
+// Si se abrió como ventana aparte, se lo pasa a Lalan y se cierra; si no
+// (la app instalada en el teléfono abre en la misma pestaña), vuelve a la app
+// con el código y la app termina la conexión.
+(function () {
+  var q = new URLSearchParams(location.search);
+  var datos = {
+    tipo: 'lalan-instagram',
+    code: q.get('code') || '',
+    state: q.get('state') || '',
+    error: q.get('error_description') || q.get('error_reason') || q.get('error') || ''
+  };
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(datos, location.origin);
+      window.close();
+      return;
+    }
+  } catch (e) { /* la ventana de origen ya no está: se vuelve por la URL */ }
+  var vuelta = new URLSearchParams();
+  if (datos.code) { vuelta.set('ig_code', datos.code); vuelta.set('ig_state', datos.state); }
+  else vuelta.set('ig_error', datos.error || 'cancelado');
+  location.replace('/app/?' + vuelta.toString());
+})();
+</script>
+<noscript><p>Activa JavaScript y <a href="/app/">vuelve a Lalan</a>.</p></noscript>
+</body></html>

@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
 import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
-import { exportarContactos } from '../utils/contactos';
+import { ArchivoDeContactos, entregarContactos, prepararContactos, sePuedeCompartir } from '../utils/contactos';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -66,17 +66,30 @@ export const ClientsScreen: React.FC = () => {
   // Toda la lista de clientas: solo la dirección puede sacarla del sistema
   const puedeExportar = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
   const [exportando, setExportando] = useState(false);
+  /** El archivo ya armado, esperando que toque "Guardar en Contactos" (Compartir pide un toque fresco) */
+  const [contactosListos, setContactosListos] = useState<ArchivoDeContactos | null>(null);
+  const resumenContactos = (c: ArchivoDeContactos) =>
+    `${c.cantidad} clientas${c.conFoto ? `, ${c.conFoto} con su foto` : ''}.`;
   const guardarEnTelefono = async () => {
     setExportando(true);
     try {
-      const n = await exportarContactos(settings?.salonName || 'mi salón');
-      showToast('Contactos listos', n
-        ? `${n} clientas en el archivo. Ábrelo en tu teléfono y elige «Agregar a contactos».`
-        : 'Todavía no hay clientas con teléfono.', 'success');
+      const listos = await prepararContactos(settings?.salonName || 'mi salón');
+      if (!listos.cantidad) { showToast('Sin contactos', 'Todavía no hay clientas con teléfono.', 'warning'); return; }
+      if (sePuedeCompartir(listos.archivo)) { setContactosListos(listos); return; }
+      await entregarContactos(listos.archivo);
+      showToast('Contactos listos', `${resumenContactos(listos)} Ábrelo en tu teléfono y elige «Agregar a contactos».`, 'success');
     } catch (e) {
       showToast('No se pudo preparar el archivo', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning');
     } finally {
       setExportando(false);
+    }
+  };
+  const compartirContactos = async () => {
+    if (!contactosListos) return;
+    const listos = contactosListos;
+    if (await entregarContactos(listos.archivo)) {
+      setContactosListos(null);
+      showToast('Elige «Contactos»', `${resumenContactos(listos)} En el menú, toca Contactos y luego «Agregar todos».`, 'success');
     }
   };
 
@@ -571,6 +584,19 @@ export const ClientsScreen: React.FC = () => {
       />
 
       <PageContent className="space-y-3.5">
+        {contactosListos && (
+          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-900 flex items-center gap-3 text-xs">
+            <Contact className="w-5 h-5 text-emerald-600 dark:text-emerald-300 shrink-0" />
+            <div className="flex-1 min-w-0 text-emerald-900 dark:text-emerald-100">
+              <span className="font-bold block">Tus clientas están listas</span>
+              {resumenContactos(contactosListos)} Toca el botón y elige «Contactos».
+            </div>
+            <button type="button" onClick={() => void compartirContactos()}
+              className="shrink-0 px-3 py-2 rounded-xl bg-emerald-600 text-white font-bold cursor-pointer">Guardar en Contactos</button>
+            <button type="button" aria-label="Cerrar" onClick={() => setContactosListos(null)} className="shrink-0 text-emerald-700 dark:text-emerald-300 cursor-pointer">✕</button>
+          </div>
+        )}
+
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

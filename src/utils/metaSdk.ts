@@ -8,6 +8,9 @@ export interface ConfigMeta {
   whatsapp: boolean; paginas: boolean;
   /** Variables que faltan en el servidor, por nombre (solo se le enseñan al equipo de Lalan) */
   faltan?: string[];
+  /** "Conectar solo Instagram" (Iniciar sesión con Instagram, sin Facebook) está listo en el servidor */
+  soloInstagram?: boolean;
+  faltanSoloInstagram?: string[];
 }
 
 /** Lo que devuelve el registro insertado de WhatsApp */
