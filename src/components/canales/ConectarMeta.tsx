@@ -8,6 +8,7 @@ import { PlantillasWhatsapp } from './PlantillasWhatsapp';
 import { CostosWhatsapp } from './CostosWhatsapp';
 import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../../utils/metaSdk';
 import { conectarSoloInstagram } from '../../utils/instagramLogin';
+import { esAppInstalada, irAFacebook, necesitaRedireccion, tomarPendientes } from '../../utils/facebookLogin';
 import type { CommunicationChannel } from '../../types';
 
 /** Lo que llega de cada página (nunca su token). Foto, seguidores y negocio sirven para reconocer la correcta */
@@ -47,7 +48,13 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
 
   useEffect(() => {
     api.get<ConfigMeta>('/bots/conexion/configuracion').then(setCfg).catch(() => setCfg(null));
-    api.get<Sede[]>('/users/sedes').then((s) => { setSedes(s); setSede(s[0]?.id ?? ''); }).catch(() => undefined);
+    // Si se volvió de Facebook (app instalada / teléfono), sus páginas esperan aquí para elegir
+    const pendientes = tomarPendientes();
+    api.get<Sede[]>('/users/sedes').then((s) => { setSedes(s); setSede(pendientes?.locationId ?? s[0]?.id ?? ''); }).catch(() => undefined);
+    if (pendientes) {
+      setMarcados({ messenger: pendientes.canal === 'messenger', instagram: pendientes.canal === 'instagram' });
+      setElegir({ token: pendientes.tokenUsuario, paginas: pendientes.paginas, canal: pendientes.canal });
+    }
   }, []);
 
   const conectado = (c: CommunicationChannel) => botConfigs.find((b) => b.id === c && b.channelIdentifier);
@@ -55,7 +62,14 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
 
   const whatsapp = async (coexistencia: boolean) => {
     if (!cfg) return;
-    setPreguntaWa(false); setOcupado('whatsapp');
+    setPreguntaWa(false);
+    // La ventana de registro de WhatsApp de Meta no funciona dentro de la app instalada: se abre en el navegador
+    if (esAppInstalada()) {
+      showToast('Te abrimos el navegador', 'Para conectar WhatsApp, Meta necesita su ventana: termina allí y vuelve a la app.', 'info');
+      window.open(window.location.href, '_blank');
+      return;
+    }
+    setOcupado('whatsapp');
     try {
       const r = await abrirRegistroWhatsapp(cfg, coexistencia);
       const res = await api.post<{ numero: string | null; avisos: string[] }>('/bots/conexion/whatsapp', { ...r, locationId: sede || undefined });
@@ -67,6 +81,11 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
   const paginas = async (canal: CommunicationChannel) => {
     if (!cfg) return;
     setOcupado(canal);
+    // En la app instalada o el teléfono, la ventanita de Facebook no vuelve: se va a Facebook en esta pestaña
+    if (necesitaRedireccion()) {
+      try { await irAFacebook(canal, sede || undefined); } catch (e) { fallo(e); setOcupado(null); }
+      return;
+    }
     try {
       const token = await abrirLoginPaginas(cfg);
       const lista = await api.post<Pagina[]>('/bots/conexion/paginas', { tokenUsuario: token });
