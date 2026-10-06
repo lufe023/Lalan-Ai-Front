@@ -80,7 +80,7 @@ const SelectorEsfera: React.FC<{ campo: 'estiloEsfera' | 'colorEsfera'; c: Campo
           <EsferaLalan modo={elegida ? 'hablando' : 'reposo'} tamano={64}
             estilo={(campo === 'estiloEsfera' ? o.id : todo.estiloEsfera) as EstiloEsfera}
             color={(campo === 'colorEsfera' ? o.id : todo.colorEsfera) as ColorEsfera}
-            ritmo={Number(todo.ritmoEsfera) || 1} />
+            ritmo={Number(todo.ritmoEsfera) || 1} reaccion={Number(todo.reaccionEsfera) || 1} simulada />
           <span className={`text-[0.75rem] font-semibold ${elegida ? 'text-[var(--primary)]' : 'text-slate-500'}`}>{o.nombre}</span>
         </button>
       );
@@ -95,20 +95,17 @@ const MODOS_VISTA: { id: ModoEsfera; nombre: string }[] = [
 /** La esfera grande, con el estilo del borrador, en el estado que se elija */
 const VistaEsfera: React.FC<{ todo: Record<string, Valor> }> = ({ todo }) => {
   const [modo, setModo] = useState<ModoEsfera>('hablando');
-  const [pulso, setPulso] = useState(0);
   const [nivel, setNivel] = useState(0);
-  // Simula la voz: pulsos al "hablar" y volumen al "escuchar"
+  // Simula la voz de quien habla al "escuchar" (al "hablar", la esfera simula la de Lalan)
   useEffect(() => {
-    const id = window.setInterval(() => {
-      setPulso((p) => p + 1);
-      setNivel(0.15 + Math.random() * 0.6);
-    }, 220);
+    const id = window.setInterval(() => setNivel(0.15 + Math.random() * 0.6), 220);
     return () => window.clearInterval(id);
   }, []);
   return (
     <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/60">
-      <EsferaLalan modo={modo} tamano={Math.min(180, Number(todo.tamanoEsfera) || 150)} pulso={modo === 'hablando' ? pulso : 0} nivel={modo === 'escuchando' ? nivel : 0}
-        estilo={todo.estiloEsfera as EstiloEsfera} color={todo.colorEsfera as ColorEsfera} ritmo={Number(todo.ritmoEsfera) || 1} />
+      <EsferaLalan modo={modo} tamano={Math.min(180, Number(todo.tamanoEsfera) || 150)} nivel={modo === 'escuchando' ? nivel : 0} simulada
+        estilo={todo.estiloEsfera as EstiloEsfera} color={todo.colorEsfera as ColorEsfera} ritmo={Number(todo.ritmoEsfera) || 1}
+        reaccion={Number(todo.reaccionEsfera) || 1} />
       <div className="inline-flex flex-wrap justify-center gap-1 p-1 rounded-xl bg-white dark:bg-neutral-900">
         {MODOS_VISTA.map((x) => (
           <button key={x.id} type="button" onClick={() => setModo(x.id)} aria-pressed={modo === x.id}

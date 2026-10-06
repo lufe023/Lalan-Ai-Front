@@ -3,18 +3,21 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, RotateCcw, Send, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
+import { avisarCambioBienvenida } from '../../services/bienvenida';
 import { useAuth } from '../../context/AuthContext';
 import { useEscucha } from '../../hooks/useEscucha';
-import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA, type Pausa } from '../../utils/ajustesLalan';
+import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA, VOCES_AURA, type Pausa } from '../../utils/ajustesLalan';
 import { PAPEL_TAPIZ_SALON } from './papelTapiz';
 import {
   alCargarVoces, callarLalan, callarSiempre, contextoDeAudio, decirComoLalan, despertarVoz, estaCallada, guardarPausa, guardarSeguirEscuchando,
-  guardarVoz, hayVoz, lalanHablando, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, vozDeLalan, vocesEnEspanol,
+  auraElegida, guardarVoz, hayVoz, lalanHablando, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, usaVozDeNube,
+  vozDeLalan, vozDeNube, vocesEnEspanol,
 } from '../../utils/vozLalan';
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
+import { ElegirEsfera } from './ElegirEsfera';
 
 interface Accion {
-  id: string; tipo: 'indicacion' | 'mensaje'; resumen: string;
+  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
 }
 interface Mensaje { id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null; util?: boolean | null }
@@ -68,7 +71,7 @@ const contarUsoDeVoz = () => { try { localStorage.setItem(CLAVE_USOS, String(uso
  */
 export const PantallaLalan: React.FC = () => {
   const { currentUser } = useAuth();
-  const { navigateTo, setActiveConversationId } = useApp();
+  const { navigateTo, setActiveConversationId, recargarCatalogo } = useApp();
   const [abierta, setAbierta] = useState(false);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -95,7 +98,8 @@ export const PantallaLalan: React.FC = () => {
   const calladaAhora = useRef(callada);
   calladaAhora.current = callada;
   const [voces, setVoces] = useState<SpeechSynthesisVoice[]>(vocesEnEspanol);
-  const [vozActual, setVozActual] = useState<string | null>(() => vozDeLalan()?.name ?? null);
+  // Lo elegido en este aparato: "nube…" (la voz natural) o el nombre de una voz del teléfono
+  const [vozActual, setVozActual] = useState<string | null>(() => (usaVozDeNube() ? vozDeNube(auraElegida()) : vozDeLalan()?.name ?? null));
   const [resolviendo, setResolviendo] = useState<string | null>(null);
   const [aj, setAj] = useState<AjustesLalan>(ajustesLalan);
   // Lo que eligió este aparato; si nunca eligió, vale lo global (Plataforma → Lalan)
@@ -122,7 +126,9 @@ export const PantallaLalan: React.FC = () => {
     return () => window.removeEventListener(EVENTO_ABRIR, abrir);
   }, []);
 
-  useEffect(() => alCargarVoces(() => { setVoces(vocesEnEspanol()); setVozActual(vozDeLalan()?.name ?? null); }), []);
+  useEffect(() => alCargarVoces(() => { setVoces(vocesEnEspanol()); if (!usaVozDeNube()) setVozActual(vozDeLalan()?.name ?? null); }), []);
+  // Los ajustes llegan después de abrir: si Plataforma tiene la voz natural, el menú la marca
+  useEffect(() => { setVozActual(usaVozDeNube() ? vozDeNube(auraElegida()) : vozDeLalan()?.name ?? null); }, [aj.motorVoz]);
 
   // Lo que mide la parte de abajo: la conversación deja ese espacio al final para que nada quede tapado
   useEffect(() => {
@@ -153,11 +159,16 @@ export const PantallaLalan: React.FC = () => {
   const recibir = useCallback((r: Respuesta, hablar = true) => {
     if (!r.mensajes.length) { setModo('reposo'); return; }
     setMensajes((antes) => juntar(antes, r.mensajes));
+    // Guardó un servicio o un rendimiento (con el botón o diciendo "sí"): el catálogo y el aviso de la Bienvenida se ponen al día
+    if (r.mensajes.some((m) => m.accion && (m.accion.tipo === 'servicio' || m.accion.tipo === 'rendimiento') && m.accion.estado === 'hecha')) {
+      void recargarCatalogo();
+      avisarCambioBienvenida();
+    }
     bajar();
     const ultimo = [...r.mensajes].reverse().find((m) => m.deLalan);
     if (hablar && ultimo) void decir(ultimo.texto);
     else setModo('reposo');
-  }, [decir]);
+  }, [decir, recargarCatalogo]);
 
   const fallo = (e: unknown) => {
     setError((e as Error)?.message || 'Algo falló. Inténtalo otra vez.');
@@ -384,6 +395,7 @@ export const PantallaLalan: React.FC = () => {
                         </span>
                       </button>
                     )}
+                    <ElegirEsfera />
                     <div className="px-3 pt-2 pb-1">
                       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cuánto espero cuando te callas</div>
                       <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
@@ -396,9 +408,29 @@ export const PantallaLalan: React.FC = () => {
                       </div>
                       <div className="text-[0.6875rem] text-slate-400 mt-1">{(msDePausa(pausa, aj) / 1000).toLocaleString('es-DO')} segundos de silencio y te respondo.</div>
                     </div>
+                    {/* La voz natural (de pago) solo aparece si Plataforma la tiene encendida */}
+                    {aj.motorVoz !== 'aparato' && !callada && (
+                      <div className="px-3 pt-2 pb-1">
+                        <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Voz natural</div>
+                        <div className="max-h-52 overflow-y-auto -mx-1">
+                          {(aj.motorVoz === 'aura2' ? VOCES_AURA : [null]).map((aura) => {
+                            const id = vozDeNube(aura);
+                            const elegida = vozActual === id || (aura === aj.vozAura && vozActual === vozDeNube(null));
+                            return (
+                              <button key={id} type="button" onClick={() => elegirVoz(id)}
+                                className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                                <span className="w-4 shrink-0">{elegida && <Check className="w-4 h-4 text-[var(--primary)]" />}</span>
+                                <span className="flex-1 truncate">{aura ? aura[0].toUpperCase() + aura.slice(1) : 'Voz de la nube'}</span>
+                                {aura === aj.vozAura && <span className="text-[0.6875rem] text-slate-400 shrink-0">la de siempre</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     {voces.length > 0 && !callada && (
                       <div className="px-3 pt-2 pb-1">
-                        <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Voz en este aparato</div>
+                        <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{aj.motorVoz !== 'aparato' ? 'Voz del teléfono (gratis)' : 'Voz en este aparato'}</div>
                         <div className="max-h-52 overflow-y-auto -mx-1">
                           {voces.map((v) => (
                             <button key={v.name} type="button" onClick={() => elegirVoz(v.name)}
@@ -587,7 +619,12 @@ const Calificar: React.FC<{ util: boolean | null; onCambio: (u: boolean | null) 
 };
 
 const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a: Accion, si: boolean) => void; onVerChat: (id: string) => void }> = ({ accion, ocupada, onResolver, onVerChat }) => {
-  const titulo = accion.tipo === 'indicacion' ? 'Indicación para Lalan en el chat' : 'Mensaje para la clienta';
+  // Servicios y rendimientos se GUARDAN en el salón; lo demás se MANDA a una clienta
+  const delSalon = accion.tipo === 'servicio' || accion.tipo === 'rendimiento';
+  const titulo = accion.tipo === 'indicacion' ? 'Indicación para Lalan en el chat'
+    : accion.tipo === 'servicio' ? 'Servicio del salón'
+    : accion.tipo === 'rendimiento' ? 'Lo que rinde un producto'
+    : 'Mensaje para la clienta';
   return (
     <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm p-3.5 space-y-2.5">
       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{titulo}</div>
@@ -596,7 +633,7 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
         <div className="flex items-center gap-2">
           <button type="button" disabled={ocupada} onClick={() => onResolver(accion, true)}
             className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer">
-            {ocupada ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Sí, mándalo
+            {ocupada ? <Loader2 className="w-4 h-4 animate-spin" /> : delSalon ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />} {delSalon ? 'Sí, guárdalo' : 'Sí, mándalo'}
           </button>
           <button type="button" disabled={ocupada} onClick={() => onResolver(accion, false)}
             className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.875rem] font-semibold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
@@ -606,7 +643,7 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
       ) : (
         <div className="flex items-center justify-between gap-2 text-[0.8125rem]">
           <span className={`font-semibold ${accion.estado === 'hecha' ? 'text-emerald-600' : accion.estado === 'fallida' ? 'text-rose-600' : 'text-slate-400'}`}>
-            {accion.estado === 'hecha' ? 'Enviado' : accion.estado === 'fallida' ? `No salió${accion.resultado ? `: ${accion.resultado}` : ''}` : 'No se mandó'}
+            {accion.estado === 'hecha' ? (delSalon ? 'Guardado' : 'Enviado') : accion.estado === 'fallida' ? `No salió${accion.resultado ? `: ${accion.resultado}` : ''}` : delSalon ? 'No se guardó' : 'No se mandó'}
           </span>
           {accion.conversacionId && (
             <button type="button" onClick={() => onVerChat(accion.conversacionId!)} className="font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">

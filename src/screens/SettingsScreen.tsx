@@ -55,6 +55,7 @@ import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPe
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
+import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
@@ -440,6 +441,20 @@ export const SettingsScreen: React.FC = () => {
         )}
         {seccion === 'salon' && (
           <>
+        {/* La Bienvenida, para volver a recorrer la configuración paso a paso */}
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+          <button
+            type="button"
+            onClick={abrirBienvenida}
+            className="w-full p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs flex items-center gap-3 text-left cursor-pointer"
+          >
+            <Sparkles className="w-5 h-5 shrink-0 text-[var(--primary)]" />
+            <span className="flex-1">
+              <span className="block text-[0.875rem] font-bold text-slate-900 dark:text-white">Configurar mi salón paso a paso</span>
+              <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400">Servicios con precios, lo que lleva cada uno, productos, horario y equipo.</span>
+            </span>
+          </button>
+        )}
         {/* SECTION 3: SALON BUSINESS PARAMETERS */}
         <form
           onSubmit={handleSaveSalonSettings}

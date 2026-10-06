@@ -35,6 +35,8 @@ import { BarraSoporte } from './components/ui/BarraSoporte';
 import { AvisoMensajes } from './components/ui/AvisoMensajes';
 import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
 import { BotonLalan, PantallaLalan } from './components/lalan/PantallaLalan';
+import { Bienvenida } from './components/bienvenida/Bienvenida';
+import { AvisoBienvenida } from './components/bienvenida/AvisoBienvenida';
 import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
@@ -162,11 +164,14 @@ const MainAppContent: React.FC = () => {
             {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} />}
             <ChatsFlotantes />
             <PantallaLalan />
+            {/* La Bienvenida: configurar el salón paso a paso (se abre sola la primera vez) */}
+            <Bienvenida />
             {MODO_CALOR && currentUser?.role === 'super_admin' && <CalorApp key={currentScreen} {...MODO_CALOR} pantalla={currentScreen} />}
 
             {/* ── Main content column ── */}
             <div className="flex-1 overflow-hidden flex flex-col relative min-w-0">
               <AvisoMensajes />
+              <AvisoBienvenida />
 
               {/* Screen transitions */}
               <div className="flex-1 overflow-hidden flex flex-col relative">

@@ -12,7 +12,7 @@ export interface AjustesLalan {
   motorVoz: 'aparato' | 'melotts' | 'aura2'; vozAura: string;
   vocesPreferidas: string; velocidadVoz: number; tonoVoz: number;
   papelTapiz: boolean; intensidadPapel: number; tamanoPapel: number; tamanoEsfera: number;
-  estiloEsfera: string; colorEsfera: string; ritmoEsfera: number;
+  estiloEsfera: string; colorEsfera: string; ritmoEsfera: number; reaccionEsfera: number;
 }
 
 export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
@@ -22,8 +22,28 @@ export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
   motorVoz: 'aparato', vozAura: 'celeste',
   vocesPreferidas: 'Paulina, Google español de Estados Unidos, Mónica, Google español', velocidadVoz: 1.02, tonoVoz: 1.05,
   papelTapiz: true, intensidadPapel: 7, tamanoPapel: 230, tamanoEsfera: 150,
-  estiloEsfera: 'aurora', colorEsfera: 'marca', ritmoEsfera: 1,
+  estiloEsfera: 'aurora', colorEsfera: 'marca', ritmoEsfera: 1, reaccionEsfera: 1,
 };
+
+/** Las voces en español de Aura-2 (mismas que el servidor: asistente-ajustes.contrato.ts) */
+export const VOCES_AURA = ['celeste', 'carina', 'diana', 'selena', 'estrella', 'sirio', 'nestor', 'alvaro', 'aquila', 'javier'];
+
+// ── La esfera de cada persona ─────────────────────────────────────
+// La forma y el color los elige cada quien en su pantalla de Lalan (se
+// guardan en este aparato). Lo de Plataforma es solo lo que viene de fábrica.
+const CLAVE_FORMA = 'lalan_esfera_forma';
+const CLAVE_COLOR = 'lalan_esfera_color';
+const leerClave = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+let propia: { forma: string | null; color: string | null } = { forma: leerClave(CLAVE_FORMA), color: leerClave(CLAVE_COLOR) };
+
+/** Lo que eligió esta persona (null = lo de Plataforma) */
+export function esferaPropia() { return propia; }
+export function guardarEsferaPropia(cambio: { forma?: string | null; color?: string | null }) {
+  propia = { ...propia, ...cambio };
+  for (const [k, v] of [[CLAVE_FORMA, propia.forma], [CLAVE_COLOR, propia.color]] as const) {
+    try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch { /* sin almacenamiento: vale por ahora */ }
+  }
+}
 
 let actuales: AjustesLalan = { ...AJUSTES_LALAN_POR_DEFECTO };
 
