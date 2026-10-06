@@ -1048,6 +1048,13 @@
 .asis-cab-txt small { display: flex; align-items: center; gap: 6px; font-size: .74rem; opacity: .9; }
 .asis-cab-txt small i { width: 7px; height: 7px; border-radius: 50%; background: #7CF2A6; }
 .asis-cerrar { border: 0; background: rgba(255,255,255,.18); color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 1.2rem; line-height: 1; cursor: pointer; }
+.asis-voz-modo { border: 0; background: rgba(255,255,255,.18); color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: .85rem; line-height: 1; cursor: pointer; }
+.asis-oir { display: flex; align-items: center; gap: 5px; margin-top: 7px; padding: 4px 10px 4px 8px; border: 1px solid var(--linea); border-radius: 999px; background: transparent; color: var(--rosa, #B4235A); font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; }
+.asis-oir:hover { background: rgba(180,35,90,.06); }
+.asis-oir.asis-sonando svg { animation: asis-latido 1s ease-in-out infinite; }
+.asis-oir.asis-cargando { opacity: .65; }
+@keyframes asis-latido { 50% { transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .asis-oir.asis-sonando svg { animation: none; } }
 .asis-mensajes { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--pantalla); overscroll-behavior: contain; }
 .asis-b { max-width: 85%; padding: 10px 13px; border-radius: 16px; font-size: .9rem; line-height: 1.45; word-wrap: break-word; }
 .asis-b a { color: inherit; font-weight: 700; }
