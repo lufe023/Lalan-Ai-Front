@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { FotoClienta } from '../components/ui/FotoClienta';
 import { pedirSeccionAjustes } from '../components/ajustes/MenuAjustes';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -146,11 +147,7 @@ export const ChatsScreen: React.FC = () => {
               className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer ios-touch flex items-center justify-between gap-3"
             >
               <div className="relative shrink-0">
-                <img
-                  src={conv.clientAvatar}
-                  alt={conv.clientName}
-                  className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-neutral-700"
-                />
+                <FotoClienta foto={conv.clientAvatar} nombre={conv.clientName} className="w-12 h-12 text-base border border-slate-200 dark:border-neutral-700" />
                 <span
                   className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-neutral-900 ${
                     conv.status === 'ai_active'

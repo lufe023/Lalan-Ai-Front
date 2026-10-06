@@ -182,7 +182,9 @@ export const BotsControlScreen: React.FC = () => {
                       {bot.name}
                     </h4>
                     <span className="text-[0.6875rem] text-slate-400">
-                      {bot.channelIdentifier ? haceCuanto(bot.actividad.ultimaRespuesta) : 'sin cuenta conectada'}
+                      {bot.channelIdentifier
+                        ? <>{bot.cuentaNombre && <span className="font-semibold text-slate-600 dark:text-neutral-300">{bot.cuentaNombre} · </span>}{haceCuanto(bot.actividad.ultimaRespuesta)}</>
+                        : 'sin cuenta conectada'}
                     </span>
                   </div>
                 </div>
@@ -220,7 +222,10 @@ export const BotsControlScreen: React.FC = () => {
                   placeholder="Sin conectar"
                   className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 />
-                <p className="text-[0.6875rem] text-slate-400 mt-1">{AYUDA_CUENTA[bot.id]}</p>
+                <p className="text-[0.6875rem] text-slate-400 mt-1">
+                  {bot.cuentaNombre && bot.channelIdentifier ? <span className="font-semibold text-slate-600 dark:text-neutral-300">Es {bot.cuentaNombre} · </span> : null}
+                  {AYUDA_CUENTA[bot.id]}
+                </p>
               </div>
               ) : !bot.channelIdentifier && (
                 <p className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 text-[0.75rem] text-slate-500">

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { FotoClienta } from '../ui/FotoClienta';
 import { Link2, Search, X } from 'lucide-react';
 import { api, urlDeFoto } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -78,10 +79,7 @@ export const ClientaDelChat: React.FC<{ conversacion: Conversation }> = ({ conve
               key={c.id} type="button" disabled={!!ocupado} onClick={() => void unir(c)}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-900 text-left disabled:opacity-50 cursor-pointer"
             >
-              <img
-                src={urlDeFoto(c.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=e2e8f0&color=475569`}
-                alt="" className="w-7 h-7 rounded-full object-cover shrink-0"
-              />
+              <FotoClienta foto={urlDeFoto(c.avatar)} nombre={c.name} className="w-7 h-7 text-[0.6875rem]" />
               <span className="flex-1 min-w-0">
                 <span className="block font-semibold text-slate-900 dark:text-white truncate">{c.name}</span>
                 <span className="block truncate">{c.phone || 'Sin teléfono'}</span>

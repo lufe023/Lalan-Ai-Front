@@ -784,7 +784,7 @@ function mapApiBotConfig(b: any): BotChannelConfig {
     id: b.channel as CommunicationChannel, name: b.name, enabled: b.enabled,
     actividad: b.actividad ?? { respondidos: 0, sugerencias: 0, citas: 0, enAtencion: 0, ultimaRespuesta: null },
     welcomeMessage: b.welcomeMessage ?? '', offHoursMessage: b.offHoursMessage ?? '',
-    channelIdentifier: b.channelIdentifier ?? '',
+    channelIdentifier: b.channelIdentifier ?? '', cuentaNombre: b.cuentaNombre ?? null,
     conexion: b.conexion ?? null, conectadoEn: b.conectadoEn ?? null,
   };
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { FotoClienta } from '../ui/FotoClienta';
 import { GrabadorVoz } from './GrabadorVoz';
 import { useDeslizarParaVolver } from '../../hooks/useDeslizarParaVolver';
 import { motion } from 'motion/react';
@@ -230,7 +231,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           onClick={onMinimizar}
         >
           <div className="relative shrink-0">
-            <img src={activeConversation.clientAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+            <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-8 h-8 text-xs" />
             <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-900 ${color}`} />
           </div>
           <div className="flex-1 min-w-0">
@@ -445,11 +446,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
               ← Volver
             </button>
             <div className="relative">
-              <img
-                src={activeConversation.clientAvatar}
-                alt={activeConversation.clientName}
-                className="w-9 h-9 rounded-full object-cover border border-white/60"
-              />
+              <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-9 h-9 text-xs border border-white/60" />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-neutral-900 ${
                   activeConversation.status === 'ai_active'

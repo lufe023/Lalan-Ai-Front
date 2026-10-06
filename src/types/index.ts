@@ -319,6 +319,8 @@ export interface BotChannelConfig {
   offHoursMessage: string;
   /** La cuenta de Meta conectada: phone_number_id, cuenta de IG o página */
   channelIdentifier: string;
+  /** Cómo se ve esa cuenta para una persona: "@lalan.ai", el nombre de la página o "Nombre · número" */
+  cuentaNombre: string | null;
   /** 'boton_meta' (lo conectó el cliente con el botón) o 'manual' (desde Plataforma) */
   conexion: string | null;
   conectadoEn: string | null;

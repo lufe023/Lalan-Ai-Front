@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FotoClienta } from '../components/ui/FotoClienta';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -28,6 +29,7 @@ import {
   Contact,
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
+import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
 import { exportarContactos } from '../utils/contactos';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
@@ -639,11 +641,7 @@ export const ClientsScreen: React.FC = () => {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative shrink-0">
-                    <img
-                      src={client.avatar}
-                      alt={client.name}
-                      className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-neutral-700"
-                    />
+                    <FotoClienta foto={client.avatar} nombre={client.name} className="w-12 h-12 text-base border border-slate-200 dark:border-neutral-700" />
                     {client.tags.includes('vip') && (
                       <span className="absolute -top-1 -right-1 text-xs">👑</span>
                     )}
@@ -725,11 +723,7 @@ export const ClientsScreen: React.FC = () => {
             {/* Header Profile Card */}
             <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-rose-50/40 dark:from-neutral-800/80 dark:to-neutral-900 border border-slate-200/80 dark:border-neutral-700/70 flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <img
-                  src={selectedClient.avatar}
-                  alt={selectedClient.name}
-                  className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-neutral-700 shadow-sm"
-                />
+                <FotoClienta foto={selectedClient.avatar} nombre={selectedClient.name} className="w-14 h-14 text-lg border-2 border-white dark:border-neutral-700 shadow-sm" />
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                     {selectedClient.name}
@@ -778,6 +772,8 @@ export const ClientsScreen: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            <PerfilesDeLaClienta clienta={selectedClient} />
 
             {/* Tags Container */}
             <div>
