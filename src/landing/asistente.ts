@@ -6,12 +6,15 @@
  *
  * La conversación vive en sessionStorage (sobrevive a recargar la pestaña).
  *
- * La voz de Celeste es a pedido: un 🔊 en cada respuesta (cuando el servidor
- * dice que le queda voz). Si la persona la usa una vez, las siguientes
- * respuestas suenan solas hasta que la apague en la cabecera.
+ * La voz es a pedido: un "Escúchala" en cada respuesta. Cómo suena lo elige
+ * el super admin en Plataforma → Lalan: apagada, la del navegador (gratis) o
+ * la del servidor (MeloTTS / Aura-2, con topes: solo las respuestas que el
+ * servidor marca). Si la persona la usa una vez, las siguientes respuestas
+ * suenan solas hasta que la apague en la cabecera.
  */
 import { API, MODO_CALOR } from './api';
 import { registrar, visitaActual } from './medicion';
+import { decirConNavegador, hayVozNavegador } from './vozNavegador';
 
 type Rol = 'persona' | 'lalan';
 interface Mensaje { rol: Rol; texto: string; voz?: boolean }
@@ -30,6 +33,8 @@ const ESPERA_LECTURA_MS = 900;
 const ESPERA_LECTURA_MOVIL_MS = 3200;
 const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, el piloto gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
 const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo es lo del piloto gratis?', 'No tengo salón, tengo otro negocio'];
+
+interface ConfigVoz { motor: 'apagada' | 'navegador' | 'nube'; voces: string[]; velocidad: number }
 
 interface Estado { id: string; mensajes: Mensaje[]; invitado: boolean; hablando?: boolean }
 
@@ -95,10 +100,16 @@ export function iniciarAsistente(): void {
   const modoVoz = $<HTMLButtonElement>('.asis-voz-modo');
   let audio: HTMLAudioElement | null = null;
   let sonando: HTMLButtonElement | null = null;
+  let voz: ConfigVoz = { motor: 'apagada', voces: [], velocidad: 1 };
+  let vozCargada: Promise<void> | null = null;
+  /** El mensaje de cada burbuja (para ponerle el botón cuando llegue la configuración) */
+  const deBurbuja = new WeakMap<HTMLElement, Mensaje>();
+  const llevaVoz = (m: Mensaje) => m.rol === 'lalan' && (voz.motor === 'navegador' ? hayVozNavegador() : voz.motor === 'nube' && !!m.voz);
 
-  const pintarModoVoz = () => { modoVoz.hidden = !estado.hablando; };
+  const pintarModoVoz = () => { modoVoz.hidden = !estado.hablando || voz.motor === 'apagada'; };
   const callar = () => {
     audio?.pause(); audio = null;
+    if (hayVozNavegador()) speechSynthesis.cancel();
     sonando?.classList.remove('asis-sonando'); sonando = null;
   };
   /** Celeste dice la respuesta; si no queda voz, el botón se va y se sigue leyendo */
@@ -107,6 +118,15 @@ export function iniciarAsistente(): void {
     callar();
     sonando = boton; boton.classList.add('asis-sonando', 'asis-cargando');
     try {
+      if (voz.motor === 'navegador') {
+        boton.classList.remove('asis-cargando');
+        const terminada = decirConNavegador(m.texto, voz.voces, voz.velocidad);
+        if (!estado.hablando) { estado.hablando = true; guardar(estado); pintarModoVoz(); }
+        registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'voz_navegador' });
+        await terminada;
+        if (sonando === boton) callar();
+        return;
+      }
       const r = await fetch(`${API}/public/landing/voz`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversacionId: estado.id, texto: m.texto }),
@@ -115,6 +135,7 @@ export function iniciarAsistente(): void {
       const url = URL.createObjectURL(await r.blob());
       if (sonando !== boton) { URL.revokeObjectURL(url); return; }
       audio = new Audio(url);
+      audio.playbackRate = voz.velocidad;
       audio.addEventListener('ended', () => { URL.revokeObjectURL(url); if (sonando === boton) callar(); });
       await audio.play();
       if (!estado.hablando) { estado.hablando = true; guardar(estado); pintarModoVoz(); }
@@ -133,8 +154,15 @@ export function iniciarAsistente(): void {
     const b = document.createElement('div');
     b.className = `asis-b asis-${m.rol}${animar ? ' asis-entra' : ''}`;
     b.innerHTML = formatear(m.texto);
+    deBurbuja.set(b, m);
+    const boton = ponerBoton(b, m);
+    lista.appendChild(b);
+    lista.scrollTop = lista.scrollHeight;
+    return boton;
+  };
+  const ponerBoton = (b: HTMLElement, m: Mensaje): HTMLButtonElement | null => {
     let boton: HTMLButtonElement | null = null;
-    if (m.rol === 'lalan' && m.voz) {
+    if (llevaVoz(m) && !b.querySelector('.asis-oir')) {
       boton = document.createElement('button');
       boton.type = 'button'; boton.className = 'asis-oir'; boton.setAttribute('aria-label', 'Escúchala');
       boton.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z" fill="currentColor"/></svg><span>Escúchala</span>';
@@ -142,9 +170,20 @@ export function iniciarAsistente(): void {
       bt.addEventListener('click', () => void decir(m, bt));
       b.appendChild(bt);
     }
-    lista.appendChild(b);
-    lista.scrollTop = lista.scrollHeight;
     return boton;
+  };
+  /** Lo que eligió Plataforma (una vez por visita); luego se ponen los botones que falten */
+  const cargarVoz = () => {
+    vozCargada ??= fetch(`${API}/public/landing/voz`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c: ConfigVoz | null) => {
+        if (c && ['apagada', 'navegador', 'nube'].includes(c.motor)) voz = { motor: c.motor, voces: c.voces ?? [], velocidad: Number(c.velocidad) || 1 };
+        if (voz.motor === 'apagada' && estado.hablando) { estado.hablando = false; guardar(estado); }
+        pintarModoVoz();
+        lista.querySelectorAll<HTMLElement>('.asis-b').forEach((b) => { const m = deBurbuja.get(b); if (m) ponerBoton(b, m); });
+      })
+      .catch(() => undefined);
+    return vozCargada;
   };
   const pintarSugerencias = () => {
     sugerencias.innerHTML = '';
@@ -166,6 +205,7 @@ export function iniciarAsistente(): void {
       pintarSugerencias();
     }
     pintarModoVoz();
+    void cargarVoz();
     if (window.matchMedia('(pointer: fine)').matches) entrada.focus();
     registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'abrir' });
   };
