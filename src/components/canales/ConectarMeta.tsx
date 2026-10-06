@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { IOSModal } from '../ui/IOSModal';
+import { PlantillasWhatsapp } from './PlantillasWhatsapp';
 import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../../utils/metaSdk';
 import type { CommunicationChannel } from '../../types';
 
@@ -142,6 +143,9 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
           );
         })}
       </div>
+
+      {/* Con WhatsApp conectado: las plantillas que Lalan usa para escribir primero */}
+      {conectado('whatsapp') && <PlantillasWhatsapp key={sede} sede={sede || undefined} />}
 
       {cfg && currentUser?.role === 'super_admin' && !!cfg.faltan?.length && (
         <p className="text-[0.6875rem] text-slate-400">
