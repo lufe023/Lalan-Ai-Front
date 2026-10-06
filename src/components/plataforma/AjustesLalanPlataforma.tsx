@@ -274,7 +274,9 @@ function aplica(c: Campo, todo: Record<string, Valor>) {
  * escuchando; aquí se pone lo que vale por defecto y lo que solo decide
  * Lalan (pausas exactas, sensibilidad, fondo, modelo de IA, topes de costo).
  */
-export const AjustesLalanPlataforma: React.FC = () => {
+export const AjustesLalanPlataforma: React.FC<{ area?: 'app' | 'landing' }> = ({ area = 'app' }) => {
+  const esLanding = area === 'landing';
+  const delArea = useCallback((grupo: string) => (grupo === 'landing') === esLanding, [esLanding]);
   const [cat, setCat] = useState<Catalogo | null>(null);
   const [borrador, setBorrador] = useState<Record<string, Valor>>({});
   const [guardando, setGuardando] = useState(false);
@@ -286,21 +288,24 @@ export const AjustesLalanPlataforma: React.FC = () => {
   }, []);
   useEffect(() => { void cargar(); }, [cargar]);
 
-  const cambiados = useMemo(() => (cat ? cat.campos.filter((c) => borrador[c.id] !== cat.valores[c.id]).length : 0), [cat, borrador]);
+  const cambiados = useMemo(() => (cat ? cat.campos.filter((c) => delArea(c.grupo) && borrador[c.id] !== cat.valores[c.id]).length : 0), [cat, borrador, delArea]);
 
   const guardar = async () => {
     setGuardando(true); setAviso('');
     try {
       tomar(await api.put<Catalogo>('/asistente/ajustes', { valores: borrador }));
       await cargarAjustesLalan();
-      setAviso('Guardado. Los teléfonos lo toman la próxima vez que abran a Lalan.');
+      setAviso(esLanding ? 'Guardado. La landing lo toma en menos de un minuto (al abrir la ventanita).' : 'Guardado. Los teléfonos lo toman la próxima vez que abran a Lalan.');
     } catch (e) { setAviso((e as Error).message); } finally { setGuardando(false); }
   };
 
   const restaurar = async () => {
     setGuardando(true); setAviso('');
     try {
-      tomar(await api.delete<Catalogo>('/asistente/ajustes'));
+      // Solo lo de esta pestaña: lo de la app y lo de la landing se restauran por separado
+      if (!cat) return;
+      const recomendados = Object.fromEntries(cat.campos.filter((c) => delArea(c.grupo)).map((c) => [c.id, cat.porDefecto[c.id]]));
+      tomar(await api.put<Catalogo>('/asistente/ajustes', { valores: { ...cat.valores, ...recomendados } }));
       await cargarAjustesLalan();
       setAviso('Listo: todo volvió a lo recomendado.');
     } catch (e) { setAviso((e as Error).message); } finally { setGuardando(false); }
@@ -314,10 +319,14 @@ export const AjustesLalanPlataforma: React.FC = () => {
     <div className="space-y-4 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 max-w-xl">
-          Ajustes de la pantalla de Lalan para <b>todos los salones</b>. Cada teléfono puede cambiar su pausa, su voz y si sigue escuchando; esto es lo que vale si no ha elegido.
+          {esLanding
+            ? <>La ventanita <b>"Habla con Lalan"</b> de la página pública: encenderla o apagarla, su IA y su voz, y lo que se ha gastado este mes.</>
+            : <>Ajustes de la pantalla de Lalan para <b>todos los salones</b>. Cada teléfono puede cambiar su pausa, su voz y si sigue escuchando; esto es lo que vale si no ha elegido.</>}
         </p>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={abrirLalan} className="px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-[var(--primary)] bg-[var(--primary)]/10 cursor-pointer">Probar</button>
+          {esLanding
+            ? <a href="/" target="_blank" rel="noopener" className="px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-[var(--primary)] bg-[var(--primary)]/10 cursor-pointer">Abrir la landing</a>
+            : <button type="button" onClick={abrirLalan} className="px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-[var(--primary)] bg-[var(--primary)]/10 cursor-pointer">Probar</button>}
           <button type="button" onClick={() => void restaurar()} disabled={guardando}
             className="px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 bg-slate-100 dark:bg-neutral-800 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
             <RotateCcw className="w-4 h-4" /> Lo recomendado
@@ -330,8 +339,8 @@ export const AjustesLalanPlataforma: React.FC = () => {
       </div>
       {aviso && <p className="text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300" role="status">{aviso}</p>}
 
-      <div className="grid lg:grid-cols-2 gap-4 items-start">
-        {cat.grupos.map((g) => (
+      <div className={esLanding ? "max-w-2xl space-y-4" : "grid lg:grid-cols-2 gap-4 items-start"}>
+        {cat.grupos.filter((g) => delArea(g.id)).map((g) => (
           <section key={g.id} className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{g.nombre}</h3>
             {g.id === 'apariencia' && <VistaEsfera todo={borrador} />}

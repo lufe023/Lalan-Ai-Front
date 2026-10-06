@@ -187,7 +187,7 @@ export const PlataformaScreen: React.FC = () => {
   /** Soporte ve solo a los clientes (para ayudarles), sin estadísticas ni planes */
   const esSoporte = currentUser?.role === 'support';
   const [pestana, setPestana] = useState<Pestana>('negocios');
-  const [vistaLalan, setVistaLalan] = useState<'uso' | 'ajustes'>('uso');
+  const [vistaLalan, setVistaLalan] = useState<'uso' | 'ajustes' | 'landing'>('uso');
   const [abrirNegocio, setAbrirNegocio] = useState<string | null>(null);
   const [prellenado, setPrellenado] = useState<PrellenadoNegocio | null>(null);
   const [rango, setRango] = useState<Rango>('30');
@@ -369,8 +369,10 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'portadas' && <PortadasPlataforma />}
         {pestana === 'lalan' && (
           <div className="space-y-5">
-            <IOSSegmentedControl id="plataforma-lalan" options={[{ id: 'uso', label: 'Cómo la usan' }, { id: 'ajustes', label: 'Ajustes' }]} value={vistaLalan} onChange={(v) => setVistaLalan(v as 'uso' | 'ajustes')} size="sm" />
-            {vistaLalan === 'uso' ? <UsoLalanPlataforma /> : <AjustesLalanPlataforma />}
+            <IOSSegmentedControl id="plataforma-lalan" options={[{ id: 'uso', label: 'Cómo la usan' }, { id: 'ajustes', label: 'Ajustes de la app' }, { id: 'landing', label: 'Landing (IA y voz)' }]} value={vistaLalan} onChange={(v) => setVistaLalan(v as 'uso' | 'ajustes' | 'landing')} size="sm" />
+            {vistaLalan === 'uso' && <UsoLalanPlataforma />}
+            {vistaLalan === 'ajustes' && <AjustesLalanPlataforma key="app" />}
+            {vistaLalan === 'landing' && <AjustesLalanPlataforma key="landing" area="landing" />}
           </div>
         )}
         {pestana === 'salud' && <SaludServicios onAbrirNegocio={(id) => { setAbrirNegocio(id); setPestana('negocios'); }} />}

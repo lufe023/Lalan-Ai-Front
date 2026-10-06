@@ -34,7 +34,7 @@ const ESPERA_LECTURA_MOVIL_MS = 3200;
 const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, el piloto gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
 const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo es lo del piloto gratis?', 'No tengo salón, tengo otro negocio'];
 
-interface ConfigVoz { motor: 'apagada' | 'navegador' | 'nube'; voces: string[]; velocidad: number }
+interface ConfigVoz { activa?: boolean; motor: 'apagada' | 'navegador' | 'nube'; voces: string[]; velocidad: number }
 
 interface Estado { id: string; mensajes: Mensaje[]; invitado: boolean; hablando?: boolean }
 
@@ -177,6 +177,8 @@ export function iniciarAsistente(): void {
     vozCargada ??= fetch(`${API}/public/landing/voz`)
       .then((r) => (r.ok ? r.json() : null))
       .then((c: ConfigVoz | null) => {
+        // Apagada desde Plataforma: ni el botón se muestra
+        if (c?.activa === false) { callar(); raiz.remove(); return; }
         if (c && ['apagada', 'navegador', 'nube'].includes(c.motor)) voz = { motor: c.motor, voces: c.voces ?? [], velocidad: Number(c.velocidad) || 1 };
         if (voz.motor === 'apagada' && estado.hablando) { estado.hablando = false; guardar(estado); }
         pintarModoVoz();
@@ -297,4 +299,6 @@ export function iniciarAsistente(): void {
   const r429 = (m: string) => /too many|demasiad/i.test(m);
 
   form.addEventListener('submit', (e) => { e.preventDefault(); void preguntar(entrada.value); });
+  // Se pregunta de una vez si está encendida y cómo habla (si Plataforma la apagó, el botón desaparece)
+  void cargarVoz();
 }
