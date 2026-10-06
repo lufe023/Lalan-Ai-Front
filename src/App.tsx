@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -321,7 +321,10 @@ export default function App() {
       <AuthProvider>
         <PlanProvider>
         <AppProvider>
-          <MainAppContent />
+          {/* Quien pidió "reducir movimiento" en su teléfono ve las cosas cambiar sin deslizarse */}
+          <MotionConfig reducedMotion="user">
+            <MainAppContent />
+          </MotionConfig>
         </AppProvider>
         </PlanProvider>
       </AuthProvider>

@@ -39,6 +39,7 @@ import { Client, ClientTag, CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { PageContent } from '../components/ui/PageContent';
+import { ChipsFiltro, ItemAnimado, ListaAnimada, NumeroAnimado } from '../components/ui/movimiento';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { hora12 } from '../utils/hora';
 
@@ -548,8 +549,8 @@ export const ClientsScreen: React.FC = () => {
            el directorio no quepa en la primera tanda. */
         subtitle={
           clientsTotal !== null && clientsTotal > clients.length
-            ? `${clients.length} de ${clientsTotal} en el directorio`
-            : `${clients.length} registradas en el directorio`
+            ? <><NumeroAnimado valor={clients.length} /> de <NumeroAnimado valor={clientsTotal} /> en el directorio</>
+            : <><NumeroAnimado valor={clients.length} /> registradas en el directorio</>
         }
         rightAction={
           <div className="flex items-center gap-2">
@@ -610,8 +611,10 @@ export const ClientsScreen: React.FC = () => {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-          {[
+        <ChipsFiltro
+          valor={selectedTagFilter}
+          onCambio={setSelectedTagFilter}
+          opciones={[
             { id: 'all', label: 'Todas' },
             { id: 'vip', label: '👑 VIP' },
             { id: 'frecuente', label: '💖 Frecuentes' },
@@ -619,23 +622,8 @@ export const ClientsScreen: React.FC = () => {
             { id: 'alergico_sensible', label: '⚠️ Sensibles / Alergias' },
             { id: 'whatsapp', label: '💬 WhatsApp' },
             { id: 'instagram', label: '📸 Instagram' },
-          ].map(f => {
-            const isSelected = selectedTagFilter === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setSelectedTagFilter(f.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ios-touch cursor-pointer ${
-                  isSelected
-                    ? 'bg-[var(--primary)] text-white shadow-xs font-bold'
-                    : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-neutral-300 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
-                }`}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
 
         {/* Clients List */}
         {filteredClients.length === 0 ? (
@@ -656,14 +644,14 @@ export const ClientsScreen: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2.5">
+            {/* Entran en cascada solo al abrir; las que llegan al bajar (o al buscar) entran ya, sin esperar turno */}
+            <ListaAnimada className="space-y-2.5">
             {filteredClients.map((client, idx) => (
-              <motion.div
+              <ItemAnimado
                 key={client.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
+                indice={idx}
                 onClick={() => setSelectedClient(client)}
-                className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer ios-touch flex items-center justify-between gap-3"
+                className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative shrink-0">
@@ -712,8 +700,9 @@ export const ClientsScreen: React.FC = () => {
                   </span>
                   <ChevronRight className="w-4 h-4 text-slate-300 dark:text-neutral-600 mt-1" />
                 </div>
-              </motion.div>
+              </ItemAnimado>
             ))}
+            </ListaAnimada>
 
             {/* El final de la lista: al asomarse, entra la siguiente tanda */}
             <div ref={centinelaRef} />
