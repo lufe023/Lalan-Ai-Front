@@ -24,8 +24,8 @@ const INVITACION_MS = 14_000;
 /** Cuánto se deja leer la respuesta antes de mover la página */
 const ESPERA_LECTURA_MS = 900;
 const ESPERA_LECTURA_MOVIL_MS = 3200;
-const SALUDO = '¡Hola! Soy Lalan 👋 Te cuento lo que quieras sobre cómo atiendo el WhatsApp de un salón, los planes o el piloto gratis. ¿Tienes un salón?';
-const SUGERENCIAS = ['¿Qué hace Lalan?', '¿Cuánto cuesta?', '¿Cómo funciona el piloto?', 'No tengo salón, tengo otro negocio'];
+const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, el piloto gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
+const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo es lo del piloto gratis?', 'No tengo salón, tengo otro negocio'];
 
 interface Estado { id: string; mensajes: Mensaje[]; invitado: boolean }
 
@@ -57,23 +57,23 @@ export function iniciarAsistente(): void {
   raiz.className = 'asis';
   raiz.innerHTML = `
     <div class="asis-invita" hidden><button type="button" class="asis-invita-x" aria-label="Cerrar">×</button>
-      <span>¿Te ayudo a ver si Lalan es para tu salón? 💅</span></div>
+      <span>Amiga, ¿te cuento cómo llenar tu agenda mientras duermes? 💅</span></div>
     <button type="button" class="asis-lanzar" aria-expanded="false" aria-controls="asis-panel">
       <span class="asis-logo">${LOGO}</span><span class="asis-lanzar-txt">¿Preguntas? Habla con Lalan</span><i class="asis-punto" hidden></i>
     </button>
     <section class="asis-panel" id="asis-panel" role="dialog" aria-label="Habla con Lalan" hidden>
       <header class="asis-cab">
         <span class="asis-logo">${LOGO}</span>
-        <span class="asis-cab-txt"><b>Lalan</b><small><i></i> responde al instante</small></span>
+        <span class="asis-cab-txt"><b>Lalan</b><small><i></i> en línea · te contesto al momento</small></span>
         <button type="button" class="asis-cerrar" aria-label="Cerrar">×</button>
       </header>
       <div class="asis-mensajes" aria-live="polite"></div>
       <div class="asis-sugerencias"></div>
       <form class="asis-form">
-        <input class="asis-entrada" type="text" maxlength="600" autocomplete="off" placeholder="Escribe tu pregunta…" aria-label="Tu pregunta">
+        <input class="asis-entrada" type="text" maxlength="600" autocomplete="off" placeholder="Escríbeme aquí…" aria-label="Tu pregunta">
         <button type="submit" class="asis-enviar" aria-label="Enviar"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 11.5 21 3l-8.5 18-2-7.5z" fill="currentColor"/></svg></button>
       </form>
-      <p class="asis-nota">Te respondo con lo que dice esta página. ¿Prefieres una persona? <a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">WhatsApp</a></p>
+      <p class="asis-nota">¿Prefieres hablar con alguien del equipo? <a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">WhatsApp</a></p>
     </section>`;
   document.body.appendChild(raiz);
 
@@ -193,8 +193,8 @@ export function iniciarAsistente(): void {
     } catch (e) {
       escribiendo.remove();
       const msg = (e as Error).message || '';
-      burbuja({ rol: 'lalan', texto: r429(msg) ? 'Me escribiste muy rápido 😅 Dame un momentito y vuelve a preguntarme.'
-        : msg.includes('WhatsApp') ? msg : 'Ahora mismo no pude responder. Escríbenos por WhatsApp al 809-229-9444.' });
+      burbuja({ rol: 'lalan', texto: r429(msg) ? 'Ay, ve más despacito que me mareas 😅 Dame un segundito y vuelve a escribirme.'
+        : msg.includes('WhatsApp') ? msg : 'Ay, se me fue la señal 😅 Escríbele al equipo por WhatsApp al 809-229-9444 y te atienden enseguida 💕' });
     } finally {
       ocupado = false;
     }
