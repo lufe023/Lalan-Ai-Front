@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { CambiarEspecialista } from '../agenda/CambiarEspecialista';
 import { IOSModal } from '../ui/IOSModal';
 import { IOSSegmentedControl } from '../ui/IOSSegmentedControl';
 import { IOSToggle } from '../ui/IOSToggle';
@@ -31,7 +32,7 @@ const hoyLocal = () => {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 };
 
-interface CitaAfectada { id: string; clientName: string; serviceName: string | null; startsAt: string }
+interface CitaAfectada { id: string; clientName: string; clientPhone?: string | null; serviceName: string | null; startsAt: string; resuelta?: string }
 
 export const HorarioEspecialista: React.FC<{
   persona: SalonStaff;
@@ -58,6 +59,7 @@ export const HorarioEspecialista: React.FC<{
   const [nueva, setNueva] = useState({ motivo: 'vacaciones', desde: hoyLocal(), hasta: hoyLocal(), soloHoras: false, horaDesde: '14:00', horaHasta: '16:00', nota: '' });
   const [guardando, setGuardando] = useState(false);
   const [afectadas, setAfectadas] = useState<CitaAfectada[] | null>(null);
+  const [reasignando, setReasignando] = useState<CitaAfectada | null>(null);
 
   const unSoloDia = nueva.desde === nueva.hasta;
   const problema = nueva.hasta < nueva.desde ? 'La última fecha no puede ser antes de la primera.'
@@ -94,6 +96,7 @@ export const HorarioEspecialista: React.FC<{
   const campo = 'w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white text-sm dark:[color-scheme:dark]';
 
   return (
+    <>
     <IOSModal isOpen onClose={onCerrar} title={persona.name} subtitle={persona.role}>
       <div className="space-y-6 text-xs pb-4">
         {/* ── Horario ── */}
@@ -153,11 +156,16 @@ export const HorarioEspecialista: React.FC<{
                 {nombre} tiene {afectadas.length} {afectadas.length === 1 ? 'cita' : 'citas'} en esas fechas
               </p>
               {afectadas.map(c => (
-                <p key={c.id} className="text-[0.75rem] text-amber-700 dark:text-amber-400">
-                  {fechaCorta(c.startsAt.slice(0, 10))} · {new Date(c.startsAt).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit', hour12: true })} — {c.clientName}{c.serviceName ? ` · ${c.serviceName}` : ''}
-                </p>
+                <div key={c.id} className="flex items-center justify-between gap-2">
+                  <p className="text-[0.75rem] text-amber-700 dark:text-amber-400 min-w-0">
+                    {fechaCorta(c.startsAt.slice(0, 10))} · {new Date(c.startsAt).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit', hour12: true })} — {c.clientName}{c.serviceName ? ` · ${c.serviceName}` : ''}
+                  </p>
+                  {c.resuelta
+                    ? <span className="shrink-0 text-[0.6875rem] font-bold text-emerald-700 dark:text-emerald-400">✓ {c.resuelta}</span>
+                    : <button type="button" onClick={() => setReasignando(c)} className="shrink-0 px-2 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-900 text-[0.6875rem] font-bold text-amber-800 dark:text-amber-300 cursor-pointer">Reasignar y avisar</button>}
+                </div>
               ))}
-              <p className="text-[0.75rem] text-amber-700 dark:text-amber-400">Muévelas o pásaselas a otra persona desde la Agenda.</p>
+              <p className="text-[0.75rem] text-amber-700 dark:text-amber-400">Pásaselas a otra persona: Lalan le escribe a cada clienta y le pregunta si sigue o prefiere otro día con {nombre}.</p>
             </div>
           )}
 
@@ -240,6 +248,14 @@ export const HorarioEspecialista: React.FC<{
         </section>
       </div>
     </IOSModal>
+    {reasignando && (
+      <CambiarEspecialista
+        cita={{ ...reasignando, staffName: persona.name }}
+        onCerrar={() => setReasignando(null)}
+        onListo={({ cita, aviso }) => setAfectadas(l => l?.map(c => c.id === cita.id ? { ...c, resuelta: `con ${cita.staffName}${aviso.avisada ? ' · avisada' : ''}` } : c) ?? null)}
+      />
+    )}
+    </>
   );
 };
 

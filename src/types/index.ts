@@ -221,6 +221,10 @@ export interface Appointment {
   createdByName?: string | null;
   /** La hora que tenía agendada, si llegó en otro momento y la cita se movió a la hora real */
   originalStartsAt?: string;
+  /** El salón le cambió la especialista: con quién era al principio */
+  cambioEspecialistaDe?: string | null;
+  /** Qué dijo la clienta: 'esperando' | 'acepta' | 'reagendo' | 'cancelo' */
+  cambioRespuesta?: string | null;
 }
 
 export interface ChatMessage {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { recibeCitas } from '../utils/recibeCitas';
 import { RESORTE } from '../components/ui/movimiento';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -31,6 +32,8 @@ import {
   ChevronRight,
   Zap,
   CalendarClock,
+  CalendarCheck,
+  CalendarOff,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { CatalogoEnOtraMoneda } from '../components/ajustes/CatalogoEnOtraMoneda';
@@ -801,6 +804,8 @@ export const SettingsScreen: React.FC = () => {
             Cada una con su especialidad y su zona. La zona es la que decide a
             qué cola entra un turno cuando no se elige a mano. Con el reloj
             pones su horario (si no es el del salón) y los días que no viene.
+            Con el calendario dices si recibe citas: bartender, recepción o caja
+            no reciben, salvo que lo enciendas.
           </p>
 
           <div className="space-y-2">
@@ -842,6 +847,24 @@ export const SettingsScreen: React.FC = () => {
                     <option key={z.id} value={z.id}>{z.prefix} · {z.name}</option>
                   ))}
                 </select>
+                {(() => {
+                  const recibe = recibeCitas(e.atiendeCitas, e.role);
+                  const porOficio = typeof e.atiendeCitas !== 'boolean';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => void guardarEspecialista({ id: e.id, name: e.name, atiendeCitas: !recibe })}
+                      aria-pressed={recibe}
+                      aria-label={recibe ? `${e.name} recibe citas` : `${e.name} no recibe citas`}
+                      title={`${recibe ? 'Recibe citas' : 'No recibe citas: Lalan nunca se la asigna'}${porOficio ? ' (por su especialidad)' : ''}. Toca para cambiarlo.`}
+                      className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                        recibe ? 'text-emerald-600 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'
+                      }`}
+                    >
+                      {recibe ? <CalendarCheck className="w-3.5 h-3.5" /> : <CalendarOff className="w-3.5 h-3.5" />}
+                    </button>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={() => setHorarioDe(e.id)}
