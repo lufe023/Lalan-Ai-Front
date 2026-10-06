@@ -14,6 +14,7 @@ import {
   vozDeLalan, vozDeNube, vocesEnEspanol,
 } from '../../utils/vozLalan';
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
+import { ElegirEsfera } from './ElegirEsfera';
 
 interface Accion {
   id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento'; resumen: string;
@@ -394,6 +395,7 @@ export const PantallaLalan: React.FC = () => {
                         </span>
                       </button>
                     )}
+                    <ElegirEsfera />
                     <div className="px-3 pt-2 pb-1">
                       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cuánto espero cuando te callas</div>
                       <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ajustesLalan } from '../../utils/ajustesLalan';
+import { ajustesLalan, esferaPropia } from '../../utils/ajustesLalan';
 import { nivelDeLalan, ritmoDeHabla } from '../../utils/vozLalan';
 
 export type ModoEsfera = 'reposo' | 'escuchando' | 'pensando' | 'hablando';
@@ -323,8 +323,10 @@ export const EsferaLalan: React.FC<{
       anterior = t;
       const e = estado.current;
       const aj = ajustesLalan();
-      const forma = (e.estilo ?? aj.estiloEsfera) as EstiloEsfera;
-      const colorElegido = (e.color ?? aj.colorEsfera) as ColorEsfera;
+      // Lo que pide quien la pinta (vistas previas), si no lo que eligió esta persona, si no lo de Plataforma
+      const propia = esferaPropia();
+      const forma = (e.estilo ?? (propia.forma && propia.forma in ESTILOS_ESFERA ? propia.forma : aj.estiloEsfera)) as EstiloEsfera;
+      const colorElegido = (e.color ?? (propia.color && propia.color in COLORES_ESFERA ? propia.color : aj.colorEsfera)) as ColorEsfera;
       if (!paleta || colorDeLaPaleta !== colorElegido) { paleta = paletaDe(colorElegido); colorDeLaPaleta = colorElegido; }
       const ritmoElegido = e.ritmo ?? aj.ritmoEsfera ?? 1;
       // A qué nivel quiere ir: la voz de la persona, la de Lalan o nada
