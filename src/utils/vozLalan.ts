@@ -162,14 +162,84 @@ export function despertarAudio() {
   try { const a = elReproductor(); a.src = MUDO; void a.play().catch(() => undefined); } catch { /* noop */ }
 }
 
+// ── Lo que la esfera necesita para moverse con la voz ─────────────
+
+/**
+ * El volumen de la voz natural, momento a momento. Se saca del mp3 antes de
+ * que suene (se decodifica aparte, sin tocar el audio que se oye: conectar el
+ * reproductor a un AudioContext en el iPhone puede dejarlo mudo).
+ */
+let envolvente: { url: string; niveles: Float32Array; paso: number } | null = null;
+/** Cuándo dijo la última palabra la voz del teléfono (no deja leer su audio) */
+let ultimaPalabra = 0;
+const VENTANA_ENVOLVENTE_S = 0.02;
+
+async function calcularEnvolvente(blob: Blob, url: string) {
+  try {
+    const Offline = window.OfflineAudioContext || (window as any).webkitOfflineAudioContext;
+    if (!Offline) return;
+    const ctx = new Offline(1, 1, 22050);
+    const datos = await blob.arrayBuffer();
+    const audio: AudioBuffer = await new Promise((ok, mal) => {
+      const p = ctx.decodeAudioData(datos, ok, mal);
+      if (p && typeof (p as Promise<AudioBuffer>).then === 'function') (p as Promise<AudioBuffer>).then(ok, mal);
+    });
+    const canal = audio.getChannelData(0);
+    const tam = Math.max(1, Math.round(audio.sampleRate * VENTANA_ENVOLVENTE_S));
+    const niveles = new Float32Array(Math.ceil(canal.length / tam));
+    for (let i = 0; i < niveles.length; i++) {
+      let suma = 0;
+      const desde = i * tam, hasta = Math.min(canal.length, desde + tam);
+      for (let j = desde; j < hasta; j++) suma += canal[j] * canal[j];
+      niveles[i] = Math.sqrt(suma / Math.max(1, hasta - desde));
+    }
+    // Se normaliza con lo más fuerte de ESTA frase (sin el 3 % de picos), para que toda voz llene la esfera igual
+    const orden = Array.from(niveles).sort((a, b) => a - b);
+    const tope = orden[Math.floor(orden.length * 0.97)] || 1;
+    for (let i = 0; i < niveles.length; i++) niveles[i] = Math.min(1, Math.sqrt(niveles[i] / tope));
+    envolvente = { url, niveles, paso: VENTANA_ENVOLVENTE_S };
+  } catch { /* sin envolvente: la esfera usa el ritmo de habla */ }
+}
+
+/**
+ * Qué tan fuerte suena Lalan AHORA (0 a 1), para la esfera. Con la voz
+ * natural es el volumen real; con la del teléfono, un ritmo de sílabas que
+ * se aviva con cada palabra (el navegador no deja leer ese audio).
+ */
+export function nivelDeLalan(t = performance.now()): number {
+  const a = reproductor;
+  if (a && !a.paused && !a.ended) {
+    if (envolvente && a.src === envolvente.url) {
+      const i = Math.floor(a.currentTime / envolvente.paso);
+      return envolvente.niveles[Math.min(envolvente.niveles.length - 1, Math.max(0, i))] ?? 0;
+    }
+    return ritmoDeHabla(t, t);
+  }
+  try { if (window.speechSynthesis?.speaking) return ritmoDeHabla(t, ultimaPalabra); } catch { /* noop */ }
+  return 0;
+}
+
+/** Sílabas (~4–7 por segundo) que no se repiten, más un empujón al empezar cada palabra */
+function ritmoDeHabla(t: number, palabra: number) {
+  const s = t / 1000;
+  const silabas = 0.5 + 0.28 * Math.sin(s * 2 * Math.PI * 4.3) + 0.16 * Math.sin(s * 2 * Math.PI * 6.7 + 1.3) + 0.1 * Math.sin(s * 2 * Math.PI * 2.1 + 2.6);
+  const empujon = Math.exp(-(t - palabra) / 260);
+  return Math.max(0, Math.min(1, silabas * (0.65 + 0.35 * empujon)));
+}
+
 /** Toca un mp3 y espera a que termine (o a que la corten) */
 function tocar(blob: Blob, mio: number, alHablar?: () => void): Promise<void> {
   return new Promise((listo) => {
     const a = elReproductor();
     const url = URL.createObjectURL(blob);
+    void calcularEnvolvente(blob, url);
     // La esfera late mientras habla (el audio no avisa palabra por palabra)
     const latido = window.setInterval(() => { if (mio === turno) alHablar?.(); }, 190);
-    const fin = () => { window.clearInterval(latido); a.onended = null; a.onerror = null; a.onpause = null; URL.revokeObjectURL(url); listo(); };
+    const fin = () => {
+      window.clearInterval(latido); a.onended = null; a.onerror = null; a.onpause = null; URL.revokeObjectURL(url);
+      if (envolvente?.url === url) envolvente = null;
+      listo();
+    };
     a.onended = fin;
     a.onerror = fin;
     a.onpause = () => { if (mio !== turno) fin(); };
@@ -254,7 +324,8 @@ function decirConAparato(partes: string[], mio: number, alHablar?: () => void): 
       if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = 'es-MX';
       u.rate = ajustesLalan().velocidadVoz;
       u.pitch = ajustesLalan().tonoVoz;
-      u.onboundary = () => alHablar?.();
+      u.onboundary = () => { ultimaPalabra = performance.now(); alHablar?.(); };
+      u.onstart = () => { ultimaPalabra = performance.now(); };
       u.onend = siguiente;
       u.onerror = siguiente;
       try { window.speechSynthesis.speak(u); } catch { listo(); }
