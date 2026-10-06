@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { ItemAnimado, ListaAnimada, RESORTE } from '../components/ui/movimiento';
 import { FotoClienta } from '../components/ui/FotoClienta';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -389,17 +390,22 @@ export const CalendarScreen: React.FC = () => {
                     // Las categorías del salón (las crea la dueña en Catálogo)
                     ...categoriasDe('service').map(c => ({ id: c.key, label: `${c.icon ?? ''} ${c.name}`.trim() })),
                   ].map(cat => (
-                    <button
+                    <motion.button
                       key={cat.id}
+                      whileTap={{ scale: 0.94 }}
                       onClick={() => setSelectedCategory(cat.id as any)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ios-touch cursor-pointer ${
+                      className={`relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ios-touch cursor-pointer ${
                         selectedCategory === cat.id
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-2xs'
+                          ? 'text-white dark:text-slate-900 font-bold'
                           : 'bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-400 border border-slate-200/80 dark:border-neutral-800'
                       }`}
                     >
-                      {cat.label}
-                    </button>
+                      {selectedCategory === cat.id && (
+                        <motion.span layoutId="agenda-categoria" transition={RESORTE}
+                          className="absolute inset-0 rounded-full bg-slate-900 dark:bg-white shadow-2xs" />
+                      )}
+                      <span className="relative">{cat.label}</span>
+                    </motion.button>
                   ))}
                 </div>
 
@@ -419,15 +425,14 @@ export const CalendarScreen: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  /* Al cambiar de día o de vista las citas vuelven a entrar en cascada; al filtrar, se reacomodan */
+                  <ListaAnimada className="space-y-2.5" clave={`${currentDateStr}-${granularity}`}>
                     {visible.map((apt, idx) => (
-                      <motion.div
+                      <ItemAnimado
                         key={apt.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.04 }}
+                        indice={idx}
                         onClick={() => setActiveAppointment(apt)}
-                        className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer ios-touch flex items-start gap-3"
+                        className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-start gap-3"
                       >
                         <div className="flex flex-col items-center justify-center min-w-[50px] pt-0.5">
                           <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">{hora12(apt.time)}</span>
@@ -460,9 +465,9 @@ export const CalendarScreen: React.FC = () => {
                             <span className="font-semibold text-slate-700 dark:text-slate-300">{dinero(apt.price, apt.currencyCode)}</span>
                           </div>
                         </div>
-                      </motion.div>
+                      </ItemAnimado>
                     ))}
-                  </div>
+                  </ListaAnimada>
                 )}
               </div>
             );

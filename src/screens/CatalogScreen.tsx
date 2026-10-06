@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Aparecer, ChipsFiltro } from '../components/ui/movimiento';
+import { AnimatePresence } from 'motion/react';
 import {
   Sparkles,
   Scissors,
@@ -550,27 +551,14 @@ export const CatalogScreen: React.FC = () => {
         </div>
 
         {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-          {[
+        <ChipsFiltro
+          valor={selectedCategory}
+          onCambio={setSelectedCategory}
+          opciones={[
             { id: 'all', label: activeTab === 'services' ? 'Todos los servicios' : 'Todos los productos' },
             ...categoriasDe(activeTab === 'services' ? 'service' : 'product').map(c => ({ id: c.key, label: `${c.icon ?? ''} ${c.name}`.trim() })),
-          ].map(c => {
-            const isSelected = selectedCategory === c.id;
-            return (
-              <button
-                key={c.id}
-                onClick={() => setSelectedCategory(c.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ios-touch cursor-pointer ${
-                  isSelected
-                    ? 'bg-[var(--primary)] text-white shadow-xs font-bold'
-                    : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-neutral-300 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
-                }`}
-              >
-                {c.label}
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
 
         {/* Informative AI Bot Sync Banner */}
         <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-rose-500/10 border border-purple-500/20 flex items-center justify-between gap-3 text-xs">
@@ -609,11 +597,10 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              filteredServices.map(service => (
-                <motion.div
+              filteredServices.map((service, i) => (
+                <Aparecer
                   key={service.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  indice={i}
                   className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3"
                 >
                   {/* Service Header */}
@@ -739,7 +726,7 @@ export const CatalogScreen: React.FC = () => {
                       {service.aiAvailable ? '✓ Activo' : 'Inactivo'}
                     </button>
                   </div>
-                </motion.div>
+                </Aparecer>
               ))
             )}
           </div>
@@ -765,11 +752,10 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              filteredProducts.map(product => (
-                <motion.div
+              filteredProducts.map((product, i) => (
+                <Aparecer
                   key={product.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  indice={i}
                   className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3"
                 >
                   {/* Product Header */}
@@ -934,7 +920,7 @@ export const CatalogScreen: React.FC = () => {
                       {product.aiAvailable ? '✓ Activo' : 'Inactivo'}
                     </button>
                   </div>
-                </motion.div>
+                </Aparecer>
               ))
             )}
           </div>

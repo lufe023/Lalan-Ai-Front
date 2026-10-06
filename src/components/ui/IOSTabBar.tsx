@@ -379,16 +379,24 @@ export const IOSTabBar: React.FC = () => {
                 key={tab.id}
                   data-medir={`Menú: ${tab.label}`}
                 onClick={() => navigateTo(tab.id)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left cursor-pointer ios-touch group
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors w-full text-left cursor-pointer ios-touch group
                   ${isActive
-                    ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                    ? 'text-[var(--primary)]'
                     : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800/60 hover:text-slate-900 dark:hover:text-white'
                   }`}
               >
-                <Icon className={`w-5 h-5 shrink-0 transition-transform ${isActive ? 'stroke-[2.2] scale-110' : 'stroke-[1.8]'}`} />
-                <span className="text-sm font-medium flex-1 truncate">{tab.label}</span>
+                {/* El fondo de la elegida se desliza de una opción a otra */}
+                {isActive && (
+                  <motion.span
+                    layoutId="menuLateralActivo"
+                    className="absolute inset-0 rounded-xl bg-[var(--primary)]/10"
+                    transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                  />
+                )}
+                <Icon className={`relative w-5 h-5 shrink-0 transition-transform ${isActive ? 'stroke-[2.2] scale-110' : 'stroke-[1.8]'}`} />
+                <span className="relative text-sm font-medium flex-1 truncate">{tab.label}</span>
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center shrink-0 tabular-nums ${
+                  <span className={`relative min-w-[18px] h-[18px] px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center shrink-0 tabular-nums ${
                     tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
                   }`}>
                     {tab.badge}

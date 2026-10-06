@@ -181,10 +181,11 @@ const MainAppContent: React.FC = () => {
                   <motion.div
                     key={currentScreen}
                     data-pantalla={currentScreen}
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+                    /* La pantalla nueva sube y se asienta con resorte; la vieja se va rápido
+                       (si la salida tardara lo mismo, cambiar de pestaña se sentiría lento) */
+                    initial={{ opacity: 0, y: 14, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 380, damping: 32, mass: 0.8 } }}
+                    exit={{ opacity: 0, scale: 0.99, transition: { duration: 0.12, ease: 'easeIn' } }}
                     className="w-full flex-1 min-h-0 flex flex-col"
                   >
                     {renderCurrentScreen()}

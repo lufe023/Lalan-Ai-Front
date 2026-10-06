@@ -23,12 +23,17 @@ const DURACION_ENTRADA_MS = 700;
 const PrimeraVez = createContext(false);
 
 /** Una lista cuyas tarjetas entran en cascada y se reacomodan solas */
-export const ListaAnimada: React.FC<{ className?: string; children: React.ReactNode }> = ({ className, children }) => {
+/**
+ * `clave`: cuando cambia (otro día en la Agenda, otra pestaña), la lista
+ * vuelve a entrar en cascada como si se abriera de nuevo.
+ */
+export const ListaAnimada: React.FC<{ className?: string; clave?: string; children: React.ReactNode }> = ({ className, clave, children }) => {
   const [primeraVez, setPrimeraVez] = useState(true);
   useEffect(() => {
+    setPrimeraVez(true);
     const t = window.setTimeout(() => setPrimeraVez(false), DURACION_ENTRADA_MS);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [clave]);
   return (
     <PrimeraVez.Provider value={primeraVez}>
       <motion.div layout className={className}>
@@ -38,14 +43,18 @@ export const ListaAnimada: React.FC<{ className?: string; children: React.ReactN
   );
 };
 
-type PropsItem = Omit<React.ComponentProps<typeof motion.div>, 'initial' | 'animate' | 'exit' | 'transition' | 'layout'> & { indice?: number };
+type PropsItem = Omit<React.ComponentProps<typeof motion.div>, 'initial' | 'animate' | 'exit' | 'transition' | 'layout'> & {
+  indice?: number;
+  /** false para tarjetas que no se abren al tocarlas (llevan sus propios botones) */
+  tocable?: boolean;
+};
 
 /**
  * Una tarjeta de la lista. Lleva `key` estable (el id): así, si sube al
  * primer lugar, se ve subir. Al tocarla se hunde un poco; en la computadora
  * se levanta al pasar el mouse.
  */
-export const ItemAnimado = React.forwardRef<HTMLDivElement, PropsItem>(({ indice = 0, ...props }, ref) => {
+export const ItemAnimado = React.forwardRef<HTMLDivElement, PropsItem>(({ indice = 0, tocable = true, ...props }, ref) => {
   const primeraVez = useContext(PrimeraVez);
   const retraso = primeraVez ? Math.min(indice, MAXIMO_EN_CASCADA) * PASO_CASCADA_S : 0;
   return (
@@ -55,8 +64,7 @@ export const ItemAnimado = React.forwardRef<HTMLDivElement, PropsItem>(({ indice
       initial={{ opacity: 0, y: primeraVez ? 14 : 6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1, transition: { ...RESORTE, delay: retraso } }}
       exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15 } }}
-      whileTap={{ scale: 0.975 }}
-      whileHover={{ y: -2 }}
+      {...(tocable ? { whileTap: { scale: 0.975 }, whileHover: { y: -2 } } : {})}
       transition={RESORTE}
       {...props}
     />
@@ -107,18 +115,48 @@ export function ChipsFiltro<T extends string>({ opciones, valor, onCambio, class
   );
 }
 
-/** Un número que cuenta hasta su valor en vez de cambiar de golpe ("20 de 130") */
-export const NumeroAnimado: React.FC<{ valor: number }> = ({ valor }) => {
+/**
+ * Un número que cuenta hasta su valor en vez de cambiar de golpe ("20 de
+ * 130", "RD$12,500"). Al cambiar de periodo en Métricas, sube o baja
+ * contando. `formato` decide cómo se escribe (dinero, porcentaje…).
+ */
+export const NumeroAnimado: React.FC<{ valor: number; formato?: (n: number) => string; decimales?: boolean }> = ({ valor, formato, decimales }) => {
   const mv = useMotionValue(valor);
-  const texto = useTransform(mv, (v) => Math.round(v).toLocaleString('es-DO'));
+  const texto = useTransform(mv, (v) => (formato ? formato(decimales ? v : Math.round(v)) : Math.round(v).toLocaleString('es-DO')));
   const primero = useRef(true);
   useEffect(() => {
-    if (primero.current) { primero.current = false; mv.set(valor); return; }
-    const c = animate(mv, valor, { duration: 0.5, ease: [0.22, 1, 0.36, 1] });
+    // La primera vez cuenta desde cero (se ve "llegar" el número); después, desde el anterior
+    const desde = primero.current ? 0 : mv.get();
+    primero.current = false;
+    mv.set(desde);
+    const c = animate(mv, valor, { duration: 0.7, ease: [0.22, 1, 0.36, 1] });
     return () => c.stop();
   }, [valor, mv]);
   return <motion.span>{texto}</motion.span>;
 };
+
+type PropsAparecer = Omit<React.ComponentProps<typeof motion.div>, 'initial' | 'whileInView' | 'viewport' | 'transition'> & {
+  indice?: number;
+  /** Se hunde un poco al tocarla (para tarjetas que abren algo) */
+  tocable?: boolean;
+};
+
+/**
+ * Una tarjeta o sección que sube suave al aparecer en pantalla (también al
+ * bajar con el dedo: entra cuando se asoma, una sola vez).
+ */
+export const Aparecer = React.forwardRef<HTMLDivElement, PropsAparecer>(({ indice = 0, tocable, ...props }, ref) => (
+  <motion.div
+    ref={ref}
+    initial={{ opacity: 0, y: 16, scale: 0.985 }}
+    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+    viewport={{ once: true, margin: '0px 0px -24px 0px' }}
+    transition={{ ...RESORTE, delay: Math.min(indice, MAXIMO_EN_CASCADA) * PASO_CASCADA_S }}
+    {...(tocable ? { whileTap: { scale: 0.98 } } : {})}
+    {...props}
+  />
+));
+Aparecer.displayName = 'Aparecer';
 
 /** El globito de "nuevo": aparece con un saltito y vuelve a saltar cuando sube la cuenta */
 export const Insignia: React.FC<{ cuenta: number; className?: string; children: React.ReactNode }> = ({ cuenta, className, children }) => (
