@@ -7,7 +7,8 @@ import { IOSModal } from '../ui/IOSModal';
 import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../../utils/metaSdk';
 import type { CommunicationChannel } from '../../types';
 
-interface Pagina { id: string; nombre: string; instagram: string | null }
+/** Lo que llega de cada página (nunca su token). Foto, seguidores y negocio sirven para reconocer la correcta */
+interface Pagina { id: string; nombre: string; instagram: string | null; foto?: string | null; seguidores?: number | null; negocio?: string | null }
 interface Sede { id: string; name: string }
 
 const BOTONES: { canal: CommunicationChannel; texto: string; Icono: React.FC<{ className?: string }>; color: string }[] = [
@@ -167,9 +168,16 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
           {elegir?.paginas.map((p) => (
             <button key={p.id} type="button" disabled={!!ocupado || (!marcados.messenger && !(marcados.instagram && p.instagram))} onClick={() => void usarPagina(p)}
               className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] disabled:opacity-40 cursor-pointer text-left">
-              <Facebook className="w-5 h-5 text-[#1877F2] shrink-0" />
+              {p.foto
+                ? <img src={p.foto} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" referrerPolicy="no-referrer" />
+                : <Facebook className="w-5 h-5 text-[#1877F2] shrink-0" />}
               <span className="flex-1 min-w-0">
                 <b className="text-sm block truncate">{p.nombre}</b>
+                {(p.negocio || p.seguidores != null) && (
+                  <span className="text-[0.75rem] text-slate-500 block truncate">
+                    {[p.negocio, p.seguidores != null ? `${p.seguidores.toLocaleString('es-DO')} seguidores` : null].filter(Boolean).join(' · ')}
+                  </span>
+                )}
                 <span className="text-[0.75rem] text-slate-500">{p.instagram ? `Instagram vinculado: ${p.instagram}` : 'Sin Instagram profesional vinculado'}</span>
               </span>
               {ocupado && <Loader2 className="w-4 h-4 animate-spin" />}
