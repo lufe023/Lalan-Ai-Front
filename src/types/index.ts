@@ -419,6 +419,10 @@ export interface SalonBusinessSettings {
   alertsEnabled: boolean;
   alertPhone: string | null;
   alertContactName: string | null;
+  /** Mensajes que cobra Meta: el aviso a la dueña aunque no haya escrito en 24 h */
+  avisosPagados: boolean;
+  /** Mensajes que cobra Meta: el recordatorio aunque la clienta no haya escrito en 24 h */
+  recordatoriosPagados: boolean;
   /** Recordatorios de cita a la clienta por WhatsApp (si el plan los incluye) */
   remindersEnabled: boolean;
   /** Uno el día antes, a la hora de la cita */

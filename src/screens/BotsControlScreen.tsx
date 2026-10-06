@@ -398,6 +398,16 @@ export const BotsControlScreen: React.FC = () => {
                 />
               </div>
             </div>
+            {settings.alertsEnabled && (
+              <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-[0.75rem] text-amber-900 dark:text-amber-100">
+                <span>
+                  <b className="block">Aunque Meta lo cobre</b>
+                  Si no le has escrito a {agente} en 24 h, el aviso es una plantilla y Meta la cobra a tu cuenta de WhatsApp.
+                  Apagado, solo te avisa por WhatsApp dentro de esas 24 h (gratis); fuera, te llega la notificación de la app.
+                </span>
+                <IOSToggle id="toggle-avisos-pagados" checked={settings.avisosPagados} onChange={val => updateSettings({ avisosPagados: val })} activeColor="#d97706" />
+              </label>
+            )}
             <button
               type="button"
               onClick={probarAviso}
@@ -442,6 +452,14 @@ export const BotsControlScreen: React.FC = () => {
                   >
                     {HORAS_RECORDATORIO.map(o => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                   </select>
+                </label>
+                <label className="sm:col-span-2 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-[0.75rem] text-amber-900 dark:text-amber-100">
+                  <span>
+                    <b className="block">Aunque Meta lo cobre</b>
+                    Si la clienta no ha escrito en 24 h, el recordatorio es una plantilla y Meta la cobra a tu cuenta de WhatsApp.
+                    Apagado, solo se le recuerda a quien tiene la conversación abierta (gratis).
+                  </span>
+                  <IOSToggle id="toggle-recordatorios-pagados" checked={settings.recordatoriosPagados} onChange={val => updateSettings({ recordatoriosPagados: val })} activeColor="#d97706" />
                 </label>
               </div>
             )}

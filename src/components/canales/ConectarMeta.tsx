@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { IOSModal } from '../ui/IOSModal';
 import { PlantillasWhatsapp } from './PlantillasWhatsapp';
+import { CostosWhatsapp } from './CostosWhatsapp';
 import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../../utils/metaSdk';
 import { conectarSoloInstagram } from '../../utils/instagramLogin';
 import type { CommunicationChannel } from '../../types';
@@ -173,6 +174,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
 
       {/* Con WhatsApp conectado: las plantillas que Lalan usa para escribir primero */}
       {conectado('whatsapp') && <PlantillasWhatsapp key={sede} sede={sede || undefined} />}
+      {conectado('whatsapp') && <CostosWhatsapp key={`costos-${sede}`} sede={sede || undefined} />}
 
       {cfg && currentUser?.role === 'super_admin' && !!(cfg.faltan?.length || cfg.faltanSoloInstagram?.length) && (
         <p className="text-[0.6875rem] text-slate-400">
