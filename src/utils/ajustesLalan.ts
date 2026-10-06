@@ -12,7 +12,7 @@ export interface AjustesLalan {
   motorVoz: 'aparato' | 'melotts' | 'aura2'; vozAura: string;
   vocesPreferidas: string; velocidadVoz: number; tonoVoz: number;
   papelTapiz: boolean; intensidadPapel: number; tamanoPapel: number; tamanoEsfera: number;
-  estiloEsfera: string; colorEsfera: string; ritmoEsfera: number;
+  estiloEsfera: string; colorEsfera: string; ritmoEsfera: number; reaccionEsfera: number;
 }
 
 export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
@@ -22,7 +22,7 @@ export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
   motorVoz: 'aparato', vozAura: 'celeste',
   vocesPreferidas: 'Paulina, Google español de Estados Unidos, Mónica, Google español', velocidadVoz: 1.02, tonoVoz: 1.05,
   papelTapiz: true, intensidadPapel: 7, tamanoPapel: 230, tamanoEsfera: 150,
-  estiloEsfera: 'aurora', colorEsfera: 'marca', ritmoEsfera: 1,
+  estiloEsfera: 'aurora', colorEsfera: 'marca', ritmoEsfera: 1, reaccionEsfera: 1,
 };
 
 /** Las voces en español de Aura-2 (mismas que el servidor: asistente-ajustes.contrato.ts) */

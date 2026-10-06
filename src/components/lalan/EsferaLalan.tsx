@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ajustesLalan } from '../../utils/ajustesLalan';
-import { nivelDeLalan } from '../../utils/vozLalan';
+import { nivelDeLalan, ritmoDeHabla } from '../../utils/vozLalan';
 
 export type ModoEsfera = 'reposo' | 'escuchando' | 'pensando' | 'hablando';
 
@@ -111,11 +111,18 @@ function aurora(ctx: CanvasRenderingContext2D, p: Paleta, k: Momento) {
 
 /** Una perla tornasolada: un solo cuerpo que gira sus reflejos */
 function perla(ctx: CanvasRenderingContext2D, p: Paleta, k: Momento) {
-  const { m, giro, escala } = k;
+  const { m, giro, escala, empuje } = k;
   const r = m * 0.6 * escala;
   ctx.save();
+  // Una perla que se ondula con la voz (en silencio, redonda)
   ctx.beginPath();
-  ctx.arc(m, m, r, 0, Math.PI * 2);
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    const rr = r * (1 + empuje * (Math.sin(a * 3 + giro * 2.2) * 0.06 + Math.sin(a * 5 - giro * 3.1) * 0.035));
+    const x = m + Math.cos(a) * rr, y = m + Math.sin(a) * rr;
+    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
+  ctx.closePath();
   ctx.clip();
   const fondo = ctx.createRadialGradient(m - r * 0.35, m - r * 0.4, r * 0.1, m, m, r);
   fondo.addColorStop(0, hsla(p, 0, 30, 1));
@@ -125,7 +132,7 @@ function perla(ctx: CanvasRenderingContext2D, p: Paleta, k: Momento) {
   // Reflejos de colores que giran (tornasol)
   if ('createConicGradient' in ctx) {
     const cono = (ctx as CanvasRenderingContext2D & { createConicGradient: (a: number, x: number, y: number) => CanvasGradient }).createConicGradient(giro * 0.8, m, m);
-    p.tonos.concat(p.tonos[0]).forEach((_, i, arr) => cono.addColorStop(i / (arr.length - 1), hsla(p, i, 14, 0.42)));
+    p.tonos.concat(p.tonos[0]).forEach((_, i, arr) => cono.addColorStop(i / (arr.length - 1), hsla(p, i, 14, 0.42 + empuje * 0.25)));
     ctx.fillStyle = cono;
     ctx.fillRect(0, 0, m * 2, m * 2);
   }
@@ -269,6 +276,8 @@ const FORMAS: Record<EstiloEsfera, (ctx: CanvasRenderingContext2D, p: Paleta, k:
 /** Cuánto tarda en seguir al sonido: sube rápido (que se note la sílaba) y baja con calma (que no tiemble) */
 const SUBIDA_S = 0.06;
 const BAJADA_S = 0.22;
+/** Con la reacción al máximo, la forma se mueve más pero sin romperse */
+const MAXIMO_EMPUJE = 1.6;
 
 /**
  * La esfera de Lalan, como la de Siri o Gemini: reacciona al sonido.
@@ -284,12 +293,16 @@ const BAJADA_S = 0.22;
 export const EsferaLalan: React.FC<{
   modo: ModoEsfera; nivel?: number; pulso?: number; tamano?: number;
   estilo?: EstiloEsfera; color?: ColorEsfera; ritmo?: number;
-}> = ({ modo, nivel = 0, pulso = 0, tamano = 200, estilo, color, ritmo }) => {
+  /** Cuánto reacciona al sonido (si no, el de Plataforma) */
+  reaccion?: number;
+  /** Vista previa: al "hablar" simula una voz (no hay audio de Lalan sonando) */
+  simulada?: boolean;
+}> = ({ modo, nivel = 0, pulso = 0, tamano = 200, estilo, color, ritmo, reaccion, simulada = false }) => {
   const lienzo = useRef<HTMLCanvasElement>(null);
   // `pulso` ya no mueve la esfera (el nivel de la voz lo lee ella misma, cuadro a cuadro); se acepta por compatibilidad
   void pulso;
-  const estado = useRef({ modo, nivel, suave: 0, giro: 0, estilo, color, ritmo });
-  Object.assign(estado.current, { modo, nivel, estilo, color, ritmo });
+  const estado = useRef({ modo, nivel, suave: 0, giro: 0, estilo, color, ritmo, reaccion, simulada });
+  Object.assign(estado.current, { modo, nivel, estilo, color, ritmo, reaccion, simulada });
 
   useEffect(() => {
     const c = lienzo.current;
@@ -315,10 +328,13 @@ export const EsferaLalan: React.FC<{
       if (!paleta || colorDeLaPaleta !== colorElegido) { paleta = paletaDe(colorElegido); colorDeLaPaleta = colorElegido; }
       const ritmoElegido = e.ritmo ?? aj.ritmoEsfera ?? 1;
       // A qué nivel quiere ir: la voz de la persona, la de Lalan o nada
-      const objetivo = e.modo === 'escuchando' ? Math.min(1, e.nivel * 1.4) : e.modo === 'hablando' ? nivelDeLalan(t) : 0;
+      const objetivo = e.modo === 'escuchando' ? Math.min(1, e.nivel * 1.4)
+        : e.modo === 'hablando' ? (e.simulada ? ritmoDeHabla(t, t - (t % 600)) : nivelDeLalan(t)) : 0;
       const tau = objetivo > e.suave ? SUBIDA_S : BAJADA_S;
       e.suave += (objetivo - e.suave) * (1 - Math.exp(-dt / tau));
-      const empuje = quieta ? e.suave * 0.3 : e.suave;
+      // "Reacción a la voz" (Plataforma → Lalan): cuánto se mueve con el sonido. Con tope, para que no se deforme de más
+      const reaccionElegida = e.reaccion ?? aj.reaccionEsfera ?? 1;
+      const empuje = Math.min(MAXIMO_EMPUJE, e.suave * reaccionElegida) * (quieta ? 0.3 : 1);
       // Con más sonido gira un poco más rápido: la forma "fluye" con la voz en vez de solo inflarse
       const velocidad = ((e.modo === 'pensando' ? 3.2 : e.modo === 'hablando' ? 1.1 : e.modo === 'escuchando' ? 1.0 : 0.6) + empuje * 1.4) * ritmoElegido;
       if (!quieta) e.giro += dt * velocidad;

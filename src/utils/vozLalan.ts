@@ -220,7 +220,7 @@ export function nivelDeLalan(t = performance.now()): number {
 }
 
 /** Sílabas (~4–7 por segundo) que no se repiten, más un empujón al empezar cada palabra */
-function ritmoDeHabla(t: number, palabra: number) {
+export function ritmoDeHabla(t: number, palabra: number) {
   const s = t / 1000;
   const silabas = 0.5 + 0.28 * Math.sin(s * 2 * Math.PI * 4.3) + 0.16 * Math.sin(s * 2 * Math.PI * 6.7 + 1.3) + 0.1 * Math.sin(s * 2 * Math.PI * 2.1 + 2.6);
   const empujon = Math.exp(-(t - palabra) / 260);
