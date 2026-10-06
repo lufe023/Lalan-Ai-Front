@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -16,6 +16,7 @@ import {
   Armchair,
   Globe2,
   BarChart3,
+  X,
 } from 'lucide-react';
 import { LogoLalan } from './LogoLalan';
 import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
@@ -170,6 +171,29 @@ export const IOSTabBar: React.FC = () => {
 
   const ytTrack = ytQueue[ytIndex];
   const ytActive = !!ytTrack;
+  /* El mini reproductor sale cuando de verdad sonó algo (elegir una clienta
+     arma su lista, pero eso no es motivo para taparle la pantalla) y se
+     puede cerrar con la ✕: pausa y se esconde hasta que vuelva a sonar. */
+  const [yaSono, setYaSono] = useState(false);
+  const [miniCerrado, setMiniCerrado] = useState(false);
+  useEffect(() => {
+    if (ytPlaying) { setYaSono(true); setMiniCerrado(false); }
+  }, [ytPlaying]);
+  const ytVisible = ytActive && yaSono && !miniCerrado;
+  const cerrarMini = () => {
+    if (ytPlaying) ytToggle();
+    if (isPlayingLounge) togglePlayLounge();
+    setMiniCerrado(true);
+  };
+  const botonCerrarMini = (
+    <button
+      onClick={(e) => { e.stopPropagation(); cerrarMini(); }}
+      className="w-7 h-7 rounded-full text-slate-400 hover:text-rose-500 flex items-center justify-center transition cursor-pointer"
+      title="Cerrar el reproductor" aria-label="Cerrar el reproductor"
+    >
+      <X className="w-3.5 h-3.5" />
+    </button>
+  );
 
   /**
    * Mini reproductor de YouTube: el <div> con ref es el ancla donde
@@ -237,6 +261,7 @@ export const IOSTabBar: React.FC = () => {
           >
             <SkipForward className="w-3 h-3 fill-current" />
           </button>
+          {botonCerrarMini}
         </div>
       </div>
     </div>
@@ -246,7 +271,8 @@ export const IOSTabBar: React.FC = () => {
     // YouTube manda: si hay cola, el mini reproductor es el suyo. Se mantiene
     // visible incluso dentro del Lounge, porque cuando la tarjeta grande
     // muestra la portada el video necesita seguir teniendo dónde vivir.
-    if (ytActive) return renderYtMini(compact);
+    if (ytVisible) return renderYtMini(compact);
+    if (ytActive) return null;
     if (!currentTrack || !isPlayingLounge || currentScreen === 'lounge') return null;
     return (
       <div
@@ -282,6 +308,7 @@ export const IOSTabBar: React.FC = () => {
               <button onClick={nextLoungeTrack} className="w-7 h-7 rounded-full text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition cursor-pointer" title="Siguiente">
                 <SkipForward className="w-3.5 h-3.5 fill-current" />
               </button>
+              {botonCerrarMini}
             </div>
           </div>
         ) : (
@@ -374,7 +401,7 @@ export const IOSTabBar: React.FC = () => {
 
         {/* Mini player in sidebar */}
         <AnimatePresence>
-          {(ytActive || (currentScreen !== 'lounge' && currentTrack && isPlayingLounge)) && (
+          {(ytVisible || (!ytActive && currentScreen !== 'lounge' && currentTrack && isPlayingLounge)) && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
               {renderMiniPlayer(false)}
             </motion.div>
@@ -407,7 +434,7 @@ export const IOSTabBar: React.FC = () => {
       <div className="lg:hidden flex flex-col">
         {/* Floating Mini-Player */}
         <AnimatePresence>
-          {(ytActive || (currentScreen !== 'lounge' && currentTrack && isPlayingLounge)) && (
+          {(ytVisible || (!ytActive && currentScreen !== 'lounge' && currentTrack && isPlayingLounge)) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
