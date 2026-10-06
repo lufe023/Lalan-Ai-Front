@@ -31,6 +31,7 @@ import { CascadingRibbonCalendar, CalendarGranularity } from '../components/ui/C
 import { hora12 } from '../utils/hora';
 import { SelectorHora } from '../components/ui/SelectorHora';
 import { CitasPendientes, citasPendientes } from '../components/agenda/CitasPendientes';
+import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
@@ -76,6 +77,8 @@ export const CalendarScreen: React.FC = () => {
   // ── UI State ─────────────────────────────────────────────────────────────
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | 'all'>('all');
   const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null);
+  /** La cita a la que se le está cambiando la especialista */
+  const [cambiandoDe, setCambiandoDe] = useState<Appointment | null>(null);
   /* Pendientes: la lista, y saltar al día de la cita elegida (el calendario se vuelve a montar en esa fecha) */
   const [verPendientes, setVerPendientes] = useState(false);
   const [irA, setIrA] = useState<{ fecha: Date; vez: number } | null>(null);
@@ -600,7 +603,23 @@ export const CalendarScreen: React.FC = () => {
                     {activeAppointment.durationMinutes} min
                     <span className="text-slate-300 dark:text-neutral-700">·</span>
                     {activeAppointment.staffName}
+                    {['pending', 'confirmed', 'confirmed_by_ai'].includes(activeAppointment.status)
+                      && new Date(activeAppointment.startsAt ?? `${activeAppointment.date}T${activeAppointment.time}`).getTime() > Date.now() && (
+                      <button type="button" onClick={() => setCambiandoDe(activeAppointment)}
+                        className="ml-1 px-2 py-0.5 rounded-lg text-[0.6875rem] font-bold text-[var(--primary)] bg-[var(--primary)]/10 cursor-pointer">
+                        Cambiar
+                      </button>
+                    )}
                   </div>
+                  {activeAppointment.cambioRespuesta && (() => {
+                    const de = activeAppointment.cambioEspecialistaDe?.split(' ')[0] ?? 'su especialista';
+                    const r = activeAppointment.cambioRespuesta;
+                    const [texto, color] = r === 'esperando' ? [`Le avisamos del cambio (antes con ${de}): esperando su respuesta`, 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300']
+                      : r === 'acepta' ? [`Aceptó el cambio (antes con ${de})`, 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300']
+                      : r === 'reagendo' ? [`Prefirió otro día (era con ${de})`, 'bg-sky-50 text-sky-800 dark:bg-sky-950/30 dark:text-sky-300']
+                      : [`No quiso el cambio y canceló (era con ${de})`, 'bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:text-rose-300'];
+                    return <div className={`mt-2 px-2.5 py-1.5 rounded-lg text-[0.75rem] font-semibold ${color}`}>{texto}</div>;
+                  })()}
                 </div>
 
                 {/* Plata. Lo que faltaba: cuánto queda por cobrar, que es la
@@ -1051,6 +1070,18 @@ export const CalendarScreen: React.FC = () => {
         )}
       </AnimatePresence>
       <CitasPendientes abierto={verPendientes} onCerrar={() => setVerPendientes(false)} citas={appointments} onAbrir={abrirPendiente} />
+      {cambiandoDe && (
+        <CambiarEspecialista
+          cita={{
+            id: cambiandoDe.id, clientName: cambiandoDe.clientName, clientPhone: cambiandoDe.clientPhone, serviceName: cambiandoDe.serviceName,
+            startsAt: cambiandoDe.startsAt ?? `${cambiandoDe.date}T${cambiandoDe.time}`, staffName: cambiandoDe.staffName,
+          }}
+          onCerrar={() => setCambiandoDe(null)}
+          onListo={({ cita }) => setActiveAppointment((a) => (a && a.id === cita.id
+            ? { ...a, staffId: cita.staffId, staffName: cita.staffName, cambioEspecialistaDe: cita.cambioEspecialistaDe, cambioRespuesta: cita.cambioRespuesta }
+            : a))}
+        />
+      )}
     </div>
   );
 };

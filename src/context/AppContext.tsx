@@ -122,6 +122,8 @@ export interface SalonStaff {
   zone?: { id: string; name: string; prefix: string; color?: string | null } | null;
   /** Su horario propio; null = trabaja todo el horario del salón */
   horarioSemanal?: import('../types').DiaDeHorario[] | null;
+  /** ¿Se le ponen citas? null = según su especialidad (el bartender no) */
+  atiendeCitas?: boolean | null;
 }
 
 export type QueueStatus = 'waiting' | 'called' | 'serving' | 'done' | 'cancelled' | 'no_show';
@@ -393,7 +395,7 @@ interface AppContextType {
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
   loadEspecialistas: () => Promise<void>;
-  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null }) => Promise<boolean>;
+  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null; atiendeCitas?: boolean | null }) => Promise<boolean>;
   eliminarEspecialista: (id: string) => Promise<void>;
   /** Da el turno: la persona llegó. Con appointmentId es una cita; sin él, walk-in */
   darTurno: (dto: { appointmentId?: string | null; clientId?: string | null; clientName?: string; zoneId?: string | null; staffId?: string | null; reason?: string | null }) => Promise<QueueTicket | null>;
@@ -754,6 +756,8 @@ function mapApiAppointment(a: any): Appointment {
     arrivedAt: a.arrivedAt ?? undefined, originalStartsAt: a.originalStartsAt ?? undefined,
     bookedByAssistant: !!a.bookedByAssistant, createdByName: a.createdByName ?? null,
     fueraDeHorario: !!a.fueraDeHorario,
+    staffId: a.staffId ?? null,
+    cambioEspecialistaDe: a.cambioEspecialistaDe ?? null, cambioRespuesta: a.cambioRespuesta ?? null,
   };
 }
 function mapApiConversation(c: any): Conversation {
