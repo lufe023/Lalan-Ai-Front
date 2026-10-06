@@ -5,12 +5,16 @@
  * revisa y envía ella: la asistente nunca envía nada.
  *
  * La conversación vive en sessionStorage (sobrevive a recargar la pestaña).
+ *
+ * La voz de Celeste es a pedido: un 🔊 en cada respuesta (cuando el servidor
+ * dice que le queda voz). Si la persona la usa una vez, las siguientes
+ * respuestas suenan solas hasta que la apague en la cabecera.
  */
 import { API, MODO_CALOR } from './api';
 import { registrar, visitaActual } from './medicion';
 
 type Rol = 'persona' | 'lalan';
-interface Mensaje { rol: Rol; texto: string }
+interface Mensaje { rol: Rol; texto: string; voz?: boolean }
 type Accion =
   | { tipo: 'ir'; seccion: string }
   | { tipo: 'formulario'; cual: 'piloto' | 'otro_negocio'; datos: Record<string, string> };
@@ -27,7 +31,7 @@ const ESPERA_LECTURA_MOVIL_MS = 3200;
 const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, el piloto gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
 const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo es lo del piloto gratis?', 'No tengo salón, tengo otro negocio'];
 
-interface Estado { id: string; mensajes: Mensaje[]; invitado: boolean }
+interface Estado { id: string; mensajes: Mensaje[]; invitado: boolean; hablando?: boolean }
 
 function leer(): Estado {
   try {
@@ -65,6 +69,7 @@ export function iniciarAsistente(): void {
       <header class="asis-cab">
         <span class="asis-logo">${LOGO}</span>
         <span class="asis-cab-txt"><b>Lalan</b><small><i></i> en línea · te contesto al momento</small></span>
+        <button type="button" class="asis-voz-modo" aria-pressed="true" title="Apagar la voz" hidden>🔊</button>
         <button type="button" class="asis-cerrar" aria-label="Cerrar">×</button>
       </header>
       <div class="asis-mensajes" aria-live="polite"></div>
@@ -87,13 +92,59 @@ export function iniciarAsistente(): void {
   const invita = $<HTMLDivElement>('.asis-invita');
   const punto = $<HTMLElement>('.asis-punto');
   let ocupado = false;
+  const modoVoz = $<HTMLButtonElement>('.asis-voz-modo');
+  let audio: HTMLAudioElement | null = null;
+  let sonando: HTMLButtonElement | null = null;
+
+  const pintarModoVoz = () => { modoVoz.hidden = !estado.hablando; };
+  const callar = () => {
+    audio?.pause(); audio = null;
+    sonando?.classList.remove('asis-sonando'); sonando = null;
+  };
+  /** Celeste dice la respuesta; si no queda voz, el botón se va y se sigue leyendo */
+  const decir = async (m: Mensaje, boton: HTMLButtonElement) => {
+    if (sonando === boton) { callar(); return; }
+    callar();
+    sonando = boton; boton.classList.add('asis-sonando', 'asis-cargando');
+    try {
+      const r = await fetch(`${API}/public/landing/voz`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversacionId: estado.id, texto: m.texto }),
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      const url = URL.createObjectURL(await r.blob());
+      if (sonando !== boton) { URL.revokeObjectURL(url); return; }
+      audio = new Audio(url);
+      audio.addEventListener('ended', () => { URL.revokeObjectURL(url); if (sonando === boton) callar(); });
+      await audio.play();
+      if (!estado.hablando) { estado.hablando = true; guardar(estado); pintarModoVoz(); }
+      registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'voz' });
+    } catch {
+      if (sonando === boton) callar();
+      // Sin voz (tope o fallo): se apaga para esta respuesta y la conversación sigue por escrito
+      m.voz = false; guardar(estado); boton.remove();
+    } finally {
+      boton.classList.remove('asis-cargando');
+    }
+  };
+  modoVoz.addEventListener('click', () => { estado.hablando = false; guardar(estado); callar(); pintarModoVoz(); });
 
   const burbuja = (m: Mensaje, animar = true) => {
     const b = document.createElement('div');
     b.className = `asis-b asis-${m.rol}${animar ? ' asis-entra' : ''}`;
     b.innerHTML = formatear(m.texto);
+    let boton: HTMLButtonElement | null = null;
+    if (m.rol === 'lalan' && m.voz) {
+      boton = document.createElement('button');
+      boton.type = 'button'; boton.className = 'asis-oir'; boton.setAttribute('aria-label', 'Escúchala');
+      boton.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z" fill="currentColor"/></svg><span>Escúchala</span>';
+      const bt = boton;
+      bt.addEventListener('click', () => void decir(m, bt));
+      b.appendChild(bt);
+    }
     lista.appendChild(b);
     lista.scrollTop = lista.scrollHeight;
+    return boton;
   };
   const pintarSugerencias = () => {
     sugerencias.innerHTML = '';
@@ -114,10 +165,11 @@ export function iniciarAsistente(): void {
       estado.mensajes.forEach((m) => burbuja(m, false));
       pintarSugerencias();
     }
+    pintarModoVoz();
     if (window.matchMedia('(pointer: fine)').matches) entrada.focus();
     registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'abrir' });
   };
-  const cerrar = () => { panel.hidden = true; raiz.classList.remove('asis-abierta'); lanzar.setAttribute('aria-expanded', 'false'); };
+  const cerrar = () => { callar(); panel.hidden = true; raiz.classList.remove('asis-abierta'); lanzar.setAttribute('aria-expanded', 'false'); };
 
   lanzar.addEventListener('click', () => (panel.hidden ? abrir() : cerrar()));
   $<HTMLButtonElement>('.asis-cerrar').addEventListener('click', cerrar);
@@ -180,13 +232,16 @@ export function iniciarAsistente(): void {
     try {
       const r = await fetch(`${API}/public/landing/asistente`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversacionId: estado.id, visitaId: visitaActual() ?? undefined, mensajes: estado.mensajes.slice(-MENSAJES_AL_SERVIDOR) }),
+        body: JSON.stringify({ conversacionId: estado.id, visitaId: visitaActual() ?? undefined, mensajes: estado.mensajes.slice(-MENSAJES_AL_SERVIDOR).map(({ rol, texto }) => ({ rol, texto })) }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d?.message || 'No pude responder ahora.');
       escribiendo.remove();
-      const resp: Mensaje = { rol: 'lalan', texto: String(d.texto || '') };
-      estado.mensajes.push(resp); guardar(estado); burbuja(resp);
+      const resp: Mensaje = { rol: 'lalan', texto: String(d.texto || ''), ...(d.voz ? { voz: true } : {}) };
+      estado.mensajes.push(resp); guardar(estado);
+      const oir = burbuja(resp);
+      // Ya pidió oírla antes: la respuesta nueva suena sola
+      if (oir && estado.hablando) void decir(resp, oir);
       // Primero se lee la respuesta, luego se mueve la página (en el teléfono la ventanita tapa todo: más tiempo para leer)
       const espera = window.matchMedia('(max-width: 640px)').matches ? ESPERA_LECTURA_MOVIL_MS : ESPERA_LECTURA_MS;
       (d.acciones as Accion[] | undefined)?.forEach((a, i) => setTimeout(() => ejecutar(a), espera + i * 300));
