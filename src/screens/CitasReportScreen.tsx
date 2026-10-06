@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
+import { Aparecer, NumeroAnimado } from '../components/ui/movimiento';
 import {
   CalendarClock, Clock, Users, Scissors, XCircle, Coffee, TrendingUp, Bot,
 } from 'lucide-react';
@@ -21,6 +22,13 @@ const hr12 = (h: number) =>
  * y cuánto cuesta de verdad atender a alguien una vez sumas lo que se le
  * sirvió mientras esperaba.
  */
+/** Cada bloque del informe sube suave al asomarse (fuera del componente: definido dentro se rearmaba y volvía a animar en cada cambio) */
+const Tarjeta: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <Aparecer className={`bg-white dark:bg-neutral-900 rounded-2xl border border-slate-200 dark:border-neutral-800 ${className}`}>
+    {children}
+  </Aparecer>
+);
+
 export const CitasReportScreen: React.FC = () => {
   const { goBack, navigateTo, baseCurrency, loadCurrencies } = useApp();
 
@@ -127,11 +135,6 @@ export const CitasReportScreen: React.FC = () => {
   const maxHora = Math.max(1, ...(informe?.porHora ?? []).map((h: any) => h.citas));
   const maxDia = Math.max(1, ...(informe?.porDiaSemana ?? []).map((d: any) => d.citas));
 
-  const Tarjeta: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white dark:bg-neutral-900 rounded-2xl border border-slate-200 dark:border-neutral-800 ${className}`}>
-      {children}
-    </div>
-  );
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-neutral-950">
@@ -164,8 +167,8 @@ export const CitasReportScreen: React.FC = () => {
               <p className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
                 Citas en el período
               </p>
-              <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {informe?.total ?? 0}
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums">
+                <NumeroAnimado valor={informe?.total ?? 0} />
               </div>
               <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500 mt-1">
                 {informe?.horasAgendadas ?? 0} h agendadas ·{' '}
@@ -363,7 +366,7 @@ export const CitasReportScreen: React.FC = () => {
                 { t: 'Tarde', v: informe.llegadas.tarde, c: 'text-amber-600' },
               ].map(x => (
                 <div key={x.t} className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
-                  <div className={`text-lg font-extrabold tabular-nums ${x.c}`}>{x.v}</div>
+                  <div className={`text-lg font-extrabold tabular-nums ${x.c}`}><NumeroAnimado valor={x.v} /></div>
                   <div className="text-[0.6875rem] text-slate-400">{x.t}</div>
                 </div>
               ))}

@@ -85,6 +85,11 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
               exit={{ y: -70, opacity: 0, scale: 0.95 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
               onClick={dismissToast}
+              // Como las notificaciones del iPhone: se quita empujándola hacia arriba
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0.6, bottom: 0.1 }}
+              onDragEnd={(_e, info) => { if (info.offset.y < -30 || info.velocity.y < -300) dismissToast(); }}
               className="absolute right-4 left-4 lg:left-auto lg:w-96 z-[200] p-3 rounded-2xl bg-neutral-900/95 text-white backdrop-blur-xl border border-white/15 shadow-2xl flex items-center justify-between gap-3 cursor-pointer top-safe-offset"
               style={{ top: 'var(--toast-safe-top, max(calc(env(safe-area-inset-top, 0px) + 12px), 56px))' }}
             >
