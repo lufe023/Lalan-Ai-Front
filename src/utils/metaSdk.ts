@@ -6,6 +6,8 @@
 export interface ConfigMeta {
   appId: string | null; whatsappConfigId: string | null; loginConfigId: string | null; version: string;
   whatsapp: boolean; paginas: boolean;
+  /** Variables que faltan en el servidor, por nombre (solo se le enseñan al equipo de Lalan) */
+  faltan?: string[];
 }
 
 /** Lo que devuelve el registro insertado de WhatsApp */
