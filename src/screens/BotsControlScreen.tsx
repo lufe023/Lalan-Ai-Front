@@ -182,7 +182,9 @@ export const BotsControlScreen: React.FC = () => {
                       {bot.name}
                     </h4>
                     <span className="text-[0.6875rem] text-slate-400">
-                      {bot.channelIdentifier ? haceCuanto(bot.actividad.ultimaRespuesta) : 'sin cuenta conectada'}
+                      {bot.channelIdentifier
+                        ? <>{bot.cuentaNombre && <span className="font-semibold text-slate-600 dark:text-neutral-300">{bot.cuentaNombre} · </span>}{haceCuanto(bot.actividad.ultimaRespuesta)}</>
+                        : 'sin cuenta conectada'}
                     </span>
                   </div>
                 </div>
@@ -220,7 +222,10 @@ export const BotsControlScreen: React.FC = () => {
                   placeholder="Sin conectar"
                   className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 />
-                <p className="text-[0.6875rem] text-slate-400 mt-1">{AYUDA_CUENTA[bot.id]}</p>
+                <p className="text-[0.6875rem] text-slate-400 mt-1">
+                  {bot.cuentaNombre && bot.channelIdentifier ? <span className="font-semibold text-slate-600 dark:text-neutral-300">Es {bot.cuentaNombre} · </span> : null}
+                  {AYUDA_CUENTA[bot.id]}
+                </p>
               </div>
               ) : !bot.channelIdentifier && (
                 <p className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 text-[0.75rem] text-slate-500">
@@ -393,6 +398,16 @@ export const BotsControlScreen: React.FC = () => {
                 />
               </div>
             </div>
+            {settings.alertsEnabled && (
+              <label className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-[0.75rem] text-amber-900 dark:text-amber-100">
+                <span>
+                  <b className="block">Aunque Meta lo cobre</b>
+                  Si no le has escrito a {agente} en 24 h, el aviso es una plantilla y Meta la cobra a tu cuenta de WhatsApp.
+                  Apagado, solo te avisa por WhatsApp dentro de esas 24 h (gratis); fuera, te llega la notificación de la app.
+                </span>
+                <IOSToggle id="toggle-avisos-pagados" checked={settings.avisosPagados} onChange={val => updateSettings({ avisosPagados: val })} activeColor="#d97706" />
+              </label>
+            )}
             <button
               type="button"
               onClick={probarAviso}
@@ -437,6 +452,14 @@ export const BotsControlScreen: React.FC = () => {
                   >
                     {HORAS_RECORDATORIO.map(o => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                   </select>
+                </label>
+                <label className="sm:col-span-2 flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-[0.75rem] text-amber-900 dark:text-amber-100">
+                  <span>
+                    <b className="block">Aunque Meta lo cobre</b>
+                    Si la clienta no ha escrito en 24 h, el recordatorio es una plantilla y Meta la cobra a tu cuenta de WhatsApp.
+                    Apagado, solo se le recuerda a quien tiene la conversación abierta (gratis).
+                  </span>
+                  <IOSToggle id="toggle-recordatorios-pagados" checked={settings.recordatoriosPagados} onChange={val => updateSettings({ recordatoriosPagados: val })} activeColor="#d97706" />
                 </label>
               </div>
             )}

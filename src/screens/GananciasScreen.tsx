@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
+import { NumeroAnimado, RESORTE } from '../components/ui/movimiento';
 import { TrendingUp, Info, Scissors, BarChart3, Download, Users, User, Package, Store } from 'lucide-react';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
@@ -431,8 +432,9 @@ export const GananciasScreen: React.FC = () => {
             <div className="flex bg-slate-100 dark:bg-neutral-800 rounded-xl p-0.5 gap-0.5">
               {(['bruto', 'neto'] as RevenueMode[]).map(m => (
                 <button key={m} onClick={() => setMode(m)}
-                  className={`px-3 py-1.5 rounded-lg text-[0.75rem] font-bold transition ios-touch cursor-pointer capitalize ${mode === m ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-400 dark:text-neutral-500'}`}>
-                  {m}
+                  className={`relative px-3 py-1.5 rounded-lg text-[0.75rem] font-bold transition-colors ios-touch cursor-pointer capitalize ${mode === m ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-neutral-500'}`}>
+                  {mode === m && <motion.span layoutId="ganancias-modo" transition={RESORTE} className="absolute inset-0 rounded-lg bg-white dark:bg-neutral-700 shadow-xs" />}
+                  <span className="relative">{m}</span>
                 </button>
               ))}
             </div>
@@ -456,8 +458,8 @@ export const GananciasScreen: React.FC = () => {
               <p className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-wider mb-1">
                 {mode === 'bruto' ? 'Ingresos brutos' : 'Ganancias netas'}
               </p>
-              <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {dinero(totalRevenue)}
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums">
+                <NumeroAnimado valor={totalRevenue} formato={dinero} />
               </div>
               <p className="text-[0.75rem] text-slate-400 dark:text-neutral-500 mt-1">
                 {count} {count === 1 ? 'venta cobrada' : 'ventas cobradas'}

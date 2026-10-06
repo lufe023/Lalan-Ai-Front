@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { NumeroAnimado } from '../components/ui/movimiento';
 import { pedirSeccionAjustes } from '../components/ajustes/MenuAjustes';
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from 'motion/react';
 import {
@@ -374,7 +375,7 @@ export const SalaScreen: React.FC = () => {
               { n: porLlegar.length, t: 'Por llegar', c: 'text-slate-500 dark:text-neutral-400' },
             ].map(x => (
               <div key={x.t} className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-center">
-                <div className={`text-xl font-extrabold tabular-nums ${x.c}`}>{x.n}</div>
+                <div className={`text-xl font-extrabold tabular-nums ${x.c}`}><NumeroAnimado valor={x.n} /></div>
                 <div className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400">{x.t}</div>
               </div>
             ))}

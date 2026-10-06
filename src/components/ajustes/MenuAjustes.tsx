@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'motion/react';
+import { RESORTE } from '../ui/movimiento';
 import { BellRing, Bot, ChevronRight, Monitor, Palette, Sparkles, Store, UserCircle2, Users, Wallet } from 'lucide-react';
 import type { UserRole } from '../../types';
 
@@ -49,10 +51,12 @@ export function tomarSeccionPedida(): SeccionAjustes | null {
 /** La lista corta de Ajustes, como en el iPhone: un grupo por fila */
 export const MenuAjustes: React.FC<{ rol?: UserRole; onAbrir: (s: SeccionAjustes) => void; avisoNotificaciones?: boolean }> = ({ rol, onAbrir, avisoNotificaciones }) => (
   <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs overflow-hidden divide-y divide-slate-100 dark:divide-neutral-800">
-    {gruposPara(rol).map((g) => {
+    {gruposPara(rol).map((g, i) => {
       const Icono = g.icono;
       return (
-        <button key={g.id} type="button" onClick={() => onAbrir(g.id)}
+        <motion.button key={g.id} type="button" onClick={() => onAbrir(g.id)}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...RESORTE, delay: i * 0.03 }}
+          whileTap={{ scale: 0.985, backgroundColor: 'rgba(148,163,184,0.12)' }}
           className="w-full px-3.5 py-3 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-neutral-800/60 ios-touch cursor-pointer">
           <span className={`w-8 h-8 rounded-xl ${g.color} text-white flex items-center justify-center shrink-0`}><Icono className="w-4 h-4" /></span>
           <span className="flex-1 min-w-0">
@@ -61,7 +65,7 @@ export const MenuAjustes: React.FC<{ rol?: UserRole; onAbrir: (s: SeccionAjustes
           </span>
           {g.id === 'cuenta' && avisoNotificaciones && <BellRing className="w-4 h-4 text-amber-500 shrink-0" aria-label="Notificaciones sin activar" />}
           <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
-        </button>
+        </motion.button>
       );
     })}
   </div>

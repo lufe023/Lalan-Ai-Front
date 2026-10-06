@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import { NumeroAnimado, RESORTE } from '../components/ui/movimiento';
 import { ArrowRight, BarChart3, CalendarCheck2, Gauge, Loader2, PackageSearch, Receipt, Wallet } from 'lucide-react';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
@@ -60,10 +62,11 @@ const ProductosLentos: React.FC = () => {
         </div>
         <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Periodo">
           {PERIODOS.map(p => (
-            <button key={p} type="button" role="radio" aria-checked={dias === p} onClick={() => setDias(p)}
-              className={`px-3 py-1 rounded-full text-[0.75rem] font-bold cursor-pointer ${dias === p ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'}`}>
-              {p} días
-            </button>
+            <motion.button key={p} type="button" role="radio" aria-checked={dias === p} onClick={() => setDias(p)} whileTap={{ scale: 0.94 }}
+              className={`relative px-3 py-1 rounded-full text-[0.75rem] font-bold cursor-pointer transition-colors ${dias === p ? 'text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'}`}>
+              {dias === p && <motion.span layoutId="informes-periodo" transition={RESORTE} className="absolute inset-0 rounded-full bg-slate-900 dark:bg-white" />}
+              <span className="relative">{p} días</span>
+            </motion.button>
           ))}
         </div>
       </header>
@@ -73,9 +76,9 @@ const ProductosLentos: React.FC = () => {
       {datos && (
         <>
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Sin salir</div><div className="text-xl font-extrabold tabular-nums">{datos.resumen.dormidos}</div></div>
-            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Lentos</div><div className="text-xl font-extrabold tabular-nums">{datos.resumen.lentos}</div></div>
-            <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/60 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">Dinero parado</div><div className="text-xl font-extrabold tabular-nums">{dinero(datos.resumen.dineroParado)}</div></div>
+            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Sin salir</div><div className="text-xl font-extrabold tabular-nums"><NumeroAnimado valor={datos.resumen.dormidos} /></div></div>
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Lentos</div><div className="text-xl font-extrabold tabular-nums"><NumeroAnimado valor={datos.resumen.lentos} /></div></div>
+            <div className="rounded-2xl bg-slate-50 dark:bg-neutral-800/60 p-3"><div className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-500">Dinero parado</div><div className="text-xl font-extrabold tabular-nums"><NumeroAnimado valor={datos.resumen.dineroParado} formato={dinero} /></div></div>
           </div>
           <label className="flex items-center gap-2 text-[0.75rem] text-slate-600 dark:text-neutral-300 cursor-pointer">
             <input type="checkbox" checked={conInsumos} onChange={e => setConInsumos(e.target.checked)} /> Incluir insumos (lo que se usa en los servicios)
@@ -94,8 +97,8 @@ const ProductosLentos: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
-                  {filas.map(f => (
-                    <tr key={f.id}>
+                  {filas.map((f, i) => (
+                    <motion.tr key={f.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ ...RESORTE, delay: Math.min(i, 12) * 0.025 }}>
                       <td className="py-2 pr-3"><div className="font-semibold">{f.nombre}</div><div className="text-[0.6875rem] text-slate-400">{f.categoria}{f.insumo ? ' · insumo' : ''}</div></td>
                       <td className="py-2 pr-3"><span className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-bold whitespace-nowrap ${ESTADO[f.estado].clase}`}>{ESTADO[f.estado].texto}</span></td>
                       <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">{f.existencia} {UNIDAD[f.unidad] ?? f.unidad}</td>
@@ -103,7 +106,7 @@ const ProductosLentos: React.FC = () => {
                       <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">{f.diasInventario === null ? '—' : `${f.diasInventario} días`}</td>
                       <td className="py-2 pr-3 text-right whitespace-nowrap">{f.ultimaSalida ? `hace ${f.diasSinSalida} días` : 'nunca'}</td>
                       <td className="py-2 text-right tabular-nums whitespace-nowrap font-semibold">{f.dineroParado ? dinero(f.dineroParado) : '—'}</td>
-                    </tr>
+                    </motion.tr>
                   ))}
                 </tbody>
               </table>
@@ -127,14 +130,16 @@ export const InformesScreen: React.FC = () => {
       <PageContent className="space-y-5">
         <InformesDeLalan />
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {accesos.map(a => (
-            <button key={a.pantalla} type="button" onClick={() => navigateTo(a.pantalla)} data-medir={`Informes: ${a.titulo}`}
-              className="text-left rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-[var(--primary)] transition cursor-pointer flex flex-col gap-2">
+          {accesos.map((a, i) => (
+            <motion.button key={a.pantalla} type="button" onClick={() => navigateTo(a.pantalla)} data-medir={`Informes: ${a.titulo}`}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ ...RESORTE, delay: i * 0.05 }} whileTap={{ scale: 0.97 }} whileHover={{ y: -3 }}
+              className="text-left rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-[var(--primary)] hover:shadow-md transition-[border-color,box-shadow] cursor-pointer flex flex-col gap-2">
               <span className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><a.icono className="w-5 h-5" /></span>
               <span className="text-sm font-bold">{a.titulo}</span>
               <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex-1">{a.texto}</span>
               <span className="text-[0.75rem] font-bold text-[var(--primary)] flex items-center gap-1">Abrir <ArrowRight className="w-3.5 h-3.5" /></span>
-            </button>
+            </motion.button>
           ))}
         </div>
         {tieneModulo('inventario')

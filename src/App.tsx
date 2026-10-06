@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -37,6 +37,7 @@ import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
 import { BotonLalan, PantallaLalan } from './components/lalan/PantallaLalan';
 import { Bienvenida } from './components/bienvenida/Bienvenida';
 import { AvisoBienvenida } from './components/bienvenida/AvisoBienvenida';
+import { RetornoInstagram } from './components/canales/RetornoInstagram';
 import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
@@ -163,6 +164,7 @@ const MainAppContent: React.FC = () => {
           <div className="flex-1 w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
             {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} />}
             <ChatsFlotantes />
+            <RetornoInstagram />
             <PantallaLalan />
             {/* La Bienvenida: configurar el salón paso a paso (se abre sola la primera vez) */}
             <Bienvenida />
@@ -179,10 +181,11 @@ const MainAppContent: React.FC = () => {
                   <motion.div
                     key={currentScreen}
                     data-pantalla={currentScreen}
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -12 }}
-                    transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+                    /* La pantalla nueva sube y se asienta con resorte; la vieja se va rápido
+                       (si la salida tardara lo mismo, cambiar de pestaña se sentiría lento) */
+                    initial={{ opacity: 0, y: 14, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 380, damping: 32, mass: 0.8 } }}
+                    exit={{ opacity: 0, scale: 0.99, transition: { duration: 0.12, ease: 'easeIn' } }}
                     className="w-full flex-1 min-h-0 flex flex-col"
                   >
                     {renderCurrentScreen()}
@@ -319,7 +322,10 @@ export default function App() {
       <AuthProvider>
         <PlanProvider>
         <AppProvider>
-          <MainAppContent />
+          {/* Quien pidió "reducir movimiento" en su teléfono ve las cosas cambiar sin deslizarse */}
+          <MotionConfig reducedMotion="user">
+            <MainAppContent />
+          </MotionConfig>
         </AppProvider>
         </PlanProvider>
       </AuthProvider>

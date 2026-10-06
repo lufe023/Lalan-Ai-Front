@@ -21,6 +21,7 @@ import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
+import { Aparecer, NumeroAnimado, RESORTE } from '../components/ui/movimiento';
 import { PageContent } from '../components/ui/PageContent';
 import { InventarioYMargenes } from '../components/metricas/InventarioYMargenes';
 import { useMetricas } from '../hooks/useMetricas';
@@ -60,14 +61,15 @@ const plural = (n: number, uno: string, varios: string) => `${n.toLocaleString('
 // ── Piezas ───────────────────────────────────────────────────────────────
 
 const Tarjeta: React.FC<{ className?: string; onClick?: () => void; children: React.ReactNode }> = ({ className = '', onClick, children }) => (
-  <div
+  <Aparecer
+    tocable={!!onClick}
     onClick={onClick}
     className={`p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs ${
       onClick ? 'cursor-pointer ios-touch hover:border-slate-300 dark:hover:border-neutral-700 transition' : ''
     } ${className}`}
   >
     {children}
-  </div>
+  </Aparecer>
 );
 
 const Titulo: React.FC<{ icono?: React.ReactNode; texto: string; nota?: React.ReactNode }> = ({ icono, texto, nota }) => (
@@ -98,17 +100,20 @@ const Variacion: React.FC<{ c: Comparado; contra: string }> = ({ c, contra }) =>
   );
 };
 
-const Kpi: React.FC<{ titulo: string; valor: string; comparado?: Comparado; contra: string; pie?: React.ReactNode; delay?: number }> = ({
-  titulo, valor, comparado, contra, pie, delay = 0,
+/** Un número grande: cuenta hasta su valor, y al cambiar de periodo sube o baja contando */
+const Kpi: React.FC<{ titulo: string; numero: number; formato?: (n: number) => string; comparado?: Comparado; contra: string; pie?: React.ReactNode; delay?: number }> = ({
+  titulo, numero, formato, comparado, contra, pie, delay = 0,
 }) => (
   <motion.div
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay }}
+    initial={{ opacity: 0, y: 14, scale: 0.97 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    transition={{ ...RESORTE, delay }}
     className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs flex flex-col gap-1.5 min-w-0"
   >
     <span className="text-[0.75rem] font-semibold text-slate-500 dark:text-neutral-400">{titulo}</span>
-    <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums truncate">{valor}</span>
+    <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums truncate">
+      <NumeroAnimado valor={numero} formato={formato} />
+    </span>
     {comparado && <Variacion c={comparado} contra={contra} />}
     {pie && <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-snug">{pie}</div>}
   </motion.div>
@@ -315,7 +320,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         <Kpi
           titulo="Cobrado"
-          valor={dinero(d.dinero.cobrado.actual)}
+          numero={d.dinero.cobrado.actual} formato={dinero}
           comparado={d.dinero.cobrado}
           contra={contra}
           pie={
@@ -333,7 +338,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
         />
         <Kpi
           titulo="Citas atendidas"
-          valor={citas.atendidas.actual.toLocaleString('es-DO')}
+          numero={citas.atendidas.actual}
           comparado={citas.atendidas}
           contra={contra}
           delay={0.04}
@@ -341,7 +346,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
         />
         <Kpi
           titulo="Ticket promedio"
-          valor={dinero(d.dinero.ticketPromedio.actual)}
+          numero={d.dinero.ticketPromedio.actual} formato={dinero}
           comparado={d.dinero.ticketPromedio}
           contra={contra}
           delay={0.08}
@@ -349,7 +354,7 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
         />
         <Kpi
           titulo="Clientas atendidas"
-          valor={clientas.atendidas.toLocaleString('es-DO')}
+          numero={clientas.atendidas}
           contra={contra}
           delay={0.12}
           pie={<>{plural(clientas.nuevas, 'nueva', 'nuevas')} · {clientas.recurrentes} volvieron</>}

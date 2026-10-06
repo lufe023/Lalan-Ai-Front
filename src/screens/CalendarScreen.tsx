@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { ItemAnimado, ListaAnimada, RESORTE } from '../components/ui/movimiento';
+import { FotoClienta } from '../components/ui/FotoClienta';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar as CalendarIcon,
@@ -32,6 +34,9 @@ import { CitasPendientes, citasPendientes } from '../components/agenda/CitasPend
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
+
+/** Cuántas clientas se sugieren mientras se escribe su nombre */
+const CLIENTAS_SUGERIDAS = 6;
 
 export const CalendarScreen: React.FC = () => {
   const { dinero } = useDinero();
@@ -243,7 +248,6 @@ export const CalendarScreen: React.FC = () => {
       // Vacío antes que inventado: un número falso ensucia el CRM y
       // manda WhatsApp a un desconocido
       clientPhone: newClientPhone.trim(),
-      clientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       serviceId: selectedSrv.id,
       serviceName: fullServiceName,
       serviceCategory: selectedSrv.category,
@@ -386,17 +390,22 @@ export const CalendarScreen: React.FC = () => {
                     // Las categorías del salón (las crea la dueña en Catálogo)
                     ...categoriasDe('service').map(c => ({ id: c.key, label: `${c.icon ?? ''} ${c.name}`.trim() })),
                   ].map(cat => (
-                    <button
+                    <motion.button
                       key={cat.id}
+                      whileTap={{ scale: 0.94 }}
                       onClick={() => setSelectedCategory(cat.id as any)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ios-touch cursor-pointer ${
+                      className={`relative px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ios-touch cursor-pointer ${
                         selectedCategory === cat.id
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-2xs'
+                          ? 'text-white dark:text-slate-900 font-bold'
                           : 'bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-400 border border-slate-200/80 dark:border-neutral-800'
                       }`}
                     >
-                      {cat.label}
-                    </button>
+                      {selectedCategory === cat.id && (
+                        <motion.span layoutId="agenda-categoria" transition={RESORTE}
+                          className="absolute inset-0 rounded-full bg-slate-900 dark:bg-white shadow-2xs" />
+                      )}
+                      <span className="relative">{cat.label}</span>
+                    </motion.button>
                   ))}
                 </div>
 
@@ -416,15 +425,14 @@ export const CalendarScreen: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  /* Al cambiar de día o de vista las citas vuelven a entrar en cascada; al filtrar, se reacomodan */
+                  <ListaAnimada className="space-y-2.5" clave={`${currentDateStr}-${granularity}`}>
                     {visible.map((apt, idx) => (
-                      <motion.div
+                      <ItemAnimado
                         key={apt.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.04 }}
+                        indice={idx}
                         onClick={() => setActiveAppointment(apt)}
-                        className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer ios-touch flex items-start gap-3"
+                        className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-start gap-3"
                       >
                         <div className="flex flex-col items-center justify-center min-w-[50px] pt-0.5">
                           <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">{hora12(apt.time)}</span>
@@ -457,9 +465,9 @@ export const CalendarScreen: React.FC = () => {
                             <span className="font-semibold text-slate-700 dark:text-slate-300">{dinero(apt.price, apt.currencyCode)}</span>
                           </div>
                         </div>
-                      </motion.div>
+                      </ItemAnimado>
                     ))}
-                  </div>
+                  </ListaAnimada>
                 )}
               </div>
             );
@@ -565,11 +573,7 @@ export const CalendarScreen: React.FC = () => {
 
               {/* ── Quién ───────────────────────────────────────────────── */}
               <div className={`p-4 rounded-3xl border ${acento.bg} ${acento.bd} flex items-center gap-4`}>
-                <img
-                  src={activeAppointment.clientAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                  alt={activeAppointment.clientName}
-                  className="w-14 h-14 rounded-2xl object-cover shadow-sm shrink-0"
-                />
+                <FotoClienta foto={activeAppointment.clientAvatar ?? clients.find(c => c.id === activeAppointment.clientId)?.avatar} nombre={activeAppointment.clientName} className="w-14 h-14 text-lg shadow-sm" />
                 <div className="min-w-0 flex-1">
                   <h4 className="font-bold text-base text-slate-900 dark:text-white truncate leading-tight">
                     {activeAppointment.clientName}
@@ -783,20 +787,54 @@ export const CalendarScreen: React.FC = () => {
         subtitle={`Agendando para el ${currentDateStr}`}
       >
         <form onSubmit={handleCreateAppointment} className="space-y-3 text-xs">
-          <div>
-            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Cliente del CRM (opcional)</label>
-            <select value={selectedClientId} onChange={e => handleSelectClient(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none">
-              <option value="">-- Nueva clienta --</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone}) - {c.totalVisits} visitas</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre *</label>
-            <input type="text" required placeholder="Ej: Camila Restrepo" value={newClientName}
-              onChange={e => { setNewClientName(e.target.value); if (selectedClientId) setSelectedClientId(''); }}
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
-          </div>
+          {/* Clienta: se reconoce por la cara antes que por el nombre */}
+          {(() => {
+            const elegida = selectedClientId ? clients.find(c => c.id === selectedClientId) : undefined;
+            if (elegida) return (
+              <div>
+                <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Clienta</label>
+                <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
+                  <FotoClienta foto={elegida.avatar} nombre={elegida.name} className="w-11 h-11 text-sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-[0.875rem] text-slate-900 dark:text-white truncate">{elegida.name}</div>
+                    <div className="text-slate-500 dark:text-neutral-400 truncate">{elegida.phone || 'Sin teléfono'} · {elegida.totalVisits} {elegida.totalVisits === 1 ? 'visita' : 'visitas'}</div>
+                  </div>
+                  <button type="button" onClick={() => { setSelectedClientId(''); setNewClientName(''); setNewClientPhone(''); }}
+                    className="shrink-0 font-bold text-[var(--primary)] cursor-pointer">Cambiar</button>
+                </div>
+              </div>
+            );
+            const texto = newClientName.trim().toLowerCase();
+            const digitos = texto.replace(/\D/g, '');
+            const parecidas = texto
+              ? clients.filter(c => c.name.toLowerCase().includes(texto) || (digitos.length >= 3 && c.phone.replace(/\D/g, '').includes(digitos))).slice(0, CLIENTAS_SUGERIDAS)
+              : [];
+            return (
+              <div>
+                <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Clienta *</label>
+                <input type="text" required placeholder="Escribe su nombre o teléfono" value={newClientName}
+                  onChange={e => setNewClientName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
+                {parecidas.length > 0 && (
+                  <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {parecidas.map(c => (
+                      <button key={c.id} type="button" onClick={() => handleSelectClient(c.id)}
+                        className="flex items-center gap-2.5 p-2 rounded-xl text-left bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] transition cursor-pointer">
+                        <FotoClienta foto={c.avatar} nombre={c.name} className="w-10 h-10 text-sm" />
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-semibold text-slate-900 dark:text-white truncate">{c.name}</span>
+                          <span className="block text-slate-500 dark:text-neutral-400 truncate">{c.phone || 'Sin teléfono'} · {c.totalVisits} {c.totalVisits === 1 ? 'visita' : 'visitas'}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {texto && !parecidas.length && (
+                  <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-neutral-400">No está en tus clientas: se le abre ficha nueva al guardar.</p>
+                )}
+              </div>
+            );
+          })()}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>

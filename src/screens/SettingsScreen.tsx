@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { RESORTE } from '../components/ui/movimiento';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   Palette,
   Sun,
@@ -317,7 +318,16 @@ export const SettingsScreen: React.FC = () => {
         onBack={() => abrirSeccion(null)}
       />
 
-      <PageContent className="space-y-4 text-xs">
+      <PageContent className="text-xs">
+        {/* Como en el iPhone: la sección entra desde la derecha y, al volver, el menú desde la izquierda */}
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={seccion ?? 'menu'}
+          initial={{ opacity: 0, x: seccion ? 28 : -28 }}
+          animate={{ opacity: 1, x: 0, transition: RESORTE }}
+          exit={{ opacity: 0, x: seccion ? -16 : 16, transition: { duration: 0.12 } }}
+          className="space-y-4"
+        >
         {!seccion && <MenuAjustes rol={currentUser?.role} onAbrir={abrirSeccion} />}
         {seccion === 'cuenta' && (
           <>
@@ -1722,6 +1732,8 @@ export const SettingsScreen: React.FC = () => {
 
           </>
         )}
+        </motion.div>
+        </AnimatePresence>
       </PageContent>
 
       {horarioDe && (() => {

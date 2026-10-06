@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
+import { RESORTE } from '../ui/movimiento';
 import {
   Calendar as CalendarIcon,
   CalendarDays,
@@ -545,7 +547,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                   <span className="text-sm font-extrabold mt-0.5">{yr}</span>
 
                   <span
-                    className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                    className={`relative text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-blue-600/10 text-blue-600 dark:text-blue-400'
                     }`}
                   >
@@ -586,7 +588,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                   <span className="text-sm font-extrabold mt-0.5">{mo.shortName}</span>
 
                   <span
-                    className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                    className={`relative text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-blue-600/10 text-blue-600 dark:text-blue-400'
                     }`}
                   >
@@ -617,26 +619,30 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                   onClick={() => handleSelectWeek(idx)}
                   className={`min-w-[105px] sm:min-w-[120px] py-2 px-2.5 rounded-xl flex flex-col items-center justify-center transition shrink-0 cursor-pointer relative ${
                     isSelected
-                      ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-xs font-bold scale-[1.02]'
+                      ? 'text-white font-bold'
                       : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                   }`}
                 >
-                  <span className="text-[0.6875rem] uppercase font-semibold opacity-85">
+                  {isSelected && (
+                    <motion.span layoutId="cinta-semana-elegida" transition={RESORTE}
+                      className="absolute inset-0 rounded-xl bg-blue-600 dark:bg-blue-500 shadow-md" />
+                  )}
+                  <span className="relative text-[0.6875rem] uppercase font-semibold opacity-85">
                     {wk.label}
                   </span>
-                  <span className="text-xs font-extrabold mt-0.5 whitespace-nowrap">
+                  <span className="relative text-xs font-extrabold mt-0.5 whitespace-nowrap">
                     {wk.rangeLabel}
                   </span>
 
                   <span
-                    className={`text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
+                    className={`relative text-[0.6875rem] px-1.5 py-0.2 rounded-full font-bold mt-1 ${
                       isSelected ? 'bg-white/20 text-white' : 'bg-blue-600/10 text-blue-600 dark:text-blue-400'
                     }`}
                   >
                     {weekEventsCount} eventos
                   </span>
 
-                  <span className="text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
+                  <span className="relative text-[0.6875rem] opacity-70 mt-0.5 flex items-center gap-0.5">
                     Ver Días <ArrowRight className="w-2.5 h-2.5" />
                   </span>
                 </button>
@@ -659,12 +665,21 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                   onClick={() => handleSelectDay(day)}
                   className={`min-w-[62px] sm:min-w-[68px] py-2 px-1 rounded-xl flex flex-col items-center justify-center transition shrink-0 cursor-pointer relative ${
                     isSelectedDay
-                      ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-xs font-bold scale-[1.04] ring-2 ring-blue-600 dark:ring-blue-400 ring-offset-1 dark:ring-offset-neutral-900'
+                      ? 'text-white font-bold'
                       : isInSelectedWeek
                       ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 font-semibold border border-blue-600/30 hover:bg-blue-600/15'
                       : 'text-slate-600 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800'
                   }`}
                 >
+                  {/* El día elegido: el círculo azul se desliza de un día al otro */}
+                  {isSelectedDay && (
+                    <motion.span
+                      layoutId="cinta-dia-elegido"
+                      transition={RESORTE}
+                      className="absolute inset-0 rounded-xl bg-blue-600 dark:bg-blue-500 shadow-md ring-2 ring-blue-600 dark:ring-blue-400 ring-offset-1 dark:ring-offset-neutral-900"
+                    />
+                  )}
+                  <span className="relative flex flex-col items-center">
                   {isInSelectedWeek && !isSelectedDay && (
                     <span className="text-[0.6875rem] uppercase font-black tracking-tighter opacity-80 -mt-1">
                       SEM {day.weekIndex + 1}
@@ -684,6 +699,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
                       title={`${count} eventos`}
                     />
                   )}
+                  </span>
                 </button>
               );
             })}

@@ -954,6 +954,8 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   alertsEnabled: false,
   alertPhone: null,
   alertContactName: null,
+  avisosPagados: true,
+  recordatoriosPagados: true,
   remindersEnabled: true,
   reminderDayBefore: true,
   reminderHoursBefore: 2,

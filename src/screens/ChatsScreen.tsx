@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { FotoClienta } from '../components/ui/FotoClienta';
 import { pedirSeccionAjustes } from '../components/ajustes/MenuAjustes';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -26,6 +27,7 @@ import { CommunicationChannel, ChatStatus, Conversation, ChatMessage } from '../
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSToggle } from '../components/ui/IOSToggle';
 import { PageContent } from '../components/ui/PageContent';
+import { ChipsFiltro, Insignia, ItemAnimado, ListaAnimada, NumeroAnimado, PuntoEstado, Vacio } from '../components/ui/movimiento';
 
 import { VentanaChat, getChannelBadge, getStatusIndicator, horaDeMensaje } from '../components/chats/VentanaChat';
 
@@ -88,7 +90,7 @@ export const ChatsScreen: React.FC = () => {
     <div id="chats-list-screen" className="relative flex-1 w-full h-full flex flex-col overflow-hidden">
       <IOSHeader
         title="Mensajes"
-        subtitle={`${conversations.length} conversaciones activas`}
+        subtitle={<><NumeroAnimado valor={conversations.length} /> conversaciones activas</>}
       />
 
       <PageContent className="space-y-3">
@@ -112,59 +114,37 @@ export const ChatsScreen: React.FC = () => {
         </div>
 
         {/* Channel Filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-          {[
+        <ChipsFiltro<CommunicationChannel | 'all'>
+          valor={selectedChannel}
+          onCambio={setSelectedChannel}
+          opciones={[
             { id: 'all', label: 'Todos' },
             { id: 'whatsapp', label: '🟢 WhatsApp' },
             { id: 'instagram', label: '🟣 Instagram DM' },
             { id: 'messenger', label: '🔵 Messenger' },
-          ].map(ch => {
-            const isSelected = selectedChannel === ch.id;
-            return (
-              <button
-                key={ch.id}
-                onClick={() => setSelectedChannel(ch.id as any)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ios-touch cursor-pointer ${
-                  isSelected
-                    ? 'bg-[var(--primary)] text-white shadow-xs font-bold'
-                    : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-neutral-300 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
-                }`}
-              >
-                {ch.label}
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
 
-        {/* Conversations List */}
-        <div className="space-y-2">
-          {filteredConversations.map(conv => (
-            <motion.div
+        {/* Conversations List: entran en cascada; el chat que recibe un mensaje sube deslizándose */}
+        <ListaAnimada className="space-y-2">
+          {filteredConversations.map((conv, i) => (
+            <ItemAnimado
               key={conv.id}
-              whileTap={{ scale: 0.98 }}
+              indice={i}
               onClick={() => setActiveConversationId(conv.id)}
-              className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer ios-touch flex items-center justify-between gap-3"
+              className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-center justify-between gap-3"
             >
               <div className="relative shrink-0">
-                <img
-                  src={conv.clientAvatar}
-                  alt={conv.clientName}
-                  className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-neutral-700"
-                />
-                <span
-                  className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-neutral-900 ${
-                    conv.status === 'ai_active'
-                      ? 'bg-purple-500'
-                      : conv.status === 'needs_attention'
-                      ? 'bg-amber-500'
-                      : 'bg-emerald-500'
-                  }`}
+                <FotoClienta foto={conv.clientAvatar} nombre={conv.clientName} className="w-12 h-12 text-base border border-slate-200 dark:border-neutral-700" />
+                <PuntoEstado
+                  late={conv.status === 'needs_attention'}
+                  className={conv.status === 'ai_active' ? 'bg-purple-500' : conv.status === 'needs_attention' ? 'bg-amber-500' : 'bg-emerald-500'}
                 />
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                  <h4 className={`text-xs text-slate-900 dark:text-white truncate ${conv.unreadCount > 0 ? 'font-extrabold' : 'font-bold'}`}>
                     {conv.clientName}
                   </h4>
                   <span className="text-[0.6875rem] text-slate-400 font-medium shrink-0">
@@ -172,7 +152,7 @@ export const ChatsScreen: React.FC = () => {
                   </span>
                 </div>
 
-                <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate mt-0.5">
+                <p className={`text-[0.75rem] truncate mt-0.5 ${conv.unreadCount > 0 ? 'text-slate-800 dark:text-neutral-200 font-semibold' : 'text-slate-500 dark:text-neutral-400'}`}>
                   {conv.lastMessage}
                 </p>
 
@@ -182,16 +162,15 @@ export const ChatsScreen: React.FC = () => {
                     {getStatusIndicator(conv.status)}
                   </div>
 
-                  {conv.unreadCount > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold">
-                      {conv.unreadCount} nuevo
-                    </span>
-                  )}
+                  <Insignia cuenta={conv.unreadCount} className="px-1.5 py-0.2 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold">
+                    {conv.unreadCount} nuevo
+                  </Insignia>
                 </div>
               </div>
-            </motion.div>
+            </ItemAnimado>
           ))}
-        </div>
+        </ListaAnimada>
+        <Vacio visible={conversations.length > 0 && filteredConversations.length === 0}>Ningún chat coincide con eso.</Vacio>
       </PageContent>
       {chatAbierto}
     </div>

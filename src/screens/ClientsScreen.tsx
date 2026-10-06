@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FotoClienta } from '../components/ui/FotoClienta';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -28,7 +29,8 @@ import {
   Contact,
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
-import { exportarContactos } from '../utils/contactos';
+import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
+import { ArchivoDeContactos, entregarContactos, prepararContactos, sePuedeCompartir } from '../utils/contactos';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +39,7 @@ import { Client, ClientTag, CommunicationChannel } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { PageContent } from '../components/ui/PageContent';
+import { ChipsFiltro, ItemAnimado, ListaAnimada, NumeroAnimado } from '../components/ui/movimiento';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { hora12 } from '../utils/hora';
 
@@ -64,17 +67,30 @@ export const ClientsScreen: React.FC = () => {
   // Toda la lista de clientas: solo la dirección puede sacarla del sistema
   const puedeExportar = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
   const [exportando, setExportando] = useState(false);
+  /** El archivo ya armado, esperando que toque "Guardar en Contactos" (Compartir pide un toque fresco) */
+  const [contactosListos, setContactosListos] = useState<ArchivoDeContactos | null>(null);
+  const resumenContactos = (c: ArchivoDeContactos) =>
+    `${c.cantidad} clientas${c.conFoto ? `, ${c.conFoto} con su foto` : ''}.`;
   const guardarEnTelefono = async () => {
     setExportando(true);
     try {
-      const n = await exportarContactos(settings?.salonName || 'mi salón');
-      showToast('Contactos listos', n
-        ? `${n} clientas en el archivo. Ábrelo en tu teléfono y elige «Agregar a contactos».`
-        : 'Todavía no hay clientas con teléfono.', 'success');
+      const listos = await prepararContactos(settings?.salonName || 'mi salón');
+      if (!listos.cantidad) { showToast('Sin contactos', 'Todavía no hay clientas con teléfono.', 'warning'); return; }
+      if (sePuedeCompartir(listos.archivo)) { setContactosListos(listos); return; }
+      await entregarContactos(listos.archivo);
+      showToast('Contactos listos', `${resumenContactos(listos)} Ábrelo en tu teléfono y elige «Agregar a contactos».`, 'success');
     } catch (e) {
       showToast('No se pudo preparar el archivo', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning');
     } finally {
       setExportando(false);
+    }
+  };
+  const compartirContactos = async () => {
+    if (!contactosListos) return;
+    const listos = contactosListos;
+    if (await entregarContactos(listos.archivo)) {
+      setContactosListos(null);
+      showToast('Elige «Contactos»', `${resumenContactos(listos)} En el menú, toca Contactos y luego «Agregar todos».`, 'success');
     }
   };
 
@@ -533,8 +549,8 @@ export const ClientsScreen: React.FC = () => {
            el directorio no quepa en la primera tanda. */
         subtitle={
           clientsTotal !== null && clientsTotal > clients.length
-            ? `${clients.length} de ${clientsTotal} en el directorio`
-            : `${clients.length} registradas en el directorio`
+            ? <><NumeroAnimado valor={clients.length} /> de <NumeroAnimado valor={clientsTotal} /> en el directorio</>
+            : <><NumeroAnimado valor={clients.length} /> registradas en el directorio</>
         }
         rightAction={
           <div className="flex items-center gap-2">
@@ -569,6 +585,19 @@ export const ClientsScreen: React.FC = () => {
       />
 
       <PageContent className="space-y-3.5">
+        {contactosListos && (
+          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-900 flex items-center gap-3 text-xs">
+            <Contact className="w-5 h-5 text-emerald-600 dark:text-emerald-300 shrink-0" />
+            <div className="flex-1 min-w-0 text-emerald-900 dark:text-emerald-100">
+              <span className="font-bold block">Tus clientas están listas</span>
+              {resumenContactos(contactosListos)} Toca el botón y elige «Contactos».
+            </div>
+            <button type="button" onClick={() => void compartirContactos()}
+              className="shrink-0 px-3 py-2 rounded-xl bg-emerald-600 text-white font-bold cursor-pointer">Guardar en Contactos</button>
+            <button type="button" aria-label="Cerrar" onClick={() => setContactosListos(null)} className="shrink-0 text-emerald-700 dark:text-emerald-300 cursor-pointer">✕</button>
+          </div>
+        )}
+
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -582,8 +611,10 @@ export const ClientsScreen: React.FC = () => {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-          {[
+        <ChipsFiltro
+          valor={selectedTagFilter}
+          onCambio={setSelectedTagFilter}
+          opciones={[
             { id: 'all', label: 'Todas' },
             { id: 'vip', label: '👑 VIP' },
             { id: 'frecuente', label: '💖 Frecuentes' },
@@ -591,23 +622,8 @@ export const ClientsScreen: React.FC = () => {
             { id: 'alergico_sensible', label: '⚠️ Sensibles / Alergias' },
             { id: 'whatsapp', label: '💬 WhatsApp' },
             { id: 'instagram', label: '📸 Instagram' },
-          ].map(f => {
-            const isSelected = selectedTagFilter === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setSelectedTagFilter(f.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ios-touch cursor-pointer ${
-                  isSelected
-                    ? 'bg-[var(--primary)] text-white shadow-xs font-bold'
-                    : 'bg-white dark:bg-neutral-900 text-slate-700 dark:text-neutral-300 border border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
-                }`}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
+          ]}
+        />
 
         {/* Clients List */}
         {filteredClients.length === 0 ? (
@@ -628,22 +644,18 @@ export const ClientsScreen: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2.5">
+            {/* Entran en cascada solo al abrir; las que llegan al bajar (o al buscar) entran ya, sin esperar turno */}
+            <ListaAnimada className="space-y-2.5">
             {filteredClients.map((client, idx) => (
-              <motion.div
+              <ItemAnimado
                 key={client.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
+                indice={idx}
                 onClick={() => setSelectedClient(client)}
-                className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer ios-touch flex items-center justify-between gap-3"
+                className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="relative shrink-0">
-                    <img
-                      src={client.avatar}
-                      alt={client.name}
-                      className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-neutral-700"
-                    />
+                    <FotoClienta foto={client.avatar} nombre={client.name} className="w-12 h-12 text-base border border-slate-200 dark:border-neutral-700" />
                     {client.tags.includes('vip') && (
                       <span className="absolute -top-1 -right-1 text-xs">👑</span>
                     )}
@@ -688,8 +700,9 @@ export const ClientsScreen: React.FC = () => {
                   </span>
                   <ChevronRight className="w-4 h-4 text-slate-300 dark:text-neutral-600 mt-1" />
                 </div>
-              </motion.div>
+              </ItemAnimado>
             ))}
+            </ListaAnimada>
 
             {/* El final de la lista: al asomarse, entra la siguiente tanda */}
             <div ref={centinelaRef} />
@@ -725,11 +738,7 @@ export const ClientsScreen: React.FC = () => {
             {/* Header Profile Card */}
             <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-rose-50/40 dark:from-neutral-800/80 dark:to-neutral-900 border border-slate-200/80 dark:border-neutral-700/70 flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <img
-                  src={selectedClient.avatar}
-                  alt={selectedClient.name}
-                  className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-neutral-700 shadow-sm"
-                />
+                <FotoClienta foto={selectedClient.avatar} nombre={selectedClient.name} className="w-14 h-14 text-lg border-2 border-white dark:border-neutral-700 shadow-sm" />
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                     {selectedClient.name}
@@ -778,6 +787,8 @@ export const ClientsScreen: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            <PerfilesDeLaClienta clienta={selectedClient} />
 
             {/* Tags Container */}
             <div>

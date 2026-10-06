@@ -22,7 +22,7 @@ import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 
 interface IOSHeaderProps {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   showBack?: boolean;
   onBack?: () => void;
   rightAction?: React.ReactNode;

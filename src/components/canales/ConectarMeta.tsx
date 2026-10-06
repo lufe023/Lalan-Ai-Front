@@ -5,7 +5,9 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { IOSModal } from '../ui/IOSModal';
 import { PlantillasWhatsapp } from './PlantillasWhatsapp';
+import { CostosWhatsapp } from './CostosWhatsapp';
 import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../../utils/metaSdk';
+import { conectarSoloInstagram } from '../../utils/instagramLogin';
 import type { CommunicationChannel } from '../../types';
 
 /** Lo que llega de cada página (nunca su token). Foto, seguidores y negocio sirven para reconocer la correcta */
@@ -23,6 +25,8 @@ const PARA_QUE_SIRVE: Record<string, string> = {
   META_APP_SECRET: 'clave secreta de la app',
   META_ES_CONFIG_ID: 'sin esto no funciona Conectar WhatsApp',
   META_LOGIN_CONFIG_ID: 'configuración de Inicio de sesión para empresas, para Facebook e Instagram',
+  INSTAGRAM_APP_ID: 'ID de la app de Instagram, para Conectar solo Instagram',
+  INSTAGRAM_APP_SECRET: 'clave de la app de Instagram, para Conectar solo Instagram',
 };
 const NOMBRE: Record<CommunicationChannel, string> = { whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger' };
 
@@ -86,6 +90,17 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
     } catch (e) { fallo(e); } finally { setOcupado(null); }
   };
 
+  /** Instagram sin Facebook: entra con su usuario de Instagram */
+  const soloInstagram = async () => {
+    setOcupado('instagram');
+    try {
+      const cuenta = await conectarSoloInstagram(sede || undefined);
+      if (cuenta === null) return; // se fue a Instagram en esta misma pestaña; al volver lo termina RetornoInstagram
+      await recargarBots();
+      showToast('Instagram conectado', `Lalan ya recibe los mensajes de ${cuenta}.`, 'success');
+    } catch (e) { fallo(e); } finally { setOcupado(null); }
+  };
+
   const desconectar = async (c: CommunicationChannel) => {
     if (!window.confirm(`¿Desconectar ${NOMBRE[c]}? Lalan dejará de recibir y contestar esos mensajes.`)) return;
     setOcupado(c);
@@ -96,7 +111,11 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
     } catch (e) { fallo(e); } finally { setOcupado(null); }
   };
 
-  const disponible = (c: CommunicationChannel) => (c === 'whatsapp' ? cfg?.whatsapp : cfg?.paginas);
+  const disponible = (c: CommunicationChannel) =>
+    c === 'whatsapp' ? cfg?.whatsapp : c === 'instagram' ? (cfg?.soloInstagram || cfg?.paginas) : cfg?.paginas;
+  /** Instagram entra con su propio usuario (no hace falta Facebook); si eso no está listo, por la página */
+  const abrir = (c: CommunicationChannel) =>
+    c === 'whatsapp' ? setPreguntaWa(true) : c === 'instagram' && cfg?.soloInstagram ? void soloInstagram() : void paginas(c);
 
   return (
     <div className={incrustado ? 'space-y-3 pb-1' : 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3'}>
@@ -135,7 +154,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
           }
           return (
             <button key={canal} type="button" disabled={!disponible(canal) || !!ocupado}
-              onClick={() => (canal === 'whatsapp' ? setPreguntaWa(true) : void paginas(canal))}
+              onClick={() => abrir(canal)}
               className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold shadow-sm ${color} disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] transition`}>
               {cargandoEste ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icono className="w-4 h-4" />}
               {texto}
@@ -144,12 +163,22 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
         })}
       </div>
 
+      {!conectado('instagram') && cfg?.soloInstagram && cfg.paginas && (
+        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+          «Conectar Instagram» entra con tu usuario de Instagram, no necesitas Facebook.{' '}
+          <button type="button" disabled={!!ocupado} onClick={() => void paginas('instagram')} className="font-bold text-[var(--primary)] underline cursor-pointer disabled:opacity-40">
+            Prefiero conectarlo por mi página de Facebook
+          </button>
+        </p>
+      )}
+
       {/* Con WhatsApp conectado: las plantillas que Lalan usa para escribir primero */}
       {conectado('whatsapp') && <PlantillasWhatsapp key={sede} sede={sede || undefined} />}
+      {conectado('whatsapp') && <CostosWhatsapp key={`costos-${sede}`} sede={sede || undefined} />}
 
-      {cfg && currentUser?.role === 'super_admin' && !!cfg.faltan?.length && (
+      {cfg && currentUser?.role === 'super_admin' && !!(cfg.faltan?.length || cfg.faltanSoloInstagram?.length) && (
         <p className="text-[0.6875rem] text-slate-400">
-          Falta en el servidor: {cfg.faltan.map((v) => `${v}${PARA_QUE_SIRVE[v] ? ` (${PARA_QUE_SIRVE[v]})` : ''}`).join(' · ')}.
+          Falta en el servidor: {[...cfg.faltan, ...(cfg.faltanSoloInstagram ?? [])].map((v) => `${v}${PARA_QUE_SIRVE[v] ? ` (${PARA_QUE_SIRVE[v]})` : ''}`).join(' · ')}.
         </p>
       )}
       {cfg && currentUser?.role !== 'super_admin' && (!cfg.whatsapp || !cfg.paginas) && (

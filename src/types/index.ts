@@ -319,6 +319,8 @@ export interface BotChannelConfig {
   offHoursMessage: string;
   /** La cuenta de Meta conectada: phone_number_id, cuenta de IG o página */
   channelIdentifier: string;
+  /** Cómo se ve esa cuenta para una persona: "@lalan.ai", el nombre de la página o "Nombre · número" */
+  cuentaNombre: string | null;
   /** 'boton_meta' (lo conectó el cliente con el botón) o 'manual' (desde Plataforma) */
   conexion: string | null;
   conectadoEn: string | null;
@@ -417,6 +419,10 @@ export interface SalonBusinessSettings {
   alertsEnabled: boolean;
   alertPhone: string | null;
   alertContactName: string | null;
+  /** Mensajes que cobra Meta: el aviso a la dueña aunque no haya escrito en 24 h */
+  avisosPagados: boolean;
+  /** Mensajes que cobra Meta: el recordatorio aunque la clienta no haya escrito en 24 h */
+  recordatoriosPagados: boolean;
   /** Recordatorios de cita a la clienta por WhatsApp (si el plan los incluye) */
   remindersEnabled: boolean;
   /** Uno el día antes, a la hora de la cita */

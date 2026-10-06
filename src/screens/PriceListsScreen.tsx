@@ -7,6 +7,7 @@
  *  - Panel de asignación rápida a clientes
  */
 
+import { Aparecer } from '../components/ui/movimiento';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useApp, PriceList, PriceListRule, PriceRuleTarget } from '../context/AppContext';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
@@ -624,14 +625,15 @@ export function PriceListsScreen() {
       {/* Lists */}
       {!isLoadingPriceLists && priceLists.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {priceLists.map(pl => (
-            <PriceListCard
-              key={pl.id}
-              pl={pl}
-              onEdit={() => { setEditTarget(pl); setShowModal(true); }}
-              onDelete={() => setConfirmDelete(pl)}
-              onAssign={() => setAssignTarget(pl)}
-            />
+          {priceLists.map((pl, i) => (
+            <Aparecer key={pl.id} indice={i}>
+              <PriceListCard
+                pl={pl}
+                onEdit={() => { setEditTarget(pl); setShowModal(true); }}
+                onDelete={() => setConfirmDelete(pl)}
+                onAssign={() => setAssignTarget(pl)}
+              />
+            </Aparecer>
           ))}
         </div>
       )}

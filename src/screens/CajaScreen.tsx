@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
+import { RESORTE } from '../components/ui/movimiento';
 import {
   Receipt, Printer, UserPlus, Search, RotateCcw, Users,
   Wallet, LockOpen, Lock, ArrowDownLeft, ArrowUpRight, Plus,
@@ -212,18 +213,23 @@ export const CajaScreen: React.FC = () => {
               <button
                 key={t.id}
                 onClick={() => { setVista(t.id); setBusca(''); }}
-                className={`relative flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                className={`relative flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors ${
                   vista === t.id
-                    ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-white shadow-2xs'
+                    ? 'text-slate-900 dark:text-white'
                     : 'text-slate-500 dark:text-neutral-400'
                 }`}
               >
-                <Icono className="w-3.5 h-3.5" />
-                {t.label}
+                {/* La pestaña blanca se desliza a la elegida */}
+                {vista === t.id && (
+                  <motion.span layoutId="caja-pestana" transition={RESORTE}
+                    className="absolute inset-0 rounded-xl bg-white dark:bg-neutral-900 shadow-2xs" />
+                )}
+                <Icono className="relative w-3.5 h-3.5" />
+                <span className="relative">{t.label}</span>
                 {/* En rojo y sin pedir permiso: cada número es una clienta que
                     se puede ir sin pagar. */}
                 {t.pendientes > 0 && (
-                  <span className="min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[0.6875rem] font-extrabold flex items-center justify-center tabular-nums shadow-sm">
+                  <span className="relative min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[0.6875rem] font-extrabold flex items-center justify-center tabular-nums shadow-sm">
                     {t.pendientes}
                   </span>
                 )}
@@ -232,6 +238,15 @@ export const CajaScreen: React.FC = () => {
           })}
         </div>
 
+        {/* Cada pestaña entra deslizándose; la anterior sale rápido */}
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={vista}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0, transition: RESORTE }}
+          exit={{ opacity: 0, transition: { duration: 0.1 } }}
+          className="space-y-4"
+        >
         {vista === 'cobrar' ? (
           <>
             {/* A quién le cobro */}
@@ -713,6 +728,8 @@ export const CajaScreen: React.FC = () => {
             <ListaRecibos plata={plata} onReimprimir={reimprimir} />
           </>
         )}
+        </motion.div>
+        </AnimatePresence>
       </PageContent>
     </motion.div>
   );
