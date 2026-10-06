@@ -229,6 +229,16 @@ export async function subirArchivo<T>(path: string, formulario: FormData): Promi
 export const urlApi = (path: string) => `${BASE_URL}${path}`;
 
 /**
+ * La foto de una clienta o de un chat. Las de Instagram y Messenger las
+ * guarda la API ("public/perfiles/…", ruta relativa a la API); las demás
+ * ya son una dirección completa.
+ */
+export function urlDeFoto(foto?: string | null): string | undefined {
+  if (!foto) return undefined;
+  return /^(https?:|data:|blob:)/.test(foto) ? foto : `${BASE_URL}/${foto.replace(/^\//, '')}`;
+}
+
+/**
  * Un audio que genera el servidor (la voz de Lalan). Devuelve null si el
  * servidor dice "usa la voz del aparato" (204). Lanza si falla: quien llama
  * cae a la voz del aparato.

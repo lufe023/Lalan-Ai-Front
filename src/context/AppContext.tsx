@@ -6,7 +6,7 @@ import {
 } from '../types';
 import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
-import { api } from '../services/api';
+import { api, urlDeFoto } from '../services/api';
 import { alRecibir, alConectar } from '../services/socket';
 import { PeticionCancion, componerCola, indicesDePeticiones } from '../utils/peticiones';
 import {
@@ -653,7 +653,7 @@ function fundirClientas(previas: Client[], nuevas: Client[]): Client[] {
 function mapApiClient(c: any): Client {
   return {
     id: c.id, name: c.name, phone: c.phone ?? '', email: c.email,
-    avatar: c.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=e2e8f0&color=475569`,
+    avatar: urlDeFoto(c.avatar) ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=e2e8f0&color=475569`,
     preferredChannel: c.preferredChannel ?? 'whatsapp',
     tags: c.tags ?? [], beautyNotes: c.beautyNotes,
     medicalOrAllergyNotes: c.medicalOrAllergyNotes, hospitality: c.hospitalityPrefs,
@@ -760,7 +760,7 @@ function mapApiConversation(c: any): Conversation {
   return {
     id: c.id, clientId: c.clientId, clientName: c.clientName,
     clientHandle: c.clientHandle, clientPhone: c.clientPhone,
-    clientAvatar: c.clientAvatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.clientName)}&background=e2e8f0&color=475569`,
+    clientAvatar: urlDeFoto(c.clientAvatar) ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.clientName)}&background=e2e8f0&color=475569`,
     channel: c.channel, status: c.status, lastMessage: c.lastMessage ?? '',
     lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' }) : '',
     unreadCount: c.unreadCount ?? 0, serviceInterest: c.serviceInterest,
