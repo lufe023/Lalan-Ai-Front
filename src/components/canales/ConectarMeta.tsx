@@ -16,6 +16,13 @@ const BOTONES: { canal: CommunicationChannel; texto: string; Icono: React.FC<{ c
   { canal: 'instagram', texto: 'Conectar Instagram', Icono: Instagram, color: 'bg-gradient-to-br from-[#833AB4] via-[#E1306C] to-[#F77737] text-white' },
   { canal: 'messenger', texto: 'Conectar Facebook', Icono: Facebook, color: 'bg-[#1877F2] text-white' },
 ];
+/** Para qué sirve cada variable de Meta del servidor (lo ve solo el equipo de Lalan) */
+const PARA_QUE_SIRVE: Record<string, string> = {
+  META_APP_ID: 'ID de la app Lalan AI',
+  META_APP_SECRET: 'clave secreta de la app',
+  META_ES_CONFIG_ID: 'sin esto no funciona Conectar WhatsApp',
+  META_LOGIN_CONFIG_ID: 'configuración de Inicio de sesión para empresas, para Facebook e Instagram',
+};
 const NOMBRE: Record<CommunicationChannel, string> = { whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger' };
 
 /**
@@ -136,12 +143,13 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
         })}
       </div>
 
-      {cfg && (!cfg.whatsapp || !cfg.paginas) && (
+      {cfg && currentUser?.role === 'super_admin' && !!cfg.faltan?.length && (
         <p className="text-[0.6875rem] text-slate-400">
-          {currentUser?.role === 'super_admin'
-            ? 'Faltan META_APP_ID, META_APP_SECRET o las configuraciones de Meta en el servidor.'
-            : 'Muy pronto: estamos terminando la verificación con Meta. Mientras tanto, el equipo de Lalan te lo conecta.'}
+          Falta en el servidor: {cfg.faltan.map((v) => `${v}${PARA_QUE_SIRVE[v] ? ` (${PARA_QUE_SIRVE[v]})` : ''}`).join(' · ')}.
         </p>
+      )}
+      {cfg && currentUser?.role !== 'super_admin' && (!cfg.whatsapp || !cfg.paginas) && (
+        <p className="text-[0.6875rem] text-slate-400">Muy pronto: estamos terminando la verificación con Meta. Mientras tanto, el equipo de Lalan te lo conecta.</p>
       )}
 
       <IOSModal isOpen={preguntaWa} onClose={() => setPreguntaWa(false)} title="Conectar WhatsApp" subtitle="Una pregunta antes de abrir Meta" fixedHeight={false}>
