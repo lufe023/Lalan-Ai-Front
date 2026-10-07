@@ -4,8 +4,6 @@ import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { IOSModal } from '../ui/IOSModal';
-import { PlantillasWhatsapp } from './PlantillasWhatsapp';
-import { CostosWhatsapp } from './CostosWhatsapp';
 import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../../utils/metaSdk';
 import { conectarSoloInstagram } from '../../utils/instagramLogin';
 import { esAppInstalada, irAFacebook, necesitaRedireccion, tomarPendientes } from '../../utils/facebookLogin';
@@ -191,9 +189,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
         </p>
       )}
 
-      {/* Con WhatsApp conectado: las plantillas que Lalan usa para escribir primero */}
-      {conectado('whatsapp') && <PlantillasWhatsapp key={sede} sede={sede || undefined} />}
-      {conectado('whatsapp') && <CostosWhatsapp key={`costos-${sede}`} sede={sede || undefined} />}
+      {/* Lo que cobra Meta y las plantillas viven en la tarjeta de WhatsApp (Interruptores por canal) */}
 
       {cfg && currentUser?.role === 'super_admin' && !!(cfg.faltan?.length || cfg.faltanSoloInstagram?.length) && (
         <p className="text-[0.6875rem] text-slate-400">

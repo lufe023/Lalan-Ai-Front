@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Loader2, Plus, Save, Infinity as SinLimite } from 'lucide-react';
 import { api } from '../../services/api';
-import { NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type PlanLalan, type Recurso } from '../../types/plataforma';
+import { NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type PaqueteExtra, type PlanLalan, type Recurso } from '../../types/plataforma';
+import { CostoRealIa } from './CostoRealIa';
 
 const GRUPOS: { id: string; nombre: string }[] = [
   { id: 'atencion', nombre: 'Atención' }, { id: 'salon', nombre: 'El salón' }, { id: 'dinero', nombre: 'Dinero' }, { id: 'experiencia', nombre: 'Experiencia' },
@@ -11,13 +12,35 @@ type Borrador = Omit<PlanLalan, 'id' | 'clave' | 'negocios'> & { id?: string };
 
 const nuevo = (): Borrador => ({
   nombre: '', descripcion: '', precioMensual: 0, moneda: 'DOP', orden: 9, activo: true, modulos: [],
-  limites: { mensajesMes: 400, sedes: 1, usuarios: 2, especialistas: 3 },
+  limites: { mensajesMes: 400, sedes: 1, usuarios: 2, especialistas: 3, preguntasDia: 10 },
+  paquetes: [],
 });
 
+/** Los paquetes de respuestas extra del plan (de menor a mayor) */
+const Paquetes: React.FC<{ lista: PaqueteExtra[]; onChange: (l: PaqueteExtra[]) => void }> = ({ lista, onChange }) => {
+  const campo = 'w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] tabular-nums';
+  const cambiar = (i: number, k: keyof PaqueteExtra, v: number) => onChange(lista.map((p, j) => (j === i ? { ...p, [k]: Math.max(0, Math.round(v)) } : p)));
+  return (
+    <div className="space-y-2">
+      {lista.map((p, i) => (
+        <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
+          <input type="number" min={1} value={p.respuestas || ''} onChange={(e) => cambiar(i, 'respuestas', Number(e.target.value))} placeholder="Respuestas" aria-label="Respuestas" className={campo} />
+          <input type="number" min={1} value={p.precio || ''} onChange={(e) => cambiar(i, 'precio', Number(e.target.value))} placeholder="Pesos" aria-label="Precio en pesos" className={campo} />
+          <span className="text-[0.6875rem] text-slate-400 tabular-nums w-24">{p.respuestas > 0 && p.precio > 0 ? `${(p.precio / p.respuestas).toFixed(2)} pesos c/u` : ''}</span>
+          <button type="button" onClick={() => onChange(lista.filter((_, j) => j !== i))} className="px-2 py-1 rounded-lg text-[0.75rem] text-rose-500 cursor-pointer" aria-label="Quitar paquete">Quitar</button>
+        </div>
+      ))}
+      {lista.length < 4 && (
+        <button type="button" onClick={() => onChange([...lista, { respuestas: 0, precio: 0 }])} className="text-[0.75rem] font-semibold text-[var(--primary)] cursor-pointer">+ Agregar paquete</button>
+      )}
+    </div>
+  );
+};
+
 /** Un número de tope, o "sin límite" */
-const Tope: React.FC<{ r: Recurso; valor: number | null; onChange: (v: number | null) => void }> = ({ r, valor, onChange }) => (
+const Tope: React.FC<{ r: Recurso; valor: number | null; onChange: (v: number | null) => void; etiqueta?: string }> = ({ r, valor, onChange, etiqueta }) => (
   <label className="block space-y-1">
-    <span className="text-[0.75rem] font-semibold text-slate-500">{NOMBRE_RECURSO[r]}</span>
+    <span className="text-[0.75rem] font-semibold text-slate-500">{etiqueta ?? NOMBRE_RECURSO[r]}</span>
     <div className="flex gap-1">
       <input type="number" min={0} value={valor ?? ''} placeholder="Sin límite" onChange={(e) => onChange(e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))))}
         className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] tabular-nums" />
@@ -39,7 +62,8 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
 
   const guardar = async () => {
     setGuardando(true); setAviso('');
-    const cuerpo = { nombre: b.nombre, descripcion: b.descripcion || undefined, precioMensual: Number(b.precioMensual), moneda: b.moneda, orden: b.orden, activo: b.activo, modulos: b.modulos, limites: b.limites };
+    const paquetes = (b.paquetes ?? []).filter((p) => p.respuestas > 0 && p.precio > 0);
+    const cuerpo = { nombre: b.nombre, descripcion: b.descripcion || undefined, precioMensual: Number(b.precioMensual), moneda: b.moneda, orden: b.orden, activo: b.activo, modulos: b.modulos, limites: b.limites, paquetes };
     try {
       if (b.id) await api.patch(`/plataforma/planes/${b.id}`, cuerpo); else await api.post('/plataforma/planes', cuerpo);
       setAviso('Guardado. Los salones de este plan ya lo ven así.'); onGuardado();
@@ -75,7 +99,7 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
                   <button key={m.id} type="button" onClick={() => alternar(m.id)} aria-pressed={si}
                     className={`p-2.5 rounded-xl border text-left flex gap-2 cursor-pointer transition ${si ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700 opacity-70'}`}>
                     <span className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${si ? 'bg-[var(--primary)] text-white' : 'border border-slate-300 dark:border-neutral-600'}`}>{si && <Check className="w-3.5 h-3.5" />}</span>
-                    <span><b className="text-[0.8125rem] text-slate-900 dark:text-white">{m.nombre}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5">{m.descripcion}</span></span>
+                    <span><b className="text-[0.8125rem] text-slate-900 dark:text-white">{m.nombre}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5">{m.descripcion}</span>{m.queBloquea && <span className="block text-[0.6875rem] text-amber-700 dark:text-amber-400 mt-0.5">Sin él: {m.queBloquea}</span>}</span>
                   </button>
                 );
               })}
@@ -85,7 +109,16 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
       })}
       <div>
         <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 mb-2">Límites</div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">{RECURSOS.map((r) => <Tope key={r} r={r} valor={b.limites[r]} onChange={(v) => limite(r, v)} />)}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+          {RECURSOS.map((r) => <Tope key={r} r={r} valor={b.limites[r]} onChange={(v) => limite(r, v)} />)}
+          <Tope r={'preguntasDia' as Recurso} etiqueta="Preguntas a Lalan por persona al día" valor={b.limites.preguntasDia ?? null} onChange={(v) => setB((x) => ({ ...x, limites: { ...x.limites, preguntasDia: v } }))} />
+        </div>
+        <p className="text-[0.6875rem] text-slate-400 mt-1">Las respuestas cuentan solo lo que escribe la IA (los recordatorios no). Los informes de Lalan no cuentan como preguntas.</p>
+      </div>
+      <div>
+        <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 mb-1">Paquetes extra</div>
+        <p className="text-[0.6875rem] text-slate-400 mb-2">Si se le acaban las respuestas del mes, la dueña puede pedir uno. Valen hasta fin de mes. Respuestas · precio en pesos (ya con todo incluido).</p>
+        <Paquetes lista={b.paquetes ?? []} onChange={(l) => setB((x) => ({ ...x, paquetes: l }))} />
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={() => void guardar()} disabled={guardando || b.nombre.trim().length < 2}
@@ -123,12 +156,13 @@ export const PlanesPlataforma: React.FC = () => {
 
   return (
     <div className="space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
+      <CostoRealIa planes={planes} />
       <div className="flex flex-wrap gap-2">
         {planes.map((p) => (
           <button key={p.id} type="button" onClick={() => setElegido(p.id)}
             className={`px-3.5 py-2 rounded-xl border text-left cursor-pointer ${elegido === p.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900'}`}>
             <b className="text-[0.8125rem] block">{p.nombre}</b>
-            <span className={`text-[0.6875rem] ${elegido === p.id ? 'text-white/80' : 'text-slate-500'}`}>{p.moneda === 'DOP' ? 'RD$' : 'US$'} {p.precioMensual.toLocaleString('es-DO')} · {p.modulos.length} módulos · {p.negocios} clientes</span>
+            <span className={`text-[0.6875rem] ${elegido === p.id ? 'text-white/80' : 'text-slate-500'}`}>{p.precioMensual.toLocaleString('es-DO')} {p.moneda === 'DOP' ? 'pesos' : 'US$'} · {p.modulos.length} módulos · {p.negocios} clientes</span>
           </button>
         ))}
         <button type="button" onClick={() => setElegido('nuevo')} className={`px-3.5 py-2 rounded-xl border border-dashed text-[0.8125rem] font-semibold flex items-center gap-1 cursor-pointer ${elegido === 'nuevo' ? 'border-[var(--primary)] text-[var(--primary)]' : 'border-slate-300 text-slate-500'}`}>

@@ -60,15 +60,21 @@ export interface CatalogosPiloto { tiposNegocio: Opcion[]; queAutomatizar: Opcio
 // ── Planes, negocios y usuarios ───────────────────────────────────────
 
 export type ClaveModulo =
-  | 'especialistas_zonas' | 'avisos_duena' | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
+  | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
   | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios';
 
 export type GrupoModulo = 'atencion' | 'salon' | 'dinero' | 'experiencia';
-export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo }
+export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo; /** Qué deja de funcionar sin él */ queBloquea?: string }
 export interface CatalogoModulos { modulos: ModuloCatalogo[]; siempreIncluido: string[] }
 
 export type Recurso = 'mensajesMes' | 'sedes' | 'usuarios' | 'especialistas';
-export type Limites = Record<Recurso, number | null>;
+export type Limites = Record<Recurso, number | null> & {
+  /** Preguntas por persona al día a la pantalla de Lalan (null = el tope general) */
+  preguntasDia?: number | null;
+};
+
+/** Un paquete de respuestas extra que el salón puede pedir */
+export interface PaqueteExtra { respuestas: number; precio: number }
 export type Uso = Record<Recurso, number>;
 
 export interface MiPlan {
@@ -78,6 +84,9 @@ export interface MiPlan {
   uso: Uso;
   nivelMensajes: NivelMensajes;
   siempreIncluido: string[];
+  /** Respuestas extra (paquetes) de este mes; ya van sumadas en limites.mensajesMes */
+  mensajesExtra?: number;
+  paquetes?: PaqueteExtra[];
 }
 
 export interface PlanLalan {
@@ -91,6 +100,7 @@ export interface PlanLalan {
   activo: boolean;
   modulos: ClaveModulo[];
   limites: Limites;
+  paquetes?: PaqueteExtra[];
   negocios: number;
 }
 
@@ -118,7 +128,9 @@ export interface NegocioDetalle {
   modulosExtra: ClaveModulo[];
   modulosQuitados: ClaveModulo[];
   limitesPropios: Limites;
-  efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites };
+  efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites; mensajesExtra?: number; paquetes?: PaqueteExtra[] };
+  /** Lo que gastó en IA este mes (exacto, de OpenRouter) */
+  gastoIa?: { totalUsd: number; totalPesos: number; porFuentePesos: Record<string, number> } | null;
   uso: Uso;
   sedes: { id: string; name: string; address: string | null; phone: string | null }[];
   usuarios: { id: string; name: string; email: string | null; usuario?: string | null; telefono?: string | null; correoConfirmadoEn?: string | null; role: string; active: boolean; debeCambiarClave: boolean }[];
@@ -145,7 +157,7 @@ export interface UsuarioSalon {
 
 /** Cómo se nombra cada límite en pantalla */
 export const NOMBRE_RECURSO: Record<Recurso, string> = {
-  mensajesMes: 'Mensajes de Lalan al mes',
+  mensajesMes: 'Respuestas de Lalan al mes',
   sedes: 'Sedes',
   usuarios: 'Usuarios',
   especialistas: 'Especialistas',
