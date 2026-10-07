@@ -68,7 +68,13 @@ export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: 
 export interface CatalogoModulos { modulos: ModuloCatalogo[]; siempreIncluido: string[] }
 
 export type Recurso = 'mensajesMes' | 'sedes' | 'usuarios' | 'especialistas';
-export type Limites = Record<Recurso, number | null>;
+export type Limites = Record<Recurso, number | null> & {
+  /** Preguntas por persona al día a la pantalla de Lalan (null = el tope general) */
+  preguntasDia?: number | null;
+};
+
+/** Un paquete de respuestas extra que el salón puede pedir */
+export interface PaqueteExtra { respuestas: number; precio: number }
 export type Uso = Record<Recurso, number>;
 
 export interface MiPlan {
@@ -78,6 +84,9 @@ export interface MiPlan {
   uso: Uso;
   nivelMensajes: NivelMensajes;
   siempreIncluido: string[];
+  /** Respuestas extra (paquetes) de este mes; ya van sumadas en limites.mensajesMes */
+  mensajesExtra?: number;
+  paquetes?: PaqueteExtra[];
 }
 
 export interface PlanLalan {
@@ -91,6 +100,7 @@ export interface PlanLalan {
   activo: boolean;
   modulos: ClaveModulo[];
   limites: Limites;
+  paquetes?: PaqueteExtra[];
   negocios: number;
 }
 
@@ -118,7 +128,7 @@ export interface NegocioDetalle {
   modulosExtra: ClaveModulo[];
   modulosQuitados: ClaveModulo[];
   limitesPropios: Limites;
-  efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites };
+  efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites; mensajesExtra?: number; paquetes?: PaqueteExtra[] };
   uso: Uso;
   sedes: { id: string; name: string; address: string | null; phone: string | null }[];
   usuarios: { id: string; name: string; email: string | null; usuario?: string | null; telefono?: string | null; correoConfirmadoEn?: string | null; role: string; active: boolean; debeCambiarClave: boolean }[];
@@ -145,7 +155,7 @@ export interface UsuarioSalon {
 
 /** Cómo se nombra cada límite en pantalla */
 export const NOMBRE_RECURSO: Record<Recurso, string> = {
-  mensajesMes: 'Mensajes de Lalan al mes',
+  mensajesMes: 'Respuestas de Lalan al mes',
   sedes: 'Sedes',
   usuarios: 'Usuarios',
   especialistas: 'Especialistas',

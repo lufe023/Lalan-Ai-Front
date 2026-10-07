@@ -28,6 +28,23 @@ export const TuPlan: React.FC = () => {
         <a href={`https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(pedir)}`} target="_blank" rel="noopener" className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline shrink-0">Mejorar mi plan</a>
       </div>
       <UsoDelPlan uso={miPlan.uso} limites={miPlan.limites} />
+      {!!miPlan.mensajesExtra && <p className="text-[0.75rem] text-emerald-600">Este mes tienes {miPlan.mensajesExtra.toLocaleString('es-DO')} respuestas extra de un paquete (ya están sumadas).</p>}
+      {!!miPlan.paquetes?.length && (
+        <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-2">
+          <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">
+            <b>¿Se te acaban las respuestas?</b> Pide un paquete y Lalan sigue atendiendo hasta fin de mes. El precio ya lo incluye todo.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {miPlan.paquetes.map((p) => (
+              <a key={p.respuestas} target="_blank" rel="noopener"
+                href={`https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(`Hola, quiero el paquete de ${p.respuestas} respuestas extra (${p.precio} pesos) para mi salón en Lalan.`)}`}
+                className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 hover:border-[var(--primary)]">
+                +{p.respuestas.toLocaleString('es-DO')} respuestas · {p.precio.toLocaleString('es-DO')} pesos
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid sm:grid-cols-2 gap-1.5">
         {miPlan.siempreIncluido.map((s) => <div key={s} className="flex items-start gap-1.5 text-[0.75rem] text-slate-600 dark:text-neutral-300"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-px" />{s}</div>)}
         {catalogo?.modulos.map((m) => {

@@ -123,6 +123,10 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
     try { const r = await api.post<{ accessToken: string }>(`/plataforma/negocios/${id}/entrar`, {}); entrarComoSoporte(r.accessToken); }
     catch (e) { setError((e as Error).message); setEntrando(false); }
   };
+  const agregarPaquete = async (respuestas: number, precio: number) => {
+    if (!window.confirm(`¿Sumarle ${respuestas.toLocaleString('es-DO')} respuestas a ${d?.nombre ?? 'este salón'} por ${precio.toLocaleString('es-DO')} pesos? Valen hasta fin de mes.`)) return;
+    try { await api.post(`/plataforma/negocios/${id}/paquete`, { respuestas }); await cargar(); onCambio(); } catch (e) { setError((e as Error).message); }
+  };
   const agregarSede = async () => {
     if (sede.trim().length < 2) return;
     try { setD(await api.post<NegocioDetalle>(`/plataforma/negocios/${id}/sedes`, { nombre: sede.trim() })); setSede(''); onCambio(); } catch (e) { setError((e as Error).message); }
@@ -164,6 +168,17 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           </select>)}
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 pt-2">Uso</div>
           <UsoDelPlan uso={d.uso} limites={d.efectivo.limites} />
+          {!!d.efectivo.mensajesExtra && <p className="text-[0.75rem] text-emerald-600">Este mes tiene {d.efectivo.mensajesExtra.toLocaleString('es-DO')} respuestas extra de paquetes (ya sumadas).</p>}
+          {!soloSoporte && !!d.efectivo.paquetes?.length && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {d.efectivo.paquetes.map((p) => (
+                <button key={p.respuestas} type="button" onClick={() => void agregarPaquete(p.respuestas, p.precio)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-semibold cursor-pointer hover:border-[var(--primary)]">
+                  + {p.respuestas.toLocaleString('es-DO')} respuestas · {p.precio.toLocaleString('es-DO')} pesos
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Límites propios <span className="normal-case font-normal">(vacío = los del plan)</span></div>
@@ -181,6 +196,12 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
                 </label>
               );
             })}
+            <label className="space-y-1 block">
+              <span className="text-[0.75rem] text-slate-500">Preguntas a Lalan por persona al día</span>
+              <input type="number" min={0} disabled={soloSoporte} defaultValue={d.limitesPropios.preguntasDia ?? ''} placeholder={limitePlan?.preguntasDia == null ? 'Plan: el tope general' : `Plan: ${limitePlan.preguntasDia}`}
+                onBlur={(e) => { const v = e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))); if (v !== (d.limitesPropios.preguntasDia ?? null)) void guardar({ limitePreguntasDia: v }); }}
+                className={campo} />
+            </label>
           </div>
         </div>
       </div>
