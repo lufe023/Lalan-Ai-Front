@@ -20,7 +20,7 @@ interface Grupo {
 const ADMINISTRACION: UserRole[] = ['admin', 'super_admin'];
 
 export const GRUPOS_AJUSTES: Grupo[] = [
-  { id: 'cuenta', titulo: 'Mi cuenta', resumen: 'Notificaciones de este teléfono, entrar con 1 toque y cerrar sesión', icono: UserCircle2, color: 'bg-slate-500' },
+  { id: 'cuenta', titulo: 'Mi cuenta', resumen: 'Notificaciones, entrar con 1 toque, contraseña y dónde está abierta tu sesión', icono: UserCircle2, color: 'bg-slate-500' },
   { id: 'plan', titulo: 'Mi plan', resumen: 'Lo que incluye y cuánto llevas usado este mes', icono: Sparkles, color: 'bg-amber-500', roles: ADMINISTRACION },
   { id: 'equipo', titulo: 'Equipo', resumen: 'Quién entra a la app y a quién le llega cada aviso', icono: Users, color: 'bg-sky-500', roles: ADMINISTRACION },
   { id: 'salon', titulo: 'El salón', resumen: 'Horario de la semana, citas, zonas y especialistas', icono: Store, color: 'bg-emerald-500', roles: ADMINISTRACION },

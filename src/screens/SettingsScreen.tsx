@@ -61,6 +61,8 @@ import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
+import { SeguridadCuenta } from '../components/ajustes/SeguridadCuenta';
+import { enSoporte } from '../services/soporte';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
 const ESTILO_ACTIVIDAD: Record<EventoActividad['tipo'], { titulo: string; clase: string }> = {
@@ -155,6 +157,9 @@ export const SettingsScreen: React.FC = () => {
 
   // Zonas y especialistas: el mantenimiento que da sentido a los turnos
   const [nuevaZona, setNuevaZona] = useState({ name: '', prefix: '', color: '#c4697d' });
+  /* Igual que el servidor: si alguna zona activa ya marcó sus servicios, una
+     sin marcar no atiende nada (si ninguna marcó, todas hacen de todo) */
+  const zonasConServicios = (zonas ?? []).some(z => z.active && !z.sinServicios && (z.serviceCategories ?? []).length > 0);
   const [nuevaPersona, setNuevaPersona] = useState({ name: '', role: '', zoneId: '' });
   useEffect(() => { void loadZonas?.(); void loadEspecialistas?.(); }, []);
 
@@ -438,6 +443,8 @@ export const SettingsScreen: React.FC = () => {
             </button>
           </div>
         </div>
+        {/* Contraseña y sesiones: son de la dueña de la cuenta, no de quien entra a dar soporte */}
+        {!enSoporte() && <SeguridadCuenta />}
           </>
         )}
         {seccion === 'plan' && (
@@ -710,19 +717,28 @@ export const SettingsScreen: React.FC = () => {
                 <span className="shrink-0 text-[0.6875rem] text-slate-400 tabular-nums hidden sm:block">
                   {z.staff?.length ?? 0} pers.
                 </span>
-                <button
+                {!z.active && (
+                  <button
+                    type="button"
+                    onClick={() => void guardarZona({ id: z.id, name: z.name, prefix: z.prefix, active: true })}
+                    className="shrink-0 px-2 py-1 rounded-lg bg-[var(--primary)] text-white text-[0.6875rem] font-bold cursor-pointer"
+                  >
+                    Reactivar
+                  </button>
+                )}
+                {z.active && <button
                   type="button"
                   onClick={() => eliminarZona(z.id)}
-                  title={z.active ? 'Quitar esta zona' : 'Zona desactivada'}
+                  title="Quitar esta zona"
                   className="shrink-0 w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </button>}
               </div>
               {/* Qué servicios se hacen aquí: así la asistente sabe quién atiende qué */}
               <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
                 <span className="text-[0.6875rem] text-slate-400 mr-0.5">Aquí se hace:</span>
-                {categoriasDe('service').map(c => {
+                {!z.sinServicios && categoriasDe('service').map(c => {
                   const cat = c.key;
                   const marcadas = z.serviceCategories ?? [];
                   const activa = marcadas.includes(cat);
@@ -744,9 +760,25 @@ export const SettingsScreen: React.FC = () => {
                     </button>
                   );
                 })}
-                {!(z.serviceCategories ?? []).length && (
-                  <span className="text-[0.6875rem] text-slate-400 italic">de todo (sin marcar)</span>
-                )}
+                {/* El bar, la recepción, la caja: zonas para el turno, no para citas */}
+                <button
+                  type="button"
+                  onClick={() => void guardarZona({ id: z.id, name: z.name, prefix: z.prefix, sinServicios: !z.sinServicios })}
+                  className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-semibold border transition cursor-pointer ${
+                    z.sinServicios
+                      ? 'bg-slate-700 dark:bg-neutral-200 text-white dark:text-neutral-900 border-transparent'
+                      : 'bg-white dark:bg-neutral-900 text-slate-500 dark:text-neutral-400 border-dashed border-slate-300 dark:border-neutral-600'
+                  }`}
+                >
+                  🚫 Ningún servicio
+                </button>
+                <span className="w-full text-[0.6875rem] text-slate-400 italic">
+                  {z.sinServicios
+                    ? 'No es zona de servicios (bar, recepción…): aquí no se agenda y su gente no recibe citas.'
+                    : (z.serviceCategories ?? []).length ? null
+                    : zonasConServicios ? 'Sin marcar: como las otras zonas sí lo tienen, aquí no se agenda nada.'
+                    : 'Sin marcar: aquí se hace de todo.'}
+                </span>
               </div>
               </div>
             ))}

@@ -174,6 +174,16 @@ export const urlDeReproductor = (token: string) =>
 export const urlDePedirCancion = (token: string) =>
   `${window.location.origin}${window.location.pathname}#/pedir-cancion/${token}`;
 
+/**
+ * Avisa al servidor que esta sesión se cierra (deja de salir en Mi cuenta y
+ * su refresh ya no sirve). keepalive: llega aunque la página se recargue.
+ */
+export function salirEnServidor() {
+  const token = tokenStore.get();
+  if (!token) return;
+  void fetch(`${BASE_URL}/auth/salir`, { method: 'POST', keepalive: true, headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined);
+}
+
 export const api = {
   get:    <T>(path: string) => apiFetch<T>(path, { method: 'GET' }),
   post:   <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body) }),
