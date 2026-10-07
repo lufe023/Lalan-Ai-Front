@@ -171,7 +171,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           {d.gastoIa && (
             <p className="text-[0.75rem] text-slate-500">
               <b className="text-slate-700 dark:text-neutral-200">Gastó en IA este mes: {d.gastoIa.totalPesos.toLocaleString('es-DO')} pesos</b> (US$ {d.gastoIa.totalUsd.toFixed(2)})
-              {Object.keys(d.gastoIa.porFuentePesos).length > 0 && ` · ${Object.entries(d.gastoIa.porFuentePesos).map(([f, v]) => `${({ chat: 'chats', pantalla: 'pantalla', informes: 'informes', senales: 'señales', fotos: 'fotos' } as Record<string, string>)[f] ?? f} ${v}`).join(' · ')}`}
+              {Object.keys(d.gastoIa.porFuentePesos).length > 0 && ` · ${Object.entries(d.gastoIa.porFuentePesos).map(([f, v]) => `${({ chat: 'chats', pantalla: 'pantalla', informes: 'informes', senales: 'señales', fotos: 'fotos', voz: 'voz' } as Record<string, string>)[f] ?? f} ${v}`).join(' · ')}`}
             </p>
           )}
           {!!d.efectivo.mensajesExtra && <p className="text-[0.75rem] text-emerald-600">Este mes tiene {d.efectivo.mensajesExtra.toLocaleString('es-DO')} respuestas extra de paquetes (ya sumadas).</p>}

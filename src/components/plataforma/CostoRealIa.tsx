@@ -18,7 +18,7 @@ interface ResumenCosto {
 
 const FUENTES: Record<string, string> = {
   chat: 'Chats con clientas', pantalla: 'Pantalla de la dueña', informes: 'Informes', senales: 'Señales de los chats',
-  fotos: 'Fotos', landing: 'Landing', plataforma: 'Análisis de Plataforma',
+  fotos: 'Fotos', landing: 'Landing (IA y voz)', plataforma: 'Análisis de Plataforma', voz: 'Voz de Lalan (Cloudflare)',
 };
 
 /** El precio ya lleva todo (ITBIS 18 % y la comisión de la tarjeta, ~4 %): esto es lo que de verdad entra */

@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { ActividadCanal } from '../components/canales/ActividadCanal';
+import { CostosWhatsapp } from '../components/canales/CostosWhatsapp';
+import { PlantillasWhatsapp } from '../components/canales/PlantillasWhatsapp';
 import { motion } from 'motion/react';
 import {
   Bot,
@@ -233,30 +236,21 @@ export const BotsControlScreen: React.FC = () => {
                 </p>
               )}
 
-              {/* Lo de hoy, contado de verdad */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-neutral-800/80">
-                {[
-                  { titulo: 'Respondidos hoy', valor: bot.actividad.respondidos, clase: 'text-slate-800 dark:text-slate-200' },
-                  { titulo: 'Sugerencias hoy', valor: bot.actividad.sugerencias, clase: 'text-purple-600 dark:text-purple-400' },
-                  { titulo: 'Citas agendadas hoy', valor: bot.actividad.citas, clase: 'text-[var(--primary)]' },
-                  {
-                    titulo: 'Esperan a una persona', valor: bot.actividad.enAtencion,
-                    clase: bot.actividad.enAtencion ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200',
-                    accion: bot.actividad.enAtencion ? () => navigateTo('chats') : undefined,
-                  },
-                ].map(t => (
-                  <button
-                    key={t.titulo}
-                    type="button"
-                    onClick={t.accion}
-                    disabled={!t.accion}
-                    className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-left disabled:cursor-default enabled:hover:bg-amber-50 enabled:cursor-pointer"
-                  >
-                    <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block">{t.titulo}</span>
-                    <span className={`text-sm font-extrabold tabular-nums ${t.clase}`}>{t.valor}</span>
-                  </button>
-                ))}
-              </div>
+              {/* Lo que hizo, contado de verdad: hoy o los últimos días */}
+              <ActividadCanal canal={bot.id} hoy={bot.actividad} alVerChats={() => navigateTo('chats')} />
+
+              {/* WhatsApp: lo que cobra Meta, apagar lo cobrado y cómo se ven las plantillas */}
+              {bot.id === 'whatsapp' && bot.channelIdentifier && esDireccion && (
+                <details className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 group">
+                  <summary className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200 cursor-pointer select-none">
+                    Lo que cobra Meta y tus plantillas
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <CostosWhatsapp />
+                    <PlantillasWhatsapp />
+                  </div>
+                </details>
+              )}
             </motion.div>
           ))}
         </div>
