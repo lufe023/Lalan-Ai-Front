@@ -10,7 +10,7 @@
  */
 import { alCargarVoces, hayVoz, vocesDisponibles } from './campana';
 import { ajustesLalan, type Pausa } from './ajustesLalan';
-import { pronunciar } from '../landing/vozNavegador';
+import { pronunciar, sinEmojis } from '../landing/vozNavegador';
 import { pedirAudio } from '../services/api';
 
 const CLAVE_VOZ = 'lalan_asistente_voz';
@@ -303,7 +303,8 @@ let turno = 0;
  */
 export async function decirComoLalan(texto: string, alHablar?: () => void): Promise<void> {
   callarLalan();
-  if (!texto.trim()) return;
+  texto = sinEmojis(texto);
+  if (!texto) return;
   const mio = ++turno;
   let partes = trozos(texto);
   if (usaVozDeNube()) {
