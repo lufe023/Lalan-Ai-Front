@@ -192,7 +192,7 @@ interface MetricasVozLanding {
 }
 
 /** Probar la voz del navegador como la oirían en la landing */
-const PruebaNavegador: React.FC<{ voces: string; velocidad: number }> = ({ voces, velocidad }) => {
+const PruebaNavegador: React.FC<{ voces: string; velocidad: number; pronuncia: string }> = ({ voces, velocidad, pronuncia }) => {
   const [texto, setTexto] = useState(FRASE_LANDING);
   const [nombre, setNombre] = useState('');
   const [sonando, setSonando] = useState(false);
@@ -202,7 +202,7 @@ const PruebaNavegador: React.FC<{ voces: string; velocidad: number }> = ({ voces
   const probar = async () => {
     if (sonando) { speechSynthesis.cancel(); setSonando(false); return; }
     setSonando(true);
-    try { await decirConNavegador(texto, lista, velocidad); } finally { setSonando(false); }
+    try { await decirConNavegador(texto, lista, velocidad, pronuncia); } finally { setSonando(false); }
   };
   return (
     <div className="space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
@@ -232,7 +232,7 @@ const VozLandingPanel: React.FC<{ todo: Record<string, Valor> }> = ({ todo }) =>
   return (
     <div className="space-y-3">
       {motor === 'apagada' && <p className="text-[0.75rem] text-slate-400">La voz está apagada: las respuestas de la landing no traen botón "Escúchala".</p>}
-      {motor === 'navegador' && <PruebaNavegador voces={String(todo.landingVocesNavegador ?? '')} velocidad={Number(todo.landingVelocidadVoz) || 1} />}
+      {motor === 'navegador' && <PruebaNavegador voces={String(todo.landingVocesNavegador ?? '')} velocidad={Number(todo.landingVelocidadVoz) || 1} pronuncia={String(todo.pronunciaLalan ?? 'Lalán')} />}
       {(motor === 'melotts' || motor === 'aura2') && <PruebaVoz motor={motor} voz={String(todo.landingVozAura ?? 'celeste')} frase={FRASE_LANDING} sinConsumo />}
       {m && (
         <div className="p-3 rounded-xl border border-slate-200 dark:border-neutral-800 space-y-2 text-[0.75rem]">

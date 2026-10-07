@@ -34,7 +34,7 @@ const ESPERA_LECTURA_MOVIL_MS = 3200;
 const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, el piloto gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
 const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo es lo del piloto gratis?', 'No tengo salón, tengo otro negocio'];
 
-interface ConfigVoz { activa?: boolean; motor: 'apagada' | 'navegador' | 'nube'; voces: string[]; velocidad: number }
+interface ConfigVoz { activa?: boolean; motor: 'apagada' | 'navegador' | 'nube'; voces: string[]; velocidad: number; pronuncia?: string }
 
 interface Estado { id: string; mensajes: Mensaje[]; invitado: boolean; hablando?: boolean }
 
@@ -120,7 +120,7 @@ export function iniciarAsistente(): void {
     try {
       if (voz.motor === 'navegador') {
         boton.classList.remove('asis-cargando');
-        const terminada = decirConNavegador(m.texto, voz.voces, voz.velocidad);
+        const terminada = decirConNavegador(m.texto, voz.voces, voz.velocidad, voz.pronuncia);
         if (!estado.hablando) { estado.hablando = true; guardar(estado); pintarModoVoz(); }
         registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'voz_navegador' });
         await terminada;
@@ -179,7 +179,7 @@ export function iniciarAsistente(): void {
       .then((c: ConfigVoz | null) => {
         // Apagada desde Plataforma: ni el botón se muestra
         if (c?.activa === false) { callar(); raiz.remove(); return; }
-        if (c && ['apagada', 'navegador', 'nube'].includes(c.motor)) voz = { motor: c.motor, voces: c.voces ?? [], velocidad: Number(c.velocidad) || 1 };
+        if (c && ['apagada', 'navegador', 'nube'].includes(c.motor)) voz = { motor: c.motor, voces: c.voces ?? [], velocidad: Number(c.velocidad) || 1, pronuncia: c.pronuncia };
         if (voz.motor === 'apagada' && estado.hablando) { estado.hablando = false; guardar(estado); }
         pintarModoVoz();
         lista.querySelectorAll<HTMLElement>('.asis-b').forEach((b) => { const m = deBurbuja.get(b); if (m) ponerBoton(b, m); });

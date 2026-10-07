@@ -26,13 +26,22 @@ export async function elegirVozNavegador(preferidas: string[]): Promise<SpeechSy
   return espanol.find((v) => /es-(do|us|mx|419)/i.test(v.lang)) ?? espanol[0] ?? null;
 }
 
+/**
+ * Cómo suena el nombre: se escribe "Lalan" pero se dice "Lalán" (lo elige
+ * Plataforma → Lalan → La voz). Igual que el servidor (asistente-voz.service.ts).
+ */
+export function pronunciar(texto: string, como: string | null | undefined): string {
+  const dicho = (como ?? '').trim();
+  return dicho ? texto.replace(/\blalan\b/gi, dicho) : texto;
+}
+
 export const hayVozNavegador = () => typeof window !== 'undefined' && 'speechSynthesis' in window;
 
 /** Dice el texto; termina (o falla) cuando acaba de hablar */
-export async function decirConNavegador(texto: string, preferidas: string[], velocidad = 1): Promise<void> {
+export async function decirConNavegador(texto: string, preferidas: string[], velocidad = 1, pronuncia = 'Lalán'): Promise<void> {
   if (!hayVozNavegador()) throw new Error('Este navegador no tiene voz');
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(texto.replace(/[*_#`>~|]/g, ''));
+  const u = new SpeechSynthesisUtterance(pronunciar(texto.replace(/[*_#`>~|]/g, ''), pronuncia));
   const voz = await elegirVozNavegador(preferidas);
   if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = 'es-DO';
   u.rate = velocidad;
