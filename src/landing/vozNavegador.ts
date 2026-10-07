@@ -35,13 +35,19 @@ export function pronunciar(texto: string, como: string | null | undefined): stri
   return dicho ? texto.replace(/\blalan\b/gi, dicho) : texto;
 }
 
+/** Emojis y lo que los arma (tono de piel, unión, variación, banderas, teclas): la voz no los dice. Igual que el servidor */
+const EMOJIS = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F1E6}-\u{1F1FF}\u200D\uFE0E\uFE0F\u20E3]/gu;
+export function sinEmojis(texto: string): string {
+  return texto.replace(EMOJIS, '').replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
+}
+
 export const hayVozNavegador = () => typeof window !== 'undefined' && 'speechSynthesis' in window;
 
 /** Dice el texto; termina (o falla) cuando acaba de hablar */
 export async function decirConNavegador(texto: string, preferidas: string[], velocidad = 1, pronuncia = 'Lalán'): Promise<void> {
   if (!hayVozNavegador()) throw new Error('Este navegador no tiene voz');
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(pronunciar(texto.replace(/[*_#`>~|]/g, ''), pronuncia));
+  const u = new SpeechSynthesisUtterance(pronunciar(sinEmojis(texto.replace(/[*_#`>~|]/g, '')), pronuncia));
   const voz = await elegirVozNavegador(preferidas);
   if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = 'es-DO';
   u.rate = velocidad;

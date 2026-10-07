@@ -644,8 +644,9 @@ export const ClientsScreen: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2.5">
-            {/* Entran en cascada solo al abrir; las que llegan al bajar (o al buscar) entran ya, sin esperar turno */}
-            <ListaAnimada className="space-y-2.5">
+            {/* Entran en cascada solo al abrir; las que llegan al bajar (o al buscar) entran ya, sin esperar turno.
+                Otro filtro = otra lista: entra de nuevo en vez de arrastrar la clienta 50 hasta arriba */}
+            <ListaAnimada key={selectedTagFilter} className="space-y-2.5">
             {filteredClients.map((client, idx) => (
               <ItemAnimado
                 key={client.id}

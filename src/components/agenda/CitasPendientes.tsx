@@ -30,11 +30,11 @@ const Fila: React.FC<{ a: Appointment; onAbrir: (a: Appointment) => void }> = ({
       className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-slate-200/80 dark:border-neutral-800 hover:border-[var(--primary)] cursor-pointer">
       <div className="w-12 shrink-0 text-center">
         <div className="text-[0.6875rem] uppercase text-slate-400">{f.toLocaleDateString('es-DO', { month: 'short' })}</div>
-        <div className="text-lg font-bold leading-none">{f.getDate()}</div>
+        <div className="text-lg font-bold leading-none text-slate-900 dark:text-white">{f.getDate()}</div>
         <div className="text-[0.6875rem] text-slate-400">{f.toLocaleDateString('es-DO', { weekday: 'short' })}</div>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[0.875rem] font-bold truncate">{a.clientName}</div>
+        <div className="text-[0.875rem] font-bold truncate text-slate-900 dark:text-white">{a.clientName}</div>
         <div className="text-[0.75rem] text-slate-500 truncate">{hora12(a.time)} · {a.serviceName}{a.staffName ? ` · ${a.staffName}` : ''}</div>
         {f.getFullYear() !== new Date().getFullYear() && <div className="text-[0.6875rem] text-slate-400">{f.getFullYear()}</div>}
       </div>
