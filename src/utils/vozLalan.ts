@@ -10,6 +10,7 @@
  */
 import { alCargarVoces, hayVoz, vocesDisponibles } from './campana';
 import { ajustesLalan, type Pausa } from './ajustesLalan';
+import { pronunciar } from '../landing/vozNavegador';
 import { pedirAudio } from '../services/api';
 
 const CLAVE_VOZ = 'lalan_asistente_voz';
@@ -320,7 +321,7 @@ function decirConAparato(partes: string[], mio: number, alHablar?: () => void): 
     let i = 0;
     const siguiente = () => {
       if (mio !== turno || i >= partes.length) { listo(); return; }
-      const u = new SpeechSynthesisUtterance(partes[i++]);
+      const u = new SpeechSynthesisUtterance(pronunciar(partes[i++], ajustesLalan().pronunciaLalan));
       if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = 'es-MX';
       u.rate = ajustesLalan().velocidadVoz;
       u.pitch = ajustesLalan().tonoVoz;
