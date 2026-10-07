@@ -60,11 +60,11 @@ export interface CatalogosPiloto { tiposNegocio: Opcion[]; queAutomatizar: Opcio
 // ── Planes, negocios y usuarios ───────────────────────────────────────
 
 export type ClaveModulo =
-  | 'especialistas_zonas' | 'avisos_duena' | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
+  | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
   | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios';
 
 export type GrupoModulo = 'atencion' | 'salon' | 'dinero' | 'experiencia';
-export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo }
+export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo; /** Qué deja de funcionar sin él */ queBloquea?: string }
 export interface CatalogoModulos { modulos: ModuloCatalogo[]; siempreIncluido: string[] }
 
 export type Recurso = 'mensajesMes' | 'sedes' | 'usuarios' | 'especialistas';
