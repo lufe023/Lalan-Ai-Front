@@ -25,7 +25,11 @@ import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useAplicacionesNuevas } from '../../hooks/useAplicacionesNuevas';
 import { usePlan } from '../../context/PlanContext';
+import { citasPendientes } from '../agenda/CitasPendientes';
 import type { ClaveModulo } from '../../types/plataforma';
+
+/** El número de una insignia: hasta 9, después "9+" (como el teléfono; no rompe el círculo) */
+const insignia = (n: number) => (n > 9 ? '9+' : String(n));
 
 /** Las pestañas que son de un módulo: si el plan no lo incluye, no aparecen */
 const MODULO_DE_PESTANA: Partial<Record<ScreenName, ClaveModulo>> = {
@@ -57,14 +61,10 @@ export const IOSTabBar: React.FC = () => {
   const aplicacionesNuevas = useAplicacionesNuevas(currentUser?.role === 'super_admin');
 
   const unreadChats = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
-  /* Citas por revisar: las que vienen (no las pasadas) y que agendó la
-     asistente o esperan confirmación. Las que confirmó una persona ya están
-     revisadas; las de ayer ya no se pueden revisar. */
-  const ahora = Date.now();
-  const pendingApts = appointments.filter(a =>
-    (a.status === 'confirmed_by_ai' || a.status === 'pending') &&
-    new Date(a.startsAt ?? `${a.date}T${a.time}`).getTime() >= ahora,
-  ).length;
+  /* Citas pendientes: el mismo número que el botón "Pendientes" de la Agenda
+     (las que pasaron y nadie cerró, y las que vienen sin confirmar). Una
+     pendiente vieja es justo la que más se olvida. */
+  const pendingApts = citasPendientes(appointments).total;
 
   /**
    * Comandas sin cobrar. Mismo criterio que la pestaña de Caja: una cuenta
@@ -399,7 +399,7 @@ export const IOSTabBar: React.FC = () => {
                   <span className={`relative min-w-[18px] h-[18px] px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center shrink-0 tabular-nums ${
                     tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
                   }`}>
-                    {tab.badge}
+                    {insignia(tab.badge)}
                   </span>
                 )}
               </button>
@@ -497,12 +497,11 @@ export const IOSTabBar: React.FC = () => {
                     />
                     {tab.badge !== undefined && tab.badge > 0 && (
                       <span
-                        style={{ fontSize: tab.id === 'chats' ? '7px' : tab.id === 'calendar' ? '7.5px' : undefined }}
                         className={`absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 shadow-xs tabular-nums ${
                           tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
                         }`}
                       >
-                        {tab.badge}
+                        {insignia(tab.badge)}
                       </span>
                     )}
                   </div>

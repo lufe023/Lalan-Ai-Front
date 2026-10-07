@@ -36,9 +36,13 @@ export const ListaAnimada: React.FC<{ className?: string; clave?: string; childr
   }, [clave]);
   return (
     <PrimeraVez.Provider value={primeraVez}>
-      <motion.div layout className={className}>
+      {/* El contenedor no se anima: si animara su tamaño, estiraría y aplastaría
+          todas las tarjetas (el "elástico" al cambiar de filtro o al llegar
+          al final y cargar más). Las tarjetas ya se acomodan solas.
+          `relative`: popLayout saca las que se van con position absolute */}
+      <div className={`relative ${className ?? ''}`}>
         <AnimatePresence initial mode="popLayout">{children}</AnimatePresence>
-      </motion.div>
+      </div>
     </PrimeraVez.Provider>
   );
 };
