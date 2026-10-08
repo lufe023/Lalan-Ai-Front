@@ -14,6 +14,8 @@ export interface AjustesLalan {
   /** Cómo se dice "Lalan" en voz alta */
   pronunciaLalan: string;
   papelTapiz: boolean; intensidadPapel: number; tamanoPapel: number; tamanoEsfera: number;
+  /** dibujitos = los de salón · quiosco = las manchas de color que se mueven (las del quiosco). Lo elige Plataforma */
+  fondoLalan: 'dibujitos' | 'quiosco';
   estiloEsfera: string; colorEsfera: string; ritmoEsfera: number; reaccionEsfera: number;
 }
 
@@ -24,7 +26,7 @@ export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
   motorVoz: 'aparato', vozAura: 'celeste',
   vocesPreferidas: 'Paulina, Google español de Estados Unidos, Mónica, Google español', velocidadVoz: 1.02, tonoVoz: 1.05,
   pronunciaLalan: 'Lalán',
-  papelTapiz: true, intensidadPapel: 7, tamanoPapel: 230, tamanoEsfera: 150,
+  papelTapiz: true, intensidadPapel: 7, tamanoPapel: 230, tamanoEsfera: 150, fondoLalan: 'dibujitos',
   estiloEsfera: 'aurora', colorEsfera: 'marca', ritmoEsfera: 1, reaccionEsfera: 1,
 };
 

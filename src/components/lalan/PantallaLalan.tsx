@@ -7,6 +7,7 @@ import { avisarCambioBienvenida } from '../../services/bienvenida';
 import { useAuth } from '../../context/AuthContext';
 import { useEscucha } from '../../hooks/useEscucha';
 import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA, VOCES_AURA, type Pausa } from '../../utils/ajustesLalan';
+import { FondoVivo } from '../ui/FondoVivo';
 import { PAPEL_TAPIZ_SALON } from './papelTapiz';
 import {
   alCargarVoces, callarLalan, callarSiempre, contextoDeAudio, decirComoLalan, despertarVoz, estaCallada, guardarPausa, guardarSeguirEscuchando,
@@ -102,6 +103,8 @@ export const PantallaLalan: React.FC = () => {
   const [vozActual, setVozActual] = useState<string | null>(() => (usaVozDeNube() ? vozDeNube(auraElegida()) : vozDeLalan()?.name ?? null));
   const [resolviendo, setResolviendo] = useState<string | null>(null);
   const [aj, setAj] = useState<AjustesLalan>(ajustesLalan);
+  // El fondo lo elige el super admin en Plataforma → Lalan: dibujitos o el del quiosco
+  const fondoQuiosco = aj.fondoLalan === 'quiosco';
   // Lo que eligió este aparato; si nunca eligió, vale lo global (Plataforma → Lalan)
   const [seguirAqui, setSeguirAqui] = useState<boolean | null>(seguirEscuchando);
   const [pausaAqui, setPausaAqui] = useState<Pausa | null>(pausaGuardada);
@@ -343,11 +346,13 @@ export const PantallaLalan: React.FC = () => {
           role="dialog" aria-modal="true" aria-label="Lalan"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[300] flex flex-col bg-slate-50/90 dark:bg-neutral-950/92 backdrop-blur-2xl text-slate-900 dark:text-neutral-100"
+          className={`fixed inset-0 z-[300] flex flex-col backdrop-blur-2xl text-slate-900 dark:text-neutral-100 ${fondoQuiosco ? 'bg-[#fbf7f8] dark:bg-[#0c0a0b]' : 'bg-slate-50/90 dark:bg-neutral-950/92'}`}
           style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
         >
-          {/* El fondo: dibujitos de salón, del color de la marca (como el fondo de WhatsApp) */}
-          {aj.papelTapiz && aj.intensidadPapel > 0 && (
+          {/* El del quiosco: manchas de color que se mueven despacio */}
+          {fondoQuiosco && <FondoVivo />}
+          {/* Dibujitos de salón, del color de la marca (como el fondo de WhatsApp) */}
+          {!fondoQuiosco && aj.papelTapiz && aj.intensidadPapel > 0 && (
             <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundColor: 'var(--primary)', opacity: aj.intensidadPapel / 100,
@@ -482,7 +487,10 @@ export const PantallaLalan: React.FC = () => {
             </div>
 
             {/* Abajo: la esfera, flotando sobre la conversación */}
-            <div ref={abajo} className="absolute inset-x-0 bottom-0 px-5 pt-10 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto bg-gradient-to-t from-slate-50/75 via-slate-50/25 to-transparent dark:from-neutral-950/75 dark:via-neutral-950/25">
+            <div ref={abajo} className={`absolute inset-x-0 bottom-0 px-5 pt-10 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto bg-gradient-to-t to-transparent ${fondoQuiosco
+              // Sobre los colores, un velo suave: uno sólido se veía como un bloque tapando las manchas
+              ? 'from-white/35 via-white/10 dark:from-black/35 dark:via-black/10'
+              : 'from-slate-50/75 via-slate-50/25 dark:from-neutral-950/75 dark:via-neutral-950/25'}`}>
               <AnimatePresence>
                 {error && (
                   <motion.p key={error} role="alert" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}

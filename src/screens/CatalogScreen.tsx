@@ -26,6 +26,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
+import { RecibirFactura } from '../components/inventario/RecibirFactura';
 import { useApp, ServiceIngredient } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { LineaDeReceta, ModoPrecioAsistente, PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
@@ -71,6 +72,7 @@ export const CatalogScreen: React.FC = () => {
   } = useApp();
   /* Recibir mercancía (lotes con vencimiento) */
   const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
+  const [cargandoFactura, setCargandoFactura] = useState(false);
   const { base, dinero, enSuMoneda, esExtranjera } = useDinero();
   const iconoCategoria = (kind: 'service' | 'product', key: string) => categoriaPorClave(kind, key)?.icon || '✨';
   const primeraCategoria = (kind: 'service' | 'product') => {
@@ -759,6 +761,19 @@ export const CatalogScreen: React.FC = () => {
         {/* PRODUCTS LIST */}
         {activeTab === 'products' && (
           <div className="space-y-3">
+            {products.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setCargandoFactura(true)}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-left ios-touch cursor-pointer hover:border-[var(--primary)]"
+              >
+                <span className="p-2 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]"><PackagePlus className="w-4 h-4" /></span>
+                <span className="flex-1">
+                  <span className="block text-[0.8125rem] font-bold text-slate-900 dark:text-white">Cargar factura del suplidor</span>
+                  <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">Toma una foto o sube la imagen o el PDF: Lalan suma todos los productos de una vez</span>
+                </span>
+              </button>
+            )}
             {filteredProducts.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-neutral-900 rounded-2xl border border-dashed border-slate-300 dark:border-neutral-800">
                 <Package className="w-10 h-10 text-slate-300 dark:text-neutral-700 mb-2" />
@@ -1852,6 +1867,11 @@ export const CatalogScreen: React.FC = () => {
      
       </IOSModal>
       <RecibirMercancia producto={recibiendo} onClose={() => setRecibiendo(null)} />
+      <RecibirFactura
+        isOpen={cargandoFactura}
+        onClose={() => setCargandoFactura(false)}
+        productos={products.filter(p => !p.preparedToOrder).map(p => ({ id: p.id, name: p.name, unit: p.unit }))}
+      />
     </div>
   );
 };
