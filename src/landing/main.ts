@@ -12,6 +12,7 @@ import { iniciarCalor } from './calor';
 import { iniciarHuevo } from './huevo';
 import { iniciarOtroNegocio } from './otroNegocio';
 import { iniciarAsistente } from './asistente';
+import { iniciarPlanes } from './planes';
 
 // Quien ya tiene sesión en este aparato ve "Ir a mi salón" en vez de "Entrar"
 if (leerToken()) {
@@ -25,3 +26,4 @@ void iniciarCalor();
 iniciarHuevo();
 void iniciarOtroNegocio();
 iniciarAsistente();
+void iniciarPlanes();
