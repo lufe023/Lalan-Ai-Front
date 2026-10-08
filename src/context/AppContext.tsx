@@ -227,7 +227,8 @@ export type PriceRuleTarget =
   | 'service_category'
   | 'product_category'
   | 'specific_service'
-  | 'specific_product';
+  | 'specific_product'
+  | 'all_services';
 
 export interface PriceListRule {
   id: string;
@@ -242,6 +243,8 @@ export interface PriceListRule {
   fixedPrice?: number;
   priceMultiplier?: number;
   discountPercent?: number;
+  /** Usa la variante con este nombre de cada servicio ("VIP") */
+  varianteNombre?: string;
 }
 export interface PriceList {
   id: string;
@@ -252,6 +255,11 @@ export interface PriceList {
   clientCount: number;
   startDate?: string;
   endDate?: string;
+  active?: boolean;
+  /** Se aplica sola a las clientas con esta etiqueta (vip, frecuente…) */
+  etiqueta?: string | null;
+  /** La asistente le dice a la clienta su precio de esta lista y agenda con él */
+  aiInforma?: boolean;
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -430,8 +438,8 @@ interface AppContextType {
   priceLists: PriceList[];
   isLoadingPriceLists: boolean;
   loadPriceLists: () => Promise<void>;
-  createPriceList: (dto: { name: string; description?: string; isDefault?: boolean; rules: Omit<PriceListRule, 'id'>[] }) => Promise<PriceList>;
-  updatePriceList: (id: string, dto: { name?: string; description?: string; isDefault?: boolean; rules?: Omit<PriceListRule, 'id'>[] }) => Promise<void>;
+  createPriceList: (dto: { name: string; description?: string; isDefault?: boolean; rules: Omit<PriceListRule, 'id'>[]; etiqueta?: string | null; aiInforma?: boolean; startDate?: string; endDate?: string }) => Promise<PriceList>;
+  updatePriceList: (id: string, dto: { name?: string; description?: string; isDefault?: boolean; rules?: Omit<PriceListRule, 'id'>[]; etiqueta?: string | null; aiInforma?: boolean; startDate?: string; endDate?: string }) => Promise<void>;
   deletePriceList: (id: string) => Promise<void>;
   assignPriceList: (priceListId: string, clientId: string) => Promise<void>;
   unassignPriceList: (clientId: string) => Promise<void>;
@@ -674,6 +682,7 @@ function mapApiService(s: any): SalonService {
     icon: s.icon ?? 'sparkles', color: s.color ?? '#6366f1',
     popular: s.popular ?? false, description: s.description,
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
+    aiPrecio: s.aiPrecio ?? 'exacto',
   };
 }
 function mapApiProduct(p: any): SalonProduct {
@@ -809,11 +818,25 @@ function mapApiPriceList(pl: any): PriceList {
     name: pl.name,
     description: pl.description,
     isDefault: pl.isDefault ?? false,
-    rules: (pl.rules ?? []).map((r: any): PriceListRule => ({
-      id: r.id, target: r.target, contextKey: r.contextKey,
-      modifierType: r.modifierType, modifierValue: Number(r.modifierValue),
-    })),
+    // Las reglas como las guarda el servidor. Antes se leían campos que no
+    // existen (contextKey, modifierType): al editar una lista, sus reglas
+    // llegaban vacías y se perdían al guardar
+    rules: (pl.rules ?? []).map((r: any): PriceListRule => {
+      const n = (v: any) => (v === null || v === undefined ? undefined : Number(v));
+      return {
+        id: r.id, target: r.target,
+        serviceCategoryKey: r.serviceCategoryKey ?? undefined, productCategoryKey: r.productCategoryKey ?? undefined,
+        serviceId: r.serviceId ?? undefined, productId: r.productId ?? undefined,
+        fixedPrice: n(r.fixedPrice), discountPercent: n(r.discountPercent), priceMultiplier: n(r.priceMultiplier),
+        varianteNombre: r.varianteNombre ?? undefined,
+      };
+    }),
     clientCount: pl._count?.clients ?? pl.clientCount ?? 0,
+    startDate: pl.startDate ? String(pl.startDate).slice(0, 10) : undefined,
+    endDate: pl.endDate ? String(pl.endDate).slice(0, 10) : undefined,
+    active: pl.active ?? true,
+    etiqueta: pl.etiqueta ?? null,
+    aiInforma: pl.aiInforma ?? false,
   };
 }
 
@@ -1106,6 +1129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       basePrice: data.price, currencyCode: data.currencyCode || undefined, durationMinutes: data.durationMinutes,
       icon: data.icon, color: data.color, popular: data.popular,
       description: data.description, aiAvailable: data.aiAvailable, priceTiers: data.priceTiers,
+      aiPrecio: data.aiPrecio,
     });
     setServices(s => [...s, mapApiService(res)]);
   }, []);
@@ -1123,6 +1147,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.aiAvailable !== undefined)     payload.aiAvailable = updated.aiAvailable;
     if (updated.priceTiers !== undefined)      payload.priceTiers = updated.priceTiers;
     if (updated.currencyCode !== undefined)    payload.currencyCode = updated.currencyCode;
+    if (updated.aiPrecio !== undefined)        payload.aiPrecio = updated.aiPrecio;
     const res = await api.patch<any>(`/services/${id}`, payload);
     setServices(s => s.map(x => x.id === id ? mapApiService(res) : x));
   }, []);
@@ -2697,14 +2722,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     finally { setIsLoadingPriceLists(false); }
   }, []);
 
-  const createPriceList = useCallback(async (dto: { name: string; description?: string; isDefault?: boolean; rules: Omit<PriceListRule, 'id'>[] }): Promise<PriceList> => {
+  const createPriceList = useCallback(async (dto: { name: string; description?: string; isDefault?: boolean; rules: Omit<PriceListRule, 'id'>[]; etiqueta?: string | null; aiInforma?: boolean; startDate?: string; endDate?: string }): Promise<PriceList> => {
     const res = await api.post<any>('/price-lists', dto);
     const pl = mapApiPriceList(res);
     setPriceLists(p => [...p, pl]);
     return pl;
   }, []);
 
-  const updatePriceList = useCallback(async (id: string, dto: { name?: string; description?: string; isDefault?: boolean; rules?: Omit<PriceListRule, 'id'>[] }) => {
+  const updatePriceList = useCallback(async (id: string, dto: { name?: string; description?: string; isDefault?: boolean; rules?: Omit<PriceListRule, 'id'>[]; etiqueta?: string | null; aiInforma?: boolean; startDate?: string; endDate?: string }) => {
     const res = await api.patch<any>(`/price-lists/${id}`, dto);
     setPriceLists(p => p.map(x => x.id === id ? mapApiPriceList(res) : x));
   }, []);

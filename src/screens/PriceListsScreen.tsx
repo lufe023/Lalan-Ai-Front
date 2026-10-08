@@ -18,6 +18,7 @@ function formatModifier(rule: PriceListRule): string {
   // El precio fijo de una lista va en la moneda del salón (se aplica sobre el precio ya convertido)
   if (rule.fixedPrice !== undefined) return `Precio fijo: ${rule.fixedPrice.toFixed(2)} (moneda del salón)`;
   if (rule.discountPercent !== undefined) return `${rule.discountPercent}% descuento`;
+  if (rule.varianteNombre) return `Usa la variante «${rule.varianteNombre}» de cada servicio`;
   if (rule.priceMultiplier !== undefined) {
     const pct = Math.round((1 - rule.priceMultiplier) * 100);
     return pct > 0 ? `${pct}% descuento (×${rule.priceMultiplier})` : `Recargo ×${rule.priceMultiplier}`;
@@ -31,6 +32,8 @@ function targetLabel(target: PriceRuleTarget): string {
     case 'product_category': return 'Categoría de producto';
     case 'specific_service': return 'Servicio específico';
     case 'specific_product': return 'Producto específico';
+    case 'all_services': return 'Todos los servicios';
+    default: return String(target);
   }
 }
 
@@ -43,6 +46,15 @@ const RULE_TARGET_OPTIONS: { value: PriceRuleTarget; label: string }[] = [
   { value: 'product_category', label: 'Categoría de producto' },
   { value: 'specific_service', label: 'Servicio específico' },
   { value: 'specific_product', label: 'Producto específico' },
+  { value: 'all_services', label: 'Todos los servicios' },
+];
+
+/** Las etiquetas de clienta a las que se puede enlazar una lista */
+const ETIQUETAS: { value: string; label: string }[] = [
+  { value: 'vip', label: '👑 VIP' },
+  { value: 'frecuente', label: '💖 Frecuente' },
+  { value: 'nuevo', label: '✨ Nueva' },
+  { value: 'puntual', label: '⏰ Puntual' },
 ];
 
 // ─── Empty rule factory ───────────────────────────────────────────────────────
@@ -56,11 +68,13 @@ interface RuleRowProps {
   index: number;
   services: { id: string; name: string; category: string }[];
   products: { id: string; name: string; category: string }[];
+  /** Los nombres de variante que existen en el catálogo ("VIP", "Largo"…) */
+  variantes: string[];
   onChange: (index: number, patch: Partial<Omit<PriceListRule, 'id'>>) => void;
   onRemove: (index: number) => void;
 }
 
-function RuleRow({ rule, index, services, products, onChange, onRemove }: RuleRowProps) {
+function RuleRow({ rule, index, services, products, variantes, onChange, onRemove }: RuleRowProps) {
   const set = (patch: Partial<Omit<PriceListRule, 'id'>>) => onChange(index, patch);
 
   const clearKeys = () => set({
@@ -94,6 +108,9 @@ function RuleRow({ rule, index, services, products, onChange, onRemove }: RuleRo
         <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           {rule.target === 'service_category' || rule.target === 'product_category' ? 'Categoría' : 'Elemento'}
         </span>
+        {rule.target === 'all_services' && (
+          <div style={{ ...selectStyle, color: '#9ca3af' }}>Todos los servicios</div>
+        )}
         {rule.target === 'service_category' && (
           <select value={rule.serviceCategoryKey ?? ''} onChange={e => set({ serviceCategoryKey: e.target.value })} style={selectStyle}>
             <option value="">— seleccionar —</option>
@@ -124,26 +141,35 @@ function RuleRow({ rule, index, services, products, onChange, onRemove }: RuleRo
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140 }}>
         <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Tipo de ajuste</span>
         <select
-          value={rule.fixedPrice !== undefined ? 'fixed' : rule.priceMultiplier !== undefined ? 'multiplier' : 'discount'}
+          value={rule.varianteNombre !== undefined ? 'variante' : rule.fixedPrice !== undefined ? 'fixed' : rule.priceMultiplier !== undefined ? 'multiplier' : 'discount'}
           onChange={e => {
             const v = e.target.value;
-            if (v === 'fixed') set({ fixedPrice: 0, discountPercent: undefined, priceMultiplier: undefined });
-            else if (v === 'multiplier') set({ priceMultiplier: 0.9, discountPercent: undefined, fixedPrice: undefined });
-            else set({ discountPercent: 10, fixedPrice: undefined, priceMultiplier: undefined });
+            const nada = { fixedPrice: undefined, discountPercent: undefined, priceMultiplier: undefined, varianteNombre: undefined };
+            if (v === 'fixed') set({ ...nada, fixedPrice: 0 });
+            else if (v === 'multiplier') set({ ...nada, priceMultiplier: 0.9 });
+            else if (v === 'variante') set({ ...nada, varianteNombre: variantes.find(x => /vip/i.test(x)) ?? variantes[0] ?? 'VIP' });
+            else set({ ...nada, discountPercent: 10 });
           }}
           style={selectStyle}
         >
           <option value="discount">% Descuento</option>
           <option value="fixed">Precio fijo</option>
           <option value="multiplier">Multiplicador</option>
+          <option value="variante">Usar una variante del servicio</option>
         </select>
       </div>
 
       {/* Modifier value */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 100 }}>
         <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          {rule.fixedPrice !== undefined ? 'Precio ($)' : rule.priceMultiplier !== undefined ? 'Multiplicador' : 'Descuento (%)'}
+          {rule.varianteNombre !== undefined ? 'Variante' : rule.fixedPrice !== undefined ? 'Precio ($)' : rule.priceMultiplier !== undefined ? 'Multiplicador' : 'Descuento (%)'}
         </span>
+        {rule.varianteNombre !== undefined && (
+          <>
+            <input list={`variantes-${index}`} value={rule.varianteNombre} onChange={e => set({ varianteNombre: e.target.value })} style={inputStyle} placeholder="VIP" />
+            <datalist id={`variantes-${index}`}>{variantes.map(v => <option key={v} value={v} />)}</datalist>
+          </>
+        )}
         {rule.discountPercent !== undefined && (
           <input type="number" min={0} max={100} step={0.5}
             value={rule.discountPercent}
@@ -191,17 +217,21 @@ interface PriceListFormState {
   isDefault: boolean;
   startDate: string;
   endDate: string;
+  etiqueta: string;
+  aiInforma: boolean;
   rules: Omit<PriceListRule, 'id'>[];
 }
 
 function initialForm(pl?: PriceList): PriceListFormState {
-  if (!pl) return { name: '', description: '', isDefault: false, startDate: '', endDate: '', rules: [] };
+  if (!pl) return { name: '', description: '', isDefault: false, startDate: '', endDate: '', etiqueta: '', aiInforma: false, rules: [] };
   return {
     name: pl.name,
     description: pl.description ?? '',
     isDefault: pl.isDefault,
     startDate: pl.startDate ?? '',
     endDate: pl.endDate ?? '',
+    etiqueta: pl.etiqueta ?? '',
+    aiInforma: pl.aiInforma ?? false,
     rules: pl.rules.map(({ id: _id, ...r }) => r),
   };
 }
@@ -212,9 +242,10 @@ interface PriceListModalProps {
   onSave: (dto: Omit<PriceList, 'id' | 'clientCount'>) => Promise<void>;
   services: { id: string; name: string; category: string }[];
   products: { id: string; name: string; category: string }[];
+  variantes: string[];
 }
 
-function PriceListModal({ existing, onClose, onSave, services, products }: PriceListModalProps) {
+function PriceListModal({ existing, onClose, onSave, services, products, variantes }: PriceListModalProps) {
   const [form, setForm] = useState<PriceListFormState>(initialForm(existing));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -243,7 +274,14 @@ function PriceListModal({ existing, onClose, onSave, services, products }: Price
         isDefault: form.isDefault,
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
-        rules: form.rules as PriceListRule[],
+        etiqueta: form.etiqueta || null,
+        aiInforma: form.aiInforma,
+        // Solo lo que el servidor guarda (un solo cambio por regla)
+        rules: form.rules.map(r => {
+          const { target, serviceCategoryKey, productCategoryKey, serviceId, productId, fixedPrice, discountPercent, priceMultiplier, varianteNombre } = r;
+          return Object.fromEntries(Object.entries({ target, serviceCategoryKey, productCategoryKey, serviceId, productId, fixedPrice, discountPercent, priceMultiplier, varianteNombre })
+            .filter(([, v]) => v !== undefined && v !== null && v !== '')) as unknown as PriceListRule;
+        }),
       });
       onClose();
     } catch (err: any) {
@@ -310,6 +348,29 @@ function PriceListModal({ existing, onClose, onSave, services, products }: Price
             </div>
           </div>
 
+          {/* Para quién: una etiqueta de clienta y si la asistente lo dice */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={labelStyle}>Se aplica sola a las clientas…</label>
+              <select value={form.etiqueta} onChange={e => set({ etiqueta: e.target.value })} style={selectStyle}>
+                <option value="">— solo a las que se la asigne a mano —</option>
+                {ETIQUETAS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={labelStyle}>La asistente</label>
+              <button type="button" onClick={() => set({ aiInforma: !form.aiInforma })}
+                style={{
+                  background: form.aiInforma ? 'rgba(147,51,234,0.15)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${form.aiInforma ? 'rgba(147,51,234,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 8, padding: '8px 12px', cursor: 'pointer',
+                  color: form.aiInforma ? '#c084fc' : '#9ca3af', fontSize: 13, fontWeight: 600, textAlign: 'left',
+                }}>
+                {form.aiInforma ? '🤖 Le dice su precio y agenda con él' : 'No lo dice (se aplica al cobrar en Caja)'}
+              </button>
+            </div>
+          </div>
+
           {/* Rules */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -325,9 +386,14 @@ function PriceListModal({ existing, onClose, onSave, services, products }: Price
               </div>
             )}
             {form.rules.map((rule, i) => (
-              <RuleRow key={i} rule={rule} index={i} services={services} products={products}
+              <RuleRow key={i} rule={rule} index={i} services={services} products={products} variantes={variantes}
                 onChange={changeRule} onRemove={removeRule} />
             ))}
+            <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+              «Usar una variante»: cada servicio cobra su variante con ese nombre (p. ej. «VIP» en la tabla de precios del
+              Catálogo); el que no la tiene, su precio normal. Si hay varias reglas, manda la del servicio, luego la de su
+              categoría y por último «Todos los servicios».
+            </div>
           </div>
 
           {error && (
@@ -513,6 +579,15 @@ function PriceListCard({ pl, onEdit, onDelete, onAssign }: PriceListCardProps) {
         </div>
       </div>
 
+      {(pl.etiqueta || pl.aiInforma) && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {pl.etiqueta && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+            Sola para clientas {ETIQUETAS.find(t => t.value === pl.etiqueta)?.label ?? pl.etiqueta}</span>}
+          {pl.aiInforma && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'rgba(147,51,234,0.15)', color: '#c084fc' }}>
+            🤖 La asistente dice este precio</span>}
+        </div>
+      )}
+
       {/* Rules summary */}
       {pl.rules.length === 0 ? (
         <div style={{ fontSize: 12, color: '#374151', fontStyle: 'italic' }}>Sin reglas definidas</div>
@@ -571,6 +646,8 @@ export function PriceListsScreen() {
   };
 
   // Slim service/product shape for rule selectors
+  // Los nombres de variante del catálogo (sin la fila del precio base), para la regla «usar una variante»
+  const nombresDeVariantes = Array.from(new Set(services.flatMap(sv => (sv.priceTiers ?? []).filter(t => !t.isDefault).map(t => t.name.trim()).filter(Boolean)))).sort();
   const svcOptions = services.map(s => ({ id: s.id, name: s.name, category: s.category }));
   const prdOptions = products.map(p => ({ id: p.id, name: p.name, category: p.category }));
 
@@ -646,6 +723,7 @@ export function PriceListsScreen() {
           onSave={handleSave}
           services={svcOptions}
           products={prdOptions}
+          variantes={nombresDeVariantes}
         />
       )}
 

@@ -41,8 +41,12 @@ export interface InicioQuiosco {
   sede: string;
   asistente: string;
   quiosco: string;
+  /** El ticket del turno: no, preguntar (botón) o siempre */
+  imprimir: 'no' | 'preguntar' | 'siempre';
+  /** El símbolo de la moneda del salón, para sumar la selección */
+  simbolo: string;
   categorias: { id: string; nombre: string; icono: string | null; color: string | null }[];
-  servicios: { id: string; nombre: string; categoria: string; minutos: number; precio: string | null; icono: string | null }[];
+  servicios: { id: string; nombre: string; categoria: string; minutos: number; precio: string | null; valor: number | null; icono: string | null }[];
   especialistas: { id: string; nombre: string; avatar: string | null; categorias: string[] | null; enEspera: number }[];
   gustos: { tipo: string; titulo: string; icono: string | null; opciones: { id: string; valor: string }[] }[];
   menu: { id: string; nombre: string; precio: string | null; cortesia: boolean }[];
@@ -72,6 +76,7 @@ export const quioscoApi = {
   llegada: (dto: {
     telefono: string; nombre?: string; conCita?: boolean; servicioIds?: string[];
     especialistaId?: string | null; gustoIds?: string[]; productoIds?: string[];
+    gustosNuevos?: { tipo: string; valor: string }[];
   }) => pedir<ResultadoLlegada>('/llegada', { method: 'POST', body: dto }),
 };
 

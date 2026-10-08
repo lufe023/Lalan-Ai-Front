@@ -52,7 +52,7 @@ export const BotsControlScreen: React.FC = () => {
     .catch(() => setPromptBase(null));
   // Las políticas salen de los parámetros del salón: si cambian, se vuelven a pedir
   useEffect(() => { void cargarPrompt(); }, [
-    settings.depositPercent, settings.requireDeposit, settings.aiAutoBooking, settings.aiAgentName,
+    settings.depositPercent, settings.requireDeposit, settings.aiAutoBooking, settings.aiAgentName, settings.aiDaPrecios,
     settings.cancellationNoticeHours, settings.gracePeriodMinutes, settings.maxAdvanceBookingDays,
   ]);
   const esDireccion = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
@@ -282,6 +282,26 @@ export const BotsControlScreen: React.FC = () => {
               id="toggle-auto-booking"
               checked={settings.aiAutoBooking}
               onChange={val => updateSettings({ aiAutoBooking: val })}
+              activeColor="#9333ea"
+            />
+          </div>
+
+          {/* Precios: si la asistente los dice o los deja al salón */}
+          <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-neutral-800/80">
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                Dar precios por chat
+              </div>
+              <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                {settings.aiDaPrecios === false
+                  ? `${agente} no dice ningún precio: responde que el salón lo confirma, y agenda igual.`
+                  : `${agente} dice los precios como los configuraste en cada servicio (exacto, «desde» o sin precio).`}
+              </div>
+            </div>
+            <IOSToggle
+              id="toggle-da-precios"
+              checked={settings.aiDaPrecios !== false}
+              onChange={val => updateSettings({ aiDaPrecios: val })}
               activeColor="#9333ea"
             />
           </div>

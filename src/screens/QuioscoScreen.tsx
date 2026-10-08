@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronLeft, Coffee, Delete, Heart, Loader2, Sparkles, X } from 'lucide-react';
+import { ArrowBigUp, Check, ChevronLeft, Clock, Coffee, Delete, Heart, Loader2, Pencil, Plus, Printer, RotateCcw, Sparkles, X } from 'lucide-react';
 import QRCode from 'qrcode';
 import { ErrorPublico } from '../services/api';
 import { Busqueda, InicioQuiosco, ResultadoLlegada, quioscoApi, tokenQuiosco, urlAprobarQuiosco } from '../services/quiosco';
@@ -20,6 +21,8 @@ import { recordarPantalla } from '../utils/pantallaRecordada';
 type Paso = 'inicio' | 'telefono' | 'nombre' | 'cita' | 'servicios' | 'especialista' | 'gustos' | 'menu' | 'enviando' | 'final';
 
 const INACTIVIDAD_MS = 60_000;
+/** Los últimos segundos antes de volver al inicio: se avisan con un círculo y "Necesito más tiempo" */
+const AVISO_MS = 10_000;
 const FINAL_MS = 14_000;
 const MAXIMO_SERVICIOS = 4;
 const MAXIMO_MENU = 2;
@@ -39,7 +42,7 @@ export const QuioscoScreen: React.FC = () => {
   useEffect(() => { recordarPantalla('quiosco', 'tablet'); }, []);
 
   return (
-    <div className="fixed inset-0 overflow-clip bg-[#fbf7f8] dark:bg-[#0c0a0b] text-slate-900 dark:text-white select-none">
+    <div className="fixed inset-0 overflow-clip print:hidden bg-[#fbf7f8] dark:bg-[#0c0a0b] text-slate-900 dark:text-white select-none">
       <Fondo />
       {token
         ? <Recepcion onDesvincular={() => { tokenQuiosco.borrar(); setToken(null); }} />
@@ -162,9 +165,11 @@ interface Respuestas {
   servicios: string[];
   especialista: string | null;
   gustos: string[];
+  /** Lo que escribió porque no estaba en la lista */
+  gustosNuevos: { tipo: string; valor: string }[];
   menu: string[];
 }
-const VACIO: Respuestas = { telefono: '', nombre: '', conocida: null, conCita: false, servicios: [], especialista: null, gustos: [], menu: [] };
+const VACIO: Respuestas = { telefono: '', nombre: '', conocida: null, conCita: false, servicios: [], especialista: null, gustos: [], gustosNuevos: [], menu: [] };
 
 const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) => {
   const [datos, setDatos] = useState<InicioQuiosco | null>(null);
@@ -193,16 +198,22 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
     setR(VACIO); setPaso('inicio'); setHistorial([]); setDir(-1); setError(''); setResultado(null); setGustoIdx(0);
   }, []);
 
-  // Si nadie toca la pantalla un rato, vuelve al inicio (y borra lo escrito)
+  // Si nadie toca la pantalla un rato, vuelve al inicio (y borra lo escrito).
+  // Los últimos 10 segundos se avisan con un círculo que cuenta hacia atrás
   const ultimoToque = useRef(Date.now());
+  const [ahora, setAhora] = useState(Date.now());
+  const conCuenta = paso !== 'inicio' && paso !== 'enviando' && paso !== 'final';
   useEffect(() => {
-    const tocar = () => { ultimoToque.current = Date.now(); };
+    const tocar = () => { ultimoToque.current = Date.now(); setAhora(Date.now()); };
     window.addEventListener('pointerdown', tocar);
-    const t = window.setInterval(() => {
-      if (paso !== 'inicio' && paso !== 'enviando' && paso !== 'final' && Date.now() - ultimoToque.current > INACTIVIDAD_MS) reiniciar();
-    }, 5_000);
-    return () => { window.removeEventListener('pointerdown', tocar); window.clearInterval(t); };
-  }, [paso, reiniciar]);
+    window.addEventListener('keydown', tocar);
+    const t = window.setInterval(() => setAhora(Date.now()), 250);
+    return () => { window.removeEventListener('pointerdown', tocar); window.removeEventListener('keydown', tocar); window.clearInterval(t); };
+  }, []);
+  // Cada paso nuevo empieza con el minuto completo
+  useEffect(() => { ultimoToque.current = Date.now(); }, [paso, gustoIdx]);
+  const restante = INACTIVIDAD_MS - (ahora - ultimoToque.current);
+  useEffect(() => { if (conCuenta && restante <= 0) reiniciar(); }, [conCuenta, restante, reiniciar]);
 
   // ── Navegación ──
   const ir = (p: Paso) => { setError(''); setDir(1); setHistorial((h) => [...h, paso]); setPaso(p); };
@@ -249,7 +260,7 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
       const res = await quioscoApi.llegada({
         telefono: resp.telefono, nombre: resp.nombre || undefined, conCita: resp.conCita,
         servicioIds: resp.conCita ? [] : resp.servicios, especialistaId: resp.especialista,
-        gustoIds: resp.gustos, productoIds: resp.menu,
+        gustoIds: resp.gustos, productoIds: resp.menu, gustosNuevos: resp.gustosNuevos,
       });
       setResultado(res);
       setDir(1); setPaso('final');
@@ -305,9 +316,12 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
             </div>
           )}
         </div>
-        <div className="w-28 text-right">
-          {paso !== 'inicio' && paso !== 'final' && (
-            <button type="button" onClick={reiniciar} aria-label="Cancelar" className="inline-flex w-11 h-11 rounded-full bg-white/70 dark:bg-neutral-800/70 items-center justify-center text-slate-500 cursor-pointer"><X className="w-5 h-5" /></button>
+        <div className="w-28 sm:w-56 flex justify-end">
+          {paso !== 'inicio' && paso !== 'final' && paso !== 'enviando' && (
+            <button type="button" onClick={reiniciar}
+              className="inline-flex items-center gap-2 px-4 h-11 rounded-full bg-white/80 dark:bg-neutral-800/80 text-slate-600 dark:text-neutral-300 font-semibold shadow-sm active:scale-95 transition-transform cursor-pointer">
+              <RotateCcw className="w-5 h-5" /><span className="hidden sm:inline">Empezar de nuevo</span>
+            </button>
           )}
         </div>
       </header>
@@ -342,13 +356,9 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
 
               {paso === 'nombre' && (
                 <Pantalla titulo="¡Mucho gusto! ¿Cómo te llamas?" texto="Es tu primera vez aquí. Te anotamos en un segundo.">
-                  <input
-                    autoFocus value={r.nombre} maxLength={60}
-                    onChange={(e) => setR((x) => ({ ...x, nombre: e.target.value }))}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && r.nombre.trim().length >= 2) ir('servicios'); }}
-                    placeholder="Nombre y apellido" autoComplete="off" autoCapitalize="words"
-                    className="w-full max-w-xl text-center text-4xl font-bold bg-transparent border-b-4 border-[var(--primary)]/40 focus:border-[var(--primary)] outline-none py-3 placeholder:text-slate-300 dark:placeholder:text-neutral-600"
-                  />
+                  <CampoTexto valor={r.nombre} placeholder="Nombre y apellido" />
+                  <TecladoLetras valor={r.nombre} max={60} onCambio={(v) => setR((x) => ({ ...x, nombre: v }))}
+                    onListo={() => { if (r.nombre.trim().length >= 2) ir('servicios'); }} />
                   <Principal disabled={r.nombre.trim().length < 2} onClick={() => ir('servicios')}>Continuar</Principal>
                 </Pantalla>
               )}
@@ -397,7 +407,8 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
 
               {paso === 'gustos' && datos.gustos[gustoIdx] && (() => {
                 const g = datos.gustos[gustoIdx];
-                const elegidos = g.opciones.filter((o) => r.gustos.includes(o.id)).length;
+                const nuevos = r.gustosNuevos.filter((n) => n.tipo === g.tipo);
+                const elegidos = g.opciones.filter((o) => r.gustos.includes(o.id)).length + nuevos.length;
                 const seguir = () => {
                   if (gustoIdx < datos.gustos.length - 1) { setDir(1); setGustoIdx((i) => i + 1); }
                   else ir(despuesDeGustos());
@@ -419,6 +430,17 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
                           </motion.button>
                         );
                       })}
+                      {nuevos.map((n) => (
+                        <motion.button key={`n-${n.valor}`} type="button" whileTap={{ scale: 0.94 }} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                          onClick={() => setR((x) => ({ ...x, gustosNuevos: x.gustosNuevos.filter((y) => !(y.tipo === n.tipo && y.valor === n.valor)) }))}
+                          className="px-6 py-4 rounded-full text-xl font-semibold border-2 bg-[var(--primary)] border-[var(--primary)] text-white shadow-md flex items-center gap-2 cursor-pointer">
+                          <Heart className="w-5 h-5 fill-white" />{n.valor}<X className="w-4 h-4 opacity-70" />
+                        </motion.button>
+                      ))}
+                      <OtraOpcion
+                        texto={g.tipo === 'music' ? 'Otra música' : g.tipo === 'drink' ? 'Otra bebida' : 'Otra cosa'}
+                        onAgregar={(valor) => setR((x) => ({ ...x, gustosNuevos: [...x.gustosNuevos.filter((y) => !(y.tipo === g.tipo && y.valor.toLowerCase() === valor.toLowerCase())), { tipo: g.tipo, valor }] }))}
+                      />
                     </div>
                     <Principal onClick={seguir}>{elegidos ? 'Continuar' : 'Saltar'}</Principal>
                   </Pantalla>
@@ -426,7 +448,8 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
               })()}
 
               {paso === 'menu' && (
-                <Pantalla titulo="¿Te ofrecemos algo mientras esperas?" texto={`Elige hasta ${MAXIMO_MENU}.`}>
+                <Pantalla titulo="¿Te ofrecemos algo mientras esperas?"
+                  texto={`Elige hasta ${MAXIMO_MENU}.${datos.menu.some((p) => !p.cortesia) ? ' Lo que no es cortesía se suma a tu cuenta.' : ''}`}>
                   <div className="w-full max-w-4xl flex flex-wrap justify-center gap-4">
                     {datos.menu.map((p) => (
                       <Opcion key={p.id} activa={r.menu.includes(p.id)} onClick={() => setR((x) => ({
@@ -434,7 +457,9 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
                       }))}>
                         <Coffee className="w-9 h-9 text-[var(--primary)]" />
                         <div className="text-lg font-bold leading-tight">{p.nombre}</div>
-                        <div className="text-sm text-slate-500">{p.cortesia ? 'Cortesía de la casa' : p.precio ?? ''}</div>
+                        <div className={`text-sm ${p.cortesia ? 'text-emerald-600 font-semibold' : 'text-slate-500'}`}>
+                          {p.cortesia ? 'Cortesía de la casa' : p.precio ? `${p.precio} · se suma a tu cuenta` : 'Tiene costo · se suma a tu cuenta'}
+                        </div>
                       </Opcion>
                     ))}
                   </div>
@@ -449,13 +474,37 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
                 </div>
               )}
 
-              {paso === 'final' && resultado && <Final resultado={resultado} onListo={reiniciar} />}
+              {paso === 'final' && resultado && (
+                <Final resultado={resultado} onListo={reiniciar} imprimir={datos.imprimir} salon={datos.salon}
+                  servicios={r.conCita && r.conocida?.encontrada && r.conocida.cita ? [r.conocida.cita.servicio] : datos.servicios.filter((x) => r.servicios.includes(x.id)).map((x) => x.nombre)} />
+              )}
             </div>
           </motion.div>
         </AnimatePresence>
       </main>
       {/* Lo que falló al anotarla (el teléfono tiene su propio aviso) */}
       {paso !== 'telefono' && <div className="absolute bottom-8 inset-x-0 px-6 pointer-events-none"><MensajeError texto={error} /></div>}
+
+      {/* ¿Sigue ahí? Los últimos segundos antes de volver al inicio */}
+      <AnimatePresence>
+        {conCuenta && restante <= AVISO_MS && restante > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 bg-white/60 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.9, y: 10 }} animate={{ scale: 1, y: 0 }} transition={RESORTE}
+              className="w-full max-w-md rounded-[2rem] bg-white dark:bg-neutral-900 p-8 text-center space-y-5 shadow-2xl">
+              <Anillo restante={restante} total={AVISO_MS} />
+              <div className="space-y-1">
+                <h2 className="text-3xl font-extrabold">¿Sigues ahí?</h2>
+                <p className="text-lg text-slate-500">Si no, volvemos al inicio para la siguiente persona.</p>
+              </div>
+              <div className="grid gap-3">
+                <Principal onClick={() => { ultimoToque.current = Date.now(); setAhora(Date.now()); }}><Clock className="w-6 h-6" /> Necesito más tiempo</Principal>
+                <Secundario onClick={reiniciar}>Empezar de nuevo</Secundario>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Desvincular: solo quien sabe que hay que mantener pulsado el nombre del salón */}
       <AnimatePresence>
@@ -526,6 +575,10 @@ const Servicios: React.FC<{
   const [cat, setCat] = useState<string | null>(() => datos.servicios.find((s) => s.id === elegidos[0])?.categoria ?? datos.categorias[0]?.id ?? null);
   const lista = datos.servicios.filter((s) => !cat || s.categoria === cat);
   const alternar = (id: string) => onCambio(elegidos.includes(id) ? elegidos.filter((x) => x !== id) : [...elegidos, id].slice(-MAXIMO_SERVICIOS));
+  const seleccion = elegidos.map((id) => datos.servicios.find((s) => s.id === id)).filter(Boolean) as InicioQuiosco['servicios'];
+  const conPrecio = seleccion.length > 0 && seleccion.every((s) => s.valor != null);
+  const total = seleccion.reduce((a, s) => a + (s.valor ?? 0), 0);
+  const minutos = seleccion.reduce((a, s) => a + (s.minutos || 0), 0);
   return (
     <Pantalla titulo={saludo ? `${saludo}, ¿qué te hacemos hoy?` : '¿Qué te hacemos hoy?'} texto="Puedes elegir más de uno.">
       {datos.categorias.length > 1 && (
@@ -539,31 +592,67 @@ const Servicios: React.FC<{
           ))}
         </div>
       )}
-      <div className="w-full max-w-5xl flex flex-wrap justify-center gap-4">
-        {lista.map((s, i) => {
-          const activo = elegidos.includes(s.id);
-          return (
-            <motion.button
-              key={s.id} type="button" onClick={() => alternar(s.id)}
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...RESORTE, delay: Math.min(i, 8) * 0.03 }}
-              whileTap={{ scale: 0.97 }}
-              className={`relative w-full sm:w-[20rem] text-left p-5 rounded-3xl border-2 transition-colors cursor-pointer ${
-                activo ? 'bg-[var(--primary)]/10 border-[var(--primary)]' : 'bg-white/80 dark:bg-neutral-900/80 border-transparent'
-              }`}
-            >
-              <div className="pr-10 text-xl font-bold leading-tight">{s.icono ? `${s.icono} ` : ''}{s.nombre}</div>
-              <div className="mt-1 text-slate-500 dark:text-neutral-400">{[s.minutos ? `${s.minutos} min` : null, s.precio].filter(Boolean).join(' · ')}</div>
-              <AnimatePresence>
-                {activo && (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-                    className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center">
-                    <Check className="w-5 h-5" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          );
-        })}
+      <div className={`w-full max-w-6xl grid gap-6 items-start ${seleccion.length ? 'lg:grid-cols-[1fr_21rem]' : ''}`}>
+        <div className="flex flex-wrap justify-center gap-4">
+          {lista.map((s, i) => {
+            const activo = elegidos.includes(s.id);
+            return (
+              <motion.button
+                key={s.id} type="button" onClick={() => alternar(s.id)}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...RESORTE, delay: Math.min(i, 8) * 0.03 }}
+                whileTap={{ scale: 0.97 }}
+                className={`relative w-full sm:w-[20rem] text-left p-5 rounded-3xl border-2 transition-colors cursor-pointer ${
+                  activo ? 'bg-[var(--primary)]/10 border-[var(--primary)]' : 'bg-white/80 dark:bg-neutral-900/80 border-transparent'
+                }`}
+              >
+                <div className="pr-10 text-xl font-bold leading-tight">{s.icono ? `${s.icono} ` : ''}{s.nombre}</div>
+                <div className="mt-1 text-slate-500 dark:text-neutral-400">{[s.minutos ? `${s.minutos} min` : null, s.precio].filter(Boolean).join(' · ')}</div>
+                <AnimatePresence>
+                  {activo && (
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                      className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center">
+                      <Check className="w-5 h-5" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* Lo que va eligiendo, a la vista como una comanda: así no se le olvida qué marcó en otra categoría */}
+        <AnimatePresence>
+          {seleccion.length > 0 && (
+            <motion.aside initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }} transition={RESORTE}
+              className="lg:sticky lg:top-2 rounded-[2rem] bg-white/90 dark:bg-neutral-900/90 backdrop-blur p-5 shadow-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-extrabold">Tu selección</h3>
+                <span className="w-8 h-8 rounded-full bg-[var(--primary)] text-white text-lg font-bold flex items-center justify-center">{seleccion.length}</span>
+              </div>
+              <ul className="space-y-2">
+                <AnimatePresence initial={false}>
+                  {seleccion.map((s) => (
+                    <motion.li key={s.id} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                      className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/70">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-lg font-bold leading-tight truncate">{s.icono ? `${s.icono} ` : ''}{s.nombre}</div>
+                        {(s.precio || s.minutos) && <div className="text-sm text-slate-500">{[s.minutos ? `${s.minutos} min` : null, s.precio].filter(Boolean).join(' · ')}</div>}
+                      </div>
+                      <button type="button" onClick={() => alternar(s.id)} aria-label={`Quitar ${s.nombre}`}
+                        className="w-10 h-10 shrink-0 rounded-full text-slate-400 hover:text-rose-500 flex items-center justify-center cursor-pointer"><X className="w-5 h-5" /></button>
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+              {(conPrecio || minutos > 0) && (
+                <div className="pt-2 border-t border-slate-200 dark:border-neutral-700 flex items-center justify-between text-lg">
+                  <span className="text-slate-500">{minutos ? `≈ ${minutos >= 60 ? `${Math.floor(minutos / 60)} h ${minutos % 60 ? `${minutos % 60} min` : ''}` : `${minutos} min`}` : ''}</span>
+                  {conPrecio && <span className="font-extrabold">{datos.simbolo}{total.toLocaleString('es-DO', { maximumFractionDigits: 0 })}</span>}
+                </div>
+              )}
+            </motion.aside>
+          )}
+        </AnimatePresence>
       </div>
       <Principal disabled={!elegidos.length} onClick={onSiguiente}>
         {elegidos.length ? `Continuar (${elegidos.length})` : 'Elige un servicio'}
@@ -572,31 +661,74 @@ const Servicios: React.FC<{
   );
 };
 
-const Final: React.FC<{ resultado: ResultadoLlegada; onListo: () => void }> = ({ resultado, onListo }) => (
-  <div className="flex flex-col items-center text-center gap-6">
-    <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 16 }}
-      className="w-20 h-20 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg">
-      <Check className="w-11 h-11" strokeWidth={3} />
-    </motion.div>
-    <h1 className="text-5xl font-extrabold">
-      {resultado.yaEstaba ? `${resultado.nombre}, ya estás en la lista` : `¡Listo, ${resultado.nombre}!`}
-    </h1>
-    <div className="space-y-1">
-      <p className="text-2xl text-slate-500 dark:text-neutral-400">Tu turno es</p>
-      <motion.div initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 220, damping: 14 }}
-        className="text-[7rem] sm:text-[9rem] leading-none font-black tracking-tight text-[var(--primary)]">
-        {resultado.turno}
+const Final: React.FC<{
+  resultado: ResultadoLlegada; onListo: () => void;
+  imprimir: InicioQuiosco['imprimir']; salon: string; servicios: string[];
+}> = ({ resultado, onListo, imprimir, salon, servicios }) => {
+  // "Siempre": sale solo en cuanto se ve el turno (una vez)
+  useEffect(() => {
+    if (imprimir !== 'siempre') return;
+    const t = window.setTimeout(() => window.print(), 700);
+    return () => window.clearTimeout(t);
+  }, [imprimir]);
+  return (
+    <div className="flex flex-col items-center text-center gap-6">
+      <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 16 }}
+        className="w-20 h-20 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg">
+        <Check className="w-11 h-11" strokeWidth={3} />
       </motion.div>
+      <h1 className="text-5xl font-extrabold">
+        {resultado.yaEstaba ? `${resultado.nombre}, ya estás en la lista` : `¡Listo, ${resultado.nombre}!`}
+      </h1>
+      <div className="space-y-1">
+        <p className="text-2xl text-slate-500 dark:text-neutral-400">Tu turno es</p>
+        <motion.div initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2, type: 'spring', stiffness: 220, damping: 14 }}
+          className="text-[7rem] sm:text-[9rem] leading-none font-black tracking-tight text-[var(--primary)]">
+          {resultado.turno}
+        </motion.div>
+      </div>
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-2xl max-w-2xl">
+        {resultado.especialista ? <>Te atiende <b>{resultado.especialista}</b>. </> : null}
+        {resultado.antes > 0
+          ? `Tienes ${resultado.antes} ${resultado.antes === 1 ? 'persona' : 'personas'} antes. Toma asiento, te llamamos por la pantalla.`
+          : 'Toma asiento, te llamamos en un momento por la pantalla.'}
+      </motion.p>
+      <div className="flex flex-wrap justify-center gap-3">
+        {imprimir === 'preguntar' && (
+          <Principal onClick={() => window.print()}><Printer className="w-6 h-6" /> Imprimir mi turno</Principal>
+        )}
+        <Secundario onClick={onListo}>Listo</Secundario>
+      </div>
+      {imprimir !== 'no' && <TicketImpreso resultado={resultado} salon={salon} servicios={servicios} />}
     </div>
-    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-2xl max-w-2xl">
-      {resultado.especialista ? <>Te atiende <b>{resultado.especialista}</b>. </> : null}
-      {resultado.antes > 0
-        ? `Tienes ${resultado.antes} ${resultado.antes === 1 ? 'persona' : 'personas'} antes. Toma asiento, te llamamos por la pantalla.`
-        : 'Toma asiento, te llamamos en un momento por la pantalla.'}
-    </motion.p>
-    <Secundario onClick={onListo}>Listo</Secundario>
-  </div>
-);
+  );
+};
+
+/**
+ * El ticket que sale por la impresora del quiosco (80 mm, la de los
+ * recibos). Va fuera de la pantalla (portal) para que al imprimir solo
+ * salga esto. Para que imprima sin preguntar, Chrome se abre con
+ * --kiosk-printing y esa impresora como predeterminada.
+ */
+const TicketImpreso: React.FC<{ resultado: ResultadoLlegada; salon: string; servicios: string[] }> = ({ resultado, salon, servicios }) => {
+  const ahora = new Date();
+  return createPortal(
+    <div className="hidden print:block text-black bg-white" style={{ width: '72mm', margin: '0 auto', fontFamily: 'system-ui, sans-serif', textAlign: 'center' }}>
+      <style>{'@page { size: 80mm auto; margin: 4mm; } @media print { html, body { background: #fff !important; } }'}</style>
+      <div style={{ fontSize: '14pt', fontWeight: 800 }}>{salon}</div>
+      <div style={{ fontSize: '10pt', marginTop: '2mm' }}>Tu turno es</div>
+      <div style={{ fontSize: '46pt', fontWeight: 900, lineHeight: 1 }}>{resultado.turno}</div>
+      <div style={{ fontSize: '13pt', fontWeight: 700, marginTop: '2mm' }}>{resultado.nombre}</div>
+      {servicios.length > 0 && <div style={{ fontSize: '10pt', marginTop: '2mm' }}>{servicios.join(' + ')}</div>}
+      {resultado.especialista && <div style={{ fontSize: '10pt' }}>Te atiende {resultado.especialista}</div>}
+      <div style={{ fontSize: '9pt', marginTop: '3mm', borderTop: '1px dashed #000', paddingTop: '2mm' }}>
+        {ahora.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })} · {ahora.toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })}
+        <br />Te llamamos por la pantalla
+      </div>
+    </div>,
+    document.body,
+  );
+};
 
 // ── Piezas ────────────────────────────────────────────────────────────
 
@@ -648,6 +780,126 @@ const MensajeError: React.FC<{ texto: string }> = ({ texto }) => (
     )}
   </AnimatePresence>
 );
+
+/** El círculo que se vacía en los últimos segundos, con el número en el centro */
+const Anillo: React.FC<{ restante: number; total: number }> = ({ restante, total }) => {
+  const r = 52, c = 2 * Math.PI * r;
+  const fraccion = Math.max(0, Math.min(1, restante / total));
+  return (
+    <div className="relative mx-auto w-36 h-36">
+      <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="8" className="stroke-slate-200 dark:stroke-neutral-800" />
+        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="8" strokeLinecap="round" stroke="var(--primary)"
+          strokeDasharray={c} strokeDashoffset={c * (1 - fraccion)} style={{ transition: 'stroke-dashoffset 250ms linear' }} />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-5xl font-black tabular-nums text-[var(--primary)]">{Math.ceil(restante / 1000)}</div>
+    </div>
+  );
+};
+
+/** Donde se ve lo que escribe con el teclado de la pantalla (no abre el teclado del aparato) */
+const CampoTexto: React.FC<{ valor: string; placeholder: string }> = ({ valor, placeholder }) => (
+  <div className="w-full max-w-xl text-center text-4xl font-bold border-b-4 border-[var(--primary)] py-3 min-h-[4.5rem]" aria-live="polite">
+    {valor ? <>{valor}<span className="inline-block w-[3px] h-9 bg-[var(--primary)] ml-1 align-middle animate-pulse" /></>
+      : <span className="text-slate-300 dark:text-neutral-600">{placeholder}</span>}
+  </div>
+);
+
+/** Cada palabra empieza en mayúscula, como se escribe un nombre */
+const conMayusculas = (t: string) => t.replace(/(^|\s)(\S)/g, (_, a: string, b: string) => a + b.toLocaleUpperCase('es'));
+
+/**
+ * El teclado de letras, dibujado en la pantalla: en una pantalla táctil a
+ * pantalla completa no hay teclado del sistema, y en una tablet el suyo
+ * taparía media pantalla. Si hay un teclado físico, también se puede usar.
+ */
+const TecladoLetras: React.FC<{ valor: string; onCambio: (v: string) => void; onListo?: () => void; max?: number; comoNombre?: boolean }> = ({ valor, onCambio, onListo, max = 60, comoNombre = true }) => {
+  const [acentos, setAcentos] = useState(false);
+  // Lo escrito hasta ahora: varias teclas seguidas (un teclado físico) llegan antes de que React vuelva a pintar
+  const actual = useRef(valor);
+  actual.current = valor;
+  const cambiar = useCallback((v: string) => { actual.current = v; onCambio(v); }, [onCambio]);
+  const poner = useCallback((t: string) => {
+    const v = (actual.current + t).replace(/\s{2,}/g, ' ').slice(0, max);
+    cambiar(comoNombre ? conMayusculas(v) : v.charAt(0).toLocaleUpperCase('es') + v.slice(1));
+  }, [cambiar, max, comoNombre]);
+  const borrar = useCallback(() => cambiar(actual.current.slice(0, -1)), [cambiar]);
+  // Un teclado físico (o el de una computadora) también escribe aquí. Se escucha
+  // una sola vez: cada tecla repinta la pantalla (cuenta de inactividad), y un
+  // escuchador cambiado a mitad de la tecla se la perdería
+  const manos = useRef({ poner, borrar, onListo });
+  manos.current = { poner, borrar, onListo };
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Backspace') { e.preventDefault(); manos.current.borrar(); }
+      else if (e.key === 'Enter') { e.preventDefault(); manos.current.onListo?.(); }
+      else if (e.key.length === 1 && /[\p{L} '\-.]/u.test(e.key)) { e.preventDefault(); manos.current.poner(e.key.toLocaleLowerCase('es')); }
+    };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, []);
+  const filas = acentos
+    ? [['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'], ['-', '.', "'"]]
+    : [['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'], ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ñ'], ['z', 'x', 'c', 'v', 'b', 'n', 'm']];
+  const tecla = 'h-14 sm:h-16 rounded-xl bg-white/90 dark:bg-neutral-800/90 text-2xl font-semibold shadow-sm cursor-pointer active:scale-90 transition-transform';
+  return (
+    <div className="w-full max-w-4xl space-y-2 select-none">
+      {filas.map((fila, i) => (
+        <div key={i} className="flex justify-center gap-1.5 sm:gap-2">
+          {fila.map((l) => (
+            <button key={l} type="button" onClick={() => poner(l)} className={`${tecla} flex-1 max-w-[4.5rem]`}>
+              {valor.length === 0 || (comoNombre && /\s$/.test(valor)) ? l.toLocaleUpperCase('es') : l}
+            </button>
+          ))}
+        </div>
+      ))}
+      <div className="flex justify-center gap-1.5 sm:gap-2">
+        <button type="button" onClick={() => setAcentos((a) => !a)} className={`${tecla} w-28 text-lg ${acentos ? 'ring-2 ring-[var(--primary)]' : ''}`}>
+          {acentos ? 'ABC' : 'á é ñ'}
+        </button>
+        <button type="button" onClick={() => poner(' ')} className={`${tecla} flex-1 max-w-md text-lg text-slate-500`}>espacio</button>
+        <button type="button" onClick={borrar} aria-label="Borrar" className={`${tecla} w-28 flex items-center justify-center text-slate-500`}><Delete className="w-7 h-7" /></button>
+      </div>
+    </div>
+  );
+};
+
+/** "Otra bebida": lo que no está en la lista, escrito con el teclado de la pantalla */
+const OtraOpcion: React.FC<{ texto: string; onAgregar: (valor: string) => void }> = ({ texto, onAgregar }) => {
+  const [abierta, setAbierta] = useState(false);
+  const [valor, setValor] = useState('');
+  const agregar = () => { const v = valor.trim(); if (v.length >= 2) { onAgregar(v); setValor(''); setAbierta(false); } };
+  return (
+    <>
+      <motion.button type="button" whileTap={{ scale: 0.94 }} onClick={() => setAbierta(true)}
+        className="px-6 py-4 rounded-full text-xl font-semibold border-2 border-dashed border-[var(--primary)]/50 text-[var(--primary)] flex items-center gap-2 cursor-pointer">
+        <Pencil className="w-5 h-5" /> {texto}
+      </motion.button>
+      {createPortal(
+        <AnimatePresence>
+          {abierta && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-30 bg-white/70 dark:bg-black/60 backdrop-blur-md flex items-center justify-center p-6 print:hidden">
+              <motion.div initial={{ y: 30, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 30 }} transition={RESORTE}
+                className="w-full max-w-4xl rounded-[2rem] bg-white dark:bg-neutral-900 p-6 sm:p-8 space-y-5 shadow-2xl flex flex-col items-center">
+                <div className="w-full flex items-center justify-between">
+                  <h2 className="text-3xl font-extrabold">{texto}</h2>
+                  <button type="button" onClick={() => { setAbierta(false); setValor(''); }} aria-label="Cerrar"
+                    className="w-12 h-12 rounded-full bg-slate-100 dark:bg-neutral-800 flex items-center justify-center cursor-pointer"><X className="w-6 h-6" /></button>
+                </div>
+                <CampoTexto valor={valor} placeholder="Escríbelo aquí" />
+                <TecladoLetras valor={valor} onCambio={(v) => setValor(v.slice(0, 40))} onListo={agregar} max={40} comoNombre={false} />
+                <Principal disabled={valor.trim().length < 2} onClick={agregar}><Plus className="w-6 h-6" /> Agregar</Principal>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
+  );
+};
 
 /** La foto de la especialista; si no carga (o no tiene), su inicial */
 const Foto: React.FC<{ src: string | null; nombre: string }> = ({ src, nombre }) => {

@@ -65,7 +65,12 @@ export interface PriceTier {
   price: number;
   description?: string;
   isDefault?: boolean;
+  /** false = solo la usa el salón (un precio VIP o interno): la asistente no la ofrece */
+  aiOfrece?: boolean;
 }
+
+/** Cómo habla del precio la asistente: lo dice, "desde" el más bajo, o no lo dice (lo confirma el salón) */
+export type ModoPrecioAsistente = 'exacto' | 'desde' | 'consultar';
 
 export interface SalonService {
   id: string;
@@ -82,6 +87,8 @@ export interface SalonService {
   description?: string;
   aiAvailable: boolean; // Accessible by the AI Chat Bot to offer
   priceTiers: PriceTier[]; // Multiple pricing table
+  /** Cómo habla del precio la asistente */
+  aiPrecio?: ModoPrecioAsistente;
 }
 
 /** Clave de una categoría de productos del salón (ver ServiceCategory) */
@@ -409,6 +416,8 @@ export interface SalonBusinessSettings {
   requireDeposit: boolean;
   depositPercent: number; // e.g. 30%
   aiAutoBooking: boolean;
+  /** false = la asistente no da ningún precio por chat (lo confirma el salón) */
+  aiDaPrecios?: boolean;
   aiStrictSlots: boolean;
   aiTone: 'friendly_luxury' | 'direct_professional' | 'chic_casual';
   /** Cómo se presenta la asistente con las clientas */
