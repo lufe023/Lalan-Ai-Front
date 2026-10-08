@@ -27,6 +27,8 @@ import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
 import { ReproductorSala } from './screens/ReproductorSala';
 import { PedirCancionScreen } from './screens/PedirCancionScreen';
+import { QuioscoScreen } from './screens/QuioscoScreen';
+import { AprobarQuiosco } from './components/ajustes/AprobarQuiosco';
 import { PlataformaScreen } from './screens/PlataformaScreen';
 import { CambiarClaveScreen } from './screens/CambiarClaveScreen';
 import { ConfirmarCorreoScreen, confirmacionOmitida } from './screens/ConfirmarCorreoScreen';
@@ -165,6 +167,8 @@ const MainAppContent: React.FC = () => {
             {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} />}
             <ChatsFlotantes />
             <RetornoInstagram />
+            {/* Escaneó el QR de un quiosco: aprobarlo desde aquí */}
+            <AprobarQuiosco />
             <PantallaLalan />
             {/* La Bienvenida: configurar el salón paso a paso (se abre sola la primera vez) */}
             <Bienvenida />
@@ -260,6 +264,11 @@ function tokenDePedirCancion(): string | null {
   return m ? m[1] : null;
 }
 
+/** El quiosco de la entrada (#/quiosco): su token vive en el aparato, no en la URL */
+function esQuiosco(): boolean {
+  return /^#\/quiosco(\/[A-Za-z0-9_-]*)?$/.test(window.location.hash || '');
+}
+
 export default function App() {
   // Se lee una vez y se escucha el cambio de hash: si alguien pega la URL de
   // la pantalla en la misma pestaña, cambia sin recargar.
@@ -282,12 +291,14 @@ export default function App() {
   const [tokenPantalla, setTokenPantalla] = React.useState<string | null>(tokenDePantalla);
   const [tokenReproductor, setTokenReproductor] = React.useState<string | null>(tokenDeReproductor);
   const [tokenPedirCancion, setTokenPedirCancion] = React.useState<string | null>(tokenDePedirCancion);
+  const [quiosco, setQuiosco] = React.useState<boolean>(esQuiosco);
 
   React.useEffect(() => {
     const alCambiar = () => {
       setTokenPantalla(tokenDePantalla());
       setTokenReproductor(tokenDeReproductor());
       setTokenPedirCancion(tokenDePedirCancion());
+      setQuiosco(esQuiosco());
     };
     window.addEventListener('hashchange', alCambiar);
     return () => window.removeEventListener('hashchange', alCambiar);
@@ -305,6 +316,16 @@ export default function App() {
     return (
       <ThemeProvider>
         <ReproductorSala token={tokenReproductor} />
+      </ThemeProvider>
+    );
+  }
+
+  if (quiosco) {
+    return (
+      <ThemeProvider>
+        <MotionConfig reducedMotion="user">
+          <QuioscoScreen />
+        </MotionConfig>
       </ThemeProvider>
     );
   }

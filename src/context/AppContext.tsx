@@ -107,6 +107,8 @@ export interface SalonZone {
   active: boolean;
   /** Tipos de servicio que se hacen aquí. Vacío = de todo. Es lo que usa la asistente para saber quién atiende qué */
   serviceCategories?: ServiceCategory[];
+  /** No es de servicios (bar, recepción): ahí no se agenda y su gente no recibe citas */
+  sinServicios?: boolean;
   staff?: { id: string; name: string; role: string; avatar?: string | null }[];
 }
 
@@ -391,7 +393,7 @@ interface AppContextType {
   loadSala: () => Promise<void>;
   zonas: SalonZone[];
   loadZonas: () => Promise<void>;
-  guardarZona: (dto: { id?: string; name: string; prefix: string; color?: string | null; sortOrder?: number; active?: boolean; serviceCategories?: ServiceCategory[] }) => Promise<boolean>;
+  guardarZona: (dto: { id?: string; name: string; prefix: string; color?: string | null; sortOrder?: number; active?: boolean; serviceCategories?: ServiceCategory[]; sinServicios?: boolean }) => Promise<boolean>;
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
   loadEspecialistas: () => Promise<void>;

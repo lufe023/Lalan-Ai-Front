@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ConfirmacionCorreo, UserProfile, UserRole } from '../types';
-import { api, tokenStore } from '../services/api';
+import { api, salirEnServidor, tokenStore } from '../services/api';
 import { enSoporte, salirDeSoporte } from '../services/soporte';
 import { quickAuth } from '../services/quickAuth';
 
@@ -132,6 +132,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(() => {
     if (enSoporte()) { salirDeSoporte(); return; }
+    // Que el servidor también la cierre: así deja de salir en "Dónde está abierta tu sesión"
+    salirEnServidor();
     tokenStore.clear();
     try {
       localStorage.removeItem('lalan_cached_user');

@@ -14,7 +14,7 @@
 
 const LLAVE = 'lalan.pantalla';
 
-export type TipoPantalla = 'pantalla' | 'reproductor';
+export type TipoPantalla = 'pantalla' | 'reproductor' | 'quiosco';
 
 export function recordarPantalla(tipo: TipoPantalla, token: string) {
   try { localStorage.setItem(LLAVE, JSON.stringify({ tipo, token })); }
@@ -26,7 +26,7 @@ export function pantallaRecordada(): { tipo: TipoPantalla; token: string } | nul
     const crudo = localStorage.getItem(LLAVE);
     if (!crudo) return null;
     const x = JSON.parse(crudo);
-    if (!x?.token || (x.tipo !== 'pantalla' && x.tipo !== 'reproductor')) return null;
+    if (!x?.token || !['pantalla', 'reproductor', 'quiosco'].includes(x.tipo)) return null;
     return x;
   } catch { return null; }
 }
