@@ -1,11 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Copy, Loader2, MonitorSmartphone, Power } from 'lucide-react';
+import { ChevronDown, Copy, Loader2, MonitorSmartphone, Power, Printer } from 'lucide-react';
 import { api } from '../../services/api';
 import { urlDelQuiosco } from '../../services/quiosco';
 import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
 
-interface Quiosco { id: string; nombre: string; activo: boolean; usadoEn: string | null; llegadas: number; sede: string | null }
+type ModoImprimir = 'no' | 'preguntar' | 'siempre';
+interface Quiosco {
+  id: string; nombre: string; activo: boolean; usadoEn: string | null; llegadas: number; sede: string | null;
+  verPrecios: boolean; verPreciosMenu: boolean; imprimir: ModoImprimir;
+}
+
+const MODOS: { id: ModoImprimir; titulo: string; detalle: string }[] = [
+  { id: 'no', titulo: 'No imprimir', detalle: 'Solo ve su turno en pantalla.' },
+  { id: 'preguntar', titulo: 'Con botón', detalle: 'Aparece «Imprimir mi turno» y ella decide.' },
+  { id: 'siempre', titulo: 'Siempre', detalle: 'El ticket sale solo al terminar.' },
+];
 
 /**
  * Ajustes → Sala: los quioscos de la entrada. Se activa uno con un código de
@@ -63,6 +73,17 @@ export const QuioscosSalon: React.FC = () => {
     catch { /* sin portapapeles: el enlace está a la vista */ }
   };
 
+  const [abierto, setAbierto] = useState<string | null>(null);
+
+  const ajustar = async (q: Quiosco, cambio: Partial<Pick<Quiosco, 'verPrecios' | 'verPreciosMenu' | 'imprimir'>>) => {
+    setQuioscos((l) => (l ?? []).map((x) => (x.id === q.id ? { ...x, ...cambio } : x)));
+    try { await api.patch(`/quiosco/${q.id}`, cambio); }
+    catch (e: any) {
+      showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      void cargar();
+    }
+  };
+
   const activos = (quioscos ?? []).filter((q) => q.activo);
 
   return (
@@ -114,18 +135,56 @@ export const QuioscosSalon: React.FC = () => {
       {activos.length > 0 && (
         <div className="space-y-2">
           {activos.map((q) => (
-            <div key={q.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/80 dark:border-neutral-800">
-              <MonitorSmartphone className="w-5 h-5 text-slate-500 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{q.nombre}{q.sede && sedes.length > 1 ? ` · ${q.sede}` : ''}</div>
-                <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-                  {q.llegadas} {q.llegadas === 1 ? 'llegada' : 'llegadas'}{q.usadoEn ? ` · usado ${new Date(q.usadoEn).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}` : ''}
-                </div>
+            <div key={q.id} className="rounded-xl border border-slate-200/80 dark:border-neutral-800">
+              <div className="flex items-center gap-3 p-3">
+                <MonitorSmartphone className="w-5 h-5 text-slate-500 shrink-0" />
+                <button type="button" onClick={() => setAbierto((a) => (a === q.id ? null : q.id))}
+                  className="flex-1 min-w-0 text-left cursor-pointer" aria-expanded={abierto === q.id}>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate flex items-center gap-1">
+                    {q.nombre}{q.sede && sedes.length > 1 ? ` · ${q.sede}` : ''}
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${abierto === q.id ? 'rotate-180' : ''}`} />
+                  </div>
+                  <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                    {q.llegadas} {q.llegadas === 1 ? 'llegada' : 'llegadas'}{q.usadoEn ? ` · usado ${new Date(q.usadoEn).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}` : ''}
+                    {' · '}Ajustes
+                  </div>
+                </button>
+                <button type="button" onClick={() => void apagar(q)} title="Desactivar"
+                  className="shrink-0 w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center cursor-pointer">
+                  <Power className="w-4 h-4" />
+                </button>
               </div>
-              <button type="button" onClick={() => void apagar(q)} title="Desactivar"
-                className="shrink-0 w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center cursor-pointer">
-                <Power className="w-4 h-4" />
-              </button>
+              {abierto === q.id && (
+                <div className="px-3 pb-3 space-y-3 border-t border-slate-200/80 dark:border-neutral-800 pt-3">
+                  <Interruptor activo={q.verPrecios} onCambio={(v) => void ajustar(q, { verPrecios: v })}
+                    titulo="Mostrar precios de los servicios" detalle="Si lo apagas, ve los servicios y el tiempo, sin precio ni total." />
+                  <Interruptor activo={q.verPreciosMenu} onCambio={(v) => void ajustar(q, { verPreciosMenu: v })}
+                    titulo="Mostrar precios del menú" detalle="Bebidas y picaderas. Si lo apagas, igual se le avisa que tienen costo y se suman a su cuenta." />
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><Printer className="w-3.5 h-3.5" /> Ticket del turno</div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {MODOS.map((m) => (
+                        <button key={m.id} type="button" onClick={() => void ajustar(q, { imprimir: m.id })}
+                          className={`p-2 rounded-lg border text-left cursor-pointer ${q.imprimir === m.id
+                            ? 'border-[var(--primary)] bg-[var(--primary)]/10'
+                            : 'border-slate-200 dark:border-neutral-700'}`}>
+                          <div className="text-[0.75rem] font-bold text-slate-900 dark:text-white">{m.titulo}</div>
+                          <div className="text-[0.625rem] text-slate-500 dark:text-neutral-400 leading-snug">{m.detalle}</div>
+                        </button>
+                      ))}
+                    </div>
+                    {q.imprimir !== 'no' && (
+                      <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-neutral-800/60 text-[0.6875rem] text-slate-600 dark:text-neutral-300 space-y-1 leading-relaxed">
+                        <div className="font-bold text-slate-900 dark:text-white">Cómo instalar la impresora</div>
+                        <div>1. Conecta una impresora de tickets de 80 mm (USB, red o Bluetooth) al aparato del quiosco e instálala en el sistema.</div>
+                        <div>2. Ponla como <b>impresora predeterminada</b> y, en sus preferencias, el papel en 80 mm y márgenes en cero.</div>
+                        <div>3. Para que salga sin preguntar, abre Chrome con <span className="font-mono">--kiosk --kiosk-printing</span> seguido del enlace del quiosco. Sin eso, el navegador muestra su ventana de imprimir y hay que tocar «Imprimir».</div>
+                        <div className="text-slate-400">En iPad se imprime con AirPrint: siempre aparece la ventana de impresión.</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -133,3 +192,15 @@ export const QuioscosSalon: React.FC = () => {
     </div>
   );
 };
+
+const Interruptor: React.FC<{ activo: boolean; onCambio: (v: boolean) => void; titulo: string; detalle: string }> = ({ activo, onCambio, titulo, detalle }) => (
+  <button type="button" role="switch" aria-checked={activo} onClick={() => onCambio(!activo)} className="w-full flex items-start gap-3 text-left cursor-pointer">
+    <div className="flex-1 min-w-0">
+      <div className="text-xs font-bold text-slate-900 dark:text-white">{titulo}</div>
+      <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-snug">{detalle}</div>
+    </div>
+    <span className={`shrink-0 mt-0.5 w-9 h-5 rounded-full p-0.5 transition-colors ${activo ? 'bg-[var(--primary)]' : 'bg-slate-300 dark:bg-neutral-700'}`}>
+      <span className={`block w-4 h-4 rounded-full bg-white shadow transition-transform ${activo ? 'translate-x-4' : ''}`} />
+    </span>
+  </button>
+);
