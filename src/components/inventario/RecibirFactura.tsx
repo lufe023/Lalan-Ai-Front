@@ -10,12 +10,22 @@ interface Candidato { id: string; name: string; sku: string; unit: string; stock
 interface RenglonLeido {
   leido: string; cantidad: number | null; costo: number | null; codigo: string | null;
   lote: string | null; vence: string | null; productId: string | null; producto: string | null;
-  parecido: number | null; candidatos: Candidato[];
+  parecido: number | null; candidatos: Candidato[]; categoriaSugerida?: string | null;
 }
 interface FacturaLeida { suplidor: string | null; numero: string | null; renglones: RenglonLeido[] }
 
-/** Lo que la dueña revisa y corrige de cada renglón antes de sumar */
-interface Renglon { leido: string; productId: string; cantidad: string; costo: string; lote: string; vence: string; candidatos: Candidato[] }
+/**
+ * Lo que la dueña revisa y corrige de cada renglón antes de sumar. `destino`
+ * es el id de un producto del catálogo, NUEVO (se crea al sumar) o '' (no se suma).
+ */
+interface Renglon {
+  leido: string; destino: string; cantidad: string; costo: string; lote: string; vence: string; candidatos: Candidato[];
+  nombreNuevo: string; categoriaNueva: string; precioNuevo: string;
+}
+const NUEVO = '__nuevo__';
+
+/** "GEL REAFIRMANTE CORPORAL" → "Gel reafirmante corporal" (lo demás se deja como venga) */
+const nombreBonito = (t: string) => (t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t);
 
 /** Archivos por factura y lo que pesa una foto como mucho al subirla (lo mismo que acepta el servidor) */
 const ARCHIVOS_MAXIMOS = 3;
@@ -51,7 +61,8 @@ async function reducirFoto(f: File): Promise<File> {
  * cada uno. Nada se guarda hasta que la dueña revisa y pulsa "Sumar".
  */
 export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; productos: ProductoDeCatalogo[] }> = ({ isOpen, onClose, productos }) => {
-  const { showToast, recargarCatalogo } = useApp();
+  const { showToast, recargarCatalogo, categoriasDe } = useApp();
+  const categorias = categoriasDe('product');
   const [archivos, setArchivos] = useState<File[]>([]);
   const [leyendo, setLeyendo] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -92,7 +103,12 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
       if (!r.renglones.length) { showToast('No encontré productos', 'Prueba con una foto más clara y derecha.', 'warning'); return; }
       setSuplidor(r.suplidor ?? ''); setNumero(r.numero ?? '');
       setRenglones(r.renglones.map(x => ({
-        leido: x.leido, productId: x.productId ?? '', candidatos: x.candidatos,
+        leido: x.leido, candidatos: x.candidatos,
+        // Lo que no está en el catálogo se propone como producto nuevo: la dueña lo revisa igual
+        destino: x.productId ?? NUEVO,
+        nombreNuevo: nombreBonito(x.leido),
+        categoriaNueva: categorias.find(c => c.key === x.categoriaSugerida)?.key ?? categorias[0]?.key ?? '',
+        precioNuevo: '',
         cantidad: x.cantidad != null ? String(x.cantidad) : '', costo: x.costo != null ? String(x.costo) : '',
         lote: x.lote ?? '', vence: x.vence ?? '',
       })));
@@ -103,14 +119,18 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
   const cambiar = (i: number, cambio: Partial<Renglon>) =>
     setRenglones(rs => rs && rs.map((r, j) => (j === i ? { ...r, ...cambio } : r)));
 
-  const aSumar = (renglones ?? []).filter(r => r.productId && Number(r.cantidad) > 0);
+  const aSumar = (renglones ?? []).filter(r => r.destino && Number(r.cantidad) > 0 && (r.destino !== NUEVO || r.nombreNuevo.trim().length >= 2));
+  const nuevos = aSumar.filter(r => r.destino === NUEVO).length;
 
   const sumar = async () => {
     setGuardando(true);
     try {
-      const r = await api.post<{ recibidos: number }>('/inventory/factura/recibir', {
+      const r = await api.post<{ recibidos: number; creados: { id: string; name: string }[] }>('/inventory/factura/recibir', {
         items: aSumar.map(x => ({
-          productId: x.productId, quantity: Number(x.cantidad),
+          ...(x.destino === NUEVO
+            ? { nuevo: { nombre: x.nombreNuevo.trim(), ...(x.categoriaNueva ? { categoria: x.categoriaNueva } : {}), ...(x.precioNuevo ? { precioVenta: Number(x.precioNuevo) } : {}) } }
+            : { productId: x.destino }),
+          quantity: Number(x.cantidad),
           ...(x.costo ? { costPrice: Number(x.costo) } : {}),
           ...(x.lote.trim() ? { lotNumber: x.lote.trim() } : {}),
           ...(x.vence ? { expiresAt: new Date(`${x.vence}T12:00:00`).toISOString() } : {}),
@@ -118,7 +138,8 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
         ...(suplidor.trim() ? { proveedor: suplidor.trim() } : {}),
         ...(numero.trim() ? { numeroFactura: numero.trim() } : {}),
       });
-      showToast('Factura cargada', `${r.recibidos} producto${r.recibidos === 1 ? '' : 's'} sumado${r.recibidos === 1 ? '' : 's'} al inventario.`, 'success');
+      const creados = r.creados?.length ?? 0;
+      showToast('Factura cargada', `${r.recibidos} producto${r.recibidos === 1 ? '' : 's'} sumado${r.recibidos === 1 ? '' : 's'} al inventario${creados ? ` (${creados} nuevo${creados === 1 ? '' : 's'} en el catálogo)` : ''}.`, 'success');
       await recargarCatalogo?.();
       onClose();
     } catch (e) { showToast('No se pudo guardar', (e as Error)?.message || 'Revisa los datos.', 'warning'); }
@@ -177,9 +198,10 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
             {renglones.map((r, i) => {
               const sugeridos = new Set(r.candidatos.map(c => c.id));
               return (
-                <li key={i} className={`p-2.5 rounded-2xl border ${r.productId ? 'border-slate-200 dark:border-neutral-700' : 'border-dashed border-amber-300 dark:border-amber-700'} space-y-2`}>
+                <li key={i} className={`p-2.5 rounded-2xl border ${r.destino === NUEVO ? 'border-[var(--primary)]/40 bg-[var(--primary)]/[0.03]' : r.destino ? 'border-slate-200 dark:border-neutral-700' : 'border-dashed border-amber-300 dark:border-amber-700'} space-y-2`}>
                   <p className="text-[0.75rem] text-slate-500">En la factura: <span className="font-semibold text-slate-800 dark:text-slate-200">{r.leido}</span></p>
-                  <select className={campo} value={r.productId} onChange={e => cambiar(i, { productId: e.target.value })}>
+                  <select className={campo} value={r.destino} onChange={e => cambiar(i, { destino: e.target.value })}>
+                    <option value={NUEVO}>➕ Crear como producto nuevo</option>
                     <option value="">— No sumar este renglón —</option>
                     {r.candidatos.length > 0 && (
                       <optgroup label="Se parece a">
@@ -190,15 +212,28 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
                       {productos.filter(p => !sugeridos.has(p.id)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </optgroup>
                   </select>
-                  <div className="grid grid-cols-4 gap-1.5">
+                  {r.destino === NUEVO && (
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <label className="col-span-2"><span className="text-[0.6875rem] text-slate-500">Nombre del producto nuevo</span>
+                        <input className={campo} value={r.nombreNuevo} onChange={e => cambiar(i, { nombreNuevo: e.target.value })} /></label>
+                      <label><span className="text-[0.6875rem] text-slate-500">Categoría</span>
+                        <select className={campo} value={r.categoriaNueva} onChange={e => cambiar(i, { categoriaNueva: e.target.value })}>
+                          {categorias.map(c => <option key={c.key} value={c.key}>{`${c.icon ?? ''} ${c.name}`.trim()}</option>)}
+                        </select></label>
+                      <label><span className="text-[0.6875rem] text-slate-500">Precio de venta</span>
+                        <input className={campo} inputMode="decimal" placeholder="Vacío = insumo" value={r.precioNuevo} onChange={e => cambiar(i, { precioNuevo: soloNumero(e.target.value) })} /></label>
+                    </div>
+                  )}
+                  {/* En el teléfono, 2 columnas: con 4 la fecha se salía de la pantalla */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     <label><span className="text-[0.6875rem] text-slate-500">Cantidad</span>
                       <input className={campo} inputMode="decimal" value={r.cantidad} onChange={e => cambiar(i, { cantidad: soloNumero(e.target.value) })} /></label>
                     <label><span className="text-[0.6875rem] text-slate-500">Costo c/u</span>
                       <input className={campo} inputMode="decimal" value={r.costo} onChange={e => cambiar(i, { costo: soloNumero(e.target.value) })} /></label>
                     <label><span className="text-[0.6875rem] text-slate-500">Lote</span>
                       <input className={campo} value={r.lote} onChange={e => cambiar(i, { lote: e.target.value })} /></label>
-                    <label><span className="text-[0.6875rem] text-slate-500">Vence</span>
-                      <input type="date" className={campo} value={r.vence} onChange={e => cambiar(i, { vence: e.target.value })} /></label>
+                    <label className="min-w-0"><span className="text-[0.6875rem] text-slate-500">Vence</span>
+                      <input type="date" className={`${campo} min-w-0`} value={r.vence} onChange={e => cambiar(i, { vence: e.target.value })} /></label>
                   </div>
                 </li>
               );
@@ -212,7 +247,7 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
             <button type="button" disabled={!aSumar.length || guardando} onClick={() => void sumar()}
               className="flex-1 py-3 rounded-xl bg-[var(--primary)] text-white font-bold text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
               {guardando && <Loader2 className="w-4 h-4 animate-spin" />}
-              Sumar {aSumar.length} producto{aSumar.length === 1 ? '' : 's'} al inventario
+              Sumar {aSumar.length} producto{aSumar.length === 1 ? '' : 's'}{nuevos ? ` (${nuevos} nuevo${nuevos === 1 ? '' : 's'})` : ''}
             </button>
           </div>
         </>)}
