@@ -1,6 +1,8 @@
 // ─── Base API client (native fetch + JWT) ────────────────────────
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
+/** La dirección del servidor, para las pantallas sin sesión que llevan su propia cabecera (el quiosco) */
+export const URL_API = BASE_URL;
 
 const TOKEN_KEY = 'lalan_access_token';
 const REFRESH_KEY = 'lalan_refresh_token';

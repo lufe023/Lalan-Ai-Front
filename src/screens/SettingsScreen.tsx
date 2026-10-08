@@ -62,6 +62,7 @@ import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 import { SeguridadCuenta } from '../components/ajustes/SeguridadCuenta';
+import { QuioscosSalon } from '../components/ajustes/QuioscosSalon';
 import { enSoporte } from '../services/soporte';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
@@ -1071,6 +1072,8 @@ export const SettingsScreen: React.FC = () => {
         )}
         {seccion === 'sala' && (
           <>
+        {/* La tablet de la entrada: las clientas sin cita se anotan solas */}
+        <QuioscosSalon />
         {/* SECTION 3.46: PANTALLA DE PARED */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
           <div className="flex items-center gap-1.5">

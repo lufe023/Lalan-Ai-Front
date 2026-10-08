@@ -25,7 +25,7 @@ export const GRUPOS_AJUSTES: Grupo[] = [
   { id: 'equipo', titulo: 'Equipo', resumen: 'Quién entra a la app y a quién le llega cada aviso', icono: Users, color: 'bg-sky-500', roles: ADMINISTRACION },
   { id: 'salon', titulo: 'El salón', resumen: 'Horario de la semana, citas, zonas y especialistas', icono: Store, color: 'bg-emerald-500', roles: ADMINISTRACION },
   { id: 'chats', titulo: 'Lalan en los chats', resumen: 'Conectar WhatsApp, Instagram y Messenger; mensajes automáticos', icono: Bot, color: 'bg-purple-500', roles: ADMINISTRACION },
-  { id: 'sala', titulo: 'Sala y Lounge', resumen: 'Pantalla de turnos en la pared y canciones que piden las clientas', icono: Monitor, color: 'bg-indigo-500', roles: ADMINISTRACION },
+  { id: 'sala', titulo: 'Sala y Lounge', resumen: 'Pantalla de turnos, quiosco de llegada y canciones que piden las clientas', icono: Monitor, color: 'bg-indigo-500', roles: ADMINISTRACION },
   { id: 'caja', titulo: 'Caja', resumen: 'Monedas, billetes, recibos e impresión', icono: Wallet, color: 'bg-teal-500', roles: ADMINISTRACION },
   // Es de cada teléfono (no cambia nada del salón): la ve todo el equipo
   { id: 'apariencia', titulo: 'Apariencia', resumen: 'Tamaño de la letra, tema claro u oscuro y colores', icono: Palette, color: 'bg-rose-500' },
