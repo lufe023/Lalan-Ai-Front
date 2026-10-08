@@ -1,6 +1,6 @@
 /**
  * La ventanita de preguntas de la landing: Lalan contesta sobre Lalan,
- * lleva a la sección que hace falta y deja el formulario del piloto (o el
+ * lleva a la sección que hace falta y deja el formulario de los 2 meses gratis (o el
  * de otro negocio) lleno con lo que la persona contó. La persona siempre
  * revisa y envía ella: la asistente nunca envía nada.
  *
@@ -31,8 +31,8 @@ const INVITACION_MS = 14_000;
 /** Cuánto se deja leer la respuesta antes de mover la página */
 const ESPERA_LECTURA_MS = 900;
 const ESPERA_LECTURA_MOVIL_MS = 3200;
-const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, el piloto gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
-const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo es lo del piloto gratis?', 'No tengo salón, tengo otro negocio'];
+const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, los 2 meses gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
+const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo son los 2 meses gratis?', 'No tengo salón, tengo otro negocio'];
 
 interface ConfigVoz { activa?: boolean; motor: 'apagada' | 'navegador' | 'nube'; voces: string[]; velocidad: number; pronuncia?: string }
 
