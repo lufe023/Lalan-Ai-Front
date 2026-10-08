@@ -1,5 +1,6 @@
 /**
- * El formulario para aplicar al piloto gratis.
+ * El formulario de los 2 meses gratis (por dentro sigue llamándose "piloto":
+ * así lo cuentan la medición y Plataforma).
  *
  * Las opciones (tamaño del equipo, servicios, planes…) las da el servidor:
  * así la lista vive en un solo sitio. Si el servidor no responde, el
@@ -94,20 +95,20 @@ export async function iniciarPiloto(): Promise<void> {
         const d = await r.json().catch(() => null);
         throw new Error((d && (Array.isArray(d.message) ? d.message[0] : d.message)) || 'No se pudo enviar.');
       }
-      const mensaje = `Hola, soy ${nombre} de ${salon}. Acabo de aplicar al piloto de Lalan AI.`;
+      const mensaje = `Hola, soy ${nombre} de ${salon}. Acabo de pedir mis 2 meses gratis de Lalan AI.`;
       $<HTMLAnchorElement>('piloto-wa').href = `https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(mensaje)}`;
-      $('piloto-gracias').textContent = `¡Recibimos tu aplicación, ${nombre.split(' ')[0]}!`;
+      $('piloto-gracias').textContent = `¡Listo, ${nombre.split(' ')[0]}! Ya pediste tus 2 meses gratis`;
       form.hidden = true;
       const listo = $('piloto-listo'); listo.hidden = false; listo.focus();
     } catch (err) {
-      const mensaje = `Hola, soy ${nombre} de ${salon}. Mi WhatsApp es ${telefono}. Quiero aplicar al piloto de Lalan AI.`;
+      const mensaje = `Hola, soy ${nombre} de ${salon}. Mi WhatsApp es ${telefono}. Quiero mis 2 meses gratis de Lalan AI.`;
       decir(`${(err as Error).message} Puedes escribirnos directo por WhatsApp al 809-229-9444.`, true);
       const a = document.createElement('a');
       a.className = 'boton claro chico'; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Enviar por WhatsApp';
       a.href = `https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(mensaje)}`;
       aviso.appendChild(document.createElement('br')); aviso.appendChild(a);
     } finally {
-      boton.disabled = false; boton.textContent = 'Aplicar al piloto';
+      boton.disabled = false; boton.textContent = 'Quiero mis 2 meses gratis';
     }
   });
 }
