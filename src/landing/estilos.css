@@ -975,6 +975,27 @@
   /* ── Entrar y piloto ─────────────────────────── */
   .barra .entrar { font-weight: 700; font-size: .88rem; color: var(--tinta-2); text-decoration: none; padding: 8px 10px; border-radius: 999px; }
   .barra .entrar:hover { color: var(--rosa); }
+  /* El botón de la barra en una sola línea ("2 meses gratis" se partía en tres a 360 px) */
+  .barra .boton.chico { white-space: nowrap; }
+  /* Que el logo no se aplaste cuando la barra va justa */
+  .barra .marca-logo { flex: none; }
+  @media (max-width: 380px) {
+    .barra .boton.chico { padding: 9px 12px; font-size: .8rem; }
+    .barra .entrar { padding: 8px 6px; }
+  }
+  /* En el celular la marca queda solo "Lalan AI", en una línea: con el subtítulo, el nombre se apretaba y se cortaba */
+  @media (max-width: 420px) {
+    .marca small { display: none; }
+    .barra .marca > span { white-space: nowrap; }
+  }
+  /* En los más angostos (320 px) tampoco cabe el selector de colores: es lo menos importante de la barra */
+  @media (max-width: 340px) {
+    .barra .tema { display: none; }
+    .marca { gap: 8px; }
+    .acciones-barra { gap: 6px; }
+    .barra .boton.chico { padding: 8px 10px; font-size: .78rem; }
+    .barra .entrar { padding: 8px 4px; }
+  }
   .piloto-lista { margin: 18px 0; padding: 0; list-style: none; display: grid; gap: 8px; }
   .piloto-lista li { padding-left: 28px; position: relative; font-weight: 600; color: var(--tinta-2); }
   .piloto-lista li::before { content: '✓'; position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; background: var(--rosa); color: #fff; }
