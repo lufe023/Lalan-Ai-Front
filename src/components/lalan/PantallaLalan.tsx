@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, RotateCcw, Send, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -48,6 +48,30 @@ export function puedeHablarConLalan(rol?: string) {
 }
 
 /** Lo que dice la pastilla sobre la esfera. Para quien ya sabe usarla, la versión corta */
+/**
+ * En PC (1024 px o más) la pantalla se reparte en dos paneles: la esfera a
+ * un lado y la conversación al otro. La columna de teléfono estirada a un
+ * monitor se veía vacía, con la esfera tapando el texto.
+ */
+const ESCRITORIO = '(min-width: 1024px)';
+function usePantallaGrande() {
+  const [grande, setGrande] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(ESCRITORIO).matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.(ESCRITORIO);
+    if (!mq) return;
+    const cambio = () => setGrande(mq.matches);
+    mq.addEventListener('change', cambio);
+    return () => mq.removeEventListener('change', cambio);
+  }, []);
+  return grande;
+}
+
+/** Para empezar sin pensar qué decir (en PC, al lado de la esfera) */
+const SUGERENCIAS = ['¿Cómo se ve mi día?', '¿Quién me está esperando?', '¿Qué se está acabando en el inventario?'];
+
+/** Los paneles de PC: vidrio sobre el fondo, como las tarjetas del quiosco */
+const VIDRIO = 'rounded-[2rem] bg-white/65 dark:bg-neutral-900/55 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-xl shadow-black/[0.04]';
+
 const TEXTO_ESTADO: Record<ModoEsfera, { nueva: string; sabe: string | null }> = {
   reposo: { nueva: 'Toca la esfera y háblame', sabe: null },
   escuchando: { nueva: 'Te escucho… (toca cuando termines)', sabe: 'Te escucho…' },
@@ -111,6 +135,7 @@ export const PantallaLalan: React.FC = () => {
   const seguir = seguirAqui ?? aj.seguirEscuchando;
   const pausa: Pausa = pausaAqui ?? aj.pausaPorDefecto;
   const [altoAbajo, setAltoAbajo] = useState(240);
+  const grande = usePantallaGrande();
   const abajo = useRef<HTMLDivElement>(null);
   const lista = useRef<HTMLDivElement>(null);
   const entrada = useRef<HTMLInputElement>(null);
@@ -142,7 +167,7 @@ export const PantallaLalan: React.FC = () => {
     const obs = new ResizeObserver(medir);
     obs.observe(el);
     return () => obs.disconnect();
-  }, [abierta, escribiendo]);
+  }, [abierta, escribiendo, grande]);
 
   const bajar = () => requestAnimationFrame(() => lista.current?.scrollTo({ top: lista.current.scrollHeight, behavior: 'smooth' }));
 
@@ -270,9 +295,14 @@ export const PantallaLalan: React.FC = () => {
     window.setTimeout(() => void escucha.empezar(), hablaba ? 250 : 0);
   };
 
-  const enviarTexto = async (e: React.FormEvent) => {
+  const enviarTexto = (e: React.FormEvent) => {
     e.preventDefault();
-    const t = texto.trim();
+    void enviar(texto);
+  };
+
+  /** Mandarle algo por escrito (lo tecleado o una sugerencia) */
+  const enviar = async (escrito: string) => {
+    const t = escrito.trim();
     if (!t || modo === 'pensando') return;
     callarLalan();
     if (!callada) despertarVoz();
@@ -360,7 +390,7 @@ export const PantallaLalan: React.FC = () => {
                 WebkitMaskSize: `${aj.tamanoPapel}px`, maskSize: `${aj.tamanoPapel}px`, WebkitMaskRepeat: 'repeat', maskRepeat: 'repeat',
               }} />
           )}
-          <div className="relative w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col">
+          <div className={`relative w-full ${grande ? 'max-w-6xl' : 'max-w-2xl'} mx-auto flex-1 min-h-0 flex flex-col`}>
             {/* Arriba */}
             <div className="flex items-center justify-between px-4 h-12 shrink-0">
               <div className="w-24 flex">
@@ -368,7 +398,8 @@ export const PantallaLalan: React.FC = () => {
                   <ChevronDown className="w-6 h-6" />
                 </button>
               </div>
-              <span className="text-[0.9375rem] font-bold tracking-tight">Lalan</span>
+              {/* En PC el nombre ya está en el panel de la conversación */}
+              <span className={`text-[0.9375rem] font-bold tracking-tight ${grande ? 'invisible' : ''}`}>Lalan</span>
               <div className="relative w-24 flex justify-end gap-1">
                 {/* Silencio con un toque: de noche, en una reunión… Lalan responde solo por escrito */}
                 <button type="button" onClick={cambiarCallada} aria-pressed={callada}
@@ -456,6 +487,126 @@ export const PantallaLalan: React.FC = () => {
               </div>
             </div>
 
+            {grande ? (
+            <div className="flex-1 min-h-0 grid grid-cols-[minmax(320px,400px)_1fr] gap-5 px-6 pt-2 pb-1">
+              {/* Izquierda: Lalan. La esfera es la protagonista, con su estado siempre a la vista */}
+              <aside className={`${VIDRIO} flex flex-col items-center justify-center gap-6 p-8 text-center`}>
+                <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
+                  className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+                  <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={Math.max(Math.round(aj.tamanoEsfera * 1.6), 240)} />
+                  {modo === 'escuchando' && escucha.cierre > 0 && (
+                    <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--primary)" strokeOpacity="0.9" strokeWidth="2.5" strokeLinecap="round"
+                        strokeDasharray={`${escucha.cierre * 251.3} 251.3`} />
+                    </svg>
+                  )}
+                </button>
+                <div className="space-y-1.5" role="status">
+                  <p className="text-xl font-bold tracking-tight">
+                    {callada && modo === 'reposo' ? 'En silencio' : modo === 'reposo' ? 'Toca la esfera y háblame' : TEXTO_ESTADO[modo].sabe ?? TEXTO_ESTADO[modo].nueva}
+                  </p>
+                  <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400" style={{ textWrap: 'balance' }}>
+                    {modo === 'escuchando' ? 'Cuando te calles te respondo; o toca la esfera.'
+                      : modo === 'hablando' ? 'Toca la esfera para interrumpirme.'
+                      : modo === 'pensando' ? 'Revisando tu salón…'
+                      : callada ? 'Te respondo solo por escrito.' : 'O escríbeme en el panel de la derecha.'}
+                  </p>
+                </div>
+                <AnimatePresence>
+                  {error && (
+                    <motion.p key={error} role="alert" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
+                      className="max-w-xs text-[0.8125rem] font-medium leading-snug text-amber-800 dark:text-amber-200 px-3.5 py-2 rounded-2xl bg-amber-50/90 dark:bg-amber-950/70 border border-amber-200/80 dark:border-amber-900/60">
+                      {error}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                {!mensajes.length && !cargando && (
+                  <div className="w-full space-y-2 pt-2">
+                    <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Puedes preguntarme</p>
+                    {SUGERENCIAS.map((q) => (
+                      <button key={q} type="button" onClick={() => void enviar(q)} disabled={modo === 'pensando'}
+                        className="w-full px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-neutral-800/70 hover:bg-white dark:hover:bg-neutral-800 border border-white/70 dark:border-white/5 text-[0.875rem] font-medium text-left shadow-sm cursor-pointer transition-colors disabled:opacity-50">
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </aside>
+
+              {/* Derecha: la conversación, en su panel, con el cuadro para escribir siempre a mano */}
+              <section className={`${VIDRIO} flex flex-col min-h-0 overflow-hidden`}>
+                <div className="flex items-center gap-3 px-6 h-16 shrink-0 border-b border-black/5 dark:border-white/5">
+                  <span className="w-9 h-9 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5" /></span>
+                  <div className="leading-tight">
+                    <div className="text-[0.9375rem] font-bold">Lalan</div>
+                    <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${modo === 'pensando' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                      {modo === 'pensando' ? 'Pensando…' : 'Tu asistente, al día con tu salón'}
+                    </div>
+                  </div>
+                </div>
+                <div ref={lista} aria-live="polite"
+                  className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
+                  {cargando && !mensajes.length && (
+                    <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+                  )}
+                  {!cargando && !mensajes.length && (
+                    <div className="h-full flex flex-col items-center justify-center text-center gap-2 text-slate-500 dark:text-neutral-400">
+                      <p className="text-2xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">¿En qué te ayudo?</p>
+                      <p className="text-[0.9375rem] max-w-md" style={{ textWrap: 'balance' }}>Háblame con la esfera o escríbeme aquí abajo. Conozco tu agenda, tu caja, tus chats y tu inventario.</p>
+                    </div>
+                  )}
+                  {mensajes.map((m) => (
+                    m.deLalan ? (
+                      <div key={m.id} className="flex gap-3 max-w-[88%]">
+                        <span className="mt-1 w-8 h-8 shrink-0 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></span>
+                        <div className="min-w-0 space-y-2">
+                          <div className="px-5 py-3.5 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm">
+                            <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
+                          </div>
+                          {m.accion && <TarjetaAccion accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} />}
+                          <div className="pl-2"><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={m.id} className="flex justify-end">
+                        <div className="max-w-[75%] px-5 py-3 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug shadow-md shadow-[var(--primary)]/20">
+                          {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
+                          {m.texto}
+                        </div>
+                      </div>
+                    )
+                  ))}
+                  {modo === 'pensando' && (
+                    <div className="flex gap-3">
+                      <span className="w-8 h-8 shrink-0 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></span>
+                      <div className="px-5 py-4 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 flex gap-1.5" aria-label="Lalan está pensando">
+                        {[0, 1, 2].map((i) => (
+                          <motion.span key={i} className="w-2 h-2 rounded-full bg-[var(--primary)]/60"
+                            animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <form onSubmit={enviarTexto} className="shrink-0 p-4 border-t border-black/5 dark:border-white/5">
+                  <div className="flex items-center gap-2 p-1.5 pl-5 rounded-2xl bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm focus-within:ring-2 focus-within:ring-[var(--primary)]">
+                    <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…"
+                      onFocus={() => { if (escucha.estado === 'escuchando') escucha.terminar(false); setEscribiendo(true); }}
+                      className="flex-1 min-w-0 bg-transparent py-2.5 text-[0.9375rem] focus:outline-none" />
+                    <button type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" title="Hablarle con la voz"
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition-colors ${modo === 'escuchando' ? 'bg-[var(--primary)]/15 text-[var(--primary)]' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-700'}`}>
+                      <Mic className="w-5 h-5" />
+                    </button>
+                    <button type="submit" disabled={!texto.trim() || modo === 'pensando'} aria-label="Enviar"
+                      className="w-10 h-10 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center shrink-0 disabled:opacity-40 cursor-pointer">
+                      {modo === 'pensando' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-4.5 h-4.5" />}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
+            ) : (
             <div className="relative flex-1 min-h-0">
             {/* La conversación: corre por detrás de la esfera (abajo es transparente) */}
             <div ref={lista} className="absolute inset-0 overflow-y-auto px-5 pt-4 space-y-5" style={{ paddingBottom: altoAbajo + 8 }} aria-live="polite">
@@ -549,6 +700,7 @@ export const PantallaLalan: React.FC = () => {
               )}
             </div>
             </div>
+            )}
           </div>
         </motion.div>
       )}
