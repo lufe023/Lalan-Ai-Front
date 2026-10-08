@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { reducirFoto } from '../../utils/reducirFoto';
 import { Camera, Loader2 } from 'lucide-react';
 
 /**
@@ -17,7 +18,7 @@ export const Encabezado: React.FC<{ titulo: string; texto?: string }> = ({ titul
 );
 
 export const Tarjeta: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs p-4 ${className}`}>{children}</div>
+  <div className={`rounded-2xl bg-white/85 dark:bg-neutral-900/80 backdrop-blur-md border border-white/70 dark:border-white/10 shadow-sm p-4 ${className}`}>{children}</div>
 );
 
 export const Etiqueta: React.FC<{ texto: string; children: React.ReactNode }> = ({ texto, children }) => (
@@ -57,13 +58,14 @@ export const BotonFoto: React.FC<{ texto: string; cargando?: boolean; onFotos: (
       <input
         ref={entrada}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
         multiple
         className="hidden"
         onChange={(e) => {
           const fotos = Array.from(e.target.files ?? []).slice(0, 3);
           e.target.value = '';
-          if (fotos.length) onFotos(fotos);
+          // Reducidas a 1600 px antes de subir: suben al momento y la IA responde antes
+          if (fotos.length) void Promise.all(fotos.map(reducirFoto)).then(onFotos);
         }}
       />
       <BotonSecundario disabled={cargando} onClick={() => entrada.current?.click()} className="w-full">
