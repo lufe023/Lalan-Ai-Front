@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FondoVivo } from '../components/ui/FondoVivo';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowBigUp, Check, ChevronLeft, Clock, Coffee, Delete, Heart, Loader2, Pencil, Plus, Printer, RotateCcw, Sparkles, X } from 'lucide-react';
@@ -43,27 +44,13 @@ export const QuioscoScreen: React.FC = () => {
 
   return (
     <div className="fixed inset-0 overflow-clip print:hidden bg-[#fbf7f8] dark:bg-[#0c0a0b] text-slate-900 dark:text-white select-none">
-      <Fondo />
+      <FondoVivo />
       {token
         ? <Recepcion onDesvincular={() => { tokenQuiosco.borrar(); setToken(null); }} />
         : <Vincular onListo={(t) => { tokenQuiosco.guardar(t); setToken(t); }} />}
     </div>
   );
 };
-
-/** Manchas de color que se mueven despacio: el quiosco se ve vivo aunque nadie lo toque */
-const Fondo: React.FC = () => (
-  <div className="absolute inset-0 pointer-events-none" aria-hidden>
-    {[
-      { c: 'bg-[var(--primary)]/25', t: 'top-[-10%] left-[-10%] w-[55vw] h-[55vw]', x: [0, 60, 0], y: [0, 40, 0], d: 22 },
-      { c: 'bg-rose-300/30 dark:bg-rose-500/15', t: 'bottom-[-15%] right-[-10%] w-[60vw] h-[60vw]', x: [0, -50, 0], y: [0, -30, 0], d: 26 },
-      { c: 'bg-amber-200/30 dark:bg-amber-500/10', t: 'top-[30%] right-[20%] w-[35vw] h-[35vw]', x: [0, 30, 0], y: [0, 50, 0], d: 30 },
-    ].map((m, i) => (
-      <motion.div key={i} className={`absolute rounded-full blur-3xl ${m.c} ${m.t}`}
-        animate={{ x: m.x, y: m.y }} transition={{ duration: m.d, repeat: Infinity, ease: 'easeInOut' }} />
-    ))}
-  </div>
-);
 
 // ═════════════════════════════════════════════════════════════════════
 //  VINCULAR: la primera vez, alguien del salón activa la tablet
