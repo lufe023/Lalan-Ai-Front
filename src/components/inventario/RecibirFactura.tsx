@@ -37,21 +37,26 @@ const campo = 'w-full px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 bor
 const soloNumero = (v: string) => v.replace(/[^\d.]/g, '');
 
 /**
- * Una foto del teléfono pasa fácil de 4 MB. Se reduce aquí (2000 px de lado,
- * JPEG) antes de subirla: sobra para leer una factura y no choca con el
- * límite del servidor. Si el navegador no puede, se manda tal cual.
+ * Toda foto sale de aquí a lo sumo de 1600 px por lado, en JPEG: sobra para
+ * leer una factura, sube en un momento y el modelo de visión responde antes
+ * (una foto de 4000 px son muchos más "trozos" de imagen que procesar). Se
+ * hace en el navegador y no en el servidor a propósito: allí, una foto
+ * corrupta tumbaba el proceso entero. Si el navegador no puede, va tal cual.
  */
+const LADO_MAXIMO = 1600;
 async function reducirFoto(f: File): Promise<File> {
-  if (f.type === 'application/pdf' || f.size <= 1.5 * 1024 * 1024) return f;
+  if (f.type === 'application/pdf') return f;
   try {
     const img = await createImageBitmap(f);
-    const escala = Math.min(1, 2000 / Math.max(img.width, img.height));
+    const escala = Math.min(1, LADO_MAXIMO / Math.max(img.width, img.height));
+    if (escala === 1 && f.size <= 500 * 1024) return f; // ya es pequeña
     const lienzo = document.createElement('canvas');
     lienzo.width = Math.round(img.width * escala);
     lienzo.height = Math.round(img.height * escala);
     lienzo.getContext('2d')!.drawImage(img, 0, 0, lienzo.width, lienzo.height);
-    const blob = await new Promise<Blob | null>(ok => lienzo.toBlob(ok, 'image/jpeg', 0.85));
-    return blob ? new File([blob], f.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : f;
+    const blob = await new Promise<Blob | null>(ok => lienzo.toBlob(ok, 'image/jpeg', 0.8));
+    // Si se achicó, siempre la reducida (lo que cuesta tiempo son los píxeles); si no, solo si pesa menos
+    return blob && (escala < 1 || blob.size < f.size) ? new File([blob], f.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : f;
   } catch { return f; }
 }
 
@@ -65,6 +70,13 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
   const categorias = categoriasDe('product');
   const [archivos, setArchivos] = useState<File[]>([]);
   const [leyendo, setLeyendo] = useState(false);
+  // Los segundos que lleva leyendo: esperar viendo un contador se hace más corto que mirando un spinner
+  const [segundos, setSegundos] = useState(0);
+  useEffect(() => {
+    if (!leyendo) { setSegundos(0); return; }
+    const id = window.setInterval(() => setSegundos(s => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [leyendo]);
   const [guardando, setGuardando] = useState(false);
   const [renglones, setRenglones] = useState<Renglon[] | null>(null);
   const [suplidor, setSuplidor] = useState('');
@@ -182,7 +194,8 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
           </p>
           <button type="button" disabled={!archivos.length || leyendo} onClick={() => void leer()}
             className="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-bold text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
-            {leyendo && <Loader2 className="w-4 h-4 animate-spin" />} {leyendo ? 'Leyendo la factura…' : 'Leer factura'}
+            {leyendo && <Loader2 className="w-4 h-4 animate-spin" />}
+            {!leyendo ? 'Leer factura' : segundos < 3 ? 'Subiendo…' : `Leyendo los productos… ${segundos} s`}
           </button>
         </>)}
 
