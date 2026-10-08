@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Clock, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { Check, Clock, Plus, Trash2 } from 'lucide-react';
 import { bienvenidaApi } from '../../services/bienvenida';
 import type { Plantillas, ServicioAGuardar, ServicioLeido } from '../../types/bienvenida';
-import { Aviso, BotonFoto, BotonPrincipal, BotonSecundario, Cargando, Encabezado, Tarjeta, claseCampo, leerNumero } from './comun';
+import { SubirLista } from './SubirLista';
+import { Aviso, BotonPrincipal, BotonSecundario, Cargando, Encabezado, Tarjeta, claseCampo, leerNumero } from './comun';
 
 interface Marca { marcado: boolean; precio: string; duracion: number; deLaFoto?: boolean }
 /** Un servicio que no está en la lista de su tipo de salón (escrito a mano o leído de la foto) */
@@ -21,7 +22,6 @@ export const PasoServicios: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
   const [plantillas, setPlantillas] = useState<Plantillas | null>(null);
   const [marcas, setMarcas] = useState<Record<string, Marca>>({});
   const [extras, setExtras] = useState<Extra[]>([]);
-  const [leyendo, setLeyendo] = useState(false);
   const [resumenFoto, setResumenFoto] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
@@ -52,7 +52,7 @@ export const PasoServicios: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
 
   /** Lo leído de la foto se reparte: lo reconocido marca su casilla; lo demás entra como servicio aparte */
   const aplicarFoto = (leidos: ServicioLeido[]) => {
-    if (!leidos.length) { setResumenFoto('No encontré servicios con precio en esa foto. Prueba con una más clara y derecha.'); return; }
+    if (!leidos.length) { setResumenFoto('No encontré servicios con precio ahí. Si era una foto, prueba con una más clara y derecha; si era un archivo, revisa que traiga los nombres y precios.'); return; }
     const enLista = new Set(plantillas?.servicios.map((s) => s.clave));
     const nuevasMarcas: Record<string, Marca> = {};
     const nuevosExtras: Extra[] = [];
@@ -71,12 +71,6 @@ export const PasoServicios: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
     setExtras((x) => [...x, ...nuevosExtras]);
     const reconocidos = Object.keys(nuevasMarcas).length;
     setResumenFoto(`Leí ${leidos.length} servicios: ${reconocidos} los marqué en la lista y ${nuevosExtras.length} los puse abajo como servicios tuyos. Revisa los precios antes de seguir.`);
-  };
-
-  const leerFoto = async (fotos: File[]) => {
-    setError(''); setResumenFoto('');
-    setLeyendo(true);
-    try { aplicarFoto(await bienvenidaApi.fotoPrecios(fotos)); } catch (e) { setError((e as Error).message); } finally { setLeyendo(false); }
   };
 
   const seguir = async () => {
@@ -117,11 +111,7 @@ export const PasoServicios: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
     <div className="space-y-5">
       <Encabezado titulo="¿Qué servicios haces?" texto="Marca los que haces y pon tu precio. La duración y lo que lleva cada uno ya los preparé; los puedes cambiar." />
       <Tarjeta className="space-y-2">
-        <p className="text-[0.875rem] text-slate-600 dark:text-neutral-300 flex items-start gap-2">
-          <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-[var(--primary)]" />
-          ¿Tienes tu lista de precios en un letrero, un flyer o en WhatsApp? Tómale una foto y la lleno yo.
-        </p>
-        <BotonFoto texto="Foto de mi lista de precios" cargando={leyendo} onFotos={leerFoto} />
+        <SubirLista onLeidos={(l) => { setResumenFoto(''); aplicarFoto(l); }} onError={setError} />
         {resumenFoto && <Aviso>{resumenFoto}</Aviso>}
       </Tarjeta>
 
@@ -142,7 +132,7 @@ export const PasoServicios: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
                       <span className="block font-semibold text-[0.9375rem] text-slate-900 dark:text-white">{s.nombre}</span>
                       {s.lleva.length > 0 && <span className="block text-[0.75rem] text-slate-400 truncate">Lleva: {s.lleva.slice(0, 4).join(', ')}{s.lleva.length > 4 ? '…' : ''}</span>}
                     </span>
-                    {m.deLaFoto && <span className="text-[0.6875rem] font-bold text-[var(--primary)]">De la foto</span>}
+                    {m.deLaFoto && <span className="text-[0.6875rem] font-bold text-[var(--primary)]">De tu lista</span>}
                   </button>
                   {m.marcado && (
                     <div className="flex items-center gap-2 pl-9">
@@ -170,7 +160,7 @@ export const PasoServicios: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
               <SelectorDuracion valor={e.duracion} onCambio={(d) => cambiarExtra(e.clave, { duracion: d })} />
             </div>
             {(e.deLaFoto || e.serviceId) && (
-              <p className="text-[0.75rem] text-slate-400">{e.serviceId ? 'Ya lo tienes: se actualiza su precio.' : 'Leído de la foto.'}</p>
+              <p className="text-[0.75rem] text-slate-400">{e.serviceId ? 'Ya lo tienes: se actualiza su precio.' : 'Leído de tu lista.'}</p>
             )}
           </Tarjeta>
         ))}

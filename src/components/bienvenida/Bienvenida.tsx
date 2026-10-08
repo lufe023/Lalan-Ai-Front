@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FondoVivo } from '../ui/FondoVivo';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, PartyPopper, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -125,13 +126,15 @@ export const Bienvenida: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-          className="absolute inset-0 z-[45] flex flex-col bg-[#f8fafc] dark:bg-[#09090b]"
+          className="absolute inset-0 z-[45] flex flex-col overflow-hidden bg-[#fbf7f8] dark:bg-[#0c0a0b]"
           role="dialog"
           aria-modal="true"
           aria-label="Configurar mi salón"
         >
+          {/* El fondo del quiosco: manchas de color de la marca que se mueven despacio */}
+          <FondoVivo />
           {/* Arriba: volver, cuánto falta y salir */}
-          <div className="shrink-0 px-4 pb-3 border-b border-slate-200/70 dark:border-neutral-800" style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 12px), 16px))' }}>
+          <div className="relative shrink-0 px-4 pb-3 border-b border-slate-200/50 dark:border-white/5 bg-white/40 dark:bg-black/20 backdrop-blur-md" style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 12px), 16px))' }}>
             <div className="flex items-center gap-2">
               <button type="button" onClick={atras} disabled={indice <= 0} aria-label="Atrás" className="p-1.5 -ml-1.5 rounded-lg text-slate-500 disabled:opacity-0 cursor-pointer">
                 <ChevronLeft className="w-5 h-5" />
@@ -150,7 +153,7 @@ export const Bienvenida: React.FC = () => {
           </div>
 
           {/* El paso (sin posición propia: las hojas de abajo, como la del horario, se abren sobre toda la Bienvenida) */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="relative flex-1 overflow-y-auto">
             <div className="max-w-xl mx-auto px-4 py-5 pb-10">
               <AnimatePresence mode="wait">
                 {/* Solo opacidad: un desplazamiento (transform) haría que la hoja del horario se abriera dentro del paso y no sobre la pantalla */}

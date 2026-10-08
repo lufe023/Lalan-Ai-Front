@@ -55,6 +55,8 @@ export const bienvenidaApi = {
   servicios: (servicios: ServicioAGuardar[]) =>
     api.post<{ creados: string[]; actualizados: string[]; conReceta: number; insumosNuevos: string[]; estado: EstadoBienvenida }>('/bienvenida/servicios', { servicios }),
   fotoPrecios: (fotos: File[]) => subirArchivo<ServicioLeido[]>('/bienvenida/foto-precios', conFotos(fotos)),
+  /** El texto de un Excel, un Word, unas notas o pegado → la misma tabla para revisar */
+  textoPrecios: (texto: string) => api.post<ServicioLeido[]>('/bienvenida/texto-precios', { texto }),
 
   recetas: () => api.get<RecetaServicio[]>('/bienvenida/recetas'),
   rendimiento: (serviceId: string, lineas: { productId?: string; plantilla?: string; nombre?: string; rinde: number | null }[]) =>
