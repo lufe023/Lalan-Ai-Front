@@ -28,7 +28,7 @@ import {
 import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
 import { useApp, ServiceIngredient } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { LineaDeReceta, PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
+import { LineaDeReceta, ModoPrecioAsistente, PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
 
 /** Cómo se maneja un producto: se vende tal cual, se prepara con receta, o es un insumo */
 type TipoDeProducto = 'venta' | 'preparado' | 'insumo';
@@ -46,6 +46,7 @@ import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria'
 import { RecetaDelPreparado } from '../components/catalogo/RecetaDelPreparado';
 import { MonedaDelPrecio } from '../components/catalogo/MonedaDelPrecio';
 import { useDinero } from '../hooks/useDinero';
+import { OfertasCatalogo } from '../components/catalogo/OfertasCatalogo';
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -78,7 +79,7 @@ export const CatalogScreen: React.FC = () => {
   };
   const { currentUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'ofertas'>('services');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -114,6 +115,7 @@ export const CatalogScreen: React.FC = () => {
     aiAvailable: boolean;
     priceTiers: PriceTier[];
     currencyCode: string;
+    aiPrecio: ModoPrecioAsistente;
   }>({
     name: '',
     category: 'nails',
@@ -128,6 +130,7 @@ export const CatalogScreen: React.FC = () => {
       { id: 'tier_1', name: 'Precio Estándar / Regular', price: 35, isDefault: true, description: 'Servicio completo estándar' },
     ],
     currencyCode: '',
+    aiPrecio: 'exacto',
   });
 
   // Form State for Product
@@ -218,8 +221,10 @@ export const CatalogScreen: React.FC = () => {
       aiAvailable: true,
       priceTiers: [
         { id: `tier_${Date.now()}_1`, name: 'Precio Estándar', price: 35, isDefault: true, description: 'Servicio completo' },
-        { id: `tier_${Date.now()}_2`, name: 'Tarifa VIP / Frecuente', price: 30, description: 'Descuento clienta regular' },
+        // Un precio para clientas VIP no se le ofrece a cualquiera: la asistente no lo dice
+        { id: `tier_${Date.now()}_2`, name: 'VIP', price: 30, description: 'Para clientas VIP (lista de precios VIP)', aiOfrece: false },
       ],
+      aiPrecio: 'exacto',
     });
     setServiceModalTab('config');
     setIngredients([]);
@@ -247,6 +252,7 @@ export const CatalogScreen: React.FC = () => {
         const valid = (service.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t));
         return valid.length > 0 ? valid : [{ id: `tier_${Date.now()}`, name: 'Precio Base', price: service.price, isDefault: true }];
       })(),
+      aiPrecio: service.aiPrecio ?? 'exacto',
     });
     setServiceModalTab('config');
     setIngredients([]);
@@ -410,6 +416,7 @@ export const CatalogScreen: React.FC = () => {
           description: serviceForm.description,
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
+          aiPrecio: serviceForm.aiPrecio,
         });
         // Save ingredients if on recipe tab or if ingredients were loaded
         if (editingServiceId) {
@@ -439,6 +446,7 @@ export const CatalogScreen: React.FC = () => {
           description: serviceForm.description,
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
+          aiPrecio: serviceForm.aiPrecio,
         });
         showToast('Servicio creado', serviceForm.name, 'success');
       }
@@ -506,9 +514,10 @@ export const CatalogScreen: React.FC = () => {
         subtitle={
           activeTab === 'services'
             ? `${services.length} servicios disponibles`
+            : activeTab === 'ofertas' ? 'Combos de varios servicios a un precio'
             : `${products.length} productos registrados`
         }
-        rightAction={
+        rightAction={activeTab === 'ofertas' ? undefined :
           <button
             onClick={activeTab === 'services' ? handleOpenAddService : handleOpenAddProduct}
             className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:opacity-90 transition"
@@ -526,6 +535,7 @@ export const CatalogScreen: React.FC = () => {
           options={[
             { id: 'services', label: '💅 Servicios & Tarifas' },
             { id: 'products', label: '🛍️ Productos & Stock' },
+            { id: 'ofertas', label: '🎁 Ofertas' },
           ]}
           value={activeTab}
           onChange={val => {
@@ -534,6 +544,7 @@ export const CatalogScreen: React.FC = () => {
           }}
         />
 
+        {activeTab !== 'ofertas' && (<>
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -571,11 +582,14 @@ export const CatalogScreen: React.FC = () => {
                 Sincronización con Bot IA Meta
               </h4>
               <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-                Los servicios y productos con el interruptor 🤖 activo son ofrecidos con sus variantes de precio en WhatsApp, IG y Messenger.
+                Los servicios con el interruptor 🤖 activo se ofrecen en WhatsApp, IG y Messenger, con las variantes que marques para la asistente y el precio como elijas en cada uno (exacto, «desde» o sin precio).
               </p>
             </div>
           </div>
         </div>
+        </>)}
+
+        {activeTab === 'ofertas' && <OfertasCatalogo servicios={services} />}
 
         {/* SERVICES LIST */}
         {activeTab === 'services' && (
@@ -669,6 +683,11 @@ export const CatalogScreen: React.FC = () => {
                       </span>
                       <span>Tarifa</span>
                     </div>
+                    {service.aiPrecio && service.aiPrecio !== 'exacto' && (
+                      <div className="px-1 text-[0.6875rem] text-purple-600 dark:text-purple-300 flex items-center gap-1">
+                        <Bot className="w-3 h-3" /> {service.aiPrecio === 'desde' ? 'La asistente dice «desde» el precio más bajo' : 'La asistente no dice el precio: lo confirma el salón'}
+                      </div>
+                    )}
 
                     <div className="space-y-1">
                       {((() => { const v = (service.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)); return v.length > 0 ? v : [{ id: '1', name: 'Precio Base', price: service.price, isDefault: true }]; })()).map(tier => (
@@ -682,6 +701,11 @@ export const CatalogScreen: React.FC = () => {
                               {tier.isDefault && (
                                 <span className="ml-1.5 text-[0.6875rem] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-neutral-700 text-slate-700 dark:text-neutral-300">
                                   Base
+                                </span>
+                              )}
+                              {!tier.isDefault && tier.aiOfrece === false && (
+                                <span className="ml-1.5 text-[0.6875rem] font-bold px-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500" title="La asistente no la ofrece">
+                                  Solo salón
                                 </span>
                               )}
                             </span>
@@ -1215,8 +1239,27 @@ export const CatalogScreen: React.FC = () => {
               </div>
               <MonedaDelPrecio value={serviceForm.currencyCode} onChange={c => setServiceForm({ ...serviceForm, currencyCode: c })} ejemplo={serviceForm.priceTiers[0]?.price ?? serviceForm.price} />
               <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-                Agrega variantes de precio: VIP, retoque, promoción, etc.
+                Agrega variantes: corto o largo, retoque… Las que son solo para el salón (VIP, precio interno) márcalas así: la
+                asistente no las ofrece, y una lista de precios puede usarlas para tus clientas VIP.
               </p>
+              <div className="p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/15 space-y-1.5">
+                <div className="text-[0.6875rem] font-bold text-slate-700 dark:text-neutral-200 flex items-center gap-1.5"><Bot className="w-3.5 h-3.5 text-purple-500" /> Cuando la asistente habla del precio</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { id: 'exacto', t: 'Lo dice', d: 'El precio exacto' },
+                    { id: 'desde', t: 'Desde', d: '«desde» el más bajo' },
+                    { id: 'consultar', t: 'No lo dice', d: 'Lo confirma el salón' },
+                  ] as { id: ModoPrecioAsistente; t: string; d: string }[]).map(o => (
+                    <button key={o.id} type="button" onClick={() => setServiceForm(prev => ({ ...prev, aiPrecio: o.id }))}
+                      className={`p-2 rounded-lg border text-left cursor-pointer ${serviceForm.aiPrecio === o.id
+                        ? 'border-purple-500 bg-purple-500/10'
+                        : 'border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900'}`}>
+                      <div className="text-[0.6875rem] font-bold text-slate-900 dark:text-white">{o.t}</div>
+                      <div className="text-[0.625rem] text-slate-500 dark:text-neutral-400 leading-tight">{o.d}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className="space-y-2 max-h-52 overflow-y-auto">
                 {serviceForm.priceTiers.map((tier, index) => (
@@ -1267,11 +1310,29 @@ export const CatalogScreen: React.FC = () => {
                     </div>
                     <input
                       type="text"
-                      placeholder="Detalle opcional: ej. hasta 21 días de duración"
+                      placeholder={index === 0 ? 'Detalle opcional: ej. hasta 21 días de duración' : 'Cuándo aplica: ej. cabello debajo de los hombros (la asistente lo usa para preguntar)'}
                       value={tier.description || ''}
                       onChange={e => updateServicePriceTier(index, 'description', e.target.value)}
                       className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200/60 dark:border-neutral-700/60 text-[0.6875rem] text-slate-500 dark:text-neutral-400 placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none"
                     />
+                    {index > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => updateServicePriceTier(index, 'aiOfrece', tier.aiOfrece === false)}
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-[0.6875rem] font-semibold cursor-pointer ${
+                          tier.aiOfrece === false
+                            ? 'bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400'
+                            : 'bg-purple-500/10 text-purple-700 dark:text-purple-300'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5"><Bot className="w-3.5 h-3.5" />
+                          {tier.aiOfrece === false ? 'Solo para el salón (la asistente no la ofrece)' : 'La asistente la ofrece'}
+                        </span>
+                        <span className={`w-8 h-4 rounded-full relative transition-colors ${tier.aiOfrece === false ? 'bg-slate-300 dark:bg-neutral-600' : 'bg-purple-500'}`}>
+                          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${tier.aiOfrece === false ? 'left-0.5' : 'left-[1.1rem]'}`} />
+                        </span>
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
