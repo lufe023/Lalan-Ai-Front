@@ -12,15 +12,15 @@ const RANGOS = [{ dias: 1, nombre: 'Hoy' }, { dias: 7, nombre: '7 días' }, { di
  * Lo que hizo la asistente en un canal: hoy (en vivo) o los últimos días,
  * con el día a día en barras. "Esperan a una persona" es siempre de ahora.
  */
-export const ActividadCanal: React.FC<{ canal: string; hoy: Hoy; alVerChats: () => void }> = ({ canal, hoy, alVerChats }) => {
+export const ActividadCanal: React.FC<{ canal: string; hoy: Hoy; alVerChats: () => void; sede?: string | null }> = ({ canal, hoy, alVerChats, sede }) => {
   const [dias, setDias] = useState(1);
   const [h, setH] = useState<Historial | null>(null);
   const [cargando, setCargando] = useState(false);
   useEffect(() => {
     if (dias === 1) return;
     setCargando(true);
-    api.get<Historial>(`/bots/${canal}/historial?dias=${dias}`).then(setH).catch(() => setH(null)).finally(() => setCargando(false));
-  }, [canal, dias]);
+    api.get<Historial>(`/bots/${canal}/historial?dias=${dias}${sede ? `&sede=${encodeURIComponent(sede)}` : ''}`).then(setH).catch(() => setH(null)).finally(() => setCargando(false));
+  }, [canal, dias, sede]);
 
   const t = dias === 1 ? hoy : h?.totales;
   const sufijo = dias === 1 ? 'hoy' : `en ${dias} días`;

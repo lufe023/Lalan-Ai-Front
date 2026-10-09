@@ -9,6 +9,8 @@ import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
 import * as XLSX from 'xlsx';
 import { CascadingRibbonCalendar, CalendarGranularity, MonthWeek } from '../components/ui/CascadingRibbonCalendar';
+import { SelectorSede } from '../components/ui/SelectorSede';
+import { useSedes } from '../hooks/useSedes';
 
 type RevenueMode = 'bruto' | 'neto';
 
@@ -49,16 +51,20 @@ export const GananciasScreen: React.FC = () => {
    */
   const [informe, setInforme] = useState<any>(null);
   const [cargandoInforme, setCargandoInforme] = useState(false);
+  // '' = toda la cadena; con sede, solo lo que se cobró en ella
+  const sedes = useSedes();
+  const [sede, setSede] = useState('');
+  const deSede = sede ? `&sede=${encodeURIComponent(sede)}` : '';
 
   useEffect(() => {
     let cancelado = false;
     setCargandoInforme(true);
-    api.get<any>(`/sales/report/profit?desde=${rangeStart.toISOString()}&hasta=${rangeEnd.toISOString()}`)
+    api.get<any>(`/sales/report/profit?desde=${rangeStart.toISOString()}&hasta=${rangeEnd.toISOString()}${deSede}`)
       .then(r => { if (!cancelado) setInforme(r); })
       .catch(() => { if (!cancelado) setInforme(null); })
       .finally(() => { if (!cancelado) setCargandoInforme(false); });
     return () => { cancelado = true; };
-  }, [rangeStart, rangeEnd]);
+  }, [rangeStart, rangeEnd, deSede]);
 
   /**
    * Días con recaudo, para los puntitos del calendario.
@@ -73,10 +79,10 @@ export const GananciasScreen: React.FC = () => {
     // Ventana amplia: el calendario deja navegar años hacia atrás
     const desde = new Date(new Date().getFullYear() - 1, 0, 1).toISOString();
     const hasta = new Date(new Date().getFullYear() + 1, 0, 1).toISOString();
-    api.get<any[]>(`/sales/report/days?desde=${desde}&hasta=${hasta}`)
+    api.get<any[]>(`/sales/report/days?desde=${desde}&hasta=${hasta}${deSede}`)
       .then(d => setDiasConRecaudo(d ?? []))
       .catch(() => setDiasConRecaudo([]));
-  }, []);
+  }, [deSede]);
 
   /**
    * El calendario cuenta un evento por punto, así que expandimos cada día a
@@ -406,6 +412,13 @@ export const GananciasScreen: React.FC = () => {
             Citas
           </button>
         </div>
+
+        {/* Varias sedes: los números de una o de toda la cadena */}
+        {sedes.length > 1 && (
+          <div className="flex justify-end mb-3">
+            <SelectorSede sedes={sedes} value={sede} onChange={setSede} todas />
+          </div>
+        )}
 
         {/* Cascading ribbon calendar as period filter */}
         <CascadingRibbonCalendar

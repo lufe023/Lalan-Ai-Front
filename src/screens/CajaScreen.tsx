@@ -13,6 +13,8 @@ import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
 import { imprimirRecibo } from '../utils/recibo';
 import { ListaRecibos } from '../components/caja/ListaRecibos';
+import { SelectorSede } from '../components/ui/SelectorSede';
+import { useSedes } from '../hooks/useSedes';
 
 /**
  * Caja — el punto de venta, fuera del Lounge.
@@ -41,6 +43,10 @@ export const CajaScreen: React.FC = () => {
   const [cargando, setCargando] = useState(false);
   const [busca, setBusca] = useState('');
   const [eligiendoClienta, setEligiendoClienta] = useState(false);
+  // Cada sede tiene su gaveta: dirección elige cuál mira ('' = la principal)
+  const sedes = useSedes();
+  const [sedeCaja, setSedeCaja] = useState('');
+  const conSede = (url: string) => sedeCaja ? `${url}${url.includes('?') ? '&' : '?'}sede=${encodeURIComponent(sedeCaja)}` : url;
 
   const sim = baseCurrency?.symbol ?? '';
   const plata = (n: any) => `${Number(n ?? 0).toFixed(2)}${sim ? ` ${sim}` : ''}`;
@@ -73,14 +79,14 @@ export const CajaScreen: React.FC = () => {
 
   // ── Turno de caja ─────────────────────────────────────────────────────
   const cargarTurno = useCallback(async () => {
-    try { setTurno(await api.get<any>('/cash/current')); }
+    try { setTurno(await api.get<any>(conSede('/cash/current'))); }
     catch { setTurno(null); }
-  }, []);
+  }, [sedeCaja]);
 
   const cargarHistorial = useCallback(async () => {
-    try { setHistorial(await api.get<any[]>('/cash/history?limit=40') ?? []); }
+    try { setHistorial(await api.get<any[]>(conSede('/cash/history?limit=40')) ?? []); }
     catch { setHistorial([]); }
-  }, []);
+  }, [sedeCaja]);
 
   useEffect(() => {
     if (vista !== 'turno') return;
@@ -91,26 +97,26 @@ export const CajaScreen: React.FC = () => {
   const abrirCaja = useCallback(async () => {
     setOcupado(true);
     try {
-      setTurno(await api.post<any>('/cash/open', { openingFloat: Number(fondo) || 0 }));
+      setTurno(await api.post<any>('/cash/open', { openingFloat: Number(fondo) || 0, locationId: sedeCaja || undefined }));
       setFondo('');
       showToast('Caja abierta', 'Ya puedes cobrar con arqueo.', 'success');
     } catch (e: any) {
       showToast('No se pudo abrir', e?.message ?? '', 'warning');
     } finally { setOcupado(false); }
-  }, [fondo, showToast]);
+  }, [fondo, sedeCaja, showToast]);
 
   const registrarMovimiento = useCallback(async () => {
     if (!Number(mov.amount) || !mov.reason.trim()) return;
     setOcupado(true);
     try {
-      setTurno(await api.post<any>('/cash/movements', {
+      setTurno(await api.post<any>(conSede('/cash/movements'), {
         kind: mov.kind, amount: Number(mov.amount), reason: mov.reason.trim(),
       }));
       setMov({ kind: 'out', amount: '', reason: '' });
     } catch (e: any) {
       showToast('No se pudo registrar', e?.message ?? '', 'warning');
     } finally { setOcupado(false); }
-  }, [mov, showToast]);
+  }, [mov, sedeCaja, showToast]);
 
   /** Lo contado billete por billete, en vivo mientras se escribe */
   const contado = useMemo(() => {
@@ -133,7 +139,7 @@ export const CajaScreen: React.FC = () => {
           denomination: Number(d.value),
           quantity: Number(conteo[d.id]),
         }));
-      const cerrado = await api.post<any>('/cash/close', {
+      const cerrado = await api.post<any>(conSede('/cash/close'), {
         counts,
         countedCash: counts.length ? undefined : contado,
         notes: notaCierre.trim() || undefined,
@@ -152,7 +158,7 @@ export const CajaScreen: React.FC = () => {
     } catch (e: any) {
       showToast('No se pudo cerrar', e?.message ?? '', 'warning');
     } finally { setOcupado(false); }
-  }, [conteo, contado, notaCierre, baseCurrency, cargarHistorial, showToast]);
+  }, [conteo, contado, notaCierre, baseCurrency, cargarHistorial, sedeCaja, showToast]);
 
   const recibosFiltrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -402,6 +408,12 @@ export const CajaScreen: React.FC = () => {
           </>
         ) : vista === 'turno' ? (
           <>
+            {sedes.length > 1 && (
+              <div className="flex items-center justify-between gap-2 px-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">Caja de la sede</span>
+                <SelectorSede sedes={sedes} value={sedeCaja} onChange={setSedeCaja} />
+              </div>
+            )}
             {turno ? (
               <>
                 {/* Estado del turno abierto */}

@@ -9,6 +9,8 @@ import { api } from '../services/api';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
 import { CascadingRibbonCalendar, CalendarGranularity, MonthWeek } from '../components/ui/CascadingRibbonCalendar';
+import { SelectorSede } from '../components/ui/SelectorSede';
+import { useSedes } from '../hooks/useSedes';
 
 const hr12 = (h: number) =>
   h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`;
@@ -57,24 +59,29 @@ export const CitasReportScreen: React.FC = () => {
 
   useEffect(() => { void loadCurrencies?.(); }, []);
 
+  // '' = toda la cadena; con sede, solo sus citas
+  const sedes = useSedes();
+  const [sede, setSede] = useState('');
+  const deSede = sede ? `&sede=${encodeURIComponent(sede)}` : '';
+
   useEffect(() => {
     if (isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime())) return;
     let cancelado = false;
     setCargando(true);
-    api.get<any>(`/reports/appointments?desde=${rangeStart.toISOString()}&hasta=${rangeEnd.toISOString()}`)
+    api.get<any>(`/reports/appointments?desde=${rangeStart.toISOString()}&hasta=${rangeEnd.toISOString()}${deSede}`)
       .then(r => { if (!cancelado) setInforme(r); })
       .catch(() => { if (!cancelado) setInforme(null); })
       .finally(() => { if (!cancelado) setCargando(false); });
     return () => { cancelado = true; };
-  }, [rangeStart, rangeEnd]);
+  }, [rangeStart, rangeEnd, deSede]);
 
   useEffect(() => {
     const desde = new Date(new Date().getFullYear() - 1, 0, 1).toISOString();
     const hasta = new Date(new Date().getFullYear() + 1, 0, 1).toISOString();
-    api.get<any[]>(`/reports/appointments/days?desde=${desde}&hasta=${hasta}`)
+    api.get<any[]>(`/reports/appointments/days?desde=${desde}&hasta=${hasta}${deSede}`)
       .then(d => setDias(d ?? []))
       .catch(() => setDias([]));
-  }, []);
+  }, [deSede]);
 
   /** Aquí los puntitos SÍ van donde hay citas: es de lo que trata esta pantalla */
   const eventos = useMemo(
@@ -151,6 +158,13 @@ export const CitasReportScreen: React.FC = () => {
             Citas
           </span>
         </div>
+
+        {/* Varias sedes: los números de una o de toda la cadena */}
+        {sedes.length > 1 && (
+          <div className="flex justify-end mb-3">
+            <SelectorSede sedes={sedes} value={sede} onChange={setSede} todas />
+          </div>
+        )}
 
         <CascadingRibbonCalendar
           events={eventos}

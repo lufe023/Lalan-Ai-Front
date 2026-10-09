@@ -35,10 +35,20 @@ import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSToggle } from '../components/ui/IOSToggle';
 import { PageContent } from '../components/ui/PageContent';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
+import { SelectorSede } from '../components/ui/SelectorSede';
+import { useSedes } from '../hooks/useSedes';
 
 export const BotsControlScreen: React.FC = () => {
-  const { botConfigs, toggleBotChannel, updateBotMessage, settings, updateSettings, showToast, navigateTo } = useApp();
+  const { botConfigs, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes, settings, updateSettings, showToast, navigateTo } = useApp();
   const { currentUser } = useAuth();
+  const sedes = useSedes();
+  const nombreSede = (id: string | null) => sedes.find(x => x.id === id)?.name ?? 'otra sede';
+  // La sede que se mira: la elegida o, si no, la principal (la que devuelve el panel)
+  const sedeVista = sedeBots || sedes[0]?.id || '';
+  const cambiarTodasLasSedes = async (canal: CommunicationChannel, valor: boolean) => {
+    try { await ponerTodasLasSedes(canal, valor); }
+    catch (e: any) { showToast('No se pudo cambiar', e?.message ?? '', 'warning'); }
+  };
 
   /* Las instrucciones base: se muestran para que la dueña vea qué dice
      Lalan cuando el campo está vacío, y para partir de ellas si quiere
@@ -163,9 +173,14 @@ export const BotsControlScreen: React.FC = () => {
 
         {/* Independent Channel Bot Toggles */}
         <div className="space-y-2.5">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400 block px-1">
-            Interruptores de Automatización por Canal
-          </span>
+          <div className="flex items-center justify-between gap-2 px-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+              Interruptores de Automatización por Canal
+            </span>
+            {esDireccion && (
+              <SelectorSede sedes={sedes} value={sedeBots} onChange={s => void elegirSedeBots(s).catch(() => undefined)} />
+            )}
+          </div>
 
           {botConfigs.map(bot => (
             <motion.div
@@ -236,8 +251,34 @@ export const BotsControlScreen: React.FC = () => {
                 </p>
               )}
 
+              {/* Varias sedes: un número (o un Instagram) para todas, o uno por sede */}
+              {sedes.length > 1 && bot.channelIdentifier && (
+                bot.locationId && bot.locationId !== sedeVista ? (
+                  <p className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 text-[0.75rem] text-slate-500">
+                    Esta sede usa la cuenta de todas las sedes (conectada en {nombreSede(bot.locationId)}).
+                  </p>
+                ) : esDireccion && (
+                  <div className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">Atiende todas las sedes</div>
+                      <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-snug">
+                        {bot.todasLasSedes
+                          ? `${agente} le pregunta a la clienta en qué sede quiere atenderse, con la dirección de cada una, y agenda en esa.`
+                          : 'Apagado: esta cuenta es solo de esta sede. Las demás usan la suya.'}
+                      </p>
+                    </div>
+                    <IOSToggle
+                      id={`bot-todas-${bot.id}`}
+                      checked={bot.todasLasSedes}
+                      onChange={valor => void cambiarTodasLasSedes(bot.id, valor)}
+                      activeColor="#22c55e"
+                    />
+                  </div>
+                )
+              )}
+
               {/* Lo que hizo, contado de verdad: hoy o los últimos días */}
-              <ActividadCanal canal={bot.id} hoy={bot.actividad} alVerChats={() => navigateTo('chats')} />
+              <ActividadCanal canal={bot.id} hoy={bot.actividad} alVerChats={() => navigateTo('chats')} sede={bot.locationId} />
 
               {/* WhatsApp: lo que cobra Meta, apagar lo cobrado y cómo se ven las plantillas */}
               {bot.id === 'whatsapp' && bot.channelIdentifier && esDireccion && (
