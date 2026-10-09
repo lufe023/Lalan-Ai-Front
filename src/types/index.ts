@@ -74,6 +74,8 @@ export type ModoPrecioAsistente = 'exacto' | 'desde' | 'consultar';
 
 export interface SalonService {
   id: string;
+  /** La sede que lo ofrece; null = todas las sedes */
+  locationId?: string | null;
   name: string;
   category: ServiceCategory;
   categoryName: string;

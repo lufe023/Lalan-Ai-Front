@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
+import { CopiarDeSede } from '../components/ui/CopiarDeSede';
 import { recibeCitas } from '../utils/recibeCitas';
 import { RESORTE } from '../components/ui/movimiento';
 import { AnimatePresence, motion } from 'motion/react';
@@ -468,6 +469,7 @@ export const SettingsScreen: React.FC = () => {
         {seccion === 'salon' && (
           <>
         <AvisoSedeActiva />
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <CopiarDeSede />}
         {/* La Bienvenida, para volver a recorrer la configuración paso a paso */}
         {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
           <button

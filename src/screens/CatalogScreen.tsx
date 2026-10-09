@@ -48,6 +48,9 @@ import { RecetaDelPreparado } from '../components/catalogo/RecetaDelPreparado';
 import { MonedaDelPrecio } from '../components/catalogo/MonedaDelPrecio';
 import { useDinero } from '../hooks/useDinero';
 import { OfertasCatalogo } from '../components/catalogo/OfertasCatalogo';
+import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
+import { CopiarASede, EtiquetaSede } from '../components/ui/CopiarASede';
+import { useSedeActiva } from '../context/SedeActivaContext';
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -56,6 +59,7 @@ export const CatalogScreen: React.FC = () => {
     updateService,
     deleteService,
     toggleServiceAi,
+    copiarServicio,
     products,
     addProduct,
     updateProduct,
@@ -70,6 +74,7 @@ export const CatalogScreen: React.FC = () => {
     categoriaPorClave,
     guardarRecetaProducto,
   } = useApp();
+  const { varias: variasSedes, actual: sedeActual } = useSedeActiva();
   /* Recibir mercancía (lotes con vencimiento) */
   const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
   const [cargandoFactura, setCargandoFactura] = useState(false);
@@ -596,6 +601,10 @@ export const CatalogScreen: React.FC = () => {
         {/* SERVICES LIST */}
         {activeTab === 'services' && (
           <div className="space-y-3">
+            <AvisoSedeActiva
+              que="Los servicios y precios de abajo son de esta sede: lo que cambies aquí queda solo en ella."
+              enTodas="Estás viendo los servicios de todas las sedes. Un cambio aquí llega a todas las sedes que no tengan su propio precio. Para cambiar una sola sede, elígela:"
+            />
             {filteredServices.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-neutral-900 rounded-2xl border border-dashed border-slate-300 dark:border-neutral-800">
                 <Sparkles className="w-10 h-10 text-slate-300 dark:text-neutral-700 mb-2" />
@@ -635,6 +644,7 @@ export const CatalogScreen: React.FC = () => {
                         <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
                           {service.name}
                         </h4>
+                        <EtiquetaSede locationId={service.locationId} />
                         <div className="flex items-center gap-2 text-[0.6875rem] text-slate-400 mt-0.5">
                           <span className="font-semibold text-slate-600 dark:text-neutral-400">
                             {service.categoryName}
@@ -658,7 +668,10 @@ export const CatalogScreen: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm(`¿Eliminar "${service.name}" del catálogo?`)) {
+                          const soloAqui = variasSedes && sedeActual && !service.locationId;
+                          if (confirm(soloAqui
+                            ? `¿Quitar "${service.name}" de ${sedeActual.name}? Las demás sedes lo siguen ofreciendo.`
+                            : `¿Eliminar "${service.name}" del catálogo?`)) {
                             deleteService(service.id);
                           }
                         }}
@@ -752,6 +765,7 @@ export const CatalogScreen: React.FC = () => {
                       {service.aiAvailable ? '✓ Activo' : 'Inactivo'}
                     </button>
                   </div>
+                  <CopiarASede desde={service.locationId} onCopiar={(sedes) => copiarServicio(service.id, sedes)} />
                 </Aparecer>
               ))
             )}
