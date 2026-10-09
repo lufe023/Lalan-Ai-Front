@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
 import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
+import { ElegirFotoDeCanal } from '../components/clientes/ElegirFotoDeCanal';
 import { ArchivoDeContactos, entregarContactos, prepararContactos, sePuedeCompartir } from '../utils/contactos';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
@@ -790,6 +791,8 @@ export const ClientsScreen: React.FC = () => {
             </div>
 
             <PerfilesDeLaClienta clienta={selectedClient} />
+
+            <ElegirFotoDeCanal clienta={selectedClient} onCambio={avatar => setSelectedClient(c => (c ? { ...c, avatar } : c))} />
 
             {/* Tags Container */}
             <div>
