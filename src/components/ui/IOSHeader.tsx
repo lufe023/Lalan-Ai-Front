@@ -83,10 +83,11 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
             <span>Atrás</span>
           </button>
         ) : (
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-[var(--primary)]" />
-            <span className="text-xs font-bold tracking-tight text-slate-800 dark:text-neutral-200">Lalan AI</span>
-            <span className="text-[0.6875rem] text-slate-400 font-normal hidden sm:inline">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+            <div className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0" />
+            {/* En el teléfono, con varias sedes, el espacio es para el nombre de la sede */}
+            <span className={`text-xs font-bold tracking-tight text-slate-800 dark:text-neutral-200 whitespace-nowrap shrink-0 ${nombreSede ? 'hidden sm:inline' : ''}`}>Lalan AI</span>
+            <span className="text-[0.6875rem] text-slate-400 font-normal hidden sm:inline whitespace-nowrap shrink-0">
               • {currentUser?.roleTitle || 'Asistente'}
             </span>
             {/* En qué sede se está: a la vista siempre, y un toque abre el cambio de sede */}
@@ -94,7 +95,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
               <button
                 type="button"
                 onClick={() => setShowUserMenu(true)}
-                className="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-[0.6875rem] font-bold cursor-pointer max-w-[180px]"
+                className="ml-1 min-w-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-[0.6875rem] font-bold cursor-pointer sm:max-w-[180px]"
                 title="Cambiar de sede"
               >
                 <MapPin className="w-3 h-3 shrink-0" />
@@ -105,7 +106,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {rightAction}
 
           {/* Dark / Light toggle */}
@@ -153,7 +154,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
                     initial={{ opacity: 0, scale: 0.9, y: 5 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                    className="absolute right-0 top-9 w-64 p-2 rounded-2xl glass-ios shadow-2xl z-50 border border-slate-200/80 dark:border-neutral-700/80"
+                    className="absolute right-0 top-9 w-72 max-w-[calc(100vw-2rem)] p-2 rounded-2xl glass-ios shadow-2xl z-50 border border-slate-200/80 dark:border-neutral-700/80"
                   >
                     {/* Profile card */}
                     <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
@@ -179,24 +180,24 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
 
                     {/* Cambiar de sede: el control principal de las sedes */}
                     {nombreSede && (
-                      <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 mb-1">
+                      <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 mb-1 max-h-[min(50vh,calc(100dvh-18rem))] overflow-y-auto">
                         <ListaSedes alElegir={() => setShowUserMenu(false)} />
                       </div>
                     )}
 
-                    <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 flex items-center justify-between">
+                    <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 flex flex-wrap items-center justify-between gap-1">
                       <button
                         onClick={() => { setShowUserMenu(false); triggerSplash(); }}
-                        className="flex items-center gap-1 text-[0.75rem] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 p-1.5 rounded-lg transition"
+                        className="min-h-[44px] flex items-center gap-1.5 text-[0.8125rem] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-2 rounded-lg transition"
                       >
-                        <RotateCcw className="w-3 h-3" />
+                        <RotateCcw className="w-4 h-4" />
                         <span>Splash</span>
                       </button>
                       <button
                         onClick={() => { setShowUserMenu(false); logout(); }}
-                        className="flex items-center gap-1 text-[0.75rem] text-rose-500 hover:text-rose-600 font-semibold p-1.5 rounded-lg transition"
+                        className="min-h-[44px] flex items-center gap-1.5 text-[0.8125rem] text-rose-500 hover:text-rose-600 font-semibold px-3 rounded-lg whitespace-nowrap transition"
                       >
-                        <LogOut className="w-3 h-3" />
+                        <LogOut className="w-4 h-4" />
                         <span>Cerrar sesión</span>
                       </button>
                     </div>
