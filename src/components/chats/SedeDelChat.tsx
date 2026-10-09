@@ -14,7 +14,8 @@ import type { Conversation } from '../../types';
  */
 export const SedeDelChat: React.FC<{ conversacion: Conversation }> = ({ conversacion }) => {
   const { showToast, recargarConversaciones } = useApp();
-  const sedes = useSedes();
+  // Cualquiera del equipo puede pasar un chat a otra sede, también quien está atada a una
+  const sedes = useSedes({ todasLasDelSalon: true });
   const [ocupado, setOcupado] = useState(false);
   if (sedes.length < 2) return null;
 

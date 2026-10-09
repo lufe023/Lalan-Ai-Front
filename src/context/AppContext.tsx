@@ -8,6 +8,7 @@ import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
 import { api, urlDeFoto } from '../services/api';
 import { alRecibir, alConectar } from '../services/socket';
+import { conSedeLocal, sedeLocal } from '../services/sedeLocal';
 import { PeticionCancion, componerCola, indicesDePeticiones } from '../utils/peticiones';
 import {
   estadoMusica, soyElAnfitrion, ordenar, cuandoSepamos, useMusicaSala,
@@ -2115,7 +2116,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return alRecibir('lounge:llegada', async (carga: any) => {
       const llegoId: string | null = carga?.motivo ?? null;
       try {
-        const st = await api.get<{ clientIds: string[]; blocks: YtClientBlock[]; mixMode: YtMixMode }>('/lounge/state');
+        const st = await api.get<{ clientIds: string[]; blocks: YtClientBlock[]; mixMode: YtMixMode }>(conSedeLocal('/lounge/state'));
         // Pueden no estar en la página de clientas cargada: se piden las que falten
         const conocidas = new Map(clientsRef.current.map(c => [c.id, c]));
         const lista = await Promise.all((st.clientIds ?? []).map(async id =>
@@ -2126,7 +2127,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch { /* el Lounge se pone al día en la próxima recarga */ }
       if (!llegoId) return;
       try {
-        const b = await api.get<Bienvenida | null>(`/lounge/bienvenida/${llegoId}`);
+        const b = await api.get<Bienvenida | null>(conSedeLocal(`/lounge/bienvenida/${llegoId}`));
         if (b) {
           setBienvenida(b);
           avisarAlSistema(`Llegó ${b.nombre}`, b.bebidas.length ? `Le gusta: ${b.bebidas.join(', ')}` : 'Dale la bienvenida');
@@ -2188,6 +2189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (opts?.clientId) params.set('clientId', opts.clientId);
       if (opts?.range) params.set('range', opts.range);
       params.set('limit', '50');
+      if (sedeLocal()) params.set('sede', sedeLocal());
       // Solo paginamos hacia atrás en el histórico; "hoy" cabe en una página
       if (append && loungeCursorRef.current && opts?.range !== 'today') {
         params.set('before', loungeCursorRef.current);
@@ -2217,7 +2219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } as LoungeEvent;
     setLoungeEvents(h => [provisional, ...h]);
     try {
-      const guardado = await api.post<LoungeEvent>('/lounge/events', dto);
+      const guardado = await api.post<LoungeEvent>(conSedeLocal('/lounge/events'), dto);
       if (guardado?.id) {
         setLoungeEvents(h => h.map(e => (e.id === provisional.id ? guardado : e)));
       }
@@ -2286,6 +2288,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const venta = await api.post<Sale>('/sales/open', {
         clientId: opts?.clientId ?? null,
         appointmentId: opts?.appointmentId ?? null,
+        // Sin cita, la comanda es del local donde está este aparato (su inventario)
+        ...(!opts?.appointmentId && sedeLocal() ? { locationId: sedeLocal() } : {}),
       });
       setActiveSale(venta);
       return venta;
@@ -2651,7 +2655,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSaleBusy(true);
     try {
       // Sin clientId: cuenta de mostrador, sin ficha ni cita
-      const venta = await api.post<Sale>('/sales/open', { label: label ?? 'Mostrador' });
+      const venta = await api.post<Sale>('/sales/open', { label: label ?? 'Mostrador', ...(sedeLocal() ? { locationId: sedeLocal() } : {}) });
       setActiveSale(venta);
       await loadOpenFolios();
       return venta;
