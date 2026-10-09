@@ -33,6 +33,7 @@ import { PlataformaScreen } from './screens/PlataformaScreen';
 import { CambiarClaveScreen } from './screens/CambiarClaveScreen';
 import { ConfirmarCorreoScreen, confirmacionOmitida } from './screens/ConfirmarCorreoScreen';
 import { PlanProvider } from './context/PlanContext';
+import { SedeActivaProvider } from './context/SedeActivaContext';
 import { BarraSoporte } from './components/ui/BarraSoporte';
 import { AvisoMensajes } from './components/ui/AvisoMensajes';
 import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
@@ -342,12 +343,14 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <PlanProvider>
+        <SedeActivaProvider>
         <AppProvider>
           {/* Quien pidió "reducir movimiento" en su teléfono ve las cosas cambiar sin deslizarse */}
           <MotionConfig reducedMotion="user">
             <MainAppContent />
           </MotionConfig>
         </AppProvider>
+        </SedeActivaProvider>
         </PlanProvider>
       </AuthProvider>
     </ThemeProvider>

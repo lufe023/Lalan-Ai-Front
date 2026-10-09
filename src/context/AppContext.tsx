@@ -127,6 +127,8 @@ export interface SalonStaff {
   horarioSemanal?: import('../types').DiaDeHorario[] | null;
   /** ¿Se le ponen citas? null = según su especialidad (el bartender no) */
   atiendeCitas?: boolean | null;
+  /** Las sedes donde trabaja (la suya primero); vacío = en todas */
+  sedes?: string[];
 }
 
 export type QueueStatus = 'waiting' | 'called' | 'serving' | 'done' | 'cancelled' | 'no_show';
@@ -291,6 +293,8 @@ interface AppContextType {
   updateService: (id: string, updated: Partial<SalonService>) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
   toggleServiceAi: (id: string, aiAvailable: boolean) => Promise<void>;
+  /** "Copiar a otra sede": con su precio, variantes, duración y receta */
+  copiarServicio: (id: string, sedes: string[]) => Promise<void>;
   products: SalonProduct[];
   addProduct: (product: Omit<SalonProduct, 'id'>) => Promise<SalonProduct>;
   /** Guarda la receta completa de un preparado (reemplaza la anterior) */
@@ -411,7 +415,7 @@ interface AppContextType {
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
   loadEspecialistas: () => Promise<void>;
-  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null; atiendeCitas?: boolean | null }) => Promise<boolean>;
+  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null; atiendeCitas?: boolean | null; sedes?: string[] }) => Promise<boolean>;
   eliminarEspecialista: (id: string) => Promise<void>;
   /** Da el turno: la persona llegó. Con appointmentId es una cita; sin él, walk-in */
   darTurno: (dto: { appointmentId?: string | null; clientId?: string | null; clientName?: string; zoneId?: string | null; staffId?: string | null; reason?: string | null }) => Promise<QueueTicket | null>;
@@ -689,6 +693,7 @@ function mapApiService(s: any): SalonService {
     popular: s.popular ?? false, description: s.description,
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     aiPrecio: s.aiPrecio ?? 'exacto',
+    locationId: s.locationId ?? null,
   };
 }
 function mapApiProduct(p: any): SalonProduct {
@@ -1164,8 +1169,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setServices(s => s.filter(x => x.id !== id));
   }, []);
   const toggleServiceAi = useCallback(async (id: string, aiAvailable: boolean) => {
-    await api.patch(`/services/${id}/ai`, { aiAvailable });
-    setServices(s => s.map(x => x.id === id ? { ...x, aiAvailable } : x));
+    // Dentro de una sede el cambio puede separar una copia para ella (otro id)
+    const res = await api.patch<any>(`/services/${id}/ai`, { aiAvailable });
+    setServices(s => s.map(x => x.id === id ? (res?.id ? mapApiService(res) : { ...x, aiAvailable }) : x));
+  }, []);
+  const copiarServicio = useCallback(async (id: string, sedes: string[]) => {
+    await api.post(`/services/${id}/copiar`, { sedes });
+    // En "Todas las sedes" las copias se ven en la lista; dentro de una sede, nada cambia aquí
+    const svcs = await api.get<any[]>('/services').catch(() => null);
+    if (svcs) setServices(svcs.map(mapApiService));
   }, []);
 
   const addProduct = useCallback(async (data: Omit<SalonProduct, 'id'>) => {
@@ -2798,7 +2810,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clients, isLoadingClients, clientsHasMore, clientsTotal,
       cargarMasClientas, buscarClientas,
       addClient, updateClient, deleteClient,
-      services, addService, updateService, deleteService, toggleServiceAi,
+      services, addService, updateService, deleteService, toggleServiceAi, copiarServicio,
       products, addProduct, updateProduct, deleteProduct, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
       preguntar, consulta,

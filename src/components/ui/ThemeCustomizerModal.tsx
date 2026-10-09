@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence, useDragControls, PanInfo } from 'motion/react';
 import { Palette, X, Check, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../../theme/ThemeContext';
+import { useSedeActiva } from '../../context/SedeActivaContext';
 import { ThemePalettePreset } from '../../types';
 
 interface ThemeCustomizerModalProps {
@@ -21,6 +22,8 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
     setTertiaryColor,
     isCustomPalette,
   } = useTheme();
+  // Con una sede activa, el color elegido queda como el de esa sede
+  const { ponerPaleta } = useSedeActiva();
 
   const [showCustomPickers, setShowCustomPickers] = useState(isCustomPalette);
   const dragControls = useDragControls();
@@ -162,7 +165,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({ isOp
                 return (
                   <div
                     key={preset.id}
-                    onClick={() => applyPalettePreset(preset.id)}
+                    onClick={() => ponerPaleta(preset.id)}
                     className={`group relative rounded-2xl p-3 border transition-all duration-200 ios-touch cursor-pointer ${
                       isSelected
                         ? 'bg-slate-50/90 dark:bg-neutral-800/90 shadow-md ring-2 ring-[var(--primary)]/30'

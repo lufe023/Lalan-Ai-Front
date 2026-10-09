@@ -23,6 +23,7 @@ import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
 import { EsferaLalan } from '../lalan/EsferaLalan';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useNombreSede } from './ListaSedes';
 import { useAplicacionesNuevas } from '../../hooks/useAplicacionesNuevas';
 import { usePlan } from '../../context/PlanContext';
 import { citasPendientes } from '../agenda/CitasPendientes';
@@ -57,6 +58,7 @@ export const IOSTabBar: React.FC = () => {
     openFolios,
   } = useApp();
   const { currentUser } = useAuth();
+  const nombreSede = useNombreSede();
   const { tieneModulo } = usePlan();
   const aplicacionesNuevas = useAplicacionesNuevas(currentUser?.role === 'super_admin');
 
@@ -426,7 +428,9 @@ export const IOSTabBar: React.FC = () => {
             />
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold text-slate-800 dark:text-white truncate">{currentUser.name}</div>
-              <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 truncate">{currentUser.roleTitle}</div>
+              <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 truncate">
+                {currentUser.roleTitle}{nombreSede ? <> · <span className="text-[var(--primary)] font-semibold">{nombreSede}</span></> : null}
+              </div>
             </div>
             <div
               className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"

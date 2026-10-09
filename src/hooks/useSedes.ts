@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
-import { sedePropia } from '../services/sedeLocal';
+import { sedeActiva, sedePropia } from '../services/sedeActiva';
 
 export interface Sede { id: string; name: string }
 
@@ -13,7 +13,8 @@ export function useSedes(opciones?: { todasLasDelSalon?: boolean }) {
   const todas = !!opciones?.todasLasDelSalon;
   const [sedes, setSedes] = useState<Sede[]>([]);
   useEffect(() => {
-    const propia = todas ? null : sedePropia();
+    // Con una sede activa (menú de la cuenta) la pantalla ya está en esa sede: sin selector propio
+    const propia = todas ? null : (sedePropia() ?? (sedeActiva() || null));
     api.get<Sede[]>('/users/sedes')
       .then(s => setSedes((s ?? []).filter(x => !propia || x.id === propia)))
       .catch(() => setSedes([]));

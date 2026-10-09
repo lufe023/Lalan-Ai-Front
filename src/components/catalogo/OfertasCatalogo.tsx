@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useDinero } from '../../hooks/useDinero';
 import { IOSModal } from '../ui/IOSModal';
 import type { SalonService } from '../../types';
+import { AvisoSedeActiva } from '../ui/AvisoSedeActiva';
+import { CopiarASede, EtiquetaSede } from '../ui/CopiarASede';
 
 interface Oferta {
   id: string;
@@ -19,6 +21,8 @@ interface Oferta {
   dias: number[];
   activa: boolean;
   aiOfrece: boolean;
+  /** La sede donde vale; null = todas */
+  locationId?: string | null;
 }
 
 /** Lunes primero, como se lee la semana aquí */
@@ -101,6 +105,11 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
         </p>
       </div>
 
+      <AvisoSedeActiva
+        que="Una oferta nueva vale solo en esta sede. Las que dicen «Todas las sedes» valen en todas."
+        enTodas="Estás viendo las ofertas de todas las sedes. Una oferta nueva aquí vale en todas. Para una sola sede, elígela:"
+      />
+
       {puedeEditar && (
         <button type="button" onClick={() => setEditando({ ...VACIA, currencyCode: base })}
           className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer">
@@ -121,6 +130,7 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
               <div className="min-w-0">
                 <div className="text-[0.875rem] font-bold text-slate-900 dark:text-white">{o.nombre}{vencida ? ' · vencida' : ''}</div>
                 {o.descripcion && <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400">{o.descripcion}</div>}
+                <EtiquetaSede locationId={o.locationId} siempre />
               </div>
               <div className="text-right shrink-0">
                 <div className="text-[0.9375rem] font-black text-slate-900 dark:text-white">{dinero(o.precio, o.currencyCode)}</div>
@@ -149,6 +159,12 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
                 <button type="button" onClick={() => setEditando({ ...o })} aria-label="Editar" className="w-8 h-8 rounded-lg text-slate-400 hover:text-[var(--primary)] flex items-center justify-center cursor-pointer"><Pencil className="w-4 h-4" /></button>
                 <button type="button" onClick={() => void borrar(o)} aria-label="Borrar" className="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 flex items-center justify-center cursor-pointer"><Trash2 className="w-4 h-4" /></button>
               </div>
+            )}
+            {puedeEditar && (
+              <CopiarASede desde={o.locationId} onCopiar={async (sedes) => {
+                await api.post(`/ofertas/${o.id}/copiar`, { sedes });
+                void cargar();
+              }} />
             )}
           </div>
         );

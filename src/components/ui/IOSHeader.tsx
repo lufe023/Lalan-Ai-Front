@@ -13,12 +13,15 @@ import {
   LogOut,
   Palette,
   User,
+  MapPin,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { UserRole } from '../../types';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
+import { ListaSedes, useNombreSede } from './ListaSedes';
 
 interface IOSHeaderProps {
   title: string;
@@ -44,6 +47,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
   useDeslizarParaVolver(onBack, showBack);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const nombreSede = useNombreSede();
 
   const getRoleIcon = (role?: UserRole) => {
     switch (role) {
@@ -85,6 +89,19 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
             <span className="text-[0.6875rem] text-slate-400 font-normal hidden sm:inline">
               • {currentUser?.roleTitle || 'Asistente'}
             </span>
+            {/* En qué sede se está: a la vista siempre, y un toque abre el cambio de sede */}
+            {nombreSede && (
+              <button
+                type="button"
+                onClick={() => setShowUserMenu(true)}
+                className="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-[0.6875rem] font-bold cursor-pointer max-w-[180px]"
+                title="Cambiar de sede"
+              >
+                <MapPin className="w-3 h-3 shrink-0" />
+                <span className="truncate">{nombreSede}</span>
+                <ChevronDown className="w-3 h-3 shrink-0" />
+              </button>
+            )}
           </div>
         )}
 
@@ -136,7 +153,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
                     initial={{ opacity: 0, scale: 0.9, y: 5 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 5 }}
-                    className="absolute right-0 top-9 w-56 p-2 rounded-2xl glass-ios shadow-2xl z-50 border border-slate-200/80 dark:border-neutral-700/80"
+                    className="absolute right-0 top-9 w-64 p-2 rounded-2xl glass-ios shadow-2xl z-50 border border-slate-200/80 dark:border-neutral-700/80"
                   >
                     {/* Profile card */}
                     <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
@@ -159,6 +176,13 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
                         </div>
                       </div>
                     </div>
+
+                    {/* Cambiar de sede: el control principal de las sedes */}
+                    {nombreSede && (
+                      <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 mb-1">
+                        <ListaSedes alElegir={() => setShowUserMenu(false)} />
+                      </div>
+                    )}
 
                     <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 flex items-center justify-between">
                       <button
