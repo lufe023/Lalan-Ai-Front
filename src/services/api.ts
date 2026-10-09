@@ -1,3 +1,4 @@
+import { cabeceraSede } from './sedeActiva';
 // ─── Base API client (native fetch + JWT) ────────────────────────
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
@@ -63,9 +64,12 @@ export async function apiFetch<T = unknown>(
   retry = true,
 ): Promise<T> {
   const token = tokenStore.get();
+  const { 'X-Sede': _sede, ...propias } = (options.headers as Record<string, string> ?? {});
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> ?? {}),
+    ...propias,
+    // La sede activa que eligió dirección (ver sedeActiva.ts)
+    ...cabeceraSede(options.headers),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -195,11 +199,23 @@ export const api = {
 };
 
 /**
+ * Pedidos de toda la cadena, aunque haya una sede activa: lo que se configura
+ * para todas las sedes a la vez (la lista de sedes en la bienvenida).
+ */
+const DE_LA_CADENA = { 'X-Sede': '' };
+export const apiCadena = {
+  get:   <T>(path: string) => apiFetch<T>(path, { method: 'GET', headers: DE_LA_CADENA }),
+  post:  <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body), headers: DE_LA_CADENA }),
+  patch: <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'PATCH', body: JSON.stringify(body), headers: DE_LA_CADENA }),
+  put:   <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'PUT', body: JSON.stringify(body), headers: DE_LA_CADENA }),
+};
+
+/**
  * Descarga un archivo del backend (PDF, Excel) con la sesión y lo guarda.
  * En iPhone abre la vista del PDF, desde donde se comparte o se guarda.
  */
 export async function descargarArchivo(path: string, nombre: string): Promise<void> {
-  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {} });
+  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: { ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) } });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
   if (!res.ok) throw new Error('No se pudo descargar el archivo');
@@ -215,7 +231,7 @@ export async function descargarArchivo(path: string, nombre: string): Promise<vo
  * sesión y se convierte en un blob. Quien la pide la libera al desmontarse.
  */
 export async function blobProtegido(path: string): Promise<string> {
-  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {} });
+  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: { ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) } });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
   if (!res.ok) throw new Error('No se pudo cargar el archivo');
@@ -225,7 +241,7 @@ export async function blobProtegido(path: string): Promise<string> {
 /** Subir un archivo (multipart) con la sesión: notas de voz del chat */
 export async function subirArchivo<T>(path: string, formulario: FormData): Promise<T> {
   const pedir = () => fetch(`${BASE_URL}${path}`, {
-    method: 'POST', body: formulario, headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {},
+    method: 'POST', body: formulario, headers: { ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) },
   });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
@@ -258,7 +274,7 @@ export function urlDeFoto(foto?: string | null): string | undefined {
 export async function pedirAudio(path: string, cuerpo: unknown, senal?: AbortSignal): Promise<Blob | null> {
   const pedir = () => fetch(`${BASE_URL}${path}`, {
     method: 'POST', signal: senal, body: JSON.stringify(cuerpo),
-    headers: { 'Content-Type': 'application/json', ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) },
   });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();

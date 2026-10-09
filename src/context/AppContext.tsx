@@ -127,6 +127,8 @@ export interface SalonStaff {
   horarioSemanal?: import('../types').DiaDeHorario[] | null;
   /** ¿Se le ponen citas? null = según su especialidad (el bartender no) */
   atiendeCitas?: boolean | null;
+  /** Las sedes donde trabaja (la suya primero); vacío = en todas */
+  sedes?: string[];
 }
 
 export type QueueStatus = 'waiting' | 'called' | 'serving' | 'done' | 'cancelled' | 'no_show';
@@ -411,7 +413,7 @@ interface AppContextType {
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
   loadEspecialistas: () => Promise<void>;
-  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null; atiendeCitas?: boolean | null }) => Promise<boolean>;
+  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null; atiendeCitas?: boolean | null; sedes?: string[] }) => Promise<boolean>;
   eliminarEspecialista: (id: string) => Promise<void>;
   /** Da el turno: la persona llegó. Con appointmentId es una cita; sin él, walk-in */
   darTurno: (dto: { appointmentId?: string | null; clientId?: string | null; clientName?: string; zoneId?: string | null; staffId?: string | null; reason?: string | null }) => Promise<QueueTicket | null>;

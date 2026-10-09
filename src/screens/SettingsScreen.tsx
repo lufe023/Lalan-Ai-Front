@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useSedeActiva } from '../context/SedeActivaContext';
+import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
 import { recibeCitas } from '../utils/recibeCitas';
 import { RESORTE } from '../components/ui/movimiento';
 import { AnimatePresence, motion } from 'motion/react';
@@ -89,6 +91,9 @@ export const SettingsScreen: React.FC = () => {
     isCustomPalette,
     isDark,
   } = useTheme();
+  const { ponerPaleta, sedes: sedesDelSalon, varias: variasSedes, actual: sedeActual } = useSedeActiva();
+  // La fila de especialista con sus sedes abiertas (con varias sedes)
+  const [sedesAbiertas, setSedesAbiertas] = useState<string | null>(null);
 
   const {
     settings,
@@ -462,6 +467,7 @@ export const SettingsScreen: React.FC = () => {
         )}
         {seccion === 'salon' && (
           <>
+        <AvisoSedeActiva />
         {/* La Bienvenida, para volver a recorrer la configuración paso a paso */}
         {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
           <button
@@ -505,7 +511,7 @@ export const SettingsScreen: React.FC = () => {
 
           <div>
             <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Dirección Principal
+              {variasSedes ? `Dirección de ${sedeActual?.name ?? 'la sede principal'}` : 'Dirección Principal'}
             </label>
             <input
               type="text"
@@ -843,8 +849,8 @@ export const SettingsScreen: React.FC = () => {
 
           <div className="space-y-2">
             {(especialistas ?? []).map(e => (
+              <React.Fragment key={e.id}>
               <div
-                key={e.id}
                 className={`p-2.5 rounded-xl border flex items-center gap-2 ${
                   e.active
                     ? 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200 dark:border-neutral-700'
@@ -898,6 +904,20 @@ export const SettingsScreen: React.FC = () => {
                     </button>
                   );
                 })()}
+                {variasSedes && (
+                  <button
+                    type="button"
+                    onClick={() => setSedesAbiertas(sedesAbiertas === e.id ? null : e.id)}
+                    aria-label={`Sedes donde trabaja ${e.name}`}
+                    title="En qué sedes trabaja"
+                    className={`shrink-0 h-7 px-2 rounded-lg flex items-center gap-1 text-[0.6875rem] font-bold transition cursor-pointer ${
+                      (e.sedes?.length ?? 0) > 1 ? 'text-[var(--primary)] bg-[var(--primary)]/10' : 'text-slate-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
+                    }`}
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    {e.sedes?.length ? e.sedes.length : 'Todas'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setHorarioDe(e.id)}
@@ -917,6 +937,40 @@ export const SettingsScreen: React.FC = () => {
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {/* En qué sedes trabaja: la primera que se marca es la suya */}
+              {variasSedes && sedesAbiertas === e.id && (
+                <div className="ml-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 space-y-2">
+                  <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+                    ¿En qué sedes trabaja {e.name.split(' ')[0]}? Lalan solo le da citas en las sedes marcadas.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sedesDelSalon.map(sd => {
+                      const marcada = (e.sedes ?? []).includes(sd.id);
+                      return (
+                        <button
+                          key={sd.id}
+                          type="button"
+                          aria-pressed={marcada}
+                          onClick={() => {
+                            const actuales = e.sedes ?? [];
+                            const nuevas = marcada ? actuales.filter(x => x !== sd.id) : [...actuales, sd.id];
+                            void guardarEspecialista({ id: e.id, name: e.name, sedes: nuevas });
+                          }}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.75rem] font-semibold border transition cursor-pointer ${
+                            marcada ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'bg-slate-50 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 border-slate-200 dark:border-neutral-700'
+                          }`}
+                        >
+                          {marcada && <Check className="w-3 h-3" />} {sd.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!(e.sedes ?? []).length && (
+                    <p className="text-[0.6875rem] text-slate-400">Sin ninguna marcada trabaja en todas las sedes.</p>
+                  )}
+                </div>
+              )}
+              </React.Fragment>
             ))}
             {!(especialistas ?? []).length && (
               <p className="py-3 text-center text-[0.75rem] text-slate-400">
@@ -1737,7 +1791,7 @@ export const SettingsScreen: React.FC = () => {
                   <button
                     key={preset.id}
                     type="button"
-                    onClick={() => applyPalettePreset(preset.id)}
+                    onClick={() => ponerPaleta(preset.id)}
                     className={`p-2.5 rounded-2xl border text-left flex items-center justify-between transition ios-touch cursor-pointer ${
                       isSelected
                         ? 'bg-slate-50 dark:bg-neutral-800 shadow-xs ring-2 ring-[var(--primary)]/40'

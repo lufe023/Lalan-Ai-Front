@@ -1,4 +1,4 @@
-import { api, subirArchivo } from './api';
+import { api, apiCadena, subirArchivo } from './api';
 import type {
   EstadoBienvenida, Paso, Plantillas, ProductoBienvenida, ProductoLeido, RecetaServicio, SedeBienvenida, ServicioAGuardar, ServicioLeido, TipoSalon,
 } from '../types/bienvenida';
@@ -43,10 +43,10 @@ export const bienvenidaApi = {
 
   salon: (d: { nombre?: string; tipos?: TipoSalon[] }) => api.put<EstadoBienvenida>('/bienvenida/salon', d),
 
-  sedes: () => api.get<SedeBienvenida[]>('/bienvenida/sedes'),
-  guardarSede: (id: string, d: { nombre?: string; direccion?: string | null; telefono?: string | null }) => api.patch<SedeBienvenida[]>(`/bienvenida/sedes/${id}`, d),
-  nuevaSede: (d: { nombre: string; direccion?: string; telefono?: string }) => api.post<SedeBienvenida[]>('/bienvenida/sedes', d),
-  horario: (horarioSemanal: DiaDeHorario[]) => api.put<SedeBienvenida[]>('/bienvenida/horario', { horarioSemanal }),
+  sedes: () => apiCadena.get<SedeBienvenida[]>('/bienvenida/sedes'),
+  guardarSede: (id: string, d: { nombre?: string; direccion?: string | null; telefono?: string | null }) => apiCadena.patch<SedeBienvenida[]>(`/bienvenida/sedes/${id}`, d),
+  nuevaSede: (d: { nombre: string; direccion?: string; telefono?: string }) => apiCadena.post<SedeBienvenida[]>('/bienvenida/sedes', d),
+  horario: (horarioSemanal: DiaDeHorario[]) => apiCadena.put<SedeBienvenida[]>('/bienvenida/horario', { horarioSemanal }),
 
   /** `locationId`: la sede donde trabajan (con varias sedes) */
   especialistas: (especialistas: { nombre: string; rol?: string; telefono?: string }[], locationId?: string) =>
