@@ -54,6 +54,9 @@ import { useMusicaSala, ordenar } from '../services/musica';
 import { PageContent } from '../components/ui/PageContent';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { PosPanel } from '../components/pos/PosPanel';
+import { SelectorSede } from '../components/ui/SelectorSede';
+import { useSedes } from '../hooks/useSedes';
+import { conSedeLocal, elegirSedeLocal, sedeLocal } from '../services/sedeLocal';
 
 /** Una preferencia ya asignada a la clienta */
 type PrefItem = {
@@ -569,6 +572,7 @@ export const LoungePlayerScreen: React.FC = () => {
    * misma cola en vez de volver a sortear. Hasta que no se restaure, el
    * guardado queda bloqueado para no pisar lo guardado con un estado vacío.
    */
+  const sedes = useSedes();
   const [stateRestored, setStateRestored] = useState(false);
 
   useEffect(() => {
@@ -578,7 +582,7 @@ export const LoungePlayerScreen: React.FC = () => {
       try {
         const st = await api.get<{
           clientIds: string[]; playlistIds: string[]; blocks: any[]; mixMode: string;
-        }>('/lounge/state');
+        }>(conSedeLocal('/lounge/state'));
         if (cancelled) return;
 
         if (st?.blocks?.length) {
@@ -632,7 +636,7 @@ export const LoungePlayerScreen: React.FC = () => {
   useEffect(() => {
     if (!stateRestored) return;
     const t = setTimeout(() => {
-      api.put('/lounge/state', {
+      api.put(conSedeLocal('/lounge/state'), {
         clientIds: loungeClientIds ? loungeClientIds.split(',') : [],
         playlistIds: playlistIdsKey ? playlistIdsKey.split(',') : [],
         blocks: ytBlocksRef.current,
@@ -1030,9 +1034,19 @@ export const LoungePlayerScreen: React.FC = () => {
                 Salón Lounge & Experiencia VIP
               </span>
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Música & Hospitalidad
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                Música & Hospitalidad
+              </h1>
+              {/* Con varias sedes, dirección elige de qué local es este Lounge:
+                  su música, quién está, y de qué inventario sale lo que se sirve.
+                  Cambiarla recarga la app para no mezclar un local con otro. */}
+              <SelectorSede
+                sedes={sedes}
+                value={sedeLocal()}
+                onChange={(id) => { elegirSedeLocal(id); window.location.reload(); }}
+              />
+            </div>
           </div>
 
           {/* Current Client Pill Switcher */}

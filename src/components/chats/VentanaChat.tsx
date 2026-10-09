@@ -11,6 +11,7 @@ import { IOSToggle } from '../ui/IOSToggle';
 import { ContenidoMensaje, OrigenDelChat, ReaccionDeMensaje } from './ContenidoMensaje';
 import { TurnoEspecial } from './TurnoEspecial';
 import { ClientaDelChat } from './ClientaDelChat';
+import { SedeDelChat } from './SedeDelChat';
 import { BloquearChat, ProteccionDelChat } from './ProteccionDelChat';
 import { useAuth } from '../../context/AuthContext';
 
@@ -416,6 +417,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
+        <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
         <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>
@@ -645,6 +647,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
+        <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
         <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>

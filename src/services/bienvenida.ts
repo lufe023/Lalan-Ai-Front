@@ -48,8 +48,9 @@ export const bienvenidaApi = {
   nuevaSede: (d: { nombre: string; direccion?: string; telefono?: string }) => api.post<SedeBienvenida[]>('/bienvenida/sedes', d),
   horario: (horarioSemanal: DiaDeHorario[]) => api.put<SedeBienvenida[]>('/bienvenida/horario', { horarioSemanal }),
 
-  especialistas: (especialistas: { nombre: string; rol?: string; telefono?: string }[]) =>
-    api.post<{ creadas: unknown[]; todas: { id: string; name: string; role: string }[] }>('/bienvenida/especialistas', { especialistas }),
+  /** `locationId`: la sede donde trabajan (con varias sedes) */
+  especialistas: (especialistas: { nombre: string; rol?: string; telefono?: string }[], locationId?: string) =>
+    api.post<{ creadas: unknown[]; todas: { id: string; name: string; role: string }[] }>('/bienvenida/especialistas', { especialistas, ...(locationId ? { locationId } : {}) }),
 
   plantillas: (tipos?: TipoSalon[]) => api.get<Plantillas>(`/bienvenida/plantillas${tipos?.length ? `?tipos=${tipos.join(',')}` : ''}`),
   servicios: (servicios: ServicioAGuardar[]) =>
@@ -62,8 +63,9 @@ export const bienvenidaApi = {
   rendimiento: (serviceId: string, lineas: { productId?: string; plantilla?: string; nombre?: string; rinde: number | null }[]) =>
     api.put<RecetaServicio>(`/bienvenida/recetas/${serviceId}`, { lineas }),
 
-  productos: () => api.get<ProductoBienvenida[]>('/bienvenida/productos'),
-  guardarProductos: (productos: { productId?: string; plantilla?: string; nombre?: string; costo?: number; cantidad?: number }[]) =>
+  /** Las existencias que se ven y se cargan son las de `sede` (con varias sedes) */
+  productos: (sede?: string) => api.get<ProductoBienvenida[]>(`/bienvenida/productos${sede ? `?sede=${encodeURIComponent(sede)}` : ''}`),
+  guardarProductos: (productos: { productId?: string; plantilla?: string; nombre?: string; costo?: number; cantidad?: number; locationId?: string }[]) =>
     api.post<{ guardados: string[]; productos: ProductoBienvenida[] }>('/bienvenida/productos', { productos }),
   fotoFactura: (fotos: File[]) => subirArchivo<ProductoLeido[]>('/bienvenida/foto-factura', conFotos(fotos)),
 };

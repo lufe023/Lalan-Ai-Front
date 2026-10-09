@@ -3,6 +3,8 @@ import { Plus, Trash2, UserRound } from 'lucide-react';
 import { api } from '../../services/api';
 import { bienvenidaApi } from '../../services/bienvenida';
 import { useAuth } from '../../context/AuthContext';
+import { SelectorSede } from '../ui/SelectorSede';
+import { useSedes } from '../../hooks/useSedes';
 import { Aviso, BotonPrincipal, BotonSecundario, Cargando, Encabezado, Tarjeta, claseCampo } from './comun';
 
 interface Fila { nombre: string; rol: string }
@@ -18,6 +20,10 @@ export const PasoEspecialistas: React.FC<{ onSiguiente: () => void }> = ({ onSig
   const [filas, setFilas] = useState<Fila[]>([{ nombre: '', rol: '' }]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+  // Con varias sedes, las que agregue aquí trabajan en la sede elegida
+  const sedes = useSedes();
+  const [sedeElegida, setSedeElegida] = useState('');
+  const sede = sedes.length > 1 ? (sedeElegida || sedes[0].id) : '';
 
   useEffect(() => {
     api.get<Especialista[]>('/salon/staff')
@@ -34,7 +40,7 @@ export const PasoEspecialistas: React.FC<{ onSiguiente: () => void }> = ({ onSig
     if (!nuevas.length && !existentes?.length) { setError('Agrega al menos a una persona (aunque seas solo tú).'); return; }
     setGuardando(true);
     try {
-      if (nuevas.length) await bienvenidaApi.especialistas(nuevas);
+      if (nuevas.length) await bienvenidaApi.especialistas(nuevas, sede || undefined);
       onSiguiente();
     } catch (e) {
       setError((e as Error).message);
@@ -58,6 +64,12 @@ export const PasoEspecialistas: React.FC<{ onSiguiente: () => void }> = ({ onSig
             </div>
           ))}
         </Tarjeta>
+      )}
+      {sedes.length > 1 && (
+        <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500 dark:text-neutral-400">
+          <span>Trabajan en</span>
+          <SelectorSede sedes={sedes} value={sede} onChange={setSedeElegida} />
+        </div>
       )}
       <datalist id="roles-bienvenida">{ROLES_SUGERIDOS.map((r) => <option key={r} value={r} />)}</datalist>
       {filas.map((f, i) => (

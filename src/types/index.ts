@@ -274,6 +274,10 @@ export type ChatStatus = 'ai_active' | 'manual_control' | 'needs_attention';
 
 export interface Conversation {
   id: string;
+  /** La sede del chat (con varias, la que eligió la clienta o la del número) */
+  locationId?: string;
+  /** Entró por un número de todas las sedes y aún no dijo en cuál quiere atenderse */
+  sedePorElegir?: boolean;
   clientId?: string;
   clientName: string;
   clientHandle?: string;
@@ -335,6 +339,10 @@ export interface BotChannelConfig {
   /** 'boton_meta' (lo conectó el cliente con el botón) o 'manual' (desde Plataforma) */
   conexion: string | null;
   conectadoEn: string | null;
+  /** La sede de la fila (con varias sedes, cada una tiene la suya por canal) */
+  locationId: string | null;
+  /** La cuenta atiende todas las sedes: Lalan pregunta en cuál quiere atenderse la clienta */
+  todasLasSedes: boolean;
 }
 
 export interface ColorPreset {

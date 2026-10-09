@@ -8,6 +8,7 @@ import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
 import { api, urlDeFoto } from '../services/api';
 import { alRecibir, alConectar } from '../services/socket';
+import { conSedeLocal, sedeLocal } from '../services/sedeLocal';
 import { PeticionCancion, componerCola, indicesDePeticiones } from '../utils/peticiones';
 import {
   estadoMusica, soyElAnfitrion, ordenar, cuandoSepamos, useMusicaSala,
@@ -339,6 +340,11 @@ interface AppContextType {
   /** Vuelve a pedir los canales (tras conectar o desconectar una cuenta de Meta) */
   recargarBots: () => Promise<void>;
   toggleBotChannel: (channelId: CommunicationChannel, enabled: boolean) => Promise<void>;
+  /** Con varias sedes: de qué sede se ven los canales ('' = la principal) */
+  sedeBots: string;
+  elegirSedeBots: (sede: string) => Promise<void>;
+  /** La cuenta del canal atiende todas las sedes (un número o un Instagram para la cadena) */
+  ponerTodasLasSedes: (channelId: CommunicationChannel, todasLasSedes: boolean) => Promise<void>;
   updateBotMessage: (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage' | 'channelIdentifier', text: string) => Promise<void>;
   settings: SalonBusinessSettings;
   updateSettings: (newSettings: Partial<SalonBusinessSettings>) => void;
@@ -774,6 +780,7 @@ function mapApiAppointment(a: any): Appointment {
 function mapApiConversation(c: any): Conversation {
   return {
     id: c.id, clientId: c.clientId, clientName: c.clientName,
+    locationId: c.locationId ?? undefined, sedePorElegir: !!c.sedePorElegir,
     clientHandle: c.clientHandle, clientPhone: c.clientPhone,
     clientAvatar: urlDeFoto(c.clientAvatar) ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.clientName)}&background=e2e8f0&color=475569`,
     channel: c.channel, status: c.status, lastMessage: c.lastMessage ?? '',
@@ -801,6 +808,7 @@ function mapApiBotConfig(b: any): BotChannelConfig {
     welcomeMessage: b.welcomeMessage ?? '', offHoursMessage: b.offHoursMessage ?? '',
     channelIdentifier: b.channelIdentifier ?? '', cuentaNombre: b.cuentaNombre ?? null,
     conexion: b.conexion ?? null, conectadoEn: b.conectadoEn ?? null,
+    locationId: b.locationId ?? null, todasLasSedes: !!b.todasLasSedes,
   };
 }
 function mapApiTrack(t: any): LoungeTrack {
@@ -1388,9 +1396,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConversations(lista);
     return lista;
   }, []);
+  // Con varias sedes, el panel muestra los canales de UNA (vacía = la principal)
+  const sedeBotsRef = useRef('');
+  const [sedeBots, setSedeBots] = useState('');
   const loadBots = useCallback(async () => {
-    setBotConfigs((await api.get<any[]>('/bots')).map(mapApiBotConfig));
+    const sede = sedeBotsRef.current;
+    setBotConfigs((await api.get<any[]>(`/bots${sede ? `?sede=${encodeURIComponent(sede)}` : ''}`)).map(mapApiBotConfig));
   }, []);
+  const elegirSedeBots = useCallback(async (sede: string) => {
+    sedeBotsRef.current = sede;
+    setSedeBots(sede);
+    await loadBots();
+  }, [loadBots]);
 
   /* Abrir un chat lo da por leído, y mientras está abierto lo que llega
      también cuenta como leído. Antes nunca se marcaba y el contador del
@@ -1533,14 +1550,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     navigateTo('chats');
   }, [conversations, navigateTo]);
 
+  /** El PATCH va a la fila que se ve (la de su sede), no a la primera del canal */
+  const urlDelCanal = useCallback((channelId: CommunicationChannel) => {
+    const fila = botConfigs.find(x => x.id === channelId);
+    return `/bots/${channelId}${fila?.locationId ? `?sede=${encodeURIComponent(fila.locationId)}` : ''}`;
+  }, [botConfigs]);
   const toggleBotChannel = useCallback(async (channelId: CommunicationChannel, enabled: boolean) => {
-    await api.patch(`/bots/${channelId}`, { enabled });
+    await api.patch(urlDelCanal(channelId), { enabled });
     setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, enabled } : x));
-  }, []);
+  }, [urlDelCanal]);
   const updateBotMessage = useCallback(async (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage' | 'channelIdentifier', text: string) => {
-    await api.patch(`/bots/${channelId}`, { [field]: text });
+    await api.patch(urlDelCanal(channelId), { [field]: text });
     setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, [field]: text } : x));
-  }, []);
+  }, [urlDelCanal]);
+  const ponerTodasLasSedes = useCallback(async (channelId: CommunicationChannel, todasLasSedes: boolean) => {
+    await api.patch(urlDelCanal(channelId), { todasLasSedes });
+    setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, todasLasSedes } : x));
+  }, [urlDelCanal]);
 
   /**
    * Guarda los parámetros del salón.
@@ -2090,7 +2116,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return alRecibir('lounge:llegada', async (carga: any) => {
       const llegoId: string | null = carga?.motivo ?? null;
       try {
-        const st = await api.get<{ clientIds: string[]; blocks: YtClientBlock[]; mixMode: YtMixMode }>('/lounge/state');
+        const st = await api.get<{ clientIds: string[]; blocks: YtClientBlock[]; mixMode: YtMixMode }>(conSedeLocal('/lounge/state'));
         // Pueden no estar en la página de clientas cargada: se piden las que falten
         const conocidas = new Map(clientsRef.current.map(c => [c.id, c]));
         const lista = await Promise.all((st.clientIds ?? []).map(async id =>
@@ -2101,7 +2127,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch { /* el Lounge se pone al día en la próxima recarga */ }
       if (!llegoId) return;
       try {
-        const b = await api.get<Bienvenida | null>(`/lounge/bienvenida/${llegoId}`);
+        const b = await api.get<Bienvenida | null>(conSedeLocal(`/lounge/bienvenida/${llegoId}`));
         if (b) {
           setBienvenida(b);
           avisarAlSistema(`Llegó ${b.nombre}`, b.bebidas.length ? `Le gusta: ${b.bebidas.join(', ')}` : 'Dale la bienvenida');
@@ -2163,6 +2189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (opts?.clientId) params.set('clientId', opts.clientId);
       if (opts?.range) params.set('range', opts.range);
       params.set('limit', '50');
+      if (sedeLocal()) params.set('sede', sedeLocal());
       // Solo paginamos hacia atrás en el histórico; "hoy" cabe en una página
       if (append && loungeCursorRef.current && opts?.range !== 'today') {
         params.set('before', loungeCursorRef.current);
@@ -2192,7 +2219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } as LoungeEvent;
     setLoungeEvents(h => [provisional, ...h]);
     try {
-      const guardado = await api.post<LoungeEvent>('/lounge/events', dto);
+      const guardado = await api.post<LoungeEvent>(conSedeLocal('/lounge/events'), dto);
       if (guardado?.id) {
         setLoungeEvents(h => h.map(e => (e.id === provisional.id ? guardado : e)));
       }
@@ -2261,6 +2288,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const venta = await api.post<Sale>('/sales/open', {
         clientId: opts?.clientId ?? null,
         appointmentId: opts?.appointmentId ?? null,
+        // Sin cita, la comanda es del local donde está este aparato (su inventario)
+        ...(!opts?.appointmentId && sedeLocal() ? { locationId: sedeLocal() } : {}),
       });
       setActiveSale(venta);
       return venta;
@@ -2626,7 +2655,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSaleBusy(true);
     try {
       // Sin clientId: cuenta de mostrador, sin ficha ni cita
-      const venta = await api.post<Sale>('/sales/open', { label: label ?? 'Mostrador' });
+      const venta = await api.post<Sale>('/sales/open', { label: label ?? 'Mostrador', ...(sedeLocal() ? { locationId: sedeLocal() } : {}) });
       setActiveSale(venta);
       await loadOpenFolios();
       return venta;
@@ -2776,7 +2805,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,
       toggleChatAiStatus, sendMessageToConversation, recargarConversaciones: loadConversations, startChatWithClient,
-      botConfigs, recargarBots: loadBots, toggleBotChannel, updateBotMessage,
+      botConfigs, recargarBots: loadBots, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes,
       settings, updateSettings,
       metricsPeriod, setMetricsPeriod,
       categorias, cargarCategorias, recargarCatalogo, categoriasDe, categoriaPorClave, crearCategoria, editarCategoria, quitarCategoria,

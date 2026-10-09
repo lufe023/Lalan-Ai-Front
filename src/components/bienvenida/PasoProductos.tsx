@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Check, Receipt } from 'lucide-react';
 import { bienvenidaApi } from '../../services/bienvenida';
 import type { ProductoBienvenida, ProductoLeido } from '../../types/bienvenida';
+import { SelectorSede } from '../ui/SelectorSede';
+import { useSedes } from '../../hooks/useSedes';
 import { Aviso, BotonFoto, BotonPrincipal, BotonSecundario, Cargando, Encabezado, Tarjeta, claseCampo, conArticulo, dinero, leerNumero } from './comun';
 
 interface Borrador { costo: string; entran: string }
@@ -20,13 +22,18 @@ export const PasoProductos: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
   const [hecho, setHecho] = useState('');
+  // Cada sede tiene su estante: con varias, se elige en cuál se cuenta
+  const sedes = useSedes();
+  const [sedeElegida, setSedeElegida] = useState('');
+  const sede = sedes.length > 1 ? (sedeElegida || sedes[0].id) : '';
+  const enSede = sede ? { locationId: sede } : {};
 
   const cargar = (lista: ProductoBienvenida[]) => {
     // Los que van en recetas primero: son los que mueven los informes
     setProductos([...lista].sort((a, b) => b.enRecetas - a.enRecetas || a.nombre.localeCompare(b.nombre)));
     setBorradores(Object.fromEntries(lista.map((p) => [p.productId, { costo: p.costo != null ? String(p.costo) : '', entran: '' }])));
   };
-  useEffect(() => { bienvenidaApi.productos().then(cargar).catch((e) => setError((e as Error).message)); }, []);
+  useEffect(() => { bienvenidaApi.productos(sede || undefined).then(cargar).catch((e) => setError((e as Error).message)); }, [sede]);
 
   const leerFactura = async (fotos: File[]) => {
     setError(''); setHecho('');
@@ -49,6 +56,7 @@ export const PasoProductos: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
       ...(r.productIdExistente ? { productId: r.productIdExistente } : r.plantilla ? { plantilla: r.plantilla } : { nombre: r.leido }),
       cantidad: leerNumero(r.cantidadTexto) ?? undefined,
       costo: leerNumero(r.costoTexto) ?? undefined,
+      ...enSede,
     }));
     if (!lista.length) { setFactura(null); return; }
     setGuardando(true);
@@ -73,7 +81,7 @@ export const PasoProductos: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
       const entran = leerNumero(b.entran);
       const cambioCosto = costo != null && costo !== p.costo;
       if (!cambioCosto && !entran) return [];
-      return [{ productId: p.productId, ...(cambioCosto ? { costo } : {}), ...(entran ? { cantidad: entran } : {}) }];
+      return [{ productId: p.productId, ...(cambioCosto ? { costo } : {}), ...(entran ? { cantidad: entran } : {}), ...enSede }];
     });
     setGuardando(true);
     try {
@@ -128,6 +136,12 @@ export const PasoProductos: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
   return (
     <div className="space-y-5">
       <Encabezado titulo="Tus productos" texto="Pon lo que te cuesta cada uno y, si quieres, cuántos tienes. Lo que no sepas, déjalo en blanco." />
+      {sedes.length > 1 && (
+        <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500 dark:text-neutral-400">
+          <span>Lo que cuentes se carga en</span>
+          <SelectorSede sedes={sedes} value={sede} onChange={setSedeElegida} />
+        </div>
+      )}
       <Tarjeta className="space-y-2">
         <p className="text-[0.875rem] text-slate-600 dark:text-neutral-300 flex items-start gap-2">
           <Receipt className="w-4 h-4 mt-0.5 shrink-0 text-[var(--primary)]" />

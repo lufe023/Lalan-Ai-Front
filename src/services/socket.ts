@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { tokenStore, refrescarSesion } from './api';
+import { sedeLocal } from './sedeLocal';
 
 /**
  * Tiempo real, un socket para toda la aplicación.
@@ -114,7 +115,9 @@ export function conectarComoUsuario() {
      sesión contaría como "otro modo" y tiraría el socket para levantar uno
      idéntico. Se suelta al cerrar sesión, que es cuando de verdad cambia
      quién está conectado. */
-  return conectar(() => ({ tipo: 'app', token: tokenStore.get() ?? '' }), 'app');
+  /* `sede`: el local cuya música maneja dirección (ver sedeLocal). Se lee en
+     cada conexión, así que cambiarla es reconectar. */
+  return conectar(() => ({ tipo: 'app', token: tokenStore.get() ?? '', sede: sedeLocal() }), 'app');
 }
 
 /** La pantalla de pared: su token público, y solo para escuchar */
