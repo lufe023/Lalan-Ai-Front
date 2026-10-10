@@ -51,6 +51,7 @@ import { useDinero } from '../hooks/useDinero';
 import { OfertasCatalogo } from '../components/catalogo/OfertasCatalogo';
 import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
 import { CopiarASede, EtiquetaSede } from '../components/ui/CopiarASede';
+import { ServicioEnSedes, agruparPorSede } from '../components/catalogo/ServicioEnSedes';
 import { useSedeActiva } from '../context/SedeActivaContext';
 
 export const CatalogScreen: React.FC = () => {
@@ -76,7 +77,7 @@ export const CatalogScreen: React.FC = () => {
     categoriaPorClave,
     guardarRecetaProducto,
   } = useApp();
-  const { varias: variasSedes, actual: sedeActual } = useSedeActiva();
+  const { varias: variasSedes, actual: sedeActual, sedes: sedesDelSalon } = useSedeActiva();
   const sedeDelStockInicial = useSedeDelStock();
   /* Recibir mercancía (lotes con vencimiento) */
   const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
@@ -202,6 +203,12 @@ export const CatalogScreen: React.FC = () => {
     const matchesCat = selectedCategory === 'all' || s.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
+
+  // En "Todas las sedes" cada servicio sale una vez, con el precio de cada sede
+  const enTodasSedes = variasSedes && !sedeActual;
+  const serviciosEnLista = enTodasSedes
+    ? agruparPorSede(filteredServices)
+    : filteredServices.map(s => ({ principal: s, copias: [] as typeof filteredServices }));
 
   // Filtered Products
   const filteredProducts = products.filter(p => {
@@ -630,7 +637,7 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              filteredServices.map((service, i) => (
+              serviciosEnLista.map(({ principal: service, copias }, i) => (
                 <Aparecer
                   key={service.id}
                   indice={i}
@@ -698,6 +705,10 @@ export const CatalogScreen: React.FC = () => {
                   )}
 
                   {/* PRICE TABLE / TABLA DE PRECIOS */}
+                  {enTodasSedes ? (
+                    <ServicioEnSedes principal={service} copias={copias} sedes={sedesDelSalon}
+                      precio={(n, m) => enSuMoneda(n, m)} onEditar={handleOpenEditService} />
+                  ) : (
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 space-y-1.5">
                     <div className="flex items-center justify-between text-[0.6875rem] uppercase font-bold text-slate-400 px-1">
                       <span className="flex items-center gap-1">
@@ -748,6 +759,7 @@ export const CatalogScreen: React.FC = () => {
                       ))}
                     </div>
                   </div>
+                  )}
 
                   {/* AI Availability Toggle */}
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-neutral-800/60 text-xs">
@@ -1311,7 +1323,7 @@ export const CatalogScreen: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-52 overflow-y-auto">
+              <div className="space-y-2">
                 {serviceForm.priceTiers.map((tier, index) => (
                   <div
                     key={tier.id}
@@ -1763,7 +1775,7 @@ export const CatalogScreen: React.FC = () => {
             })()}
             <MonedaDelPrecio value={productForm.currencyCode} onChange={c => setProductForm({ ...productForm, currencyCode: c })} ejemplo={productForm.priceTiers[0]?.price ?? productForm.basePrice} />
 
-            <div className="space-y-2 max-h-52 overflow-y-auto">
+            <div className="space-y-2">
               {productForm.priceTiers.map((tier, index) => (
                 <div
                   key={tier.id}

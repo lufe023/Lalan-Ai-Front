@@ -696,6 +696,7 @@ function mapApiService(s: any): SalonService {
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     aiPrecio: s.aiPrecio ?? 'exacto',
     locationId: s.locationId ?? null,
+    ocultoEn: Array.isArray(s.ocultoEn) ? s.ocultoEn : [],
   };
 }
 function mapApiProduct(p: any): SalonProduct {

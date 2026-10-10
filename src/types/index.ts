@@ -76,6 +76,8 @@ export interface SalonService {
   id: string;
   /** La sede que lo ofrece; null = todas las sedes */
   locationId?: string | null;
+  /** Sedes donde el servicio del salón no se ofrece (tienen su copia o lo quitaron) */
+  ocultoEn?: string[];
   name: string;
   category: ServiceCategory;
   categoryName: string;
