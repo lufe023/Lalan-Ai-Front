@@ -14,6 +14,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { imprimirRecibo } from '../utils/recibo';
 import { ListaRecibos } from '../components/caja/ListaRecibos';
 import { useSedeActiva } from '../context/SedeActivaContext';
+import { useOpcionesRecibo } from '../hooks/useOpcionesRecibo';
 
 /**
  * Caja — el punto de venta, fuera del Lounge.
@@ -63,19 +64,15 @@ export const CajaScreen: React.FC = () => {
   }, []);
 
 
+  const opcionesRecibo = useOpcionesRecibo();
   const reimprimir = useCallback((venta: any) => {
-    imprimirRecibo(venta, {
-      anchoMm: Number((settings as any)?.receiptWidthMm) || 80,
-      salon: (settings as any)?.salonName ?? 'Lalan AI Studio & Lounge',
-      direccion: (settings as any)?.address ?? '',
-      telefono: (settings as any)?.phone ?? '',
-      pie: (settings as any)?.receiptFooter ?? '¡Gracias por tu visita!',
+    imprimirRecibo(venta, opcionesRecibo(venta, {
       simbolo: sim,
       // Marcado como copia: un recibo reimpreso no debe confundirse con el
       // original a la hora de cuadrar la caja.
       copia: true,
-    });
-  }, [settings, sim]);
+    }));
+  }, [opcionesRecibo, sim]);
 
   // ── Turno de caja ─────────────────────────────────────────────────────
   const cargarTurno = useCallback(async () => {

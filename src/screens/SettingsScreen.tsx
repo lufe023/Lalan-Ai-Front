@@ -67,6 +67,7 @@ import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 import { SeguridadCuenta } from '../components/ajustes/SeguridadCuenta';
 import { QuioscosSalon } from '../components/ajustes/QuioscosSalon';
 import { enSoporte } from '../services/soporte';
+import { DisenadorRecibo } from '../components/ajustes/DisenadorRecibo';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
 const ESTILO_ACTIVIDAD: Record<EventoActividad['tipo'], { titulo: string; clase: string }> = {
@@ -1579,53 +1580,7 @@ export const SettingsScreen: React.FC = () => {
             térmica o matricial — sin instalar nada aparte.
           </p>
 
-          <div>
-            <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
-              Ancho del papel
-            </label>
-            <div className="flex gap-2 mt-1">
-              {[58, 80].map(mm => (
-                <button
-                  key={mm}
-                  onClick={() => updateSettings({ ...settings, receiptWidthMm: mm } as any)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition ${
-                    Number((settings as any)?.receiptWidthMm ?? 80) === mm
-                      ? 'bg-[var(--primary)] text-white'
-                      : 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300'
-                  }`}
-                >
-                  {mm}mm
-                  <span className="block text-[0.6875rem] font-normal opacity-70">
-                    {mm === 58 ? 'térmica chica' : 'estándar POS'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
-              Pie del recibo
-            </label>
-            <input
-              defaultValue={(settings as any)?.receiptFooter ?? '¡Gracias por tu visita!'}
-              onBlur={e => updateSettings({ ...settings, receiptFooter: e.target.value } as any)}
-              placeholder="¡Gracias por tu visita!"
-              className="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
-              RNC / Identificación fiscal
-            </label>
-            <input
-              defaultValue={(settings as any)?.rnc ?? ''}
-              onBlur={e => updateSettings({ ...settings, rnc: e.target.value } as any)}
-              placeholder="Opcional"
-              className="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
-            />
-          </div>
+          <DisenadorRecibo />
         </div>
 
           </>

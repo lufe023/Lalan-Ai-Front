@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { imprimirRecibo } from '../../utils/recibo';
+import { useOpcionesRecibo } from '../../hooks/useOpcionesRecibo';
 
 /** Algo que se le puede despachar a la clienta: producto o servicio */
 type Vendible = {
@@ -182,16 +183,10 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
     setCobroMonto(pendiente > 0 ? (pendiente / tasa).toFixed(2) : '');
   }, [cobroMoneda]);
 
+  const opcionesRecibo = useOpcionesRecibo();
   const imprimir = useCallback((venta: any) => {
-    imprimirRecibo(venta, {
-      anchoMm: Number((settings as any)?.receiptWidthMm) || 80,
-      salon: (settings as any)?.salonName ?? 'Lalan AI Studio & Lounge',
-      direccion: (settings as any)?.address ?? '',
-      telefono: (settings as any)?.phone ?? '',
-      pie: (settings as any)?.receiptFooter ?? '¡Gracias por tu visita!',
-      simbolo: sim,
-    });
-  }, [settings, sim]);
+    imprimirRecibo(venta, opcionesRecibo(venta, { simbolo: sim }));
+  }, [opcionesRecibo, sim]);
 
   if (!activeSale && !activeLoungeClient) {
     return (
