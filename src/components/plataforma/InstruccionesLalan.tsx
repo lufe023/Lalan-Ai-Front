@@ -36,9 +36,12 @@ export const InstruccionesLalan: React.FC<{ negocioId: string; sedes: { id: stri
   useEffect(() => {
     if (!abierta || !sedeId) return;
     setM(null); setError('');
+    // Si cambia de sede o canal antes de que llegue, esa respuesta ya no vale
+    let vigente = true;
     api.get<Muestra>(`/plataforma/negocios/${negocioId}/lalan?sede=${sedeId}&canal=${canal}`)
-      .then(setM)
-      .catch((e) => setError((e as Error).message));
+      .then((r) => { if (vigente) setM(r); })
+      .catch((e) => { if (vigente) setError((e as Error).message); });
+    return () => { vigente = false; };
   }, [abierta, negocioId, sedeId, canal]);
 
   const copiar = async () => {
