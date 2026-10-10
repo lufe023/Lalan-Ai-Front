@@ -4,7 +4,7 @@ import { RESORTE } from '../components/ui/movimiento';
 import {
   Receipt, Printer, UserPlus, Search, RotateCcw, Users,
   Wallet, LockOpen, Lock, ArrowDownLeft, ArrowUpRight, Plus,
-  ClipboardList, Clock,
+  ClipboardList, Clock, MapPin,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -13,8 +13,7 @@ import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
 import { imprimirRecibo } from '../utils/recibo';
 import { ListaRecibos } from '../components/caja/ListaRecibos';
-import { SelectorSede } from '../components/ui/SelectorSede';
-import { useSedes } from '../hooks/useSedes';
+import { useSedeActiva } from '../context/SedeActivaContext';
 
 /**
  * Caja — el punto de venta, fuera del Lounge.
@@ -43,10 +42,11 @@ export const CajaScreen: React.FC = () => {
   const [cargando, setCargando] = useState(false);
   const [busca, setBusca] = useState('');
   const [eligiendoClienta, setEligiendoClienta] = useState(false);
-  // Cada sede tiene su gaveta: dirección elige cuál mira ('' = la principal)
-  const sedes = useSedes();
-  const [sedeCaja, setSedeCaja] = useState('');
-  const conSede = (url: string) => sedeCaja ? `${url}${url.includes('?') ? '&' : '?'}sede=${encodeURIComponent(sedeCaja)}` : url;
+  // Cada sede tiene su gaveta, y la caja es la de la sede activa: o se cobra
+  // en una sede o en ninguna. En "Todas las sedes" (con varias) no hay caja,
+  // solo el historial de todas y algún turno viejo sin sede por cerrar.
+  const { sedes, actual, varias, elegir } = useSedeActiva();
+  const enTodas = varias && !actual;
 
   const sim = baseCurrency?.symbol ?? '';
   const plata = (n: any) => `${Number(n ?? 0).toFixed(2)}${sim ? ` ${sim}` : ''}`;
@@ -79,14 +79,14 @@ export const CajaScreen: React.FC = () => {
 
   // ── Turno de caja ─────────────────────────────────────────────────────
   const cargarTurno = useCallback(async () => {
-    try { setTurno(await api.get<any>(conSede('/cash/current'))); }
+    try { setTurno(await api.get<any>('/cash/current')); }
     catch { setTurno(null); }
-  }, [sedeCaja]);
+  }, []);
 
   const cargarHistorial = useCallback(async () => {
-    try { setHistorial(await api.get<any[]>(conSede('/cash/history?limit=40')) ?? []); }
+    try { setHistorial(await api.get<any[]>('/cash/history?limit=40') ?? []); }
     catch { setHistorial([]); }
-  }, [sedeCaja]);
+  }, []);
 
   useEffect(() => {
     if (vista !== 'turno') return;
@@ -97,26 +97,26 @@ export const CajaScreen: React.FC = () => {
   const abrirCaja = useCallback(async () => {
     setOcupado(true);
     try {
-      setTurno(await api.post<any>('/cash/open', { openingFloat: Number(fondo) || 0, locationId: sedeCaja || undefined }));
+      setTurno(await api.post<any>('/cash/open', { openingFloat: Number(fondo) || 0 }));
       setFondo('');
       showToast('Caja abierta', 'Ya puedes cobrar con arqueo.', 'success');
     } catch (e: any) {
       showToast('No se pudo abrir', e?.message ?? '', 'warning');
     } finally { setOcupado(false); }
-  }, [fondo, sedeCaja, showToast]);
+  }, [fondo, showToast]);
 
   const registrarMovimiento = useCallback(async () => {
     if (!Number(mov.amount) || !mov.reason.trim()) return;
     setOcupado(true);
     try {
-      setTurno(await api.post<any>(conSede('/cash/movements'), {
+      setTurno(await api.post<any>('/cash/movements', {
         kind: mov.kind, amount: Number(mov.amount), reason: mov.reason.trim(),
       }));
       setMov({ kind: 'out', amount: '', reason: '' });
     } catch (e: any) {
       showToast('No se pudo registrar', e?.message ?? '', 'warning');
     } finally { setOcupado(false); }
-  }, [mov, sedeCaja, showToast]);
+  }, [mov, showToast]);
 
   /** Lo contado billete por billete, en vivo mientras se escribe */
   const contado = useMemo(() => {
@@ -139,7 +139,7 @@ export const CajaScreen: React.FC = () => {
           denomination: Number(d.value),
           quantity: Number(conteo[d.id]),
         }));
-      const cerrado = await api.post<any>(conSede('/cash/close'), {
+      const cerrado = await api.post<any>('/cash/close', {
         counts,
         countedCash: counts.length ? undefined : contado,
         notes: notaCierre.trim() || undefined,
@@ -158,7 +158,7 @@ export const CajaScreen: React.FC = () => {
     } catch (e: any) {
       showToast('No se pudo cerrar', e?.message ?? '', 'warning');
     } finally { setOcupado(false); }
-  }, [conteo, contado, notaCierre, baseCurrency, cargarHistorial, sedeCaja, showToast]);
+  }, [conteo, contado, notaCierre, baseCurrency, cargarHistorial, showToast]);
 
   const recibosFiltrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -193,6 +193,35 @@ export const CajaScreen: React.FC = () => {
     const lista = (clients ?? []);
     return (q ? lista.filter(c => c.name.toLowerCase().includes(q)) : lista).slice(0, 30);
   }, [clients, busca]);
+
+  /** En "Todas las sedes" no se cobra: se entra en la sede donde se cobra */
+  const entrarEnSede = (
+    <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
+          <MapPin className="w-4 h-4" />
+        </div>
+        <div>
+          <div className="text-xs font-bold text-slate-900 dark:text-white">¿En qué sede vas a cobrar?</div>
+          <p className="text-[0.75rem] text-slate-400">
+            Estás en "Todas las sedes". Cada sede tiene su caja: entra en una para cobrar, abrir o cerrar su turno.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {sedes.map(s => (
+          <button
+            key={s.id}
+            onClick={() => elegir(s.id)}
+            className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-left hover:border-[var(--primary)] transition cursor-pointer"
+          >
+            <div className="text-xs font-bold text-slate-900 dark:text-white">{s.name}</div>
+            {s.address && <div className="text-[0.6875rem] text-slate-400 truncate">{s.address}</div>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <motion.div
@@ -253,7 +282,9 @@ export const CajaScreen: React.FC = () => {
           exit={{ opacity: 0, transition: { duration: 0.1 } }}
           className="space-y-4"
         >
-        {vista === 'cobrar' ? (
+        {enTodas && (vista === 'cobrar' || vista === 'comandas') ? (
+          entrarEnSede
+        ) : vista === 'cobrar' ? (
           <>
             {/* A quién le cobro */}
             <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-2">
@@ -408,13 +439,19 @@ export const CajaScreen: React.FC = () => {
           </>
         ) : vista === 'turno' ? (
           <>
-            {sedes.length > 1 && (
-              <div className="flex items-center justify-between gap-2 px-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">Caja de la sede</span>
-                <SelectorSede sedes={sedes} value={sedeCaja} onChange={setSedeCaja} />
+            {varias && actual && (
+              <p className="flex items-center gap-1.5 px-1 text-[0.75rem] text-slate-500 dark:text-neutral-400">
+                <MapPin className="w-3.5 h-3.5 text-[var(--primary)]" /> Caja de <b className="text-slate-700 dark:text-neutral-200">{actual.name}</b>
+              </p>
+            )}
+            {enTodas && turno && (
+              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-[0.75rem] text-amber-800 dark:text-amber-200">
+                Este turno se abrió antes de que la caja fuera por sede y no es de ninguna. Ciérralo aquí; después cada sede abre el suyo.
               </div>
             )}
-            {turno ? (
+            {enTodas && !turno ? (
+              entrarEnSede
+            ) : turno ? (
               <>
                 {/* Estado del turno abierto */}
                 <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-emerald-300 dark:border-emerald-900/60 shadow-2xs space-y-3">
@@ -693,7 +730,7 @@ export const CajaScreen: React.FC = () => {
             {/* Historial de turnos */}
             <div className="p-2 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs">
               <h3 className="px-2 py-1.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
-                Cierres anteriores
+                {enTodas ? 'Cierres de todas las sedes' : 'Cierres anteriores'}
               </h3>
               {historial.length ? (
                 <div className="divide-y divide-slate-100 dark:divide-neutral-800">
@@ -710,6 +747,11 @@ export const CajaScreen: React.FC = () => {
                             })}
                           </div>
                           <div className="text-[0.6875rem] text-slate-400 truncate">
+                            {varias && (h.sedeNombre || !h.locationId) && (
+                              <span className="mr-1 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-300 font-semibold">
+                                {h.sedeNombre ?? 'sin sede (de antes)'}
+                              </span>
+                            )}
                             {h.closedByName ?? 'Sin nombre'} · contó {plata(h.countedCash)} de{' '}
                             {plata(h.expectedCash)}
                             {h.notes ? ` · ${h.notes}` : ''}
