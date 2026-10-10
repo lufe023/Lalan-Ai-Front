@@ -43,6 +43,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { ChipsFiltro, ItemAnimado, ListaAnimada, NumeroAnimado } from '../components/ui/movimiento';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { hora12 } from '../utils/hora';
+import { SedesDeClienta } from '../components/ui/SedesDeClienta';
 
 export const ClientsScreen: React.FC = () => {
   const { dinero } = useDinero();
@@ -683,6 +684,7 @@ export const ClientsScreen: React.FC = () => {
                     </p>
 
                     <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                      <SedesDeClienta sedes={client.sedes} />
                       {client.tags.slice(0, 2).map(tag => getTagBadge(tag))}
                       {client.tags.length > 2 && (
                         <span className="text-[0.6875rem] font-bold text-slate-400">
@@ -750,6 +752,7 @@ export const ClientsScreen: React.FC = () => {
                     <Phone className="w-3 h-3 text-slate-400" />
                     {selectedClient.phone}
                   </p>
+                  <SedesDeClienta sedes={selectedClient.sedes} className="mt-1" />
                   {selectedClient.email && (
                     <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1">
                       <Mail className="w-3 h-3 text-slate-400" />

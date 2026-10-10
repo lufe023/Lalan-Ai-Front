@@ -35,6 +35,7 @@ import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
+import { SedesDeClienta } from '../components/ui/SedesDeClienta';
 
 /** Cuántas clientas se sugieren mientras se escribe su nombre */
 const CLIENTAS_SUGERIDAS = 6;
@@ -817,6 +818,7 @@ export const CalendarScreen: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-[0.875rem] text-slate-900 dark:text-white truncate">{elegida.name}</div>
                     <div className="text-slate-500 dark:text-neutral-400 truncate">{elegida.phone || 'Sin teléfono'} · {elegida.totalVisits} {elegida.totalVisits === 1 ? 'visita' : 'visitas'}</div>
+                    <SedesDeClienta sedes={elegida.sedes} className="mt-0.5" />
                   </div>
                   <button type="button" onClick={() => { setSelectedClientId(''); setNewClientName(''); setNewClientPhone(''); }}
                     className="shrink-0 font-bold text-[var(--primary)] cursor-pointer">Cambiar</button>
@@ -843,6 +845,7 @@ export const CalendarScreen: React.FC = () => {
                         <span className="flex-1 min-w-0">
                           <span className="block font-semibold text-slate-900 dark:text-white truncate">{c.name}</span>
                           <span className="block text-slate-500 dark:text-neutral-400 truncate">{c.phone || 'Sin teléfono'} · {c.totalVisits} {c.totalVisits === 1 ? 'visita' : 'visitas'}</span>
+                          <SedesDeClienta sedes={c.sedes} className="mt-0.5" />
                         </span>
                       </button>
                     ))}

@@ -685,6 +685,7 @@ function mapApiClient(c: any): Client {
     lastVisitDate: c.lastVisitDate ? String(c.lastVisitDate).slice(0, 10) : undefined,
     registeredDate: c.registeredAt ? String(c.registeredAt).slice(0, 10) : new Date().toISOString().slice(0, 10),
     priceListId: c.priceListId,
+    sedes: Array.isArray(c.sedes) ? c.sedes : [],
   };
 }
 function mapApiService(s: any): SalonService {

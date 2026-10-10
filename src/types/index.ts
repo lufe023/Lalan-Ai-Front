@@ -186,6 +186,8 @@ export type ClientTag = 'vip' | 'frecuente' | 'nuevo' | 'alergico_sensible' | 'p
 
 export interface Client {
   id: string;
+  /** Sedes donde ha tenido citas, compras o chats */
+  sedes?: string[];
   name: string;
   phone: string;
   email?: string;
