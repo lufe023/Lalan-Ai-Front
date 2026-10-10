@@ -251,6 +251,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                 if (checked) descartarAviso(activeConversation.id);
               }}
               activeColor="#9333ea"
+              ariaLabel={activeConversation.status === 'ai_active' ? `Apagar a ${agente} en este chat` : `Encender a ${agente} en este chat`}
             />
           </div>
           <button type="button" aria-label={minimizada ? 'Abrir' : 'Minimizar'} onClick={e => { e.stopPropagation(); onMinimizar?.(); }} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer">
@@ -440,14 +441,16 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           className="px-4 pb-3 glass-nav border-b border-slate-200/70 dark:border-neutral-800/80 flex items-center justify-between shrink-0 pt-safe-header"
           style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 8px), 52px))' }}
         >
-          <div className="flex items-center gap-2.5">
+          {/* Lo de la clienta cede espacio; el interruptor del bot nunca se sale de la pantalla */}
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <button
               onClick={onCerrar}
-              className="text-[var(--primary)] text-xs font-bold -ml-1 pr-1 ios-touch cursor-pointer"
+              aria-label="Volver"
+              className="text-[var(--primary)] text-xs font-bold -ml-1 pr-1 ios-touch cursor-pointer shrink-0 whitespace-nowrap"
             >
-              ← Volver
+              ←<span className="hidden sm:inline"> Volver</span>
             </button>
-            <div className="relative">
+            <div className="relative shrink-0">
               <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-9 h-9 text-xs border border-white/60" />
               <span
                 className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-neutral-900 ${
@@ -463,16 +466,16 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
               <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                 {activeConversation.clientName}
               </h4>
-              <div className="flex items-center gap-1.5 text-[0.6875rem] text-slate-400">
+              <div className="flex items-center gap-1.5 text-[0.6875rem] text-slate-400 whitespace-nowrap overflow-hidden">
                 {getChannelBadge(activeConversation.channel)}
                 {getStatusIndicator(activeConversation.status)}
               </div>
             </div>
           </div>
 
-          {/* AI vs Manual Control Toggle */}
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-neutral-900 px-2.5 py-1.5 rounded-xl border border-slate-200/60 dark:border-neutral-800">
-            <div className="text-right">
+          {/* AI vs Manual Control Toggle. En el teléfono solo el interruptor: quién responde ya lo dice la línea de estado */}
+          <div className="flex items-center gap-2 shrink-0 ml-2 bg-slate-100 dark:bg-neutral-900 px-2.5 py-1.5 rounded-xl border border-slate-200/60 dark:border-neutral-800">
+            <div className="text-right hidden sm:block">
               <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block leading-none">
                 Modo Bot IA
               </span>
@@ -488,6 +491,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                 if (checked) descartarAviso(activeConversation.id);
               }}
               activeColor="#9333ea"
+              ariaLabel={activeConversation.status === 'ai_active' ? `Apagar a ${agente} en este chat` : `Encender a ${agente} en este chat`}
             />
           </div>
         </div>
