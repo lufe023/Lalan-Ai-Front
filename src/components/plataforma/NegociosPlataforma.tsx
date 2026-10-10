@@ -224,7 +224,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         <LineasTelefonicas negocioId={id} />
       </div>
 
-      {!soloSoporte && <InstruccionesLalan negocioId={id} />}
+      {!soloSoporte && <InstruccionesLalan key={id} negocioId={id} sedes={d.sedes} />}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="space-y-2">
