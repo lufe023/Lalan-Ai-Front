@@ -296,7 +296,7 @@ interface AppContextType {
   /** "Copiar a otra sede": con su precio, variantes, duración y receta */
   copiarServicio: (id: string, sedes: string[]) => Promise<void>;
   products: SalonProduct[];
-  addProduct: (product: Omit<SalonProduct, 'id'>) => Promise<SalonProduct>;
+  addProduct: (product: Omit<SalonProduct, 'id'>, sedeDelStock?: string) => Promise<SalonProduct>;
   /** Guarda la receta completa de un preparado (reemplaza la anterior) */
   guardarRecetaProducto: (productId: string, receta: LineaDeReceta[]) => Promise<SalonProduct>;
 
@@ -700,6 +700,8 @@ function mapApiProduct(p: any): SalonProduct {
   return {
     id: p.id, name: p.name, category: p.category, categoryName: p.categoryName,
     sku: p.sku, basePrice: Number(p.basePrice), currencyCode: p.currencyCode, stock: Number(p.stock ?? 0), unit: p.unit ?? 'unit',
+    stockPorSede: Array.isArray(p.stockPorSede) ? p.stockPorSede.map((x: any) => ({ locationId: x.locationId, nombre: x.nombre, stock: Number(x.stock ?? 0) })) : undefined,
+    stockSinSede: Number(p.stockSinSede ?? 0),
     unitQty: p.unitQty != null ? Number(p.unitQty) : undefined, unitQtyUnit: p.unitQtyUnit ?? undefined,
       costPrice: p.costPrice != null ? Number(p.costPrice) : undefined,
       minStock: p.minStock != null ? Number(p.minStock) : undefined,
@@ -1180,10 +1182,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (svcs) setServices(svcs.map(mapApiService));
   }, []);
 
-  const addProduct = useCallback(async (data: Omit<SalonProduct, 'id'>) => {
+  const addProduct = useCallback(async (data: Omit<SalonProduct, 'id'>, sedeDelStock?: string) => {
     const res = await api.post<any>('/products', {
       name: data.name, category: data.category, categoryName: data.categoryName,
       sku: data.sku, basePrice: data.basePrice, currencyCode: data.currencyCode || undefined, stock: data.stock ?? 0,
+      // Las existencias iniciales entran en una sede (con la sede activa, el servidor ya sabe cuál)
+      locationId: sedeDelStock || undefined,
       unit: data.unit ?? 'unit',
       unitQty: data.unitQty ?? undefined,
       unitQtyUnit: data.unitQtyUnit ?? undefined,
@@ -1216,7 +1220,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.categoryName !== undefined) payload.categoryName = updated.categoryName;
     if (updated.sku !== undefined)          payload.sku = updated.sku;
     if (updated.basePrice !== undefined)    payload.basePrice = updated.basePrice;
-    if (updated.stock !== undefined)        payload.stock = updated.stock;
     if (updated.image !== undefined)        payload.image = updated.image || undefined;
     if (updated.description !== undefined)  payload.description = updated.description || undefined;
     if (updated.aiAvailable !== undefined)    payload.aiAvailable = updated.aiAvailable;

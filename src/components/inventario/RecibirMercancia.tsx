@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { IOSModal } from '../ui/IOSModal';
+import { SedeDelStock, useSedeDelStock } from './SedeDelStock';
 
 interface Lote { id: string; lotNumber: string | null; expiresAt: string | null; remaining: number | string; receivedAt: string }
 export interface ProductoARecibir { id: string; name: string; unit?: string; costPrice?: number | null }
@@ -20,6 +21,7 @@ export const RecibirMercancia: React.FC<{ producto: ProductoARecibir | null; onC
   const [f, setF] = useState({ cantidad: '', costo: '', vence: '', lote: '' });
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [guardando, setGuardando] = useState(false);
+  const enSede = useSedeDelStock();
 
   useEffect(() => {
     if (!producto) return;
@@ -33,6 +35,7 @@ export const RecibirMercancia: React.FC<{ producto: ProductoARecibir | null; onC
     try {
       await api.post('/inventory/lots', {
         productId: producto.id, quantity: Number(f.cantidad),
+        ...(enSede.sede ? { locationId: enSede.sede } : {}),
         ...(f.costo ? { costPrice: Number(f.costo) } : {}),
         ...(f.vence ? { expiresAt: new Date(`${f.vence}T12:00:00`).toISOString() } : {}),
         ...(f.lote.trim() ? { lotNumber: f.lote.trim() } : {}),
@@ -58,7 +61,8 @@ export const RecibirMercancia: React.FC<{ producto: ProductoARecibir | null; onC
           <label><span className="text-[0.75rem] text-slate-500">Número de lote (opcional)</span>
             <input className={campo} value={f.lote} onChange={e => setF({ ...f, lote: e.target.value })} /></label>
         </div>
-        <button type="button" disabled={guardando || !(Number(f.cantidad) > 0)} onClick={() => void guardar()}
+        <SedeDelStock value={enSede.sede} onChange={enSede.setSede} />
+        <button type="button" disabled={guardando || enSede.falta || !(Number(f.cantidad) > 0)} onClick={() => void guardar()}
           className="w-full py-3 rounded-xl bg-[var(--primary)] text-white font-bold text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
           {guardando && <Loader2 className="w-4 h-4 animate-spin" />} Sumar al inventario
         </button>

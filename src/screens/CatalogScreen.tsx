@@ -26,6 +26,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
+import { SedeDelStock, useSedeDelStock } from '../components/inventario/SedeDelStock';
 import { RecibirFactura } from '../components/inventario/RecibirFactura';
 import { useApp, ServiceIngredient } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -75,6 +76,7 @@ export const CatalogScreen: React.FC = () => {
     guardarRecetaProducto,
   } = useApp();
   const { varias: variasSedes, actual: sedeActual } = useSedeActiva();
+  const sedeDelStockInicial = useSedeDelStock();
   /* Recibir mercancía (lotes con vencimiento) */
   const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
   const [cargandoFactura, setCargandoFactura] = useState(false);
@@ -170,7 +172,7 @@ export const CatalogScreen: React.FC = () => {
     categoryName: 'Cuidado de Uñas',
     sku: 'PROD-',
     basePrice: 20,
-    stock: 15,
+    stock: 0,
     unit: 'unit',
     unitQty: '',
     unitQtyUnit: 'ml',
@@ -280,7 +282,7 @@ export const CatalogScreen: React.FC = () => {
       currencyCode: base,
       sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
       basePrice: 20,
-      stock: 15,
+      stock: 0,
       unit: 'unit',
       unitQty: '',
       unitQtyUnit: 'ml',
@@ -469,6 +471,11 @@ export const CatalogScreen: React.FC = () => {
     e.preventDefault();
     if (!productForm.name.trim()) return;
     setProductApiError('');
+    // Las existencias iniciales entran en una sede: con varias, hay que decir cuál
+    if (!editingProductId && !productForm.preparedToOrder && productForm.stock > 0 && sedeDelStockInicial.falta) {
+      setProductApiError('Elige en qué sede está la cantidad inicial.');
+      return;
+    }
     setIsSavingProduct(true);
     try {
       const productPayload = {
@@ -498,7 +505,7 @@ export const CatalogScreen: React.FC = () => {
       if (editingProductId) {
         await updateProduct(editingProductId, productPayload);
       } else {
-        id = (await addProduct(productPayload)).id;
+        id = (await addProduct(productPayload, sedeDelStockInicial.sede)).id;
       }
       // La receta va aparte: necesita que el producto ya exista
       if (productForm.preparedToOrder && id) {
@@ -847,6 +854,11 @@ export const CatalogScreen: React.FC = () => {
                             )}
                             {product.minStock != null && product.stock <= product.minStock && (
                               <span className="ml-1 text-amber-500">⚠️</span>
+                            )}
+                            {variasSedes && !sedeActual && (product.stockPorSede?.length ?? 0) > 0 && (
+                              <span className="text-slate-400 dark:text-neutral-500 ml-1">
+                                ({product.stockPorSede!.map(x => `${x.nombre} ${x.stock}`).join(' · ')}{(product.stockSinSede ?? 0) > 0 ? ` · sin sede ${product.stockSinSede}` : ''})
+                              </span>
                             )}
                           </span>
                           )}
@@ -1564,34 +1576,92 @@ export const CatalogScreen: React.FC = () => {
 
             <div>
               <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
-                Cantidad en stock
+                {editingProductId ? 'Existencias' : 'Cantidad inicial'}
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.001"
-                  placeholder="0"
-                  value={productForm.stock}
-                  onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
-                  className="flex-1 px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-bold text-[0.875rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition"
-                />
-                <select
-                  value={productForm.unit}
-                  onChange={e => setProductForm({ ...productForm, unit: e.target.value })}
-                  className="px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
-                >
-                  <option value="unit">unidades</option>
-                  <option value="ml">ml</option>
-                  <option value="L">L</option>
-                  <option value="g">g</option>
-                  <option value="kg">kg</option>
-                  <option value="oz">oz</option>
-                  <option value="cl">cl</option>
-                </select>
-              </div>
+              {editingProductId ? (() => {
+                // Las existencias no se escriben aquí: entran con "Recibir mercancía" en una sede
+                const p = products.find(x => x.id === editingProductId);
+                const porSede = variasSedes && !sedeActual ? (p?.stockPorSede ?? []) : [];
+                return (
+                  <div className="space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <div className="flex-1 px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-bold text-[0.875rem] tabular-nums">
+                        {p?.stock ?? 0}{sedeActual ? <span className="font-normal text-slate-500"> en {sedeActual.name}</span> : variasSedes ? <span className="font-normal text-slate-500"> entre todas las sedes</span> : null}
+                      </div>
+                      <select
+                        value={productForm.unit}
+                        onChange={e => setProductForm({ ...productForm, unit: e.target.value })}
+                        className="px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
+                      >
+                        <option value="unit">unidades</option>
+                        <option value="ml">ml</option>
+                        <option value="L">L</option>
+                        <option value="g">g</option>
+                        <option value="kg">kg</option>
+                        <option value="oz">oz</option>
+                        <option value="cl">cl</option>
+                      </select>
+                    </div>
+                    {porSede.length > 0 && (
+                      <ul className="text-[0.75rem] divide-y divide-slate-100 dark:divide-neutral-800">
+                        {porSede.map(x => (
+                          <li key={x.locationId} className="py-1 flex justify-between tabular-nums">
+                            <span>{x.nombre}</span><span className="font-semibold">{x.stock} {productForm.unit === 'unit' ? 'unid.' : productForm.unit}</span>
+                          </li>
+                        ))}
+                        {(p?.stockSinSede ?? 0) > 0 && (
+                          <li className="py-1 flex justify-between tabular-nums text-amber-600 dark:text-amber-400">
+                            <span>Sin sede asignada</span><span className="font-semibold">{p?.stockSinSede}</span>
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                    {p && !productForm.preparedToOrder && (
+                      <button
+                        type="button"
+                        onClick={() => setRecibiendo({ id: p.id, name: p.name, unit: p.unit, costPrice: p.costPrice ?? null })}
+                        className="flex items-center gap-1.5 text-[0.75rem] font-semibold text-[var(--primary)] cursor-pointer"
+                      >
+                        <PackagePlus className="w-3.5 h-3.5" /> Recibir mercancía
+                      </button>
+                    )}
+                  </div>
+                );
+              })() : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      placeholder="0"
+                      value={productForm.stock}
+                      onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                      className="flex-1 px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-bold text-[0.875rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition"
+                    />
+                    <select
+                      value={productForm.unit}
+                      onChange={e => setProductForm({ ...productForm, unit: e.target.value })}
+                      className="px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-xs"
+                    >
+                      <option value="unit">unidades</option>
+                      <option value="ml">ml</option>
+                      <option value="L">L</option>
+                      <option value="g">g</option>
+                      <option value="kg">kg</option>
+                      <option value="oz">oz</option>
+                      <option value="cl">cl</option>
+                    </select>
+                  </div>
+                  {productForm.stock > 0 && (
+                    <SedeDelStock value={sedeDelStockInicial.sede} onChange={sedeDelStockInicial.setSede} etiqueta="¿En qué sede está esta cantidad?" />
+                  )}
+                </div>
+              )}
               <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 mt-1.5 px-1">
-                Ej: 100 ml, 5 unidades, 200 g
+                {editingProductId
+                  ? 'Para sumar existencias usa "Recibir mercancía": entran en una sede.'
+                  : 'Ej: 100 ml, 5 unidades, 200 g. Puedes dejarlo en 0 y recibir la mercancía después.'}
               </p>
             </div>
 
