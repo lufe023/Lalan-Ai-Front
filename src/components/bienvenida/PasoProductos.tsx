@@ -4,6 +4,7 @@ import { bienvenidaApi } from '../../services/bienvenida';
 import type { ProductoBienvenida, ProductoLeido } from '../../types/bienvenida';
 import { SelectorSede } from '../ui/SelectorSede';
 import { useSedes } from '../../hooks/useSedes';
+import { useSedeActiva } from '../../context/SedeActivaContext';
 import { Aviso, BotonFoto, BotonPrincipal, BotonSecundario, Cargando, Encabezado, Tarjeta, claseCampo, conArticulo, dinero, leerNumero } from './comun';
 
 interface Borrador { costo: string; entran: string }
@@ -24,8 +25,10 @@ export const PasoProductos: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
   const [hecho, setHecho] = useState('');
   // Cada sede tiene su estante: con varias, se elige en cuál se cuenta
   const sedes = useSedes();
+  // Arranca en la sede activa: si se trabaja en Naco, lo contado no debe caer en la principal
+  const { actual: sedeActiva } = useSedeActiva();
   const [sedeElegida, setSedeElegida] = useState('');
-  const sede = sedes.length > 1 ? (sedeElegida || sedes[0].id) : '';
+  const sede = sedes.length > 1 ? (sedeElegida || sedeActiva?.id || sedes[0].id) : '';
   const enSede = sede ? { locationId: sede } : {};
 
   const cargar = (lista: ProductoBienvenida[]) => {
@@ -100,6 +103,12 @@ export const PasoProductos: React.FC<{ onSiguiente: () => void }> = ({ onSiguien
     return (
       <div className="space-y-5">
         <Encabezado titulo="Revisa la factura" texto="Esto es lo que leí. Corrige lo que haga falta y desmarca lo que no quieras cargar." />
+        {sedes.length > 1 && (
+          <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500 dark:text-neutral-400">
+            <span>Esta factura se carga en</span>
+            <SelectorSede sedes={sedes} value={sede} onChange={setSedeElegida} />
+          </div>
+        )}
         {factura.map((r, i) => {
           const cambiar = (c: Partial<RenglonFactura>) => setFactura((f) => f!.map((x, j) => (j === i ? { ...x, ...c } : x)));
           return (
