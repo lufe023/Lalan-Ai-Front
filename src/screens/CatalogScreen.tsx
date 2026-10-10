@@ -51,6 +51,7 @@ import { useDinero } from '../hooks/useDinero';
 import { OfertasCatalogo } from '../components/catalogo/OfertasCatalogo';
 import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
 import { CopiarASede, EtiquetaSede } from '../components/ui/CopiarASede';
+import { ServicioEnSedes, agruparPorSede } from '../components/catalogo/ServicioEnSedes';
 import { useSedeActiva } from '../context/SedeActivaContext';
 
 export const CatalogScreen: React.FC = () => {
@@ -65,6 +66,7 @@ export const CatalogScreen: React.FC = () => {
     addProduct,
     updateProduct,
     deleteProduct,
+    usarPrecioDelSalon,
     toggleProductAi,
     showToast,
     loadIngredients,
@@ -75,7 +77,7 @@ export const CatalogScreen: React.FC = () => {
     categoriaPorClave,
     guardarRecetaProducto,
   } = useApp();
-  const { varias: variasSedes, actual: sedeActual } = useSedeActiva();
+  const { varias: variasSedes, actual: sedeActual, sedes: sedesDelSalon } = useSedeActiva();
   const sedeDelStockInicial = useSedeDelStock();
   /* Recibir mercancía (lotes con vencimiento) */
   const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
@@ -201,6 +203,12 @@ export const CatalogScreen: React.FC = () => {
     const matchesCat = selectedCategory === 'all' || s.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
+
+  // En "Todas las sedes" cada servicio sale una vez, con el precio de cada sede
+  const enTodasSedes = variasSedes && !sedeActual;
+  const serviciosEnLista = enTodasSedes
+    ? agruparPorSede(filteredServices)
+    : filteredServices.map(s => ({ principal: s, copias: [] as typeof filteredServices }));
 
   // Filtered Products
   const filteredProducts = products.filter(p => {
@@ -629,7 +637,7 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              filteredServices.map((service, i) => (
+              serviciosEnLista.map(({ principal: service, copias }, i) => (
                 <Aparecer
                   key={service.id}
                   indice={i}
@@ -697,6 +705,10 @@ export const CatalogScreen: React.FC = () => {
                   )}
 
                   {/* PRICE TABLE / TABLA DE PRECIOS */}
+                  {enTodasSedes ? (
+                    <ServicioEnSedes principal={service} copias={copias} sedes={sedesDelSalon}
+                      precio={(n, m) => enSuMoneda(n, m)} onEditar={handleOpenEditService} />
+                  ) : (
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 space-y-1.5">
                     <div className="flex items-center justify-between text-[0.6875rem] uppercase font-bold text-slate-400 px-1">
                       <span className="flex items-center gap-1">
@@ -747,6 +759,7 @@ export const CatalogScreen: React.FC = () => {
                       ))}
                     </div>
                   </div>
+                  )}
 
                   {/* AI Availability Toggle */}
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-neutral-800/60 text-xs">
@@ -912,6 +925,14 @@ export const CatalogScreen: React.FC = () => {
                       <span className="flex items-center gap-1">
                         <ShoppingBag className="w-3 h-3 text-[var(--primary)]" />
                         Tabla de Precios de Venta ({product.priceTiers?.length || 1})
+                        {variasSedes && sedeActual && product.precioPropio && (
+                          <span className="normal-case font-semibold text-[var(--primary)]">· precio de {sedeActual.name}</span>
+                        )}
+                        {variasSedes && !sedeActual && (product.preciosPorSede?.length ?? 0) > 0 && (
+                          <span className="normal-case font-semibold text-amber-600 dark:text-amber-400" title={product.preciosPorSede!.map(x => `${x.nombre}: ${enSuMoneda(x.basePrice, x.currencyCode)}`).join('\n')}>
+                            · {product.preciosPorSede!.length === 1 ? `${product.preciosPorSede![0].nombre} tiene su precio` : `${product.preciosPorSede!.length} sedes con su precio`}
+                          </span>
+                        )}
                       </span>
                       <div className="flex items-center gap-2">
                         {product.costPrice != null && product.basePrice > 0 && (
@@ -1302,7 +1323,7 @@ export const CatalogScreen: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-52 overflow-y-auto">
+              <div className="space-y-2">
                 {serviceForm.priceTiers.map((tier, index) => (
                   <div
                     key={tier.id}
@@ -1716,9 +1737,45 @@ export const CatalogScreen: React.FC = () => {
                 <span>+ Tarifa</span>
               </button>
             </div>
+            {variasSedes && (() => {
+              // El precio es de la sede activa; en "Todas las sedes", el del salón
+              const p = editingProductId ? products.find(x => x.id === editingProductId) : undefined;
+              if (sedeActual) {
+                return (
+                  <div className="p-3 rounded-xl bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[0.75rem] text-slate-700 dark:text-neutral-200 space-y-1.5">
+                    {p?.precioPropio ? (
+                      <>
+                        <p><b>{sedeActual.name}</b> tiene su propio precio. El salón cobra {enSuMoneda(p.precioSalon?.basePrice, p.precioSalon?.currencyCode)}.</p>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const r = await usarPrecioDelSalon(p.id);
+                            handleOpenEditProduct(r);
+                            showToast('Precio del salón', `${sedeActual.name} vuelve a cobrar el precio del salón.`, 'success');
+                          }}
+                          className="font-semibold text-[var(--primary)] cursor-pointer"
+                        >
+                          Usar el precio del salón
+                        </button>
+                      </>
+                    ) : (
+                      <p>{editingProductId ? 'Cobra el precio del salón.' : 'Este será el precio del salón.'} {editingProductId && <>Si lo cambias aquí, el nuevo precio queda solo para <b>{sedeActual.name}</b>.</>}</p>
+                    )}
+                  </div>
+                );
+              }
+              const propios = p?.preciosPorSede ?? [];
+              return (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-[0.75rem] text-amber-800 dark:text-amber-200">
+                  Este es el precio del salón: lo cobran las sedes que no tienen precio propio.
+                  {propios.length > 0 && <> Con precio propio, y no cambian: {propios.map(x => `${x.nombre} ${enSuMoneda(x.basePrice, x.currencyCode)}`).join(' · ')}.</>}
+                  {' '}Para poner un precio solo en una sede, entra a esa sede desde tu foto arriba a la derecha.
+                </div>
+              );
+            })()}
             <MonedaDelPrecio value={productForm.currencyCode} onChange={c => setProductForm({ ...productForm, currencyCode: c })} ejemplo={productForm.priceTiers[0]?.price ?? productForm.basePrice} />
 
-            <div className="space-y-2 max-h-52 overflow-y-auto">
+            <div className="space-y-2">
               {productForm.priceTiers.map((tier, index) => (
                 <div
                   key={tier.id}

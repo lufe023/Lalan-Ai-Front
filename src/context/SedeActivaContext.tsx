@@ -4,7 +4,7 @@ import { guardarSedeActiva, sedeActiva, sedePropia } from '../services/sedeActiv
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from './AuthContext';
 
-export interface SedeDelSalon { id: string; name: string; address: string | null; paleta: string | null }
+export interface SedeDelSalon { id: string; name: string; address: string | null; phone?: string | null; paleta: string | null }
 
 interface SedeActivaValor {
   /** Todas las sedes activas del salón, la principal primero */
@@ -19,9 +19,11 @@ interface SedeActivaValor {
   elegir: (id: string) => void;
   /** Pone una paleta; con una sede activa, queda como el color de esa sede */
   ponerPaleta: (paletaId: string) => void;
+  /** Guarda la dirección o el teléfono de una sede (salen en sus recibos) */
+  ponerContacto: (id: string, datos: { address?: string; phone?: string }) => Promise<void>;
 }
 
-const Ctx = createContext<SedeActivaValor>({ sedes: [], actual: null, fija: false, varias: false, elegir: () => undefined, ponerPaleta: () => undefined });
+const Ctx = createContext<SedeActivaValor>({ sedes: [], actual: null, fija: false, varias: false, elegir: () => undefined, ponerPaleta: () => undefined, ponerContacto: async () => undefined });
 
 /** Paletas que se distinguen a simple vista entre sí y del rosa de siempre */
 const COLORES_DE_SEDE = ['menta_fresca', 'lilas', 'dorado_noir', 'cielo_coral', 'medianoche', 'sakura'];
@@ -102,9 +104,14 @@ export const SedeActivaProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     api.patch('/salon/sede', { paleta: paletaId }).catch(() => undefined);
   }, [applyPalettePreset, actual, sedes.length]);
 
+  const ponerContacto = useCallback(async (id: string, datos: { address?: string; phone?: string }) => {
+    await api.patch('/salon/sede', { locationId: id, ...datos });
+    setSedes((l) => l.map((x) => (x.id === id ? { ...x, ...datos } : x)));
+  }, []);
+
   const valor = useMemo<SedeActivaValor>(() => ({
-    sedes, actual, fija: !!propia, varias: sedes.length > 1, elegir, ponerPaleta,
-  }), [sedes, actual, propia, elegir, ponerPaleta]);
+    sedes, actual, fija: !!propia, varias: sedes.length > 1, elegir, ponerPaleta, ponerContacto,
+  }), [sedes, actual, propia, elegir, ponerPaleta, ponerContacto]);
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 };
