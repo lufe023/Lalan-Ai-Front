@@ -7,6 +7,8 @@ interface IOSToggleProps {
   disabled?: boolean;
   id?: string;
   activeColor?: string; // Optional custom color override or uses var(--primary) / green
+  /** Lo que lee el lector de pantalla cuando el interruptor no tiene texto al lado */
+  ariaLabel?: string;
 }
 
 export const IOSToggle: React.FC<IOSToggleProps> = ({
@@ -15,6 +17,7 @@ export const IOSToggle: React.FC<IOSToggleProps> = ({
   disabled = false,
   id,
   activeColor = '#22c55e', // iOS default active green or primary
+  ariaLabel,
 }) => {
   return (
     <button
@@ -22,6 +25,7 @@ export const IOSToggle: React.FC<IOSToggleProps> = ({
       id={id}
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
       className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
