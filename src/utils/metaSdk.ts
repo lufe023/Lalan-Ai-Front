@@ -20,7 +20,7 @@ export interface RegistroWhatsapp { code: string; wabaId: string; phoneNumberId:
 const EVENTO_WA = { tipo: 'WA_EMBEDDED_SIGNUP', cancelar: 'CANCEL', error: 'ERROR' } as const;
 
 /** Permisos para Messenger e Instagram si no hay configuración de "Inicio de sesión para empresas" */
-const PERMISOS_PAGINAS = 'pages_show_list,pages_messaging,pages_manage_metadata,instagram_basic,instagram_manage_messages,business_management';
+const PERMISOS_PAGINAS = 'pages_show_list,pages_messaging,pages_manage_metadata,business_management';
 
 declare global { interface Window { FB?: any; fbAsyncInit?: () => void } }
 

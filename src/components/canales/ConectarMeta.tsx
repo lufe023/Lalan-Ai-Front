@@ -42,7 +42,6 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
   const [ocupado, setOcupado] = useState<CommunicationChannel | null>(null);
   const [preguntaWa, setPreguntaWa] = useState(false);
   const [elegir, setElegir] = useState<{ token: string; paginas: Pagina[]; canal: CommunicationChannel } | null>(null);
-  const [marcados, setMarcados] = useState({ messenger: true, instagram: true });
 
   useEffect(() => {
     api.get<ConfigMeta>('/bots/conexion/configuracion').then(setCfg).catch(() => setCfg(null));
@@ -50,7 +49,6 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
     const pendientes = tomarPendientes();
     api.get<Sede[]>('/users/sedes').then((s) => { setSedes(s); setSede(pendientes?.locationId ?? s[0]?.id ?? ''); }).catch(() => undefined);
     if (pendientes) {
-      setMarcados({ messenger: pendientes.canal === 'messenger', instagram: pendientes.canal === 'instagram' });
       setElegir({ token: pendientes.tokenUsuario, paginas: pendientes.paginas, canal: pendientes.canal });
     }
   }, []);
@@ -88,7 +86,6 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
       const token = await abrirLoginPaginas(cfg);
       const lista = await api.post<Pagina[]>('/bots/conexion/paginas', { tokenUsuario: token });
       if (!lista.length) throw new Error('Tu usuario de Facebook no administra ninguna página, o no la marcaste en la ventana de Meta.');
-      setMarcados({ messenger: canal === 'messenger', instagram: canal === 'instagram' });
       setElegir({ token, paginas: lista, canal });
     } catch (e) { fallo(e); } finally { setOcupado(null); }
   };
@@ -99,7 +96,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
     try {
       await api.post('/bots/conexion/pagina', {
         tokenUsuario: elegir.token, paginaId: p.id, locationId: sede || undefined,
-        messenger: marcados.messenger, instagram: marcados.instagram && !!p.instagram,
+        messenger: true, instagram: false,
       });
       setElegir(null);
       await recargarBots();
@@ -129,10 +126,10 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
   };
 
   const disponible = (c: CommunicationChannel) =>
-    c === 'whatsapp' ? cfg?.whatsapp : c === 'instagram' ? (cfg?.soloInstagram || cfg?.paginas) : cfg?.paginas;
-  /** Instagram entra con su propio usuario (no hace falta Facebook); si eso no está listo, por la página */
+    c === 'whatsapp' ? cfg?.whatsapp : c === 'instagram' ? cfg?.soloInstagram : cfg?.paginas;
+  /** Instagram entra con su propio usuario, sin Facebook; Facebook conecta solo Messenger */
   const abrir = (c: CommunicationChannel) =>
-    c === 'whatsapp' ? setPreguntaWa(true) : c === 'instagram' && cfg?.soloInstagram ? void soloInstagram() : void paginas(c);
+    c === 'whatsapp' ? setPreguntaWa(true) : c === 'instagram' ? void soloInstagram() : void paginas(c);
 
   return (
     <div className={incrustado ? 'space-y-3 pb-1' : 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3'}>
@@ -180,15 +177,6 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
         })}
       </div>
 
-      {!conectado('instagram') && cfg?.soloInstagram && cfg.paginas && (
-        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
-          «Conectar Instagram» entra con tu usuario de Instagram, no necesitas Facebook.{' '}
-          <button type="button" disabled={!!ocupado} onClick={() => void paginas('instagram')} className="font-bold text-[var(--primary)] underline cursor-pointer disabled:opacity-40">
-            Prefiero conectarlo por mi página de Facebook
-          </button>
-        </p>
-      )}
-
       {/* Lo que cobra Meta y las plantillas viven en la tarjeta de WhatsApp (Interruptores por canal) */}
 
       {cfg && currentUser?.role === 'super_admin' && !!(cfg.faltan?.length || cfg.faltanSoloInstagram?.length) && (
@@ -217,12 +205,8 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
 
       <IOSModal isOpen={!!elegir} onClose={() => setElegir(null)} title="¿Cuál es la página de tu negocio?" subtitle="Elige una" fixedHeight={false}>
         <div className="space-y-3 p-1">
-          <div className="flex gap-4 text-xs">
-            <label className="flex items-center gap-1.5"><input type="checkbox" checked={marcados.messenger} onChange={(e) => setMarcados((m) => ({ ...m, messenger: e.target.checked }))} /> Messenger</label>
-            <label className="flex items-center gap-1.5"><input type="checkbox" checked={marcados.instagram} onChange={(e) => setMarcados((m) => ({ ...m, instagram: e.target.checked }))} /> Instagram</label>
-          </div>
           {elegir?.paginas.map((p) => (
-            <button key={p.id} type="button" disabled={!!ocupado || (!marcados.messenger && !(marcados.instagram && p.instagram))} onClick={() => void usarPagina(p)}
+            <button key={p.id} type="button" disabled={!!ocupado} onClick={() => void usarPagina(p)}
               className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] disabled:opacity-40 cursor-pointer text-left">
               {p.foto
                 ? <img src={p.foto} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" referrerPolicy="no-referrer" />
@@ -234,7 +218,6 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
                     {[p.negocio, p.seguidores != null ? `${p.seguidores.toLocaleString('es-DO')} seguidores` : null].filter(Boolean).join(' · ')}
                   </span>
                 )}
-                <span className="text-[0.75rem] text-slate-500">{p.instagram ? `Instagram vinculado: ${p.instagram}` : 'Sin Instagram profesional vinculado'}</span>
               </span>
               {ocupado && <Loader2 className="w-4 h-4 animate-spin" />}
             </button>
