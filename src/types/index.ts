@@ -122,6 +122,12 @@ export interface SalonProduct {
   stockPorSede?: { locationId: string; nombre: string; stock: number }[];
   /** Existencias de antes de las sedes que aún no están en ninguna */
   stockSinSede?: number;
+  /** true = la sede activa cobra su propio precio, no el del salón */
+  precioPropio?: boolean;
+  /** El precio del salón: lo cobran las sedes sin precio propio */
+  precioSalon?: { basePrice: number; currencyCode?: string };
+  /** Las sedes que cobran su propio precio */
+  preciosPorSede?: { locationId: string; nombre: string; basePrice: number; currencyCode: string }[];
   unit: string;        // ml | g | oz | L | unit
   unitQty?: number;    // contenido por unidad (ej: 15 ml por botella)
   unitQtyUnit?: string; // unidad del contenido (ml, g, oz, L)

@@ -315,6 +315,8 @@ interface AppContextType {
   quitarCategoria: (id: string) => Promise<string | null>;
   updateProduct: (id: string, updated: Partial<SalonProduct>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  /** La sede activa vuelve a cobrar el precio del salón */
+  usarPrecioDelSalon: (id: string) => Promise<SalonProduct>;
   toggleProductAi: (id: string, aiAvailable: boolean) => Promise<void>;
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => Promise<void>;
@@ -702,6 +704,9 @@ function mapApiProduct(p: any): SalonProduct {
     sku: p.sku, basePrice: Number(p.basePrice), currencyCode: p.currencyCode, stock: Number(p.stock ?? 0), unit: p.unit ?? 'unit',
     stockPorSede: Array.isArray(p.stockPorSede) ? p.stockPorSede.map((x: any) => ({ locationId: x.locationId, nombre: x.nombre, stock: Number(x.stock ?? 0) })) : undefined,
     stockSinSede: Number(p.stockSinSede ?? 0),
+    precioPropio: !!p.precioPropio,
+    precioSalon: p.precioSalon ? { basePrice: Number(p.precioSalon.basePrice), currencyCode: p.precioSalon.currencyCode } : undefined,
+    preciosPorSede: Array.isArray(p.preciosPorSede) ? p.preciosPorSede.map((x: any) => ({ locationId: x.locationId, nombre: x.nombre, basePrice: Number(x.basePrice), currencyCode: x.currencyCode })) : undefined,
     unitQty: p.unitQty != null ? Number(p.unitQty) : undefined, unitQtyUnit: p.unitQtyUnit ?? undefined,
       costPrice: p.costPrice != null ? Number(p.costPrice) : undefined,
       minStock: p.minStock != null ? Number(p.minStock) : undefined,
@@ -1237,6 +1242,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.supplyOnly !== undefined)      payload.supplyOnly = updated.supplyOnly;
     const res = await api.patch<any>(`/products/${id}`, payload);
     setProducts(p => p.map(x => x.id === id ? mapApiProduct(res) : x));
+  }, []);
+  const usarPrecioDelSalon = useCallback(async (id: string) => {
+    const p = mapApiProduct(await api.delete<any>(`/products/${id}/precio-sede`));
+    setProducts(l => l.map(x => (x.id === id ? p : x)));
+    return p;
   }, []);
   const deleteProduct = useCallback(async (id: string) => {
     await api.delete(`/products/${id}`);
@@ -2814,7 +2824,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cargarMasClientas, buscarClientas,
       addClient, updateClient, deleteClient,
       services, addService, updateService, deleteService, toggleServiceAi, copiarServicio,
-      products, addProduct, updateProduct, deleteProduct, toggleProductAi,
+      products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
       preguntar, consulta,
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
