@@ -15,7 +15,6 @@ import {
   Sliders,
   CheckCircle2,
   AlertCircle,
-  FileText,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
@@ -39,32 +38,21 @@ import { SelectorSede } from '../components/ui/SelectorSede';
 import { useSedes } from '../hooks/useSedes';
 
 export const BotsControlScreen: React.FC = () => {
-  const { botConfigs, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes, settings, updateSettings, showToast, navigateTo } = useApp();
+  const { botConfigs, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes, ponerListas, settings, updateSettings, showToast, navigateTo } = useApp();
   const { currentUser } = useAuth();
   const sedes = useSedes();
   const nombreSede = (id: string | null) => sedes.find(x => x.id === id)?.name ?? 'otra sede';
   // La sede que se mira: la elegida o, si no, la principal (la que devuelve el panel)
   const sedeVista = sedeBots || sedes[0]?.id || '';
+  const cambiarListas = async (canal: CommunicationChannel, valor: boolean) => {
+    try { await ponerListas(canal, valor); }
+    catch (e: any) { showToast('No se pudo cambiar', e?.message ?? '', 'warning'); }
+  };
   const cambiarTodasLasSedes = async (canal: CommunicationChannel, valor: boolean) => {
     try { await ponerTodasLasSedes(canal, valor); }
     catch (e: any) { showToast('No se pudo cambiar', e?.message ?? '', 'warning'); }
   };
 
-  /* Las instrucciones base: se muestran para que la dueña vea qué dice
-     Lalan cuando el campo está vacío, y para partir de ellas si quiere
-     cambiarlas en vez de escribir desde cero */
-  const [promptBase, setPromptBase] = useState<string | null>(null);
-  const [fijo, setFijo] = useState<{ politicas: string; reglas: string } | null>(null);
-  const [verBase, setVerBase] = useState(false);
-  const [verFijo, setVerFijo] = useState(false);
-  const cargarPrompt = () => api.get<{ texto: string; politicas: string; reglas: string }>('/chat/panel/prompt-base')
-    .then(r => { setPromptBase(r.texto); setFijo({ politicas: r.politicas, reglas: r.reglas }); })
-    .catch(() => setPromptBase(null));
-  // Las políticas salen de los parámetros del salón: si cambian, se vuelven a pedir
-  useEffect(() => { void cargarPrompt(); }, [
-    settings.depositPercent, settings.requireDeposit, settings.aiAutoBooking, settings.aiAgentName, settings.aiDaPrecios,
-    settings.cancellationNoticeHours, settings.gracePeriodMinutes, settings.maxAdvanceBookingDays,
-  ]);
   const esDireccion = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   /* Aviso a la dueña por WhatsApp: se editan en local y se guardan al salir del campo */
@@ -275,6 +263,28 @@ export const BotsControlScreen: React.FC = () => {
                     />
                   </div>
                 )
+              )}
+
+              {/* Opciones con botones (listas para tocar) o solo texto, por canal */}
+              {bot.channelIdentifier && esDireccion && (!bot.locationId || bot.locationId === sedeVista) && (
+                <div className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Mostrar opciones con botones</div>
+                    <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-snug">
+                      {!bot.usarListas
+                        ? `Apagado: ${agente} conversa sin listas, nombrando las opciones en una frase.`
+                        : bot.id === 'whatsapp'
+                          ? 'Servicios, sedes y horas libres llegan en una lista para tocar. La clienta puede tocar o escribir.'
+                          : 'Aquí no hay botones: las opciones (servicios, sedes, horas) llegan en una lista corta en texto.'}
+                    </p>
+                  </div>
+                  <IOSToggle
+                    id={`bot-listas-${bot.id}`}
+                    checked={bot.usarListas}
+                    onChange={valor => void cambiarListas(bot.id, valor)}
+                    activeColor="#22c55e"
+                  />
+                </div>
               )}
 
               {/* Lo que hizo, contado de verdad: hoy o los últimos días */}
@@ -535,10 +545,11 @@ export const BotsControlScreen: React.FC = () => {
                   const texto = instruccionesSalon.trim();
                   if (texto !== (settings.aiPromptSalon ?? '')) updateSettings({ aiPromptSalon: texto || null });
                 }}
-                placeholder={`Vacío: todas las sedes usan las instrucciones base.`}
+                placeholder={`Vacío: ${agente} atiende como siempre. Escribe solo lo particular de tu negocio: lo que no hacen, cómo cobran, qué recomendar…`}
                 className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] resize-y"
               />
               <p className="text-[0.6875rem] text-slate-400 mt-1">
+                Se suman a lo que {agente} ya sabe hacer (agendar, dar precios, no inventar): no hace falta explicárselo.
                 Valen para todas las sucursales, salvo las que escriban las suyas abajo.
               </p>
             </div>
@@ -560,64 +571,9 @@ export const BotsControlScreen: React.FC = () => {
               }}
               placeholder={settings.aiPromptSalon
                 ? 'Vacío: esta sede usa las instrucciones del salón.'
-                : `Vacío: ${agente} usa las instrucciones base (las ves abajo).`}
+                : `Vacío: ${agente} atiende como siempre. Escribe solo lo particular de esta sede.`}
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] resize-y"
             />
-            {promptBase && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setVerBase(v => !v)}
-                  className="flex items-center gap-1 text-[0.6875rem] font-bold text-[var(--primary)] cursor-pointer"
-                >
-                  <FileText className="w-3 h-3" /> {verBase ? 'Ocultar' : 'Ver'} las instrucciones base
-                </button>
-                {!instrucciones.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setInstrucciones(promptBase)}
-                    className="text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300 underline cursor-pointer"
-                  >
-                    Partir de ellas para escribir las mías
-                  </button>
-                )}
-              </div>
-            )}
-            {verBase && promptBase && (
-              <pre className="mt-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans max-h-64 overflow-y-auto">
-                {promptBase}
-              </pre>
-            )}
-            {fijo && (
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => setVerFijo(v => !v)}
-                  className="flex items-center gap-1 text-[0.6875rem] font-bold text-[var(--primary)] cursor-pointer"
-                >
-                  <FileText className="w-3 h-3" /> {verFijo ? 'Ocultar' : 'Ver'} lo que {agente} recibe además de tus instrucciones
-                </button>
-                {verFijo && (
-                  <div className="mt-1.5 space-y-2">
-                    <div>
-                      <div className="text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300">
-                        Políticas del salón (salen de los parámetros: cambian solas si cambias un parámetro)
-                      </div>
-                      <pre className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans">{fijo.politicas}</pre>
-                    </div>
-                    <div>
-                      <div className="text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300">
-                        Reglas de trabajo (fijas: son las que hacen que agende bien y no invente)
-                      </div>
-                      <pre className="mt-1 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] text-slate-600 dark:text-neutral-300 whitespace-pre-wrap font-sans max-h-72 overflow-y-auto">{fijo.reglas}</pre>
-                    </div>
-                    <p className="text-[0.6875rem] text-slate-400">
-                      Además recibe la lista de servicios con precios, el equipo y quién hace qué, la ficha de la clienta y la conversación.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
             <p className="text-[0.6875rem] text-slate-400 mt-1 leading-relaxed">
               Puedes usar {'{{agente}}'}, {'{{negocio}}'}, {'{{sede}}'}, {'{{horario}}'},{' '}
               {'{{zona_horaria}}'}, {'{{fecha_actual}}'}, {'{{tono}}'} y {'{{clienta}}'}: se rellenan
