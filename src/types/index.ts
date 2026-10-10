@@ -360,6 +360,8 @@ export interface BotChannelConfig {
   locationId: string | null;
   /** La cuenta atiende todas las sedes: Lalan pregunta en cuál quiere atenderse la clienta */
   todasLasSedes: boolean;
+  /** Lalan muestra opciones con botón (servicios, sedes, horas). Apagado: conversa sin listas */
+  usarListas: boolean;
 }
 
 export interface ColorPreset {

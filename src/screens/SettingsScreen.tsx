@@ -50,6 +50,7 @@ import { CommunicationChannel, ThemeMode, UserRole, ThemePalettePreset, EventoAc
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { IOSModal } from '../components/ui/IOSModal';
+import { IOSToggle } from '../components/ui/IOSToggle';
 import { ThemeCustomizerModal } from '../components/ui/ThemeCustomizerModal';
 import { PageContent } from '../components/ui/PageContent';
 import { EditorPizarra } from '../components/ui/EditorPizarra';
@@ -102,6 +103,7 @@ export const SettingsScreen: React.FC = () => {
     updateSettings,
     botConfigs,
     updateBotMessage,
+    ponerListas,
     triggerSplash,
     navigateTo,
     abrirConversacion,
@@ -305,6 +307,14 @@ export const SettingsScreen: React.FC = () => {
       setWelcomeText(cfg.welcomeMessage);
       setOffHoursText(cfg.offHoursMessage);
     }
+  };
+
+  /* Las listas con botón, por canal: se guardan al tocar (como los demás
+     interruptores de canal), sin esperar a "Guardar plantillas" */
+  const usaListas = botConfigs.find(b => b.id === activeMessageChannel)?.usarListas ?? true;
+  const cambiarListas = async (valor: boolean) => {
+    try { await ponerListas(activeMessageChannel, valor); }
+    catch (e: any) { showToast('No se pudo cambiar', e?.message ?? 'Inténtalo de nuevo.', 'warning'); }
   };
 
   const handleSaveWelcomeMessages = () => {
@@ -1086,6 +1096,26 @@ export const SettingsScreen: React.FC = () => {
             onChange={handleChannelChange}
             size="sm"
           />
+
+          {/* Hay clientas que prefieren escribir: las listas se apagan por canal */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">Mostrar opciones con botones</div>
+              <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-snug">
+                {!usaListas
+                  ? `Apagado: ${settings.aiAgentName || 'la asistente'} conversa sin listas, nombrando las opciones en una frase.`
+                  : activeMessageChannel === 'whatsapp'
+                    ? 'Servicios, sedes y horas libres llegan en una lista para tocar. La clienta puede tocar o escribir.'
+                    : 'Aquí no hay botones: las opciones (servicios, sedes, horas) llegan en una lista corta en texto.'}
+              </p>
+            </div>
+            <IOSToggle
+              id={`bot-listas-${activeMessageChannel}`}
+              checked={usaListas}
+              onChange={valor => void cambiarListas(valor)}
+              activeColor="#22c55e"
+            />
+          </div>
 
           <div>
             <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
