@@ -10,6 +10,7 @@ import {
 import { CanalesCliente } from './CanalesCliente';
 import { EditorCanales } from './EditorCanales';
 import { LineasTelefonicas } from './LineasTelefonicas';
+import { InstruccionesLalan } from './InstruccionesLalan';
 
 /** Lo que llega de una aplicación al piloto para llenar el formulario */
 export interface PrellenadoNegocio { aplicacionId?: string; salon?: string; nombre?: string; telefono?: string; ciudad?: string; planClave?: string | null }
@@ -222,6 +223,8 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         <EditorCanales negocioId={id} alGuardar={() => setVersionCanales((v) => v + 1)} />
         <LineasTelefonicas negocioId={id} />
       </div>
+
+      {!soloSoporte && <InstruccionesLalan negocioId={id} />}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="space-y-2">
