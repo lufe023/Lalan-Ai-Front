@@ -129,7 +129,7 @@ export interface SalonProduct {
   /** El precio del salón: lo cobran las sedes sin precio propio */
   precioSalon?: { basePrice: number; currencyCode?: string };
   /** Las sedes que cobran su propio precio */
-  preciosPorSede?: { locationId: string; nombre: string; basePrice: number; currencyCode: string }[];
+  preciosPorSede?: { locationId: string; nombre: string; basePrice: number; currencyCode: string; priceTiers?: PriceTier[] }[];
   unit: string;        // ml | g | oz | L | unit
   unitQty?: number;    // contenido por unidad (ej: 15 ml por botella)
   unitQtyUnit?: string; // unidad del contenido (ml, g, oz, L)
