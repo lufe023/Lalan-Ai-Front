@@ -15,6 +15,7 @@ import {
 } from '../services/musica';
 import { encenderMandoSistema } from '../utils/mandoSistema';
 import { useAuth } from './AuthContext';
+import type { PrecioEnSede } from '../components/catalogo/VariantesDePrecio';
 
 /** Moneda del salón. La base tiene rateToBase = 1 y es en la que vive la caja. */
 export interface Currency {
@@ -289,12 +290,16 @@ interface AppContextType {
   updateClient: (id: string, updated: Partial<Client>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
   services: SalonService[];
-  addService: (service: Omit<SalonService, 'id'>) => Promise<void>;
+  addService: (service: Omit<SalonService, 'id'>) => Promise<SalonService>;
   updateService: (id: string, updated: Partial<SalonService>) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
   toggleServiceAi: (id: string, aiAvailable: boolean) => Promise<void>;
   /** "Copiar a otra sede": con su precio, variantes, duración y receta */
   copiarServicio: (id: string, sedes: string[]) => Promise<void>;
+  /** Desde "Todas las sedes": el precio de un servicio en cada sede (null = el del salón, [] = no se ofrece) */
+  preciosServicioEnSedes: (id: string, sedes: PrecioEnSede[]) => Promise<void>;
+  /** Desde "Todas las sedes": el precio de un producto en cada sede (null = el del salón) */
+  preciosProductoEnSedes: (id: string, sedes: PrecioEnSede[]) => Promise<void>;
   products: SalonProduct[];
   addProduct: (product: Omit<SalonProduct, 'id'>, sedeDelStock?: string) => Promise<SalonProduct>;
   /** Guarda la receta completa de un preparado (reemplaza la anterior) */
@@ -708,7 +713,7 @@ function mapApiProduct(p: any): SalonProduct {
     stockSinSede: Number(p.stockSinSede ?? 0),
     precioPropio: !!p.precioPropio,
     precioSalon: p.precioSalon ? { basePrice: Number(p.precioSalon.basePrice), currencyCode: p.precioSalon.currencyCode } : undefined,
-    preciosPorSede: Array.isArray(p.preciosPorSede) ? p.preciosPorSede.map((x: any) => ({ locationId: x.locationId, nombre: x.nombre, basePrice: Number(x.basePrice), currencyCode: x.currencyCode })) : undefined,
+    preciosPorSede: Array.isArray(p.preciosPorSede) ? p.preciosPorSede.map((x: any) => ({ locationId: x.locationId, nombre: x.nombre, basePrice: Number(x.basePrice), currencyCode: x.currencyCode, priceTiers: Array.isArray(x.priceTiers) ? x.priceTiers : [] })) : undefined,
     unitQty: p.unitQty != null ? Number(p.unitQty) : undefined, unitQtyUnit: p.unitQtyUnit ?? undefined,
       costPrice: p.costPrice != null ? Number(p.costPrice) : undefined,
       minStock: p.minStock != null ? Number(p.minStock) : undefined,
@@ -1153,7 +1158,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       description: data.description, aiAvailable: data.aiAvailable, priceTiers: data.priceTiers,
       aiPrecio: data.aiPrecio,
     });
-    setServices(s => [...s, mapApiService(res)]);
+    const creado = mapApiService(res);
+    setServices(s => [...s, creado]);
+    return creado;
   }, []);
   const updateService = useCallback(async (id: string, updated: Partial<SalonService>) => {
     const payload: Record<string, any> = {};
@@ -1187,6 +1194,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // En "Todas las sedes" las copias se ven en la lista; dentro de una sede, nada cambia aquí
     const svcs = await api.get<any[]>('/services').catch(() => null);
     if (svcs) setServices(svcs.map(mapApiService));
+  }, []);
+
+  const preciosServicioEnSedes = useCallback(async (id: string, sedes: PrecioEnSede[]) => {
+    const svcs = await api.patch<any[]>(`/services/${id}/precios-sede`, { sedes });
+    if (Array.isArray(svcs)) setServices(svcs.map(mapApiService));
+  }, []);
+  const preciosProductoEnSedes = useCallback(async (id: string, sedes: PrecioEnSede[]) => {
+    const p = mapApiProduct(await api.patch<any>(`/products/${id}/precios-sede`, { sedes }));
+    setProducts(l => l.map(x => (x.id === id ? p : x)));
   }, []);
 
   const addProduct = useCallback(async (data: Omit<SalonProduct, 'id'>, sedeDelStock?: string) => {
@@ -2825,7 +2841,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clients, isLoadingClients, clientsHasMore, clientsTotal,
       cargarMasClientas, buscarClientas,
       addClient, updateClient, deleteClient,
-      services, addService, updateService, deleteService, toggleServiceAi, copiarServicio,
+      services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, preciosServicioEnSedes, preciosProductoEnSedes,
       products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
       preguntar, consulta,
