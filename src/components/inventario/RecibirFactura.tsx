@@ -3,6 +3,7 @@ import { Camera, FileUp, Loader2, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { IOSModal } from '../ui/IOSModal';
+import { SedeDelStock, useSedeDelStock } from './SedeDelStock';
 import { reducirFoto } from '../../utils/reducirFoto';
 
 export interface ProductoDeCatalogo { id: string; name: string; unit?: string }
@@ -58,6 +59,7 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
   const [renglones, setRenglones] = useState<Renglon[] | null>(null);
   const [suplidor, setSuplidor] = useState('');
   const [numero, setNumero] = useState('');
+  const enSede = useSedeDelStock();
   const camara = useRef<HTMLInputElement>(null);
   const subir = useRef<HTMLInputElement>(null);
 
@@ -124,6 +126,7 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
           ...(x.lote.trim() ? { lotNumber: x.lote.trim() } : {}),
           ...(x.vence ? { expiresAt: new Date(`${x.vence}T12:00:00`).toISOString() } : {}),
         })),
+        ...(enSede.sede ? { locationId: enSede.sede } : {}),
         ...(suplidor.trim() ? { proveedor: suplidor.trim() } : {}),
         ...(numero.trim() ? { numeroFactura: numero.trim() } : {}),
       });
@@ -230,11 +233,12 @@ export const RecibirFactura: React.FC<{ isOpen: boolean; onClose: () => void; pr
             })}
           </ul>
 
+          <SedeDelStock value={enSede.sede} onChange={enSede.setSede} />
           <div className="flex gap-2">
             <button type="button" onClick={() => setRenglones(null)} className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-neutral-800 text-sm font-semibold cursor-pointer">
               Otra foto
             </button>
-            <button type="button" disabled={!aSumar.length || guardando} onClick={() => void sumar()}
+            <button type="button" disabled={!aSumar.length || guardando || enSede.falta} onClick={() => void sumar()}
               className="flex-1 py-3 rounded-xl bg-[var(--primary)] text-white font-bold text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
               {guardando && <Loader2 className="w-4 h-4 animate-spin" />}
               Sumar {aSumar.length} producto{aSumar.length === 1 ? '' : 's'}{nuevos ? ` (${nuevos} nuevo${nuevos === 1 ? '' : 's'})` : ''}
