@@ -356,6 +356,7 @@ interface AppContextType {
   elegirSedeBots: (sede: string) => Promise<void>;
   /** La cuenta del canal atiende todas las sedes (un número o un Instagram para la cadena) */
   ponerTodasLasSedes: (channelId: CommunicationChannel, todasLasSedes: boolean) => Promise<void>;
+  ponerListas: (channelId: CommunicationChannel, usarListas: boolean) => Promise<void>;
   updateBotMessage: (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage' | 'channelIdentifier', text: string) => Promise<void>;
   settings: SalonBusinessSettings;
   updateSettings: (newSettings: Partial<SalonBusinessSettings>) => void;
@@ -827,7 +828,7 @@ function mapApiBotConfig(b: any): BotChannelConfig {
     welcomeMessage: b.welcomeMessage ?? '', offHoursMessage: b.offHoursMessage ?? '',
     channelIdentifier: b.channelIdentifier ?? '', cuentaNombre: b.cuentaNombre ?? null,
     conexion: b.conexion ?? null, conectadoEn: b.conectadoEn ?? null,
-    locationId: b.locationId ?? null, todasLasSedes: !!b.todasLasSedes,
+    locationId: b.locationId ?? null, todasLasSedes: !!b.todasLasSedes, usarListas: b.usarListas ?? true,
   };
 }
 function mapApiTrack(t: any): LoungeTrack {
@@ -1609,6 +1610,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const ponerTodasLasSedes = useCallback(async (channelId: CommunicationChannel, todasLasSedes: boolean) => {
     await api.patch(urlDelCanal(channelId), { todasLasSedes });
     setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, todasLasSedes } : x));
+  }, [urlDelCanal]);
+  const ponerListas = useCallback(async (channelId: CommunicationChannel, usarListas: boolean) => {
+    await api.patch(urlDelCanal(channelId), { usarListas });
+    setBotConfigs(b => b.map(x => x.id === channelId ? { ...x, usarListas } : x));
   }, [urlDelCanal]);
 
   /**
@@ -2848,7 +2853,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,
       toggleChatAiStatus, sendMessageToConversation, recargarConversaciones: loadConversations, startChatWithClient,
-      botConfigs, recargarBots: loadBots, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes,
+      botConfigs, recargarBots: loadBots, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes, ponerListas,
       settings, updateSettings,
       metricsPeriod, setMetricsPeriod,
       categorias, cargarCategorias, recargarCatalogo, categoriasDe, categoriaPorClave, crearCategoria, editarCategoria, quitarCategoria,
