@@ -40,6 +40,11 @@ const ReproductorAudio: React.FC<{ url: string; suave: string }> = ({ url, suave
 };
 /** Extensión para descargar el audio con un nombre que el teléfono entienda */
 const EXTENSION_AUDIO: Record<string, string> = { 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/aac': 'aac', 'video/mp4': 'mp4' };
+/** *Así* es negrita en WhatsApp (la asistente marca el día y la hora de la cita): aquí se ve igual que en su teléfono */
+function conNegrita(texto: string): React.ReactNode[] {
+  return texto.split(/\*([^*\n]+)\*/g).map((trozo, i) => (i % 2 ? <strong key={i}>{trozo}</strong> : trozo));
+}
+
 /** Textos de relleno que pone el sistema cuando no hay texto de la clienta */
 const ES_RELLENO = /^\[.*\]$|^\(Envió |^\((Nota de voz|Audio)\) /;
 
@@ -158,7 +163,7 @@ export const ContenidoMensaje: React.FC<{
         </p>
       )}
 
-      {texto && <p className="whitespace-pre-wrap">{texto}</p>}
+      {texto && <p className="whitespace-pre-wrap">{conNegrita(texto)}</p>}
     </div>
   );
 };
