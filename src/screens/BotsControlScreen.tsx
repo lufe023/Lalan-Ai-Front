@@ -274,8 +274,8 @@ export const BotsControlScreen: React.FC = () => {
                       {!bot.usarListas
                         ? `Apagado: ${agente} conversa sin listas, nombrando las opciones en una frase.`
                         : bot.id === 'whatsapp'
-                          ? 'Servicios, sedes y horas libres llegan en una lista para tocar. La clienta puede tocar o escribir.'
-                          : 'Aquí no hay botones: las opciones (servicios, sedes, horas) llegan en una lista corta en texto.'}
+                          ? 'Servicios y sedes llegan en una lista para tocar. Las horas libres van siempre en texto y la clienta escribe la suya.'
+                          : 'Aquí no hay botones: servicios y sedes llegan en una lista corta en texto.'}
                     </p>
                   </div>
                   <IOSToggle
