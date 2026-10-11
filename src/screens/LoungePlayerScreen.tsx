@@ -55,6 +55,9 @@ import { PageContent } from '../components/ui/PageContent';
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { PosPanel } from '../components/pos/PosPanel';
 import { SelectorSede } from '../components/ui/SelectorSede';
+import { IOSModal } from '../components/ui/IOSModal';
+import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
+import { noEsUnGusto } from '../utils/gustos';
 import { useSedes } from '../hooks/useSedes';
 import { conSedeLocal, elegirSedeLocal, sedeLocal } from '../services/sedeLocal';
 
@@ -350,8 +353,9 @@ export const LoungePlayerScreen: React.FC = () => {
 // ── Demanda vs oferta ─────────────────────────────────────────────────
   // Los gustos de bebida y comida van juntos: para la manicurista "lo que le
   // gusta" es una sola lista, no dos.
+  // "No" o "ninguno" contestaban la pregunta de Lalan, no son gustos (antes se guardaban)
   const gustosConsumibles = useMemo(
-    () => [...(prefGroups.drink ?? []), ...(prefGroups.food ?? [])],
+    () => [...(prefGroups.drink ?? []), ...(prefGroups.food ?? [])].filter(g => !noEsUnGusto(g.value)),
     [prefGroups],
   );
 
@@ -1020,43 +1024,38 @@ export const LoungePlayerScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex-1 w-full h-full flex flex-col overflow-hidden bg-[#F9FAFB] dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 select-none">
+    <div className="relative flex-1 w-full h-full flex flex-col overflow-hidden bg-[#F9FAFB] dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 select-none">
       {/* iOS Minimalist Nav Header */}
       <div
         className="shrink-0 z-20 px-4 pb-2.5 bg-[#F9FAFB]/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-slate-200/50 dark:border-neutral-900 pt-safe-header"
         style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 8px), 52px))' }}
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[0.75rem] font-bold tracking-wider uppercase text-slate-400 dark:text-neutral-500">
+        {/* En el teléfono no caben en una fila el título, la sede y quién está:
+            la sede baja a su propia línea y la pastilla de clientas nunca se
+            sale de la pantalla. */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[0.75rem] font-bold tracking-wider uppercase text-slate-400 dark:text-neutral-500 truncate">
                 Salón Lounge & Experiencia VIP
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Música & Hospitalidad
-              </h1>
-              {/* Con varias sedes, dirección elige de qué local es este Lounge:
-                  su música, quién está, y de qué inventario sale lo que se sirve.
-                  Cambiarla recarga la app para no mezclar un local con otro. */}
-              <SelectorSede
-                sedes={sedes}
-                value={sedeLocal()}
-                onChange={(id) => { elegirSedeLocal(id); window.location.reload(); }}
-              />
-            </div>
+            <h1 className="text-xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
+              Música & Hospitalidad
+            </h1>
           </div>
 
-          {/* Current Client Pill Switcher */}
+          {/* Quién está en el salón: abre la lista en una hoja */}
           <button
-            onClick={() => setShowClientSelector(!showClientSelector)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:border-slate-300 dark:hover:border-neutral-700 transition"
+            type="button"
+            onClick={() => setShowClientSelector(true)}
+            aria-haspopup="dialog"
+            className="shrink-0 mt-1 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:border-slate-300 dark:hover:border-neutral-700 transition cursor-pointer"
           >
             {loungeClients.length ? (
               <>
-                <div className="flex -space-x-1.5">
+                <div className="flex -space-x-1.5 shrink-0">
                   {loungeClients.slice(0, 3).map(c => (
                     <img
                       key={c.id}
@@ -1067,7 +1066,7 @@ export const LoungePlayerScreen: React.FC = () => {
                     />
                   ))}
                 </div>
-                <span className="text-xs font-semibold max-w-[120px] truncate text-slate-800 dark:text-neutral-200">
+                <span className="text-xs font-semibold max-w-[7rem] truncate text-slate-800 dark:text-neutral-200">
                   {loungeClients.length === 1
                     ? loungeClients[0].name.split(' ')[0]
                     : `${loungeClients.length} en el salón`}
@@ -1075,94 +1074,25 @@ export const LoungePlayerScreen: React.FC = () => {
               </>
             ) : (
               <>
-                <User className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-xs font-semibold text-slate-600 dark:text-neutral-400">
+                <User className="w-3.5 h-3.5 shrink-0 text-slate-500" />
+                <span className="text-xs font-semibold text-slate-600 dark:text-neutral-400 whitespace-nowrap">
                   Elegir clientas
                 </span>
               </>
             )}
-            <SlidersHorizontal className="w-3 h-3 text-slate-400" />
+            <SlidersHorizontal className="w-3 h-3 shrink-0 text-slate-400" />
           </button>
         </div>
 
-        {/* Client Selector Dropdown Sheet */}
-        <AnimatePresence>
-          {showClientSelector && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="mt-3 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-lg"
-            >
-              <div className="text-xs font-bold text-slate-500 dark:text-neutral-400 mb-2 px-1">
-                Marca a todas las que estén en el salón. La primera es la del sillón.
-              </div>
-
-              <input
-                type="text"
-                value={buscaClienta}
-                onChange={e => setBuscaClienta(e.target.value)}
-                placeholder="Buscar clienta…"
-                className="w-full mb-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-              />
-
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                {clients.filter(c => {
-                  const q = buscaClienta.trim().toLowerCase();
-                  if (!q) return true;
-                  return c.name.toLowerCase().includes(q) || (c.phone ?? '').includes(q);
-                }).map(c => {
-                  const pos = loungeClients.findIndex(x => x.id === c.id);
-                  const isSelected = pos >= 0;
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        toggleLoungeClient(c);
-                        showToast(
-                          isSelected ? `${c.name.split(' ')[0]} salió del salón` : `${c.name.split(' ')[0]} en el salón`,
-                          isSelected ? 'Su música se retira de la cola.' : 'Sus gustos se suman a la cola.',
-                          'info',
-                        );
-                      }}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl transition text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-[var(--primary)] text-white font-medium'
-                          : 'hover:bg-slate-100 dark:hover:bg-neutral-800/60 text-slate-700 dark:text-neutral-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <img src={c.avatar} alt={c.name} className="w-7 h-7 rounded-full object-cover" />
-                        <div>
-                          <div className="text-xs font-bold flex items-center gap-1.5">
-                            {c.name}
-                            {pos === 0 && (
-                              <span className="text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-white/25 font-semibold">
-                                En el sillón
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[0.6875rem] opacity-80">
-                            {c.totalVisits > 0 ? `${c.totalVisits} visitas` : 'Primera visita'}
-                          </div>
-                        </div>
-                      </div>
-                      {isSelected
-                        ? <Check className="w-4 h-4 shrink-0" />
-                        : <Plus className="w-4 h-4 shrink-0 opacity-40" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {(loungeClients.length > 1 || selectedPlaylistIds.length > 0) && (
-                <p className="text-[0.6875rem] text-slate-400 mt-2 px-1">
-                  La cola se rearma sola con cada cambio.
-                </p>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Con varias sedes, dirección elige de qué local es este Lounge:
+            su música, quién está, y de qué inventario sale lo que se sirve.
+            Cambiarla recarga la app para no mezclar un local con otro. */}
+        <SelectorSede
+          sedes={sedes}
+          value={sedeLocal()}
+          onChange={(id) => { elegirSedeLocal(id); window.location.reload(); }}
+          className="mt-2 max-w-full"
+        />
 
         {/* Quién es el altavoz del salón. Va ARRIBA del selector de
             pestañas a propósito: si la música suena en otro aparato, eso
@@ -1172,41 +1102,19 @@ export const LoungePlayerScreen: React.FC = () => {
           <MandoSala />
         </div>
 
-        {/* Apple-Style Segmented Control */}
-        <div className="mt-3 p-0.5 rounded-xl bg-slate-200/60 dark:bg-neutral-900 border border-slate-300/40 dark:border-neutral-800 flex items-center">
-          <button
-            onClick={() => setActiveTab('player')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'player'
-                ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-2xs font-bold'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900'
-            }`}
-          >
-            <Music className="w-3.5 h-3.5" />
-            Reproductor
-          </button>
-          <button
-            onClick={() => setActiveTab('hospitality')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'hospitality'
-                ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-2xs font-bold'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900'
-            }`}
-          >
-            <Coffee className="w-3.5 h-3.5" />
-            Bebidas & Aperitivos
-          </button>
-          <button
-            onClick={() => setActiveTab('explore')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'explore'
-                ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-2xs font-bold'
-                : 'text-slate-600 dark:text-neutral-400 hover:text-slate-900'
-            }`}
-          >
-            <Radio className="w-3.5 h-3.5" />
-            YouTube
-          </button>
+        {/* Si no caben (letra grande), las pestañas se desplazan de lado */}
+        <div className="mt-3">
+          <IOSSegmentedControl
+            id="lounge-pestanas"
+            size="sm"
+            options={[
+              { id: 'player', label: 'Reproductor', icon: <Music className="w-3.5 h-3.5" /> },
+              { id: 'hospitality', label: 'Bebidas & Aperitivos', icon: <Coffee className="w-3.5 h-3.5" /> },
+              { id: 'explore', label: 'YouTube', icon: <Radio className="w-3.5 h-3.5" /> },
+            ]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as typeof activeTab)}
+          />
         </div>
       </div>
       <PageContent noPadding className="pb-24">
@@ -1262,10 +1170,10 @@ export const LoungePlayerScreen: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] font-semibold text-slate-600 dark:text-neutral-300">
-                    <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-                    {prefMusic[0] ?? 'Sin género'}
+                <div className="shrink-0 max-w-[45%] pl-2">
+                  <span className="inline-flex max-w-full items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] font-semibold text-slate-600 dark:text-neutral-300">
+                    <Sparkles className="w-2.5 h-2.5 shrink-0 text-amber-500" />
+                    <span className="truncate">{prefMusic[0] ?? 'Sin género'}</span>
                   </span>
                 </div>
               </div>
@@ -2059,8 +1967,8 @@ export const LoungePlayerScreen: React.FC = () => {
                       alt={activeLoungeClient.name}
                       className="w-14 h-14 rounded-2xl object-cover ring-2 ring-[var(--primary)]/20"
                     />
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <h2 className="text-base font-bold text-slate-900 dark:text-white">
                           {activeLoungeClient.name}
                         </h2>
@@ -2069,7 +1977,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5">
-                        {activeLoungeClient.phone} • {activeLoungeClient.totalVisits} visitas registradas
+                        {[activeLoungeClient.phone, activeLoungeClient.totalVisits > 0 ? `${activeLoungeClient.totalVisits} visitas` : 'Primera visita'].filter(Boolean).join(' · ')}
                       </p>
                     </div>
                   </div>
@@ -2093,18 +2001,18 @@ export const LoungePlayerScreen: React.FC = () => {
                             key={campo.key}
                             onClick={() => rotarAmbiente(campo.key, campo.opciones)}
                             disabled={guardandoAmbiente === campo.key}
-                            className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/40 hover:bg-slate-100 dark:hover:bg-neutral-800 transition active:scale-98 disabled:opacity-50"
+                            className="min-w-0 p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/40 hover:bg-slate-100 dark:hover:bg-neutral-800 transition active:scale-98 disabled:opacity-50 cursor-pointer"
                           >
                             <Icono className={`w-3.5 h-3.5 mx-auto mb-1 ${tono}`} />
-                            <div className="text-[0.6875rem] text-slate-400 font-medium">{campo.label}</div>
+                            <div className="text-[0.6875rem] text-slate-400 font-medium truncate">{campo.label}</div>
                             <div
-                              className={`text-xs font-bold capitalize ${
+                              className={`text-xs font-bold leading-tight break-words ${
                                 valor
-                                  ? 'text-slate-800 dark:text-neutral-200'
-                                  : 'text-slate-300 dark:text-neutral-600 italic'
+                                  ? 'text-slate-800 dark:text-neutral-200 capitalize'
+                                  : 'text-slate-400 dark:text-neutral-500 font-medium'
                               }`}
                             >
-                              {valor ? String(valor).replace(/_/g, ' ') : 'Sin registrar'}
+                              {valor ? String(valor).replace(/_/g, ' ') : 'Toca para anotar'}
                             </div>
                           </button>
                         );
@@ -2149,7 +2057,7 @@ export const LoungePlayerScreen: React.FC = () => {
                         return (
                           <div
                             key={g.preferenceId}
-                            className={`pl-3 pr-1.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                            className={`max-w-full pl-3 pr-1.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${
                               !prod
                                 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900/60 text-amber-900 dark:text-amber-200'
                                 : agotado
@@ -2157,21 +2065,21 @@ export const LoungePlayerScreen: React.FC = () => {
                                   : 'bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200'
                             }`}
                           >
-                            <span>{g.value}</span>
+                            <span className="min-w-0 break-words">{g.value}</span>
                             {!prod && (
-                              <span className="text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-800/60 font-extrabold">
+                              <span className="shrink-0 whitespace-nowrap text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-800/60 font-extrabold">
                                 no lo vendes
                               </span>
                             )}
                             {prod && agotado && (
-                              <span className="text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-red-200/70 dark:bg-red-800/60 font-extrabold">
+                              <span className="shrink-0 whitespace-nowrap text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-red-200/70 dark:bg-red-800/60 font-extrabold">
                                 agotado
                               </span>
                             )}
                             <button
                               onClick={() => quitarPref(g.preferenceId)}
                               title="Quitar de sus preferencias"
-                              className="w-5 h-5 rounded-full flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-black/10 transition"
+                              className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center opacity-40 hover:opacity-100 hover:bg-black/10 transition"
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -2886,6 +2794,78 @@ export const LoungePlayerScreen: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Quién está en el salón: la hoja de siempre (se arrastra para cerrar) */}
+      <IOSModal
+        id="lounge-clientas"
+        isOpen={showClientSelector}
+        onClose={() => setShowClientSelector(false)}
+        title="¿Quién está en el salón?"
+        subtitle="Marca a todas las que estén. La primera es la del sillón."
+        height="80%"
+      >
+        <input
+          type="text"
+          value={buscaClienta}
+          onChange={e => setBuscaClienta(e.target.value)}
+          placeholder="Buscar clienta…"
+          className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        />
+
+        <div className="space-y-1.5">
+          {clients.filter(c => {
+            const q = buscaClienta.trim().toLowerCase();
+            if (!q) return true;
+            return c.name.toLowerCase().includes(q) || (c.phone ?? '').includes(q);
+          }).map(c => {
+            const pos = loungeClients.findIndex(x => x.id === c.id);
+            const isSelected = pos >= 0;
+            return (
+              <button
+                key={c.id}
+                onClick={() => {
+                  toggleLoungeClient(c);
+                  showToast(
+                    isSelected ? `${c.name.split(' ')[0]} salió del salón` : `${c.name.split(' ')[0]} en el salón`,
+                    isSelected ? 'Su música se retira de la cola.' : 'Sus gustos se suman a la cola.',
+                    'info',
+                  );
+                }}
+                className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-xl transition text-left cursor-pointer ${
+                  isSelected
+                    ? 'bg-[var(--primary)] text-white font-medium'
+                    : 'hover:bg-slate-100 dark:hover:bg-neutral-800/60 text-slate-700 dark:text-neutral-300'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img src={c.avatar} alt={c.name} className="w-9 h-9 shrink-0 rounded-full object-cover" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      {c.name}
+                      {pos === 0 && (
+                        <span className="whitespace-nowrap text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-white/25 font-semibold">
+                          En el sillón
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[0.75rem] opacity-80">
+                      {c.totalVisits > 0 ? `${c.totalVisits} visitas` : 'Primera visita'}
+                    </div>
+                  </div>
+                </div>
+                {isSelected
+                  ? <Check className="w-4 h-4 shrink-0" />
+                  : <Plus className="w-4 h-4 shrink-0 opacity-40" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {(loungeClients.length > 1 || selectedPlaylistIds.length > 0) && (
+          <p className="text-[0.75rem] text-slate-400 px-1">
+            La cola se rearma sola con cada cambio.
+          </p>
+        )}
+      </IOSModal>
     </div>
   );
 };
