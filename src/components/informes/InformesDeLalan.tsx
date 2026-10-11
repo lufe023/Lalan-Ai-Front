@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Bell, CalendarClock, CalendarDays, Coffee, Flame, FileDown, Link2, Loader2, Mail, MessageCircle, Package, Settings2, Sparkles, TrendingUp, Users } from 'lucide-react';
+import { Bell, BookOpen, CalendarClock, CalendarDays, Coffee, Flame, FileDown, Link2, Loader2, Mail, MessageCircle, Package, Settings2, Sparkles, TrendingUp, Users } from 'lucide-react';
 import { api, descargarArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -7,13 +7,17 @@ import { IOSModal } from '../ui/IOSModal';
 import { SelectorHora } from '../ui/SelectorHora';
 import { hora12 } from '../../utils/hora';
 import { ActivarNotificaciones } from '../ui/ActivarNotificaciones';
+import { SelectorSede } from '../ui/SelectorSede';
+import { useSedes } from '../../hooks/useSedes';
 
 type Tipo = 'resumen' | 'inventario' | 'clientas' | 'rentabilidad' | 'agenda' | 'gustos' | 'tendencias';
 type Canal = 'app' | 'correo' | 'whatsapp';
 type Frecuencia = 'diaria' | 'semanal' | 'mensual' | 'nunca';
 type Periodo = 'day' | 'week' | 'month';
 interface Seccion { id: string; emoji: string; titulo: string; lineas: string[]; vacio?: string }
-interface Informe { tipo: Tipo; titulo: string; periodo: string; sede: string; negocio: string; secciones: Seccion[]; hayAlgo: boolean; nota?: string | null }
+/** Las cifras grandes que abren el informe (y la revista) */
+interface Cifra { etiqueta: string; valor: string; cambio?: number | null; detalle?: string; tono?: 'alerta' | 'bueno' | 'neutro' }
+interface Informe { tipo: Tipo; titulo: string; periodo: string; sede: string; negocio: string; secciones: Seccion[]; hayAlgo: boolean; nota?: string | null; cifras?: Cifra[] }
 interface Aviso { id: string; tipo: Tipo; titulo: string; resumen: string; informe: Informe; leidoEn: string | null; creadoEn: string }
 interface Preferencia {
   id: Tipo; nombre: string; descripcion: string; incluido: boolean; soloSiHayAlgo: boolean;
@@ -21,7 +25,6 @@ interface Preferencia {
   /** Lo recomendado por Lalan para este informe */
   porDefecto: { frecuencia: Frecuencia; diaSemana?: number; diaMes?: number; minuto: number; canales: Canal[] };
 }
-interface Sede { id: string; name: string }
 
 const ICONO: Record<Tipo, React.FC<{ className?: string }>> = { resumen: TrendingUp, inventario: Package, clientas: Users, rentabilidad: Sparkles, agenda: CalendarDays, gustos: Coffee, tendencias: Flame };
 const PERIODOS: { id: Periodo; texto: string }[] = [{ id: 'day', texto: 'Hoy' }, { id: 'week', texto: 'Esta semana' }, { id: 'month', texto: 'Este mes' }];
@@ -65,9 +68,26 @@ const cuando = (p: Preferencia) => p.frecuencia === 'nunca' || !p.activo ? 'No s
   : `${p.frecuencia === 'diaria' ? 'Cada día' : p.frecuencia === 'semanal' ? `Cada ${DIAS[p.diaSemana ?? 1]}` : `El día ${p.diaMes ?? 1} de cada mes`}, ${hora12(aHHMM(p.minuto))}`;
 
 /** Un informe, pintado igual que llega por WhatsApp pero con aire */
+const SERIF: React.CSSProperties = { fontFamily: 'Fraunces, Georgia, serif' };
 const VistaInforme: React.FC<{ informe: Informe; pensando?: boolean }> = ({ informe, pensando }) => (
   <div className="space-y-3">
     <p className="text-[0.75rem] text-slate-500">{informe.periodo}{informe.sede ? ` · ${informe.sede}` : ''}</p>
+    {!!informe.cifras?.length && (
+      <div className={`grid gap-2 ${informe.cifras.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        {informe.cifras.slice(0, 3).map((c, i) => (
+          <div key={i} className="@container min-w-0 rounded-2xl border border-slate-200/80 dark:border-neutral-800 p-2.5">
+            <p className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 line-clamp-2 flex items-start gap-1">
+              {(c.tono === 'alerta' || c.tono === 'bueno') && <span className={`mt-[3px] w-1.5 h-1.5 rounded-full shrink-0 ${c.tono === 'alerta' ? 'bg-rose-500' : 'bg-emerald-500'}`} />}
+              {c.etiqueta}
+            </p>
+            <p className="text-[min(1.125rem,16cqw)] font-semibold tabular-nums truncate" style={SERIF}>{c.valor}</p>
+            {c.cambio != null
+              ? <p className={`text-[0.6875rem] font-bold ${c.cambio > 0 ? 'text-emerald-600' : c.cambio < 0 ? 'text-rose-600' : 'text-slate-500'}`}>{c.cambio > 0 ? '+' : ''}{Math.round(c.cambio)}% vs. antes</p>
+              : c.detalle ? <p className="text-[0.6875rem] text-slate-500 truncate">{c.detalle}</p> : null}
+          </div>
+        ))}
+      </div>
+    )}
     {(informe.nota || pensando) && (
       <section className="rounded-2xl bg-[var(--primary)]/10 p-3">
         <h4 className="text-[0.6875rem] font-bold uppercase tracking-wider text-[var(--primary)] mb-1">Lo que Lalan notó</h4>
@@ -99,7 +119,7 @@ export const InformesDeLalan: React.FC = () => {
   const [tieneWhatsapp, setTieneWhatsapp] = useState(false);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [sinLeer, setSinLeer] = useState(0);
-  const [sedes, setSedes] = useState<Sede[]>([]);
+  const sedes = useSedes();
   const [abierto, setAbierto] = useState<{ tipo: Tipo; informe?: Informe; desdeAviso?: boolean } | null>(null);
   const [periodo, setPeriodo] = useState<Periodo>('week');
   const [sede, setSede] = useState('');
@@ -107,6 +127,16 @@ export const InformesDeLalan: React.FC = () => {
   const [programando, setProgramando] = useState(false);
   const [enviando, setEnviando] = useState<Canal | null>(null);
   const [bajando, setBajando] = useState(false);
+  /** La revista: cada página como imagen, para hojearla aquí mismo */
+  const [revista, setRevista] = useState<{ paginas: string[] } | null>(null);
+  const [hojeando, setHojeando] = useState(false);
+  const verRevista = async () => {
+    if (!abierto?.informe) return;
+    setHojeando(true);
+    try { setRevista(await api.get<{ paginas: string[] }>(`/informes-lalan/revista/${abierto.tipo}?periodo=${periodo}${sede ? `&sede=${sede}` : ''}`)); }
+    catch (e) { showToast('No se pudo armar la revista', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'); }
+    finally { setHojeando(false); }
+  };
   const [pensando, setPensando] = useState(false);
   /** Excel: una hoja por sección, con el nombre y el detalle en columnas */
   const bajarExcel = async () => {
@@ -151,7 +181,6 @@ export const InformesDeLalan: React.FC = () => {
   useEffect(() => {
     if (!esDireccion) return;
     void cargar().catch(() => setPrefs([]));
-    api.get<Sede[]>('/users/sedes').then(setSedes).catch(() => undefined);
   }, [cargar, esDireccion]);
 
   const ver = useCallback(async (tipo: Tipo, p: Periodo = periodo, s: string = sede) => {
@@ -297,13 +326,7 @@ export const InformesDeLalan: React.FC = () => {
                 <button key={p.id} type="button" onClick={() => { setPeriodo(p.id); if (abierto) void ver(abierto.tipo, p.id); }}
                   className={`px-3 py-1.5 rounded-full text-[0.75rem] font-bold cursor-pointer ${periodo === p.id ? 'bg-[var(--primary)] text-white' : 'bg-slate-100 dark:bg-neutral-800'}`}>{p.texto}</button>
               ))}
-              {sedes.length > 1 && (
-                <select value={sede} onChange={e => { setSede(e.target.value); if (abierto) void ver(abierto.tipo, periodo, e.target.value); }}
-                  className="px-2 py-1.5 rounded-full text-[0.75rem] bg-slate-100 dark:bg-neutral-800 border-0">
-                  <option value="">Todas las sedes</option>
-                  {sedes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              )}
+              <SelectorSede sedes={sedes} value={sede} todas onChange={v => { setSede(v); if (abierto) void ver(abierto.tipo, periodo, v); }} />
             </div>
           )}
           {cargando || !abierto?.informe
@@ -316,8 +339,12 @@ export const InformesDeLalan: React.FC = () => {
           )}
           {abierto?.informe && !abierto.desdeAviso && (
             <div className="flex flex-wrap gap-2 pt-1">
-              <button type="button" disabled={bajando} onClick={() => void bajarPdf()}
+              <button type="button" disabled={hojeando} onClick={() => void verRevista()}
                 className="w-full mb-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] text-white text-sm font-bold disabled:opacity-50 cursor-pointer">
+                {hojeando ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />} {hojeando ? 'Armando tu revista…' : 'Ver como revista'}
+              </button>
+              <button type="button" disabled={bajando} onClick={() => void bajarPdf()}
+                className="w-full mb-1 min-h-[40px] flex items-center justify-center gap-2 rounded-xl border border-[var(--primary)] text-[var(--primary)] text-[0.8125rem] font-bold disabled:opacity-50 cursor-pointer">
                 {bajando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Descargar en PDF
               </button>
               <button type="button" onClick={() => void bajarExcel()} className="w-full mb-1 min-h-[40px] flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold cursor-pointer">
@@ -332,6 +359,23 @@ export const InformesDeLalan: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      </IOSModal>
+
+      {/* La revista, página por página */}
+      <IOSModal isOpen={!!revista} onClose={() => setRevista(null)} height="96%" title="Tu revista" subtitle={abierto?.informe ? `${abierto.informe.titulo} · ${abierto.informe.periodo}` : undefined}>
+        <div className="space-y-4 p-1 pb-4">
+          {revista?.paginas.map((src, i) => (
+            <figure key={i} className="space-y-1">
+              <img src={src} alt={`Página ${i + 1} de ${revista.paginas.length}`} loading={i < 2 ? 'eager' : 'lazy'}
+                className="w-full max-w-[640px] mx-auto rounded-xl border border-slate-200/80 dark:border-neutral-800 shadow-md bg-white" />
+              <figcaption className="text-center text-[0.6875rem] text-slate-400 tabular-nums">{i + 1} de {revista.paginas.length}</figcaption>
+            </figure>
+          ))}
+          <button type="button" disabled={bajando} onClick={() => void bajarPdf()}
+            className="w-full max-w-[640px] mx-auto min-h-[44px] flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] text-white text-sm font-bold disabled:opacity-50 cursor-pointer">
+            {bajando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Descargar en PDF
+          </button>
         </div>
       </IOSModal>
 
