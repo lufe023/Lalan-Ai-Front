@@ -115,7 +115,7 @@ export const UsuariosSalon: React.FC = () => {
           </div>
         </div>
         {!creando && (
-          <button type="button" disabled={lleno} onClick={() => setCreando(true)} title={lleno ? 'Tu plan no permite más usuarios' : undefined}
+          <button type="button" disabled={lleno} onClick={() => setCreando(true)} title={lleno ? 'Tu plan no permite más usuarios' : undefined} data-guia="agregar-usuario"
             className="px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold flex items-center gap-1 disabled:opacity-40 cursor-pointer">
             <UserPlus className="w-3.5 h-3.5" /> Agregar
           </button>
@@ -126,7 +126,7 @@ export const UsuariosSalon: React.FC = () => {
       {error && <p className="text-[0.75rem] font-semibold text-rose-600" role="alert">{error}</p>}
 
       {creando && (
-        <form onSubmit={crear} className="p-3 rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/5 space-y-2.5">
+        <form onSubmit={crear} data-guia="nuevo-usuario" className="p-3 rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/5 space-y-2.5">
           <div className="flex justify-between items-center"><b className="text-[0.8125rem]">Nuevo usuario</b><button type="button" onClick={() => setCreando(false)} className="cursor-pointer" aria-label="Cancelar"><X className="w-4 h-4 text-slate-400" /></button></div>
           <div className="grid sm:grid-cols-2 gap-2">
             <input required minLength={2} placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={campo} />

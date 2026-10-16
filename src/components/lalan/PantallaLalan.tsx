@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, ChevronDown, Keyboard, Loader2, MessageSquareText, Mic, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -16,11 +16,16 @@ import {
 } from '../../utils/vozLalan';
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
 import { ElegirEsfera } from './ElegirEsfera';
+import { iniciarGuia } from '../guias/GuiaEnCurso';
+import { guiaPorId } from '../../data/guias';
 
 interface Accion {
-  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento'; resumen: string;
+  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
+  /** "Llévame": la tarea a la que lleva y en qué sede */
+  guia?: GuiaTarjeta | null;
 }
+interface GuiaTarjeta { id: string; nombre: string; sedeId: string | null; sede: string | null }
 interface Mensaje { id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null; util?: boolean | null }
 interface Respuesta { mensajes: Mensaje[] }
 
@@ -327,6 +332,12 @@ export const PantallaLalan: React.FC = () => {
     setActiveConversationId(id);
   };
 
+  /** "Llévame": se cierra Lalan y la app señala dónde tocar */
+  const llevame = (g: GuiaTarjeta) => {
+    cerrar();
+    iniciarGuia(g.id, g.sedeId, g.sede);
+  };
+
   const cerrar = () => {
     callarLalan();
     escucha.terminar(false);
@@ -564,7 +575,7 @@ export const PantallaLalan: React.FC = () => {
                           <div className="px-5 py-3.5 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm">
                             <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
                           </div>
-                          {m.accion && <TarjetaAccion accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} />}
+                          {m.accion && (m.accion.guia ? <TarjetaGuia guia={m.accion.guia} onLlevame={llevame} /> : <TarjetaAccion accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} />)}
                           <div className="pl-2"><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
                         </div>
                       </div>
@@ -623,7 +634,7 @@ export const PantallaLalan: React.FC = () => {
                 m.deLalan ? (
                   <div key={m.id} className="space-y-2.5 max-w-[92%]">
                     <p className="text-[1.0625rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
-                    {m.accion && <TarjetaAccion accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} />}
+                    {m.accion && (m.accion.guia ? <TarjetaGuia guia={m.accion.guia} onLlevame={llevame} /> : <TarjetaAccion accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} />)}
                     <Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} />
                   </div>
                 ) : (
@@ -811,6 +822,29 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
             </button>
           )}
         </div>
+      )}
+    </div>
+  );
+};
+
+/** La tarjeta "Llévame": la app abre la pantalla de la tarea y señala dónde tocar */
+const TarjetaGuia: React.FC<{ guia: GuiaTarjeta; onLlevame: (g: GuiaTarjeta) => void }> = ({ guia, onLlevame }) => {
+  const enLaApp = guiaPorId(guia.id);
+  return (
+    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm p-3.5 space-y-2.5">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Te llevo</div>
+      <div>
+        <p className="text-[0.875rem] font-semibold leading-snug text-slate-700 dark:text-neutral-200">{guia.nombre}</p>
+        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+          {enLaApp ? `${enLaApp.pasos.length} ${enLaApp.pasos.length === 1 ? 'paso' : 'pasos'}` : 'Actualiza la app para ver esta guía'}
+          {guia.sede ? ` · Sede ${guia.sede}` : ''}
+        </p>
+      </div>
+      {enLaApp && (
+        <button type="button" onClick={() => onLlevame(guia)}
+          className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+          <Navigation className="w-4 h-4" /> Llévame
+        </button>
       )}
     </div>
   );

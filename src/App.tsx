@@ -38,6 +38,7 @@ import { BarraSoporte } from './components/ui/BarraSoporte';
 import { AvisoMensajes } from './components/ui/AvisoMensajes';
 import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
 import { BotonLalan, PantallaLalan } from './components/lalan/PantallaLalan';
+import { GuiaEnCurso } from './components/guias/GuiaEnCurso';
 import { Bienvenida } from './components/bienvenida/Bienvenida';
 import { AvisoBienvenida } from './components/bienvenida/AvisoBienvenida';
 import { RetornoInstagram } from './components/canales/RetornoInstagram';
@@ -171,6 +172,8 @@ const MainAppContent: React.FC = () => {
             {/* Escaneó el QR de un quiosco: aprobarlo desde aquí */}
             <AprobarQuiosco />
             <PantallaLalan />
+            {/* "Llévame": la guía paso a paso que dejó Lalan */}
+            <GuiaEnCurso />
             {/* La Bienvenida: configurar el salón paso a paso (se abre sola la primera vez) */}
             <Bienvenida />
             {MODO_CALOR && currentUser?.role === 'super_admin' && <CalorApp key={currentScreen} {...MODO_CALOR} pantalla={currentScreen} />}

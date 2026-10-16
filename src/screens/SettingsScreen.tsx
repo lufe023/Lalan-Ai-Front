@@ -59,6 +59,7 @@ import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
 import { AvisosEquipo } from '../components/ajustes/AvisosEquipo';
 import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPedida } from '../components/ajustes/MenuAjustes';
+import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
@@ -125,6 +126,12 @@ export const SettingsScreen: React.FC = () => {
     setSeccion(s);
     document.querySelector('#settings-screen .overflow-y-auto, #settings-screen main')?.scrollTo?.({ top: 0 });
   };
+  // "Llévame": la guía empieza en el menú, para que la persona aprenda el camino
+  useEffect(() => {
+    const alMenu = () => abrirSeccion(null);
+    window.addEventListener(EVENTO_AJUSTES_MENU, alMenu);
+    return () => window.removeEventListener(EVENTO_AJUSTES_MENU, alMenu);
+  }, []);
   const grupoAbierto = seccion ? gruposPara(currentUser?.role).find((x) => x.id === seccion) ?? GRUPOS_AJUSTES.find((x) => x.id === seccion) ?? null : null;
 
   const [quickReg, setQuickReg] = useState<QuickAuthRegistration>(() => quickAuth.getRegistration());
@@ -376,7 +383,7 @@ export const SettingsScreen: React.FC = () => {
           )}
 
           {/* Acceso Rápido Seguro con 1 toque */}
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-3">
+          <div data-guia="acceso-rapido" className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-3">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
@@ -524,7 +531,7 @@ export const SettingsScreen: React.FC = () => {
             />
           </div>
 
-          <div className="pt-2 border-t border-slate-200/60 dark:border-neutral-800">
+          <div data-guia="horario-salon" className="pt-2 border-t border-slate-200/60 dark:border-neutral-800">
             <HorarioSemanal
               semana={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
               onGuardar={horarioSemanal => updateSettings({ horarioSemanal })}
@@ -1132,7 +1139,7 @@ export const SettingsScreen: React.FC = () => {
         {/* La tablet de la entrada: las clientas sin cita se anotan solas */}
         <QuioscosSalon />
         {/* SECTION 3.46: PANTALLA DE PARED */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+        <div data-guia="pantalla-turnos" className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
           <div className="flex items-center gap-1.5">
             <MonitorPlay className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
@@ -1398,7 +1405,7 @@ export const SettingsScreen: React.FC = () => {
         {seccion === 'caja' && (
           <>
         {/* SECTION 3.5: MONEDAS Y DENOMINACIONES */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
+        <div data-guia="monedas" className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
           <div className="flex items-center gap-1.5">
             <Coins className="w-4 h-4 text-amber-500" />
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
@@ -1589,7 +1596,7 @@ export const SettingsScreen: React.FC = () => {
           <>
             <TamanoLetraSelector />
         {/* SECTION 1: THEME & COLOR CUSTOMIZATION (MANDATORY REQUIREMENT) */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
+        <div data-guia="tema-colores" className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-[var(--primary)] flex items-center justify-center">

@@ -8,6 +8,13 @@ import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../..
 import { conectarSoloInstagram } from '../../utils/instagramLogin';
 import { esAppInstalada, irAFacebook, necesitaRedireccion, tomarPendientes } from '../../utils/facebookLogin';
 import type { CommunicationChannel } from '../../types';
+import { sedeDeLaGuia } from '../guias/GuiaEnCurso';
+
+/** Si Lalan trajo a la persona con "Llévame" para una sede, esa sede ya viene elegida */
+const sedeGuia = (sedes: Sede[]) => {
+  const id = sedeDeLaGuia();
+  return id && sedes.some((s) => s.id === id) ? id : null;
+};
 
 /** Lo que llega de cada página (nunca su token). Foto, seguidores y negocio sirven para reconocer la correcta */
 interface Pagina { id: string; nombre: string; instagram: string | null; foto?: string | null; seguidores?: number | null; negocio?: string | null }
@@ -47,7 +54,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
     api.get<ConfigMeta>('/bots/conexion/configuracion').then(setCfg).catch(() => setCfg(null));
     // Si se volvió de Facebook (app instalada / teléfono), sus páginas esperan aquí para elegir
     const pendientes = tomarPendientes();
-    api.get<Sede[]>('/users/sedes').then((s) => { setSedes(s); setSede(pendientes?.locationId ?? s[0]?.id ?? ''); }).catch(() => undefined);
+    api.get<Sede[]>('/users/sedes').then((s) => { setSedes(s); setSede(pendientes?.locationId ?? sedeGuia(s) ?? s[0]?.id ?? ''); }).catch(() => undefined);
     if (pendientes) {
       setElegir({ token: pendientes.tokenUsuario, paginas: pendientes.paginas, canal: pendientes.canal });
     }
@@ -141,7 +148,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
       </div>
 
       {sedes.length > 1 && (
-        <label className="block">
+        <label className="block" data-guia="conectar-sede">
           <span className="text-[0.6875rem] font-bold uppercase text-slate-400">Para la sede</span>
           <select value={sede} onChange={(e) => setSede(e.target.value)}
             className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white">
@@ -167,7 +174,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
             );
           }
           return (
-            <button key={canal} type="button" disabled={!disponible(canal) || !!ocupado}
+            <button key={canal} type="button" disabled={!disponible(canal) || !!ocupado} data-guia={`conectar-${canal}`}
               onClick={() => abrir(canal)}
               className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold shadow-sm ${color} disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] transition`}>
               {cargandoEste ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icono className="w-4 h-4" />}
@@ -189,7 +196,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
       )}
 
       <IOSModal isOpen={preguntaWa} onClose={() => setPreguntaWa(false)} title="Conectar WhatsApp" subtitle="Una pregunta antes de abrir Meta" fixedHeight={false}>
-        <div className="space-y-2 p-1">
+        <div className="space-y-2 p-1" data-guia="conectar-whatsapp-opciones">
           <button type="button" onClick={() => void whatsapp(false)}
             className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] cursor-pointer">
             <b className="text-sm block">Un número solo para el salón <span className="text-[0.6875rem] text-emerald-600 font-bold">Recomendado</span></b>
