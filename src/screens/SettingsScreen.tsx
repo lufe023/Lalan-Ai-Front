@@ -66,6 +66,8 @@ import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 import { SeguridadCuenta } from '../components/ajustes/SeguridadCuenta';
+import { LoQueLalanSabe } from '../components/ajustes/LoQueLalanSabe';
+import { puedeHablarConLalan } from '../components/lalan/PantallaLalan';
 import { QuioscosSalon } from '../components/ajustes/QuioscosSalon';
 import { enSoporte } from '../services/soporte';
 import { DisenadorRecibo } from '../components/ajustes/DisenadorRecibo';
@@ -460,6 +462,8 @@ export const SettingsScreen: React.FC = () => {
         </div>
         {/* Contraseña y sesiones: son de la dueña de la cuenta, no de quien entra a dar soporte */}
         {!enSoporte() && <SeguridadCuenta />}
+        {/* Privado entre ella y Lalan: tampoco se ve desde una sesión de soporte */}
+        {!enSoporte() && puedeHablarConLalan(currentUser?.role) && <LoQueLalanSabe />}
           </>
         )}
         {seccion === 'plan' && (

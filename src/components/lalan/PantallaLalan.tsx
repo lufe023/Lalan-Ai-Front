@@ -22,7 +22,7 @@ import { descargarPlan, MisPlanes } from './MisPlanes';
 import { VerComo } from '../minitutoriales/VerComo';
 
 interface Accion {
-  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial'; resumen: string;
+  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
   /** "Llévame": la tarea a la que lleva y en qué sede */
   guia?: GuiaTarjeta | null;
@@ -866,9 +866,10 @@ const Calificar: React.FC<{ util: boolean | null; onCambio: (u: boolean | null) 
 };
 
 const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a: Accion, si: boolean) => void; onVerChat: (id: string) => void }> = ({ accion, ocupada, onResolver, onVerChat }) => {
-  // Servicios y rendimientos se GUARDAN en el salón; lo demás se MANDA a una clienta
-  const delSalon = accion.tipo === 'servicio' || accion.tipo === 'rendimiento';
-  const titulo = accion.tipo === 'indicacion' ? 'Indicación para Lalan en el chat'
+  // Servicios, rendimientos y lo que Lalan recuerda de ella se GUARDAN; lo demás se MANDA a una clienta
+  const delSalon = accion.tipo === 'servicio' || accion.tipo === 'rendimiento' || accion.tipo === 'recuerdo';
+  const titulo = accion.tipo === 'recuerdo' ? '¿Me acuerdo de esto? Solo entre tú y yo'
+    : accion.tipo === 'indicacion' ? 'Indicación para Lalan en el chat'
     : accion.tipo === 'servicio' ? 'Servicio del salón'
     : accion.tipo === 'rendimiento' ? 'Lo que rinde un producto'
     : 'Mensaje para la clienta';
@@ -880,7 +881,7 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
         <div className="flex items-center gap-2">
           <button type="button" disabled={ocupada} onClick={() => onResolver(accion, true)}
             className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer">
-            {ocupada ? <Loader2 className="w-4 h-4 animate-spin" /> : delSalon ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />} {delSalon ? 'Sí, guárdalo' : 'Sí, mándalo'}
+            {ocupada ? <Loader2 className="w-4 h-4 animate-spin" /> : delSalon ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />} {accion.tipo === 'recuerdo' ? 'Sí, acuérdate' : delSalon ? 'Sí, guárdalo' : 'Sí, mándalo'}
           </button>
           <button type="button" disabled={ocupada} onClick={() => onResolver(accion, false)}
             className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.875rem] font-semibold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
