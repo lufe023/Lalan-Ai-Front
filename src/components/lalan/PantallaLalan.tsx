@@ -125,11 +125,18 @@ const contarUsoDeVoz = () => { try { localStorage.setItem(CLAVE_USOS, String(uso
  */
 export const PantallaLalan: React.FC = () => {
   const { currentUser } = useAuth();
-  const { navigateTo, activeConversationId, setActiveConversationId, recargarCatalogo } = useApp();
+  const { navigateTo, activeConversationId, setActiveConversationId, recargarCatalogo, currentScreen } = useApp();
   const [abierta, setAbierta] = useState(false);
   const burbuja = useEnBurbuja();
-  // La esfera del teléfono tirada al zafacón con Lalan cerrada: se guarda hasta que se vuelva a abrir la app
+  // La esfera del teléfono tirada al zafacón con Lalan cerrada: se guarda solo un rato. En el teléfono no hay
+  // otra forma de llamar a Lalan, así que vuelve al cambiar de pantalla o al regresar a la app.
   const [esferaGuardada, setEsferaGuardada] = useState(false);
+  useEffect(() => { setEsferaGuardada(false); }, [currentScreen]);
+  useEffect(() => {
+    const alVolver = () => { if (document.visibilityState === 'visible') setEsferaGuardada(false); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => document.removeEventListener('visibilitychange', alVolver);
+  }, []);
   // Lo que dijo mientras estaba en burbuja (útil en silencio, cuando no habla)
   const [sinLeer, setSinLeer] = useState(false);
   /** La conversación sigue viva (abierta o en burbuja): al volver no se recarga */
