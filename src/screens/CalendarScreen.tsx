@@ -339,6 +339,7 @@ export const CalendarScreen: React.FC = () => {
         rightAction={
           <button
             onClick={() => setShowNewAptModal(true)}
+            data-guia="nueva-cita" aria-label="Nueva cita"
             className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:opacity-90 transition"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -833,7 +834,7 @@ export const CalendarScreen: React.FC = () => {
             return (
               <div>
                 <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Clienta *</label>
-                <input type="text" required placeholder="Escribe su nombre o teléfono" value={newClientName}
+                <input type="text" required placeholder="Escribe su nombre o teléfono" value={newClientName} data-guia="cita-clienta"
                   onChange={e => setNewClientName(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
                 {parecidas.length > 0 && (
@@ -949,7 +950,7 @@ export const CalendarScreen: React.FC = () => {
           {errorAlAgendar && (
             <p className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-[0.8125rem] font-semibold text-rose-700 dark:text-rose-300">{errorAlAgendar}</p>
           )}
-          <button type="submit" disabled={fueraDeHorario || agendando}
+          <button type="submit" disabled={fueraDeHorario || agendando} data-guia="guardar-cita"
             className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-rose-500 text-white font-bold text-sm shadow-md ios-touch cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
             Guardar Cita en Agenda
           </button>

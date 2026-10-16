@@ -880,9 +880,9 @@ const TarjetaGuia: React.FC<{ guia: GuiaTarjeta; onLlevame: (g: GuiaTarjeta) => 
       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Te llevo</div>
       <div>
         <p className="text-[0.875rem] font-semibold leading-snug text-slate-700 dark:text-neutral-200">{guia.nombre}</p>
-        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+        <p className="mt-0.5 flex items-center gap-1 text-[0.75rem] text-slate-500 dark:text-neutral-400">
+          {guia.sede && <><MapPin className="w-3 h-3" /> {guia.sede} · </>}
           {enLaApp ? `${enLaApp.pasos.length} ${enLaApp.pasos.length === 1 ? 'paso' : 'pasos'}` : 'Actualiza la app para ver esta guía'}
-          {guia.sede ? ` · Sede ${guia.sede}` : ''}
         </p>
       </div>
       {enLaApp && (
