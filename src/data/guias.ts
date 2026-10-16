@@ -115,6 +115,14 @@ export const GUIAS: GuiaApp[] = [
     ],
   },
   {
+    id: 'agendar-cita', nombre: 'Agendar una cita a mano', pantalla: 'calendar', cambiaSede: true,
+    pasos: [
+      { ancla: 'nueva-cita', texto: 'Toca el + para una cita nueva.' },
+      { ancla: 'cita-clienta', texto: 'Escribe su nombre o su teléfono y elígela de la lista. Si es nueva, escribe su nombre completo y su teléfono: se crea sola al guardar.', leer: true },
+      { ancla: 'guardar-cita', texto: 'Elige la hora, el servicio y la especialista, y toca «Guardar Cita en Agenda».', leer: true },
+    ],
+  },
+  {
     id: 'abrir-caja', nombre: 'Abrir la caja', pantalla: 'caja', cambiaSede: true,
     pasos: [
       { ancla: 'fondo-caja', texto: 'Escribe con cuánto efectivo empiezas el día.', leer: true },
