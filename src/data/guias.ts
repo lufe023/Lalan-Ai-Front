@@ -143,6 +143,13 @@ export const GUIAS: GuiaApp[] = [
     ],
   },
   {
+    id: 'lo-que-lalan-sabe', nombre: 'Ver lo que Lalan sabe de mí', pantalla: 'settings', ajustes: true,
+    pasos: [
+      fila('cuenta', 'Mi cuenta'),
+      { ancla: 'lo-que-lalan-sabe', texto: 'Aquí está lo que le contaste a Lalan. Puedes borrar cada cosa, tocar «Nunca guardes esto» o borrar todo.', leer: true },
+    ],
+  },
+  {
     id: 'tema-colores', nombre: 'Cambiar el modo oscuro y los colores', pantalla: 'settings', ajustes: true,
     pasos: [
       fila('apariencia', 'Apariencia'),
