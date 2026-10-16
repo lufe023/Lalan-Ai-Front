@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { Check, ChevronDown, FileDown, FileText, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { animate, AnimatePresence, motion, useMotionValue } from 'motion/react';
+import { Check, FileDown, FileText, Keyboard, Loader2, MapPin, MessageSquareText, Mic, Minimize2, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -49,6 +49,22 @@ export function abrirLalan() {
   if (!estaCallada()) despertarVoz();
   prepararAudio();
   window.dispatchEvent(new Event(EVENTO_ABRIR));
+}
+
+/**
+ * Lalan en burbuja: se minimiza (o se va con "Llévame") y sigue la charla
+ * desde una esfera flotante. El botón de siempre se esconde mientras tanto
+ * para que no haya dos esferas.
+ */
+let enBurbuja = false;
+const oyentesBurbuja = new Set<() => void>();
+function ponerBurbuja(v: boolean) {
+  if (enBurbuja === v) return;
+  enBurbuja = v;
+  oyentesBurbuja.forEach((f) => f());
+}
+function useEnBurbuja() {
+  return useSyncExternalStore((f) => { oyentesBurbuja.add(f); return () => { oyentesBurbuja.delete(f); }; }, () => enBurbuja);
 }
 
 /** Quién puede hablar con Lalan aquí: la administración del salón */
@@ -107,6 +123,12 @@ export const PantallaLalan: React.FC = () => {
   const { currentUser } = useAuth();
   const { navigateTo, setActiveConversationId, recargarCatalogo } = useApp();
   const [abierta, setAbierta] = useState(false);
+  const burbuja = useEnBurbuja();
+  // Lo que dijo mientras estaba en burbuja (útil en silencio, cuando no habla)
+  const [sinLeer, setSinLeer] = useState(false);
+  /** La conversación sigue viva (abierta o en burbuja): al volver no se recarga */
+  const sesionViva = useRef(false);
+  const sesion = useRef(0);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [cargando, setCargando] = useState(false);
   const [modo, setModo] = useState<ModoEsfera>('reposo');
@@ -155,11 +177,12 @@ export const PantallaLalan: React.FC = () => {
    */
   const conVoz = useRef(true);
   const vivo = useRef({ abierta: false, modo: 'reposo' as ModoEsfera, seguir: true, escribiendo: false });
-  vivo.current = { abierta, modo, seguir, escribiendo };
+  // En burbuja la charla sigue: cuenta como abierta para seguir escuchando
+  vivo.current = { abierta: abierta || burbuja, modo, seguir, escribiendo };
   const escucharSola = useRef<() => void>(() => undefined);
 
   useEffect(() => {
-    const abrir = () => setAbierta(true);
+    const abrir = () => { ponerBurbuja(false); setSinLeer(false); setAbierta(true); };
     window.addEventListener(EVENTO_ABRIR, abrir);
     return () => window.removeEventListener(EVENTO_ABRIR, abrir);
   }, []);
@@ -197,6 +220,7 @@ export const PantallaLalan: React.FC = () => {
   const recibir = useCallback((r: Respuesta, hablar = true) => {
     if (!r.mensajes.length) { setModo('reposo'); return; }
     setMensajes((antes) => juntar(antes, r.mensajes));
+    if (enBurbuja && r.mensajes.some((m) => m.deLalan)) setSinLeer(true);
     // Guardó un servicio o un rendimiento (con el botón o diciendo "sí"): el catálogo y el aviso de la Bienvenida se ponen al día
     if (r.mensajes.some((m) => m.accion && (m.accion.tipo === 'servicio' || m.accion.tipo === 'rendimiento') && m.accion.estado === 'hecha')) {
       void recargarCatalogo();
@@ -216,22 +240,26 @@ export const PantallaLalan: React.FC = () => {
   // Al abrir: la conversación de antes y, si hace rato que no hablan, el panorama del día
   useEffect(() => {
     if (!abierta) return;
-    let vigente = true;
+    // Vuelve de la burbuja: la conversación ya está aquí
+    if (sesionViva.current) { bajar(); return; }
+    sesionViva.current = true;
+    // Lo que llegue después de cerrarla del todo ya no se pinta (minimizar no la corta)
+    const mia = ++sesion.current;
+    const vigente = () => sesion.current === mia;
     setError('');
     setCargando(true);
     conVoz.current = true;
     // La voz (aparato o Cloudflare) sale de los ajustes: se esperan antes de que Lalan hable
-    const ajustesListos = cargarAjustesLalan().then((a) => { if (vigente) setAj(a); return a; });
+    const ajustesListos = cargarAjustesLalan().then((a) => { if (vigente()) setAj(a); return a; });
     api.get<Respuesta>('/asistente')
       // Se mezcla: el panorama puede llegar antes que la lista
-      .then((r) => { if (vigente) { setMensajes((antes) => juntar(r.mensajes, antes)); bajar(); } })
-      .catch((e) => vigente && fallo(e))
-      .finally(() => vigente && setCargando(false));
+      .then((r) => { if (vigente()) { setMensajes((antes) => juntar(r.mensajes, antes)); bajar(); } })
+      .catch((e) => vigente() && fallo(e))
+      .finally(() => vigente() && setCargando(false));
     setModo('pensando');
     api.post<Respuesta>('/asistente/panorama', {})
-      .then(async (r) => { await ajustesListos; if (vigente) recibir(r); })
-      .catch(() => vigente && setModo('reposo'));
-    return () => { vigente = false; };
+      .then(async (r) => { await ajustesListos; if (vigente()) recibir(r); })
+      .catch(() => vigente() && setModo('reposo'));
   }, [abierta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const escucha = useEscucha({
@@ -332,18 +360,31 @@ export const PantallaLalan: React.FC = () => {
   };
 
   const verChat = (id: string) => {
-    cerrar();
+    minimizar();
     navigateTo('chats');
     setActiveConversationId(id);
   };
 
-  /** "Llévame": se cierra Lalan y la app señala dónde tocar */
+  /** "Llévame": Lalan se hace burbuja (sigue oyendo) y la app señala dónde tocar */
   const llevame = (g: GuiaTarjeta) => {
-    cerrar();
+    minimizar();
     iniciarGuia(g.id, g.sedeId, g.sede);
   };
 
+  /** A la burbuja: la pantalla se va, la charla sigue (voz, micrófono y animación) */
+  const minimizar = () => {
+    setMenu(false);
+    setEscribiendo(false);
+    setAbierta(false);
+    ponerBurbuja(true);
+  };
+
+  /** Cerrarla del todo: se calla, suelta el micrófono y vuelve el botón de siempre */
   const cerrar = () => {
+    ponerBurbuja(false);
+    sesionViva.current = false;
+    sesion.current++;
+    setSinLeer(false);
     callarLalan();
     escucha.terminar(false);
     setMenu(false);
@@ -385,6 +426,9 @@ export const PantallaLalan: React.FC = () => {
   if (!puedeHablarConLalan(currentUser?.role)) return null;
 
   return (
+    <>
+    <BurbujaLalan visible={burbuja && !abierta} modo={modo} nivel={escucha.nivel} pulso={pulso} cierre={escucha.cierre}
+      sinLeer={sinLeer} onAbrir={abrirLalan} onCerrar={cerrar} />
     <AnimatePresence>
       {abierta && (
         <motion.div
@@ -410,8 +454,9 @@ export const PantallaLalan: React.FC = () => {
             {/* Arriba */}
             <div className="flex items-center justify-between px-4 h-12 shrink-0">
               <div className="w-24 flex">
-                <button type="button" onClick={cerrar} aria-label="Cerrar" className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
-                  <ChevronDown className="w-6 h-6" />
+                {/* Cerrar del todo (para dejarla a mano está Minimizar) */}
+                <button type="button" onClick={cerrar} aria-label="Cerrar a Lalan" title="Cerrar" className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                  <X className="w-5.5 h-5.5" />
                 </button>
               </div>
               {/* En PC el nombre ya está en el panel de la conversación */}
@@ -564,6 +609,10 @@ export const PantallaLalan: React.FC = () => {
                       {modo === 'pensando' ? 'Pensando…' : 'Tu asistente, al día con tu salón'}
                     </div>
                   </div>
+                  <button type="button" onClick={minimizar} title="Lalan sigue contigo en una burbuja"
+                    className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
+                    <Minimize2 className="w-4 h-4" /> Minimizar
+                  </button>
                 </div>
                 <div ref={lista} aria-live="polite"
                   className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
@@ -685,7 +734,10 @@ export const PantallaLalan: React.FC = () => {
               ) : (
                 <>
                   <div className="w-full flex items-center justify-between">
-                    <span className="w-11" />
+                    <button type="button" onClick={minimizar} aria-label="Minimizar a Lalan" title="Minimizar"
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                      <Minimize2 className="w-5 h-5" />
+                    </button>
                     <div className="relative">
                     {/* La pastilla, pegada a la esfera; aparece y se desvanece suave */}
                     <AnimatePresence>
@@ -726,6 +778,7 @@ export const PantallaLalan: React.FC = () => {
       )}
       {abierta && verPlanes && <MisPlanes key="mis-planes" onCerrar={() => setVerPlanes(false)} />}
     </AnimatePresence>
+    </>
   );
 };
 
@@ -899,13 +952,169 @@ const TarjetaGuia: React.FC<{ guia: GuiaTarjeta; onLlevame: (g: GuiaTarjeta) => 
 export const BotonLalan: React.FC = () => {
   const { currentUser } = useAuth();
   const puede = puedeHablarConLalan(currentUser?.role);
+  const burbuja = useEnBurbuja();
   // Los ajustes se traen al entrar a la app: al abrir a Lalan ya se sabe qué voz usar
   useEffect(() => { if (puede) void cargarAjustesLalan(); }, [puede]);
-  if (!puede) return null;
+  // Con Lalan en burbuja ya hay una esfera en pantalla
+  if (!puede || burbuja) return null;
   return (
     <button type="button" onClick={abrirLalan} aria-label="Hablar con Lalan" data-medir="Abrir Lalan"
       className="lg:hidden absolute right-3 bottom-3 z-40 rounded-full shadow-lg shadow-[var(--primary)]/30 cursor-pointer active:scale-95 transition-transform">
       <EsferaLalan modo="reposo" tamano={56} />
     </button>
+  );
+};
+
+const TAM_BURBUJA = 64;
+const BORDE_BURBUJA = 12;
+/** A cuánto del centro del zafacón (en px) la burbuja "cae" dentro */
+const RADIO_ZAFACON = 64;
+const CLAVE_POS_BURBUJA = 'lalan_burbuja_pos';
+const RESORTE = { type: 'spring', stiffness: 420, damping: 34 } as const;
+interface PosBurbuja { lado: 'izq' | 'der'; y: number }
+
+/** Dónde la dejó la persona: el lado y la altura (en proporción de la pantalla) */
+function posGuardada(): PosBurbuja {
+  try {
+    const p = JSON.parse(localStorage.getItem(CLAVE_POS_BURBUJA) || 'null') as PosBurbuja | null;
+    if (p && (p.lado === 'izq' || p.lado === 'der') && typeof p.y === 'number') return p;
+  } catch { /* noop */ }
+  return { lado: 'der', y: 0.72 };
+}
+function guardarPos(p: PosBurbuja) { try { localStorage.setItem(CLAVE_POS_BURBUJA, JSON.stringify(p)); } catch { /* noop */ } }
+
+const ETIQUETA_BURBUJA: Record<ModoEsfera, string> = {
+  reposo: 'Lalan. Toca para abrir el chat',
+  escuchando: 'Lalan te escucha. Toca para abrir el chat',
+  pensando: 'Lalan está pensando. Toca para abrir el chat',
+  hablando: 'Lalan está hablando. Toca para abrir el chat',
+};
+
+/**
+ * Lalan minimizada: la esfera flota sobre la app y sigue escuchando y
+ * hablando. Se arrastra a cualquier lado y se pega al borde más cercano;
+ * tocarla vuelve al chat. Mientras se arrastra aparece un zafacón abajo, en
+ * el centro: soltarla encima la cierra del todo.
+ */
+const BurbujaLalan: React.FC<{
+  visible: boolean; modo: ModoEsfera; nivel: number; pulso: number; cierre: number; sinLeer: boolean;
+  onAbrir: () => void; onCerrar: () => void;
+}> = ({ visible, modo, nivel, pulso, cierre, sinLeer, onAbrir, onCerrar }) => {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const [arrastrando, setArrastrando] = useState(false);
+  const [sobreZafacon, setSobreZafacon] = useState(false);
+  const [tirando, setTirando] = useState(false);
+  const movio = useRef(false);
+  const zafacon = useRef<HTMLDivElement>(null);
+
+  const colocar = useCallback((p: PosBurbuja, suave: boolean) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const nx = p.lado === 'der' ? vw - TAM_BURBUJA - BORDE_BURBUJA : BORDE_BURBUJA;
+    const ny = Math.min(Math.max(p.y * vh, BORDE_BURBUJA + 40), vh - TAM_BURBUJA - BORDE_BURBUJA);
+    if (suave) { void animate(x, nx, RESORTE); void animate(y, ny, RESORTE); }
+    else { x.set(nx); y.set(ny); }
+  }, [x, y]);
+
+  useEffect(() => {
+    if (!visible) return;
+    setTirando(false);
+    setSobreZafacon(false);
+    colocar(posGuardada(), false);
+    const alCambiar = () => colocar(posGuardada(), false);
+    window.addEventListener('resize', alCambiar);
+    return () => window.removeEventListener('resize', alCambiar);
+  }, [visible, colocar]);
+
+  /** El centro del zafacón, si está en pantalla */
+  const centroZafacon = () => {
+    const r = zafacon.current?.getBoundingClientRect();
+    return r ? { cx: r.left + r.width / 2, cy: r.top + r.height / 2 } : null;
+  };
+  const cayendo = () => {
+    const z = centroZafacon();
+    if (!z) return false;
+    return Math.hypot(x.get() + TAM_BURBUJA / 2 - z.cx, y.get() + TAM_BURBUJA / 2 - z.cy) < RADIO_ZAFACON;
+  };
+
+  const soltar = () => {
+    setArrastrando(false);
+    const z = centroZafacon();
+    if (z && cayendo()) {
+      // Entra al zafacón, se encoge y Lalan se cierra
+      setTirando(true);
+      void animate(x, z.cx - TAM_BURBUJA / 2, RESORTE);
+      void animate(y, z.cy - TAM_BURBUJA / 2, RESORTE);
+      window.setTimeout(onCerrar, 320);
+      return;
+    }
+    setSobreZafacon(false);
+    const p: PosBurbuja = { lado: x.get() + TAM_BURBUJA / 2 < window.innerWidth / 2 ? 'izq' : 'der', y: y.get() / window.innerHeight };
+    guardarPos(p);
+    colocar(p, true);
+  };
+
+  return (
+    <>
+      <AnimatePresence>
+        {visible && (arrastrando || tirando) && (
+          <motion.div key="zafacon" aria-hidden="true"
+            className="fixed inset-x-0 z-[405] flex justify-center pointer-events-none"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)' }}
+            initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 36 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
+            <div className="flex flex-col items-center gap-1.5">
+              <motion.div ref={zafacon}
+                animate={{ scale: sobreZafacon ? 1.18 : 1 }} transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                className={`w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-xl border shadow-xl transition-colors duration-200 ${sobreZafacon
+                  ? 'bg-rose-500 border-rose-400 text-white shadow-rose-500/40'
+                  : 'bg-white/85 dark:bg-neutral-900/85 border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-neutral-300 shadow-black/10'}`}>
+                <Trash2 className="w-6 h-6" />
+              </motion.div>
+              <span className="px-2.5 py-0.5 rounded-full text-[0.6875rem] font-semibold bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md text-slate-600 dark:text-neutral-300 shadow-sm">
+                {sobreZafacon ? 'Suelta para cerrar a Lalan' : 'Cerrar a Lalan'}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {visible && (
+          <motion.div key="burbuja"
+            className="fixed left-0 top-0 z-[410] touch-none"
+            style={{ x, y, width: TAM_BURBUJA, height: TAM_BURBUJA }}
+            initial={{ opacity: 0, scale: 0.4 }}
+            animate={{ opacity: tirando ? 0 : 1, scale: tirando ? 0.2 : sobreZafacon ? 0.82 : 1 }}
+            exit={{ opacity: 0, scale: 0.4 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+            drag dragMomentum={false} dragElastic={0}
+            whileDrag={{ scale: 1.08 }}
+            onPointerDown={() => { movio.current = false; }}
+            onDragStart={() => { movio.current = true; setArrastrando(true); }}
+            onDrag={() => setSobreZafacon(cayendo())}
+            onDragEnd={soltar}>
+            <button type="button" aria-label={ETIQUETA_BURBUJA[modo]} title="Toca para volver al chat · arrástrala abajo para cerrarla"
+              onClick={() => { if (movio.current) { movio.current = false; return; } onAbrir(); }}
+              className="relative w-full h-full rounded-full cursor-pointer shadow-xl shadow-[var(--primary)]/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+              <EsferaLalan modo={modo} nivel={nivel} pulso={pulso} tamano={TAM_BURBUJA} />
+              {modo === 'escuchando' && cierre > 0 && (
+                <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="var(--primary)" strokeOpacity="0.9" strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${cierre * 251.3} 251.3`} />
+                </svg>
+              )}
+              {/* Dijo algo mientras estaba en burbuja (en silencio solo se lee) */}
+              <AnimatePresence>
+                {sinLeer && (
+                  <motion.span key="nuevo" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                    className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--primary)] ring-2 ring-white dark:ring-neutral-900" />
+                )}
+              </AnimatePresence>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
