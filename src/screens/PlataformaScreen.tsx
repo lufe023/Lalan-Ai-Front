@@ -14,6 +14,7 @@ import { ReportesExcel } from '../components/plataforma/ReportesExcel';
 import { UsoLalanPlataforma } from '../components/plataforma/UsoLalanPlataforma';
 import { EquipoSoporte } from '../components/plataforma/EquipoSoporte';
 import { PortadasPlataforma } from '../components/plataforma/PortadasPlataforma';
+import { GuiasPlataforma } from '../components/plataforma/GuiasPlataforma';
 import { SaludServicios } from '../components/plataforma/SaludServicios';
 import { NegociosPlataforma, type PrellenadoNegocio } from '../components/plataforma/NegociosPlataforma';
 import { PlanesPlataforma } from '../components/plataforma/PlanesPlataforma';
@@ -21,7 +22,7 @@ import { UsoAppPanel } from '../components/plataforma/UsoAppPanel';
 import type { Dispositivo, ResumenLanding } from '../types/plataforma';
 import { useAuth } from '../context/AuthContext';
 
-type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas' | 'lalan';
+type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas' | 'guias' | 'lalan';
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'salud', label: 'Salud' },
   { id: 'negocios', label: 'Clientes' },
@@ -31,6 +32,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'piloto', label: 'Piloto' },
   { id: 'soporte', label: 'Equipo' },
   { id: 'portadas', label: 'Portadas' },
+  { id: 'guias', label: 'Guías' },
   { id: 'lalan', label: 'Lalan' },
 ];
 
@@ -367,6 +369,7 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'planes' && <PlanesPlataforma />}
         {pestana === 'soporte' && <EquipoSoporte />}
         {pestana === 'portadas' && <PortadasPlataforma />}
+        {pestana === 'guias' && <GuiasPlataforma />}
         {pestana === 'lalan' && (
           <div className="space-y-5">
             <IOSSegmentedControl id="plataforma-lalan" options={[{ id: 'uso', label: 'Cómo la usan' }, { id: 'ajustes', label: 'Ajustes de la app' }, { id: 'landing', label: 'Landing (IA y voz)' }]} value={vistaLalan} onChange={(v) => setVistaLalan(v as 'uso' | 'ajustes' | 'landing')} size="sm" />

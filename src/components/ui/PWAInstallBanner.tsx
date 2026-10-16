@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Download, Share, X, Smartphone, PlusSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { VerComo } from '../minitutoriales/VerComo';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -22,6 +23,8 @@ export const PWAInstallBanner: React.FC = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
+  /** En iPhone: primero el minitutorial con fotos; si aún no hay uno publicado, las instrucciones de texto */
+  const [verFotos, setVerFotos] = useState(false);
   const [dismissed, setDismissed] = useState(() => cerradoVigente());
   const [esTelefono] = useState(() => /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent));
 
@@ -65,7 +68,7 @@ export const PWAInstallBanner: React.FC = () => {
       }
       setDeferredPrompt(null);
     } else if (isIOS) {
-      setShowIOSModal(true);
+      setVerFotos(true);
     }
   };
 
@@ -107,7 +110,10 @@ export const PWAInstallBanner: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal instructivo para iOS Safari */}
+      <VerComo tema={verFotos ? 'instalar-app' : null} onCerrar={() => setVerFotos(false)}
+        onSinTutorial={() => { setVerFotos(false); setShowIOSModal(true); }} />
+
+      {/* Modal instructivo para iOS Safari (si todavía no hay fotos publicadas) */}
       <AnimatePresence>
         {showIOSModal && (
           <motion.div
