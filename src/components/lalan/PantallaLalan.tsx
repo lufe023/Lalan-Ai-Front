@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue } from 'motion/react';
-import { Check, FileDown, FileText, Keyboard, Loader2, MapPin, MessageSquareText, Mic, Minimize2, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, Minimize2, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -19,15 +19,19 @@ import { ElegirEsfera } from './ElegirEsfera';
 import { iniciarGuia } from '../guias/GuiaEnCurso';
 import { guiaPorId } from '../../data/guias';
 import { descargarPlan, MisPlanes } from './MisPlanes';
+import { VerComo } from '../minitutoriales/VerComo';
 
 interface Accion {
-  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'recuerdo'; resumen: string;
+  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
   /** "Llévame": la tarea a la que lleva y en qué sede */
   guia?: GuiaTarjeta | null;
   /** Un plan guardado: cuál es, para descargarlo en PDF */
   documento?: DocumentoTarjeta | null;
+  /** "Ver cómo": un minitutorial con fotos de algo que se hace fuera de la app */
+  tutorial?: TutorialTarjeta | null;
 }
+interface TutorialTarjeta { tema: string; nombre: string }
 interface DocumentoTarjeta { id: string; titulo: string; sede: string }
 interface GuiaTarjeta { id: string; nombre: string; sedeId: string | null; sede: string | null }
 interface Mensaje { id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null; util?: boolean | null }
@@ -121,11 +125,18 @@ const contarUsoDeVoz = () => { try { localStorage.setItem(CLAVE_USOS, String(uso
  */
 export const PantallaLalan: React.FC = () => {
   const { currentUser } = useAuth();
-  const { navigateTo, activeConversationId, setActiveConversationId, recargarCatalogo } = useApp();
+  const { navigateTo, activeConversationId, setActiveConversationId, recargarCatalogo, currentScreen } = useApp();
   const [abierta, setAbierta] = useState(false);
   const burbuja = useEnBurbuja();
-  // La esfera del teléfono tirada al zafacón con Lalan cerrada: se guarda hasta que se vuelva a abrir la app
+  // La esfera del teléfono tirada al zafacón con Lalan cerrada: se guarda solo un rato. En el teléfono no hay
+  // otra forma de llamar a Lalan, así que vuelve al cambiar de pantalla o al regresar a la app.
   const [esferaGuardada, setEsferaGuardada] = useState(false);
+  useEffect(() => { setEsferaGuardada(false); }, [currentScreen]);
+  useEffect(() => {
+    const alVolver = () => { if (document.visibilityState === 'visible') setEsferaGuardada(false); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => document.removeEventListener('visibilitychange', alVolver);
+  }, []);
   // Lo que dijo mientras estaba en burbuja (útil en silencio, cuando no habla)
   const [sinLeer, setSinLeer] = useState(false);
   /** La conversación sigue viva (abierta o en burbuja): al volver no se recarga */
@@ -900,7 +911,8 @@ const Tarjeta: React.FC<{
 }> = ({ accion, ocupada, onResolver, onVerChat, onLlevame, onFallo }) => {
   if (accion.guia) return <TarjetaGuia guia={accion.guia} onLlevame={onLlevame} />;
   if (accion.documento) return <TarjetaDocumento documento={accion.documento} onFallo={onFallo} />;
-  if (accion.tipo === 'guia' || accion.tipo === 'documento') return null;
+  if (accion.tutorial) return <TarjetaTutorial tutorial={accion.tutorial} />;
+  if (accion.tipo === 'guia' || accion.tipo === 'documento' || accion.tipo === 'tutorial') return null;
   return <TarjetaAccion accion={accion} ocupada={ocupada} onResolver={onResolver} onVerChat={onVerChat} />;
 };
 
@@ -924,6 +936,22 @@ const TarjetaDocumento: React.FC<{ documento: DocumentoTarjeta; onFallo: (e: unk
         className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60">
         {bajando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />} Descargar PDF
       </button>
+    </div>
+  );
+};
+
+/** "Ver cómo": las fotos paso a paso de algo que se hace fuera de la app, para este aparato */
+const TarjetaTutorial: React.FC<{ tutorial: TutorialTarjeta }> = ({ tutorial }) => {
+  const [viendo, setViendo] = useState(false);
+  return (
+    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm p-3.5 space-y-2.5">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Paso a paso con fotos</div>
+      <p className="text-[0.875rem] font-semibold leading-snug text-slate-700 dark:text-neutral-200">{tutorial.nombre}</p>
+      <button type="button" onClick={() => setViendo(true)}
+        className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+        <Images className="w-4 h-4" /> Ver cómo
+      </button>
+      <VerComo tema={viendo ? tutorial.tema : null} onCerrar={() => setViendo(false)} />
     </div>
   );
 };
