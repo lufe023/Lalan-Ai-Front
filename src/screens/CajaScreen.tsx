@@ -673,6 +673,7 @@ export const CajaScreen: React.FC = () => {
 
                   <button
                     onClick={cerrarCaja}
+                    data-guia="cerrar-caja"
                     disabled={ocupado}
                     className="w-full py-2.5 rounded-xl bg-slate-800 dark:bg-neutral-200 text-white dark:text-neutral-900 text-xs font-extrabold flex items-center justify-center gap-1.5 disabled:opacity-40 transition"
                   >
@@ -707,6 +708,7 @@ export const CajaScreen: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    data-guia="fondo-caja"
                     value={fondo}
                     onChange={e => setFondo(e.target.value)}
                     placeholder="0.00"
@@ -715,6 +717,7 @@ export const CajaScreen: React.FC = () => {
                 </div>
                 <button
                   onClick={abrirCaja}
+                  data-guia="abrir-caja"
                   disabled={ocupado}
                   className="w-full py-2.5 rounded-xl bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 disabled:opacity-40 transition"
                 >

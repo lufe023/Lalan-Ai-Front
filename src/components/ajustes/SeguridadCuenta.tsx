@@ -139,7 +139,7 @@ export const SeguridadCuenta: React.FC = () => {
 
       {/* Cambiar contraseña */}
       <div className="rounded-xl bg-slate-50 dark:bg-neutral-800/60">
-        <button type="button" onClick={() => setAbierto((v) => !v)} aria-expanded={abierto}
+        <button type="button" onClick={() => setAbierto((v) => !v)} aria-expanded={abierto} data-guia="cambiar-clave"
           className="w-full flex items-center gap-3 p-3 text-left cursor-pointer">
           <KeyRound className="w-4 h-4 text-slate-500 dark:text-neutral-400 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -160,7 +160,7 @@ export const SeguridadCuenta: React.FC = () => {
               {ver ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />} {ver ? 'Ocultar' : 'Ver'} las contraseñas
             </button>
             {error && <p className="text-[0.75rem] text-rose-600 dark:text-rose-400">{error}</p>}
-            <button type="submit" disabled={guardando}
+            <button type="submit" disabled={guardando} data-guia="guardar-clave"
               className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer">
               {guardando && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Guardar contraseña nueva
             </button>

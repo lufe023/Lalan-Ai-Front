@@ -6,8 +6,25 @@ import type { DiaDeHorario } from '../types';
 
 /** La Bienvenida se abre desde cualquier parte (Ajustes, el aviso) con un evento, como Lalan */
 const EVENTO_ABRIR = 'lalan:bienvenida';
-/** "Ahora no": no se vuelve a abrir sola en esta sesión del navegador */
-const CLAVE_POSPUESTA = 'lalan_bienvenida_pospuesta';
+/**
+ * "Ahora no": no se vuelve a abrir sola en unos días. Antes duraba solo la
+ * sesión del navegador y la dueña la veía cada vez que entraba.
+ */
+const CLAVE_POSPUESTA = 'lalan_bienvenida_pospuesta_hasta';
+const DIAS_POSPUESTA = 3;
+/** La cinta "Tu salón está al 70 %" cerrada con la X: vuelve en una semana */
+const CLAVE_AVISO_OCULTO = 'lalan_aviso_bienvenida_oculto_hasta';
+const DIAS_AVISO_OCULTO = 7;
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+function vigente(clave: string): boolean {
+  try { return Number(localStorage.getItem(clave) ?? 0) > Date.now(); } catch { return false; }
+}
+function hastaDentroDe(clave: string, dias: number) {
+  try { localStorage.setItem(clave, String(Date.now() + dias * DIA_MS)); } catch { /* sin almacenamiento: se oculta solo por ahora */ }
+}
+export function avisoBienvenidaOculto(): boolean { return vigente(CLAVE_AVISO_OCULTO); }
+export function ocultarAvisoBienvenida() { hastaDentroDe(CLAVE_AVISO_OCULTO, DIAS_AVISO_OCULTO); }
 
 export function abrirBienvenida() { window.dispatchEvent(new Event(EVENTO_ABRIR)); }
 export function alPedirBienvenida(fn: () => void) {
@@ -22,12 +39,8 @@ export function alCambiarBienvenida(fn: () => void) {
   return () => window.removeEventListener(EVENTO_CAMBIO, fn);
 }
 
-export function bienvenidaPospuesta(): boolean {
-  try { return sessionStorage.getItem(CLAVE_POSPUESTA) === '1'; } catch { return false; }
-}
-export function posponerBienvenida() {
-  try { sessionStorage.setItem(CLAVE_POSPUESTA, '1'); } catch { /* sin almacenamiento: se pospone solo por ahora */ }
-}
+export function bienvenidaPospuesta(): boolean { return vigente(CLAVE_POSPUESTA); }
+export function posponerBienvenida() { hastaDentroDe(CLAVE_POSPUESTA, DIAS_POSPUESTA); }
 
 /** Las fotos (lista de precios, factura) van como multipart en el campo "fotos" */
 function conFotos(fotos: File[]) {

@@ -54,7 +54,7 @@ export const MenuAjustes: React.FC<{ rol?: UserRole; onAbrir: (s: SeccionAjustes
     {gruposPara(rol).map((g, i) => {
       const Icono = g.icono;
       return (
-        <motion.button key={g.id} type="button" onClick={() => onAbrir(g.id)}
+        <motion.button key={g.id} type="button" onClick={() => onAbrir(g.id)} data-guia={`ajustes-${g.id}`}
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...RESORTE, delay: i * 0.03 }}
           whileTap={{ scale: 0.985, backgroundColor: 'rgba(148,163,184,0.12)' }}
           className="w-full px-3.5 py-3 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-neutral-800/60 ios-touch cursor-pointer">

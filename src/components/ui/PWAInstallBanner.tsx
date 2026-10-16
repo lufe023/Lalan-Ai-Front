@@ -7,12 +7,23 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+/** Cerrado con la X: no vuelve a salir en un mes (antes salía cada vez que se entraba) */
+const CLAVE_CERRADO = 'lalan_instalar_cerrado_hasta';
+const DIAS_CERRADO = 30;
+function cerradoVigente(): boolean {
+  try { return Number(localStorage.getItem(CLAVE_CERRADO) ?? 0) > Date.now(); } catch { return false; }
+}
+function cerrarPorUnMes() {
+  try { localStorage.setItem(CLAVE_CERRADO, String(Date.now() + DIAS_CERRADO * 24 * 60 * 60 * 1000)); } catch { /* sin almacenamiento: solo por ahora */ }
+}
+
 export const PWAInstallBanner: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => cerradoVigente());
+  const [esTelefono] = useState(() => /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent));
 
   useEffect(() => {
     // Verificar si ya está corriendo instalada (standalone)
@@ -76,7 +87,7 @@ export const PWAInstallBanner: React.FC = () => {
             <Smartphone className="w-3.5 h-3.5" />
           </div>
           <span className="truncate font-medium">
-            {isIOS ? 'Instala Lalan en tu iPhone para abrir a pantalla completa' : 'Instala la app en tu teléfono'}
+            {isIOS ? 'Instala Lalan en tu iPhone para abrir a pantalla completa' : esTelefono ? 'Instala la app en tu teléfono' : 'Instala Lalan en esta computadora'}
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -87,9 +98,9 @@ export const PWAInstallBanner: React.FC = () => {
             {isIOS ? 'Cómo instalar' : 'Instalar'}
           </button>
           <button
-            onClick={() => setDismissed(true)}
+            onClick={() => { cerrarPorUnMes(); setDismissed(true); }}
             className="p-1 text-white/80 hover:text-white transition cursor-pointer"
-            title="Cerrar aviso"
+            title="Cerrar por un mes"
           >
             <X className="w-3.5 h-3.5" />
           </button>

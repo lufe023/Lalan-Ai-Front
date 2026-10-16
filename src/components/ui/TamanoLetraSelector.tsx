@@ -6,7 +6,7 @@ import { elegirTamano, TAMANOS_LETRA, tamanoGuardado, TamanoLetra } from '../../
 export const TamanoLetraSelector: React.FC = () => {
   const [actual, setActual] = useState<TamanoLetra>(tamanoGuardado);
   return (
-    <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3 text-slate-900 dark:text-neutral-100">
+    <div data-guia="tamano-letra" className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3 text-slate-900 dark:text-neutral-100">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><Type className="w-4 h-4" /></div>
         <div>

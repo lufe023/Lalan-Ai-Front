@@ -40,7 +40,7 @@ export const ActivarNotificaciones: React.FC = () => {
   if (!estado) return null;
   const activas = estado === 'activas';
   return (
-    <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-2">
+    <div data-guia="notificaciones" className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-2">
       <div className="flex items-center gap-2">
         {activas ? <BellRing className="w-4 h-4 text-emerald-500" /> : estado === 'instalar' ? <Share className="w-4 h-4 text-[var(--primary)]" /> : <BellOff className="w-4 h-4 text-slate-400" />}
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Notificaciones en el teléfono</h3>
