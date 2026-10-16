@@ -17,7 +17,7 @@ interface ResumenCosto {
 }
 
 const FUENTES: Record<string, string> = {
-  chat: 'Chats con clientas', pantalla: 'Pantalla de la dueña', informes: 'Informes', senales: 'Señales de los chats',
+  chat: 'Chats con clientas', pantalla: 'Pantalla de la dueña', planes: 'Planes de Lalan', informes: 'Informes', senales: 'Señales de los chats',
   fotos: 'Fotos', landing: 'Landing (IA y voz)', plataforma: 'Análisis de Plataforma', voz: 'Voz de Lalan (Cloudflare)',
 };
 
