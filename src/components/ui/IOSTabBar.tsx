@@ -21,6 +21,8 @@ import {
 import { LogoLalan } from './LogoLalan';
 import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
 import { EsferaLalan } from '../lalan/EsferaLalan';
+import { ZafaconLalan } from '../lalan/PantallaLalan';
+import { useZafacon } from '../lalan/zafaconLalan';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNombreSede } from './ListaSedes';
@@ -133,6 +135,23 @@ export const IOSTabBar: React.FC = () => {
    */
   const barraRef = useRef<HTMLDivElement>(null);
   const arrastre = useRef({ activo: false, desdeX: 0, desdeScroll: 0, movido: 0 });
+
+  /**
+   * El zafacón de Lalan aparece entre los dos botones que quedan en el centro
+   * de lo que se ve del menú (se calcula al empezar a arrastrar la burbuja).
+   */
+  const zafacon = useZafacon();
+  const [lugarZafacon, setLugarZafacon] = useState(-1);
+  useEffect(() => {
+    if (!zafacon.visible) return;
+    const barra = barraRef.current;
+    if (!barra) return;
+    const caja = barra.getBoundingClientRect();
+    const medio = caja.left + caja.width / 2;
+    const botones = Array.from(barra.querySelectorAll<HTMLElement>('[id^="tab-btn-"]'));
+    const antes = botones.filter((b) => { const r = b.getBoundingClientRect(); return r.left + r.width / 2 < medio; }).length;
+    setLugarZafacon(Math.min(antes, Math.max(0, botones.length - 1)));
+  }, [zafacon.visible]);
 
   const alRodar = (e: React.WheelEvent) => {
     const el = barraRef.current;
@@ -473,12 +492,23 @@ export const IOSTabBar: React.FC = () => {
               iconos en el ancho del teléfono y quedan del tamaño de una uña.
               Cada botón tiene ancho fijo y área táctil de 44px de alto. */}
           <div className="flex items-center justify-between gap-1 w-max min-w-full px-2">
-            {tabs.map(tab => {
+            {tabs.map((tab, i) => {
               const isActive = currentScreen === tab.id;
               const Icon = tab.icon;
               return (
+                <React.Fragment key={tab.id}>
+                {/* El zafacón de Lalan entra justo en el centro de lo que se ve y empuja a los vecinos */}
+                <AnimatePresence>
+                  {zafacon.visible && i === lugarZafacon && (
+                    <motion.div key="zafacon" aria-hidden="true"
+                      initial={{ width: 0, opacity: 0, scale: 0.5 }} animate={{ width: 76, opacity: 1, scale: 1 }} exit={{ width: 0, opacity: 0, scale: 0.5 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      className="shrink-0 flex items-center justify-center min-h-[44px]">
+                      <ZafaconLalan sobre={zafacon.sobre} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <button
-                  key={tab.id}
                   data-medir={`Menú: ${tab.label}`}
                   id={`tab-btn-${tab.id}`}
                   onClick={() => { if (!fueArrastre()) navigateTo(tab.id); }}
@@ -519,6 +549,7 @@ export const IOSTabBar: React.FC = () => {
                     {tab.label}
                   </span>
                 </button>
+                </React.Fragment>
               );
             })}
           </div>
