@@ -173,9 +173,13 @@ export const GuiaEnCurso: React.FC = () => {
             animate={{ opacity: 1, left: caja.left - MARGEN, top: caja.top - MARGEN, width: caja.width + MARGEN * 2, height: caja.height + MARGEN * 2 }}
             exit={{ opacity: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-            className="fixed rounded-2xl ring-[3px] ring-[var(--primary)]"
-            style={{ boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.38)' }}
-          />
+            className="foco-guia fixed rounded-2xl"
+          >
+            {/* Un latido suave al llegar: se ve dónde tocar también en modo oscuro */}
+            <motion.span aria-hidden="true" className="absolute inset-0 rounded-2xl ring-2 ring-[var(--primary)]"
+              initial={{ opacity: 0.9, scale: 1 }} animate={{ opacity: 0, scale: 1.12 }}
+              transition={{ duration: 1.4, ease: 'easeOut', repeat: 2, repeatDelay: 0.3 }} />
+          </motion.div>
         )}
       </AnimatePresence>
       <motion.div

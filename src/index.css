@@ -207,3 +207,20 @@ html, body, #root {
   overflow-x: hidden;
   overscroll-behavior-x: none;
 }
+
+/* Lo que señala la guía "Llévame": un recuadro del color de la marca que
+   brilla y oscurece el resto. En modo oscuro el velo es casi negro: el gris
+   claro de antes no se distinguía del fondo */
+.foco-guia {
+  box-shadow:
+    0 0 0 3px var(--primary),
+    0 0 22px 4px color-mix(in srgb, var(--primary) 45%, transparent),
+    0 0 0 9999px rgba(15, 23, 42, 0.38);
+}
+.dark .foco-guia {
+  box-shadow:
+    0 0 0 3px var(--primary),
+    0 0 28px 6px color-mix(in srgb, var(--primary) 70%, transparent),
+    inset 0 0 0 9999px color-mix(in srgb, var(--primary) 10%, transparent),
+    0 0 0 9999px rgba(0, 0, 0, 0.68);
+}
