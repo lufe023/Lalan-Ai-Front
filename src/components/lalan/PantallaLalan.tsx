@@ -17,7 +17,6 @@ import {
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
 import { ElegirEsfera } from './ElegirEsfera';
 import { iniciarGuia } from '../guias/GuiaEnCurso';
-import { centroZafacon, ponerZafacon, registrarZafacon, useZafacon } from './zafaconLalan';
 import { guiaPorId } from '../../data/guias';
 import { descargarPlan, MisPlanes } from './MisPlanes';
 
@@ -125,6 +124,8 @@ export const PantallaLalan: React.FC = () => {
   const { navigateTo, activeConversationId, setActiveConversationId, recargarCatalogo } = useApp();
   const [abierta, setAbierta] = useState(false);
   const burbuja = useEnBurbuja();
+  // La esfera del teléfono tirada al zafacón con Lalan cerrada: se guarda hasta que se vuelva a abrir la app
+  const [esferaGuardada, setEsferaGuardada] = useState(false);
   // Lo que dijo mientras estaba en burbuja (útil en silencio, cuando no habla)
   const [sinLeer, setSinLeer] = useState(false);
   /** La conversación sigue viva (abierta o en burbuja): al volver no se recarga */
@@ -428,8 +429,8 @@ export const PantallaLalan: React.FC = () => {
 
   return (
     <>
-    <BurbujaLalan visible={!abierta && (burbuja || (!grande && !activeConversationId))} viva={burbuja} enMenu={!grande} modo={modo} nivel={escucha.nivel} pulso={pulso} cierre={escucha.cierre}
-      sinLeer={sinLeer} onAbrir={abrirLalan} onCerrar={cerrar} />
+    <BurbujaLalan visible={!abierta && (burbuja || (!grande && !activeConversationId && !esferaGuardada))} viva={burbuja} modo={modo} nivel={escucha.nivel} pulso={pulso} cierre={escucha.cierre}
+      sinLeer={sinLeer} onAbrir={abrirLalan} onCerrar={() => { if (burbuja) cerrar(); else setEsferaGuardada(true); }} />
     <AnimatePresence>
       {abierta && (
         <motion.div
@@ -1000,20 +1001,19 @@ const ETIQUETA_BURBUJA: Record<ModoEsfera, string> = {
  * La esfera flotante de Lalan. En el teléfono está siempre (también con
  * Lalan cerrada) y se puede mover desde el primer momento; tocarla la abre.
  * Minimizada sigue escuchando y hablando. Se arrastra a cualquier lado y se
- * pega al borde más cercano. Mientras se arrastra una conversación viva
- * aparece el zafacón (en el menú de abajo en el teléfono, flotando en la PC);
- * soltarla encima cierra a Lalan del todo.
+ * pega al borde más cercano. Mientras se arrastra aparece el zafacón abajo al
+ * centro, flotando sobre el menú: soltarla encima la cierra.
  */
 const BurbujaLalan: React.FC<{
-  visible: boolean; viva: boolean; enMenu: boolean; modo: ModoEsfera; nivel: number; pulso: number; cierre: number; sinLeer: boolean;
+  visible: boolean; viva: boolean; modo: ModoEsfera; nivel: number; pulso: number; cierre: number; sinLeer: boolean;
   onAbrir: () => void; onCerrar: () => void;
-}> = ({ visible, viva, enMenu, modo, nivel, pulso, cierre, sinLeer, onAbrir, onCerrar }) => {
+}> = ({ visible, viva, modo, nivel, pulso, cierre, sinLeer, onAbrir, onCerrar }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [arrastrando, setArrastrando] = useState(false);
+  const [sobre, setSobre] = useState(false);
   const [tirando, setTirando] = useState(false);
-  const { visible: zafaconVisible, sobre } = useZafacon();
-  const [centro, setCentro] = useState<{ cx: number; cy: number } | null>(null);
+  const ancla = useRef<HTMLDivElement>(null);
   const inicio = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const movio = useRef(false);
 
@@ -1029,18 +1029,24 @@ const BurbujaLalan: React.FC<{
   useEffect(() => {
     if (!visible) return;
     setTirando(false);
+    setSobre(false);
     colocar(posGuardada(), false);
     const alCambiar = () => colocar(posGuardada(), false);
     window.addEventListener('resize', alCambiar);
     return () => window.removeEventListener('resize', alCambiar);
   }, [visible, colocar]);
 
-  // Si se va a mitad de un arrastre, el zafacón también se va
-  useEffect(() => { if (!visible) ponerZafacon({ visible: false, sobre: false }); }, [visible]);
-
+  /**
+   * Dónde queda el centro del zafacón: lo marca un punto quieto (sin
+   * animación) en su lugar fijo. Así se pone rojo siempre que la burbuja
+   * llega, aunque el zafacón todavía esté entrando.
+   */
+  const centroZafacon = () => {
+    const r = ancla.current?.getBoundingClientRect();
+    return r ? { cx: r.left, cy: r.top } : { cx: window.innerWidth / 2, cy: window.innerHeight - 76 };
+  };
   const cayendo = () => {
     const z = centroZafacon();
-    if (!z) return false;
     return Math.hypot(x.get() + TAM_BURBUJA / 2 - z.cx, y.get() + TAM_BURBUJA / 2 - z.cy) < RADIO_ZAFACON;
   };
 
@@ -1063,71 +1069,72 @@ const BurbujaLalan: React.FC<{
       if (Math.hypot(dx, dy) < UMBRAL_ARRASTRE) return;
       movio.current = true;
       setArrastrando(true);
-      if (viva) ponerZafacon({ visible: true, sobre: false });
     }
     x.set(i.x + dx);
     y.set(i.y + dy);
-    if (viva) {
-      ponerZafacon({ sobre: cayendo() });
-      setCentro(centroZafacon());
-    }
+    setSobre(cayendo());
   };
   const alSoltar = () => {
     const i = inicio.current;
     inicio.current = null;
     if (!i || !movio.current) return;
     tragarElClick();
-    setArrastrando(false);
-    const z = centroZafacon();
-    if (viva && z && cayendo()) {
-      // Entra al zafacón, se encoge y Lalan se cierra
+    if (cayendo()) {
+      // Entra al zafacón, se encoge y se cierra
+      const z = centroZafacon();
       setTirando(true);
       void animate(x, z.cx - TAM_BURBUJA / 2, RESORTE);
       void animate(y, z.cy - TAM_BURBUJA / 2, RESORTE);
-      window.setTimeout(() => { ponerZafacon({ visible: false, sobre: false }); onCerrar(); }, 320);
+      window.setTimeout(() => { setArrastrando(false); setSobre(false); onCerrar(); }, 320);
       return;
     }
-    ponerZafacon({ visible: false, sobre: false });
+    setArrastrando(false);
+    setSobre(false);
     const p: PosBurbuja = { lado: x.get() + TAM_BURBUJA / 2 < window.innerWidth / 2 ? 'izq' : 'der', y: y.get() / window.innerHeight };
     guardarPos(p);
     colocar(p, true);
   };
 
-  const aviso = zafaconVisible && centro && (
-    <motion.span key="aviso" aria-hidden="true"
-      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.25, ease: 'easeOut' }}
-      className="fixed z-[406] -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[0.75rem] font-semibold bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md text-slate-600 dark:text-neutral-300 shadow-md pointer-events-none"
-      style={{ left: centro.cx, top: centro.cy - 62 }}>
-      {sobre ? 'Suelta para cerrar a Lalan' : 'Cerrar a Lalan'}
-    </motion.span>
-  );
-
   return (
     <>
-      {/* En la PC el zafacón flota abajo al centro; en el teléfono va dentro del menú */}
+      {/* El centro del zafacón: 18 px del borde + el aviso (~20 px) y su espacio (6 px) + medio círculo (32 px) */}
+      {visible && (
+        <div ref={ancla} aria-hidden="true" className="fixed left-1/2 w-0 h-0 pointer-events-none"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)' }} />
+      )}
       <AnimatePresence>
-        {!enMenu && zafaconVisible && (
+        {visible && (arrastrando || tirando) && (
           <motion.div key="zafacon" aria-hidden="true"
             className="fixed inset-x-0 z-[405] flex justify-center pointer-events-none"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)' }}
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)' }}
             initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 36 }}
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
-            <ZafaconLalan sobre={sobre} />
+            <div className="flex flex-col items-center gap-1.5">
+              <motion.div
+                animate={{ scale: sobre ? 1.18 : 1 }} transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                className={`w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-xl border shadow-xl transition-colors duration-200 ${sobre
+                  ? 'bg-rose-500 border-rose-400 text-white shadow-rose-500/40'
+                  : 'bg-white/85 dark:bg-neutral-900/85 border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-neutral-300 shadow-black/10'}`}>
+                <Trash2 className="w-6 h-6" />
+              </motion.div>
+              <span className="h-5 flex items-center px-2.5 rounded-full text-[0.6875rem] font-semibold bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md text-slate-600 dark:text-neutral-300 shadow-sm">
+                {sobre ? 'Suelta para cerrar a Lalan' : 'Cerrar a Lalan'}
+              </span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-      <AnimatePresence>{aviso}</AnimatePresence>
       <AnimatePresence>
         {visible && (
           <motion.div key="burbuja"
             className={`fixed left-0 top-0 ${viva || arrastrando ? 'z-[410]' : 'z-40'}`}
             style={{ x, y, width: TAM_BURBUJA, height: TAM_BURBUJA }}
             initial={{ opacity: 0, scale: 0.4 }}
-            animate={{ opacity: tirando ? 0 : 1, scale: tirando ? 0.2 : sobre && arrastrando ? 0.82 : arrastrando ? 1.08 : 1 }}
+            animate={{ opacity: tirando ? 0 : 1, scale: tirando ? 0.2 : sobre ? 0.82 : arrastrando ? 1.08 : 1 }}
             exit={{ opacity: 0, scale: 0.4 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}>
             <button type="button" aria-label={ETIQUETA_BURBUJA[modo]} data-medir="Abrir Lalan"
-              title={viva ? 'Toca para volver al chat · arrástrala al zafacón para cerrarla' : 'Toca para hablar con Lalan · arrástrala para moverla'}
+              title="Toca para abrir el chat · arrástrala al zafacón para cerrarla"
               onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerCancel={alSoltar}
               onClick={() => { if (movio.current) { movio.current = false; return; } onAbrir(); }}
               className="relative w-full h-full rounded-full cursor-pointer touch-none select-none shadow-xl shadow-[var(--primary)]/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
@@ -1152,14 +1159,3 @@ const BurbujaLalan: React.FC<{
     </>
   );
 };
-
-/** El círculo del zafacón: más grande que los iconos del menú y rojo cuando la burbuja está encima */
-export const ZafaconLalan: React.FC<{ sobre: boolean }> = ({ sobre }) => (
-  <motion.div ref={registrarZafacon}
-    animate={{ scale: sobre ? 1.15 : 1 }} transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-    className={`w-14 h-14 rounded-full flex items-center justify-center border shadow-lg transition-colors duration-200 ${sobre
-      ? 'bg-rose-500 border-rose-400 text-white shadow-rose-500/40'
-      : 'bg-white dark:bg-neutral-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-neutral-200 shadow-black/10'}`}>
-    <Trash2 className="w-6 h-6" />
-  </motion.div>
-);
