@@ -67,6 +67,8 @@ export interface PriceTier {
   isDefault?: boolean;
   /** false = solo la usa el salón (un precio VIP o interno): la asistente no la ofrece */
   aiOfrece?: boolean;
+  /** false = no se ve en la Vitrina */
+  enVitrina?: boolean;
 }
 
 /** Cómo habla del precio la asistente: lo dice, "desde" el más bajo, o no lo dice (lo confirma el salón) */
@@ -92,11 +94,15 @@ export interface SalonService {
   aiAvailable: boolean; // Accessible by the AI Chat Bot to offer
   /** Sale en la Vitrina (la página pública de reservas) */
   enVitrina?: boolean;
+  /** Cómo se ve el precio en la Vitrina (aparte de la asistente) */
+  vitrinaPrecio?: ModoPrecioAsistente;
   priceTiers: PriceTier[]; // Multiple pricing table
   /** Cómo habla del precio la asistente */
   aiPrecio?: ModoPrecioAsistente;
   /** Su foto (para el catálogo y la Vitrina). Puesta dentro de una sede, es de esa sede */
   fotoId?: string | null;
+  /** Las demás fotos del carrusel, en orden, después de `fotoId` (hasta 10 en total) */
+  masFotos?: string[];
 }
 
 /** Clave de una categoría de productos del salón (ver ServiceCategory) */
@@ -139,10 +145,14 @@ export interface SalonProduct {
   unitQtyUnit?: string; // unidad del contenido (ml, g, oz, L)
   /** Su foto (para el catálogo y la Vitrina): la misma en todas las sedes */
   fotoId?: string | null;
+  /** Las demás fotos del carrusel, en orden, después de `fotoId` (hasta 10 en total) */
+  masFotos?: string[];
   description: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
   /** Sale en la Vitrina, si hay existencias en la sede */
   enVitrina?: boolean;
+  /** Cómo se ve el precio en la Vitrina (aparte de la asistente) */
+  vitrinaPrecio?: ModoPrecioAsistente;
   priceTiers: PriceTier[]; // Multiple pricing table
   // ── Costeo e inventario inteligente ──────────────────────────────────
   costPrice?: number;       // costo de compra por unidad base

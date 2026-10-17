@@ -299,6 +299,8 @@ interface AppContextType {
   /** Pone o quita la foto. Dentro de una sede, un servicio de la cadena se separa en su copia: devuelve el que quedó */
   ponerFotoServicio: (id: string, dataUrl: string) => Promise<SalonService>;
   quitarFotoServicio: (id: string) => Promise<SalonService>;
+  /** El carrusel (hasta 10 fotos): agrega una, quita una o las ordena. La primera es la portada */
+  galeriaServicio: (id: string, cambio: CambioDeGaleria) => Promise<SalonService>;
   /** Desde "Todas las sedes": el precio de un servicio en cada sede (null = el del salón, [] = no se ofrece) */
   preciosServicioEnSedes: (id: string, sedes: PrecioEnSede[]) => Promise<void>;
   /** Desde "Todas las sedes": el precio de un producto en cada sede (null = el del salón) */
@@ -328,6 +330,7 @@ interface AppContextType {
   toggleProductAi: (id: string, aiAvailable: boolean) => Promise<void>;
   ponerFotoProducto: (id: string, dataUrl: string) => Promise<SalonProduct>;
   quitarFotoProducto: (id: string) => Promise<SalonProduct>;
+  galeriaProducto: (id: string, cambio: CambioDeGaleria) => Promise<SalonProduct>;
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => Promise<void>;
   /** Devuelve la comanda que se abrió al atender/completar y su saldo. `cancelado`: la persona se echó atrás */
@@ -706,13 +709,24 @@ function mapApiService(s: any): SalonService {
     icon: s.icon ?? 'sparkles', color: s.color ?? '#6366f1',
     popular: s.popular ?? false, description: s.description,
     enVitrina: s.enVitrina ?? true,
+    vitrinaPrecio: s.vitrinaPrecio ?? 'exacto',
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     aiPrecio: s.aiPrecio ?? 'exacto',
     locationId: s.locationId ?? null,
     ocultoEn: Array.isArray(s.ocultoEn) ? s.ocultoEn : [],
     fotoId: s.fotoId ?? null,
+    masFotos: Array.isArray(s.masFotos) ? s.masFotos : [],
   };
 }
+/** Un cambio en el carrusel de fotos de un servicio o producto */
+export type CambioDeGaleria = { agregar: string } | { quitar: string } | { orden: string[] };
+
+function cambiarGaleria(que: 'services' | 'products', id: string, cambio: CambioDeGaleria) {
+  if ('agregar' in cambio) return api.post<any>(`/${que}/${id}/fotos`, { imagen: cambio.agregar });
+  if ('quitar' in cambio) return api.delete<any>(`/${que}/${id}/fotos/${cambio.quitar}`);
+  return api.put<any>(`/${que}/${id}/fotos/orden`, { ids: cambio.orden });
+}
+
 function mapApiProduct(p: any): SalonProduct {
   return {
     id: p.id, name: p.name, category: p.category, categoryName: p.categoryName,
@@ -728,8 +742,9 @@ function mapApiProduct(p: any): SalonProduct {
       alertThreshold: p.alertThreshold != null ? Number(p.alertThreshold) : undefined,
       hasLotTracking: p.hasLotTracking ?? false,
       lotStrategy: (p.lotStrategy as 'FEFO' | 'FIFO') ?? 'FEFO',
-    fotoId: p.fotoId ?? null, description: p.description ?? '',
+    fotoId: p.fotoId ?? null, masFotos: Array.isArray(p.masFotos) ? p.masFotos : [], description: p.description ?? '',
     enVitrina: p.enVitrina ?? true,
+    vitrinaPrecio: p.vitrinaPrecio ?? 'exacto',
     aiAvailable: p.aiAvailable ?? true, priceTiers: ((p.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     preparedToOrder: !!p.preparedToOrder,
     supplyOnly: !!p.supplyOnly,
@@ -1166,6 +1181,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       icon: data.icon, color: data.color, popular: data.popular,
       description: data.description, aiAvailable: data.aiAvailable, priceTiers: data.priceTiers,
       aiPrecio: data.aiPrecio,
+      enVitrina: data.enVitrina, vitrinaPrecio: data.vitrinaPrecio,
     });
     const creado = mapApiService(res);
     setServices(s => [...s, creado]);
@@ -1187,6 +1203,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.priceTiers !== undefined)      payload.priceTiers = updated.priceTiers;
     if (updated.currencyCode !== undefined)    payload.currencyCode = updated.currencyCode;
     if (updated.aiPrecio !== undefined)        payload.aiPrecio = updated.aiPrecio;
+    if (updated.vitrinaPrecio !== undefined)   payload.vitrinaPrecio = updated.vitrinaPrecio;
     const res = await api.patch<any>(`/services/${id}`, payload);
     setServices(s => s.map(x => x.id === id ? mapApiService(res) : x));
   }, []);
@@ -1216,6 +1233,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fotoDeServicio(id, await api.put<any>(`/services/${id}/foto`, { imagen: dataUrl })), [fotoDeServicio]);
   const quitarFotoServicio = useCallback(async (id: string) =>
     fotoDeServicio(id, await api.delete<any>(`/services/${id}/foto`)), [fotoDeServicio]);
+  const galeriaServicio = useCallback(async (id: string, cambio: CambioDeGaleria) =>
+    fotoDeServicio(id, await cambiarGaleria('services', id, cambio)), [fotoDeServicio]);
 
   const preciosServicioEnSedes = useCallback(async (id: string, sedes: PrecioEnSede[]) => {
     const svcs = await api.patch<any[]>(`/services/${id}/precios-sede`, { sedes });
@@ -1242,6 +1261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lotStrategy: data.lotStrategy ?? undefined,
       description: data.description || undefined,
       aiAvailable: data.aiAvailable, priceTiers: data.priceTiers ?? [],
+      enVitrina: data.enVitrina, vitrinaPrecio: data.vitrinaPrecio,
       preparedToOrder: data.preparedToOrder ?? false,
       supplyOnly: data.supplyOnly ?? false,
     });
@@ -1267,6 +1287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.description !== undefined)  payload.description = updated.description || undefined;
     if (updated.aiAvailable !== undefined)    payload.aiAvailable = updated.aiAvailable;
     if (updated.enVitrina !== undefined)      payload.enVitrina = updated.enVitrina;
+    if (updated.vitrinaPrecio !== undefined)  payload.vitrinaPrecio = updated.vitrinaPrecio;
     if (updated.priceTiers !== undefined)     payload.priceTiers = updated.priceTiers;
     if (updated.unit !== undefined)           payload.unit = updated.unit;
     if (updated.unitQty !== undefined)        payload.unitQty = updated.unitQty;
@@ -1303,6 +1324,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
   const quitarFotoProducto = useCallback(async (id: string) => {
     const p = mapApiProduct(await api.delete<any>(`/products/${id}/foto`));
+    setProducts(l => l.map(x => (x.id === id ? p : x)));
+    return p;
+  }, []);
+  const galeriaProducto = useCallback(async (id: string, cambio: CambioDeGaleria) => {
+    const p = mapApiProduct(await cambiarGaleria('products', id, cambio));
     setProducts(l => l.map(x => (x.id === id ? p : x)));
     return p;
   }, []);
@@ -2894,7 +2920,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cargarMasClientas, buscarClientas,
       addClient, updateClient, deleteClient,
       services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, preciosServicioEnSedes, preciosProductoEnSedes,
-      ponerFotoServicio, quitarFotoServicio, ponerFotoProducto, quitarFotoProducto,
+      ponerFotoServicio, quitarFotoServicio, ponerFotoProducto, quitarFotoProducto, galeriaServicio, galeriaProducto,
       products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
       preguntar, consulta,

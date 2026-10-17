@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  AlertCircle, CalendarDays, Check, ChevronUp, Clock, Facebook, Instagram, Loader2, MapPin, Minus,
-  Phone, Plus, ShoppingBag, Sparkles, Star, Tag, User, X,
+  AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronUp, Clock, Facebook, Images, Instagram, Loader2, MapPin, Minus,
+  Music, Phone, Plus, ShoppingBag, Sparkles, Star, Tag, User,
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
 import type {
@@ -97,6 +97,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const [hoja, setHoja] = useState(false);
   const [hecha, setHecha] = useState<ReservaHecha | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [ficha, setFicha] = useState<{ tipo: 'servicio'; item: ServicioVitrina } | { tipo: 'producto'; item: ProductoVitrina } | null>(null);
 
   // Una sola "Tu reserva": al lado si la página es ancha, en la hoja si no.
   // Se mide la página y no la ventana, por la vista previa de Ajustes.
@@ -168,9 +169,9 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     switch (tipo) {
       case 'portada': return <Portada key={tipo} datos={datos} />;
       case 'mensaje': return diseno.mensaje ? <Mensaje key={tipo} texto={diseno.mensaje} /> : null;
-      case 'servicios': return <Servicios key={tipo} servicios={datos.servicios} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero} />;
+      case 'servicios': return <Servicios key={tipo} servicios={datos.servicios} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero} abrir={(item) => setFicha({ tipo: 'servicio', item })} />;
       case 'ofertas': return datos.ofertas.length ? <Ofertas key={tipo} ofertas={datos.ofertas} elegida={ofertaId} elegir={elegirOferta} dinero={dinero} /> : null;
-      case 'productos': return datos.productos.length ? <Productos key={tipo} productos={datos.productos} elegidos={productoIds} alternar={alternarProducto} dinero={dinero} /> : null;
+      case 'productos': return datos.productos.length ? <Productos key={tipo} productos={datos.productos} elegidos={productoIds} alternar={alternarProducto} dinero={dinero} abrir={(item) => setFicha({ tipo: 'producto', item })} /> : null;
       case 'especialistas': return datos.especialistas.length ? <Especialistas key={tipo} lista={datos.especialistas} /> : null;
       case 'horario': return <Horario key={tipo} semana={sede.semana} hoy={sede.hoyFecha} />;
       case 'ubicacion': return <Ubicacion key={tipo} datos={datos} />;
@@ -226,7 +227,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
                   </span>
                 </span>
                 <span className={BOTON_P + ' px-4 py-2.5'}>
-                  {elegidos.length ? 'Elegir hora' : 'Ver'} <ChevronUp className="size-4" />
+                  {elegidos.length ? 'Continuar' : 'Ver'} <ChevronUp className="size-4" />
                 </span>
               </button>
             </div>
@@ -245,6 +246,55 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
           </IOSModal>
         </>
       )}
+
+      {/* La ficha de un servicio o producto: sus fotos grandes y el botón de agregar */}
+      <IOSModal
+        isOpen={!!ficha} onClose={() => setFicha(null)} title={ficha?.item.nombre ?? ''} id="vitrina-ficha"
+        fijo fixedHeight={false} height="92%"
+        apariencia={{
+          hoja: 'bg-[var(--v-fondo)] border-[var(--v-borde)] text-[var(--v-texto)]',
+          titulo: 'text-[var(--v-texto)]', subtitulo: 'text-[var(--v-suave)]', borde: 'border-[var(--v-borde)]',
+          cerrar: 'bg-[var(--v-tinte)] text-[var(--v-suave)]', asa: 'bg-[var(--v-borde)]',
+        }}
+      >
+        {ficha && (() => {
+          const servicio = ficha.tipo === 'servicio' ? ficha.item : null;
+          const dentro = servicio ? servicioIds.includes(ficha.item.id) : productoIds.includes(ficha.item.id);
+          return (
+            <div className="mx-auto max-w-md space-y-4">
+              <div className="mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
+                <Carrusel fotos={fotosDe(ficha.item)} alt={ficha.item.nombre} />
+              </div>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                {servicio
+                  ? <span><Precio s={servicio} dinero={dinero} /><span className="ml-2 text-xs text-[var(--v-suave)]">{duracion(servicio.duracionMin)}</span></span>
+                  : <Precio s={ficha.item} dinero={dinero} />}
+                {!servicio && (ficha.item as ProductoVitrina).quedanPocos && <span className="text-xs text-[var(--v-suave)]">Quedan pocos</span>}
+              </div>
+              {ficha.item.descripcion && <p className="whitespace-pre-line text-[15px] leading-relaxed text-[var(--v-suave)]">{ficha.item.descripcion}</p>}
+              {!!ficha.item.variantes?.length && (
+                <ul className="divide-y divide-[var(--v-borde)] rounded-2xl border border-[var(--v-borde)] text-sm">
+                  {ficha.item.variantes.map((v) => (
+                    <li key={v.nombre} className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+                      <span className="min-w-0">
+                        <span className="block font-medium">{v.nombre}</span>
+                        {v.detalle && <span className="block text-xs text-[var(--v-suave)]">{v.detalle}</span>}
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums">{dinero.format(v.precio)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <button
+                type="button" className={`${BOTON_P} w-full py-3.5 text-[15px]`}
+                onClick={() => { if (servicio) alternarServicio(ficha.item.id); else alternarProducto(ficha.item.id); setFicha(null); }}
+              >
+                {dentro ? <><Minus className="size-4" /> Quitar de tu reserva</> : servicio ? <><Plus className="size-4" /> Agregar a tu reserva</> : <><ShoppingBag className="size-4" /> Apartar</>}
+              </button>
+            </div>
+          );
+        })()}
+      </IOSModal>
 
       <AnimatePresence>
         {aviso && (
@@ -280,7 +330,7 @@ function Portada({ datos }: { datos: DatosVitrina }) {
   return (
     <section className="relative overflow-hidden rounded-[28px] bg-[var(--v-p)]">
       {foto ? (
-        <img src={foto} alt="" className="absolute inset-0 size-full object-cover" />
+        <img src={foto} alt="" className="absolute inset-0 size-full object-cover" style={{ objectPosition: `50% ${datos.diseno.portadaY ?? 50}%` }} />
       ) : (
         <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_10%_0%,var(--v-a),transparent_60%),radial-gradient(90%_90%_at_100%_100%,var(--v-t),transparent_55%)] opacity-80" />
       )}
@@ -315,9 +365,111 @@ function Mensaje({ texto }: { texto: string }) {
   );
 }
 
-function Precio({ s, dinero }: { s: ServicioVitrina; dinero: Intl.NumberFormat }) {
+/** El precio como lo deja ver la dueña: exacto, «desde» o «Precio en el salón» */
+function Precio({ s, dinero }: { s: { precio: number | null; modoPrecio?: ServicioVitrina['modoPrecio'] }; dinero: Intl.NumberFormat }) {
   if (s.precio == null || s.modoPrecio === 'consultar') return <span className="text-[var(--v-suave)]">Precio en el salón</span>;
   return <span className="font-semibold">{s.modoPrecio === 'desde' ? 'Desde ' : ''}{dinero.format(s.precio)}</span>;
+}
+
+/** Todas las fotos de un servicio o producto (las Vitrinas viejas solo mandan `foto`) */
+const fotosDe = (x: { foto: string | null; fotos?: string[] }) => (x.fotos?.length ? x.fotos : x.foto ? [x.foto] : []);
+
+/**
+ * Las fotos como en Instagram: se desliza con el dedo (scroll con imán, sin
+ * librerías) y los puntos dicen en cuál va. Con una sola foto, la foto.
+ */
+function Carrusel({ fotos, alt }: { fotos: string[]; alt: string }) {
+  const caja = useRef<HTMLDivElement>(null);
+  const [actual, setActual] = useState(0);
+  if (fotos.length <= 1) return <Foto src={fotos[0] ?? null} alt={alt} />;
+  const alDeslizar = () => {
+    const el = caja.current;
+    if (el) setActual(Math.round(el.scrollLeft / Math.max(el.clientWidth, 1)));
+  };
+  return (
+    <div className="relative size-full">
+      <div ref={caja} onScroll={alDeslizar} className="flex size-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {fotos.map((f, i) => (
+          <div key={f} className="size-full shrink-0 snap-center">
+            <Foto src={f} alt={i === 0 ? alt : `${alt} (${i + 1})`} />
+          </div>
+        ))}
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1" aria-hidden>
+        {fotos.map((f, i) => (
+          <span key={f} className={`h-1.5 rounded-full bg-white shadow transition-all duration-300 ${i === actual ? 'w-4 opacity-100' : 'w-1.5 opacity-60'}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** ¿Hay un mouse de verdad? (no un dedo): para lo que pasa al pasar por encima */
+function useConMouse() {
+  const [si, setSi] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    if (!m) return;
+    setSi(m.matches);
+    const cambio = () => setSi(m.matches);
+    m.addEventListener?.('change', cambio);
+    return () => m.removeEventListener?.('change', cambio);
+  }, []);
+  return si;
+}
+
+/** Cuántas fotos se abren en abanico; si hay más, una tarjeta gris detrás dice cuántas */
+const FOTOS_EN_ABANICO = 4;
+
+/**
+ * Al pasar el mouse por un servicio con varias fotos, salen de la miniatura
+ * como un abanico de cartas, una tras otra. Es solo para mirar: el clic
+ * sigue llegando a la tarjeta (abre la ficha con el carrusel).
+ */
+function Abanico({ fotos, abierto, alt }: { fotos: string[]; abierto: boolean; alt: string }) {
+  if (fotos.length <= 1) return null;
+  const vistas = fotos.slice(0, FOTOS_EN_ABANICO);
+  const mas = fotos.length - vistas.length;
+  const cartas = [...vistas.map((f) => ({ f, mas: 0 })), ...(mas > 0 ? [{ f: null as string | null, mas }] : [])];
+  const centro = (cartas.length - 1) / 2;
+  return (
+    <div className="pointer-events-none absolute left-0 top-0 z-20 h-full w-28 @md:w-32" aria-hidden>
+      <AnimatePresence>
+        {abierto && cartas.map((c, i) => {
+          const d = i - centro;
+          return (
+            <motion.div
+              key={c.f ?? 'mas'}
+              initial={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.6 }}
+              animate={{ opacity: 1, x: 36 + d * 52, y: -64 - Math.abs(d) * 10, rotate: d * 11, scale: 1 }}
+              exit={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.6, transition: { duration: 0.15 } }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24, delay: i * 0.04 }}
+              style={{ zIndex: c.f ? 30 - Math.round(Math.abs(d) * 2) : 1, transformOrigin: '50% 100%' }}
+              className="absolute left-1/2 top-1/2 -ml-11 -mt-14 h-28 w-22 overflow-hidden rounded-2xl border-2 border-white bg-[var(--v-sup)] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.55)]"
+            >
+              {c.f ? (
+                <Foto src={c.f} alt={i === 0 ? alt : ''} />
+              ) : (
+                <div className="grid size-full place-items-center bg-neutral-400/90 text-center text-white">
+                  <span><span className="block text-lg font-bold leading-none">+{c.mas}</span><span className="text-[11px] font-semibold">más</span></span>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Cuántas fotos tiene, sobre la miniatura: invita a abrirla */
+function MasFotos({ cuantas }: { cuantas: number }) {
+  if (cuantas <= 1) return null;
+  return (
+    <span className="pointer-events-none absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+      <Images className="size-3" /> {cuantas}
+    </span>
+  );
 }
 
 function Foto({ src, alt }: { src: string | null; alt: string }) {
@@ -329,8 +481,9 @@ function Foto({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
-function Servicios({ servicios, elegidos, alternar, dinero }: {
+function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
   servicios: ServicioVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
+  abrir: (s: ServicioVitrina) => void;
 }) {
   const categorias = useMemo(() => {
     const m = new Map<string, string>();
@@ -339,6 +492,9 @@ function Servicios({ servicios, elegidos, alternar, dinero }: {
   }, [servicios]);
   const [cat, setCat] = useState<string | null>(null);
   const lista = cat ? servicios.filter((s) => s.categoria === cat) : servicios;
+  // El abanico de fotos solo con mouse: en el teléfono se desliza en la ficha
+  const conMouse = useConMouse();
+  const [encima, setEncima] = useState<string | null>(null);
 
   return (
     <section aria-labelledby="v-servicios">
@@ -364,18 +520,22 @@ function Servicios({ servicios, elegidos, alternar, dinero }: {
         <div className="grid grid-cols-1 gap-3 @xl:grid-cols-2">
           {lista.map((s) => {
             const dentro = elegidos.includes(s.id);
+            const fotos = fotosDe(s);
             return (
-              <article key={s.id} className={`${TARJETA} flex overflow-hidden transition ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
-                <div className="relative w-28 shrink-0 @md:w-32">
-                  <Foto src={s.foto} alt={s.nombre} />
+              <div key={s.id} className="relative" onMouseEnter={() => setEncima(s.id)} onMouseLeave={() => setEncima((x) => (x === s.id ? null : x))}>
+              {conMouse && <Abanico fotos={fotos} abierto={encima === s.id} alt={s.nombre} />}
+              <article className={`${TARJETA} flex overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-18px_rgba(0,0,0,0.45)] ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
+                <button type="button" onClick={() => abrir(s)} aria-label={`Ver ${s.nombre}`} className="group relative w-28 shrink-0 overflow-hidden @md:w-32">
+                  <span className="block size-full transition duration-500 group-hover:scale-105"><Foto src={s.foto} alt={s.nombre} /></span>
+                  <MasFotos cuantas={fotos.length} />
                   {s.popular && (
                     <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
                       <Star className="size-3 fill-current" /> Favorito
                     </span>
                   )}
-                </div>
+                </button>
                 <div className="flex min-w-0 flex-1 flex-col p-3.5">
-                  <h3 className="font-semibold leading-snug">{s.nombre}</h3>
+                  <h3 className="font-semibold leading-snug"><button type="button" onClick={() => abrir(s)} className="text-left">{s.nombre}</button></h3>
                   {s.descripcion && <p className="mt-0.5 line-clamp-2 text-xs text-[var(--v-suave)]">{s.descripcion}</p>}
                   <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-sm">
                     <div className="min-w-0">
@@ -392,6 +552,7 @@ function Servicios({ servicios, elegidos, alternar, dinero }: {
                   </div>
                 </div>
               </article>
+              </div>
             );
           })}
         </div>
@@ -443,8 +604,9 @@ function Ofertas({ ofertas, elegida, elegir, dinero }: {
   );
 }
 
-function Productos({ productos, elegidos, alternar, dinero }: {
+function Productos({ productos, elegidos, alternar, dinero, abrir }: {
   productos: ProductoVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
+  abrir: (p: ProductoVitrina) => void;
 }) {
   return (
     <section aria-labelledby="v-productos">
@@ -458,13 +620,13 @@ function Productos({ productos, elegidos, alternar, dinero }: {
           return (
             <article key={p.id} className={`${TARJETA} overflow-hidden transition ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
               <div className="relative aspect-square">
-                <Foto src={p.foto} alt={p.nombre} />
+                <Carrusel fotos={fotosDe(p)} alt={p.nombre} />
                 {p.quedanPocos && <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">Quedan pocos</span>}
               </div>
               <div className="p-3">
-                <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{p.nombre}</h3>
+                <h3 className="line-clamp-2 text-sm font-semibold leading-snug"><button type="button" onClick={() => abrir(p)} className="text-left">{p.nombre}</button></h3>
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold">{dinero.format(p.precio)}</span>
+                  <span className="min-w-0 truncate text-sm"><Precio s={p} dinero={dinero} /></span>
                   <button
                     type="button" onClick={() => alternar(p.id)} aria-pressed={dentro}
                     aria-label={dentro ? `No apartar ${p.nombre}` : `Apartar ${p.nombre}`}
@@ -544,6 +706,23 @@ function Ubicacion({ datos }: { datos: DatosVitrina }) {
 
 interface EstadoHoras { cargando: boolean; horas: string[]; cerrado: boolean; error: string | null }
 
+/** Lo que eligió en cada pregunta del Lounge: de la lista y lo que escribió */
+interface RespuestaGusto { ids: string[]; otra: string }
+/** Opciones que se pueden marcar en cada pregunta del Lounge */
+const MAXIMO_POR_GUSTO = 3;
+
+type ClavePaso = 'elegido' | 'quien' | 'cuando' | `gusto-${string}` | 'datos' | 'resumen';
+
+/**
+ * "Tu reserva" como la bienvenida del quiosco: una cosa por pantalla, con
+ * Siguiente y Atrás, y una barra que dice cuánto falta. Lo elegido, con
+ * quién (si la Vitrina deja elegir), día y hora, los gustos del Lounge (si el
+ * salón lo tiene: una pregunta por pantalla, con «Otra» y «Saltar»), sus
+ * datos y al final el resumen con el botón de reservar.
+ *
+ * Nunca la saluda por su nombre ni le dice si ya es clienta: desde internet
+ * cualquiera puede escribir el teléfono de otra persona.
+ */
 function PanelReserva({
   datos, slug, previa, dinero, enHoja, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
 }: {
@@ -554,16 +733,21 @@ function PanelReserva({
   quitarServicio: (id: string) => void; quitarProducto: (id: string) => void; alHacer: (r: ReservaHecha) => void;
 }) {
   const { sede, diseno } = datos;
+  const gustos = datos.gustos ?? [];
+  const [clave, setClave] = useState<ClavePaso>('elegido');
+  const [direccion, setDireccion] = useState(1);
   const [fecha, setFecha] = useState<string>(sede.hoyFecha);
   const [hora, setHora] = useState<string | null>(null);
   const [especialistaId, setEspecialistaId] = useState<string | null>(null);
   const [contacto, setContacto] = useState(leerContacto);
   const [nota, setNota] = useState('');
+  const [respuestas, setRespuestas] = useState<Record<string, RespuestaGusto>>({});
   const [estado, setEstado] = useState<EstadoHoras>({ cargando: false, horas: [], cerrado: false, error: null });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recargar, setRecargar] = useState(0);
   const turno = useRef(0);
+  const titulo = useRef<HTMLHeadingElement>(null);
 
   const ids = elegidos.map((s) => s.id).join(',');
 
@@ -575,6 +759,36 @@ function PanelReserva({
   useEffect(() => {
     if (especialistaId && !posibles.some((e) => e.id === especialistaId)) setEspecialistaId(null);
   }, [posibles, especialistaId]);
+
+  const pasos = useMemo(() => {
+    const l: { clave: ClavePaso; titulo: string; ayuda?: string }[] = [{ clave: 'elegido', titulo: 'Lo que elegiste' }];
+    if (posibles.length) l.push({ clave: 'quien', titulo: '¿Con quién te quieres atender?' });
+    l.push({ clave: 'cuando', titulo: '¿Qué día y a qué hora?' });
+    for (const g of gustos) l.push({ clave: `gusto-${g.tipo}`, titulo: g.titulo, ayuda: g.ayuda });
+    l.push({ clave: 'datos', titulo: '¿A nombre de quién reservamos?' });
+    l.push({ clave: 'resumen', titulo: 'Revisa y reserva' });
+    return l;
+  }, [posibles.length, gustos]);
+  const indice = Math.max(0, pasos.findIndex((p) => p.clave === clave));
+  const paso = pasos[indice];
+
+  const ir = (destino: ClavePaso) => {
+    const a = pasos.findIndex((p) => p.clave === destino);
+    setDireccion(a >= indice ? 1 : -1);
+    setError(null);
+    setClave(destino);
+  };
+  const siguiente = () => { if (indice < pasos.length - 1) ir(pasos[indice + 1].clave); };
+  const atras = () => { if (indice > 0) ir(pasos[indice - 1].clave); };
+
+  // Sin servicios no hay a dónde avanzar: de vuelta al principio
+  useEffect(() => { if (!elegidos.length && clave !== 'elegido') { setDireccion(-1); setClave('elegido'); } }, [elegidos.length, clave]);
+  // Al cambiar de pantalla, el lector de pantalla oye el título nuevo
+  const primera = useRef(true);
+  useEffect(() => {
+    if (primera.current) { primera.current = false; return; }
+    titulo.current?.focus({ preventScroll: true });
+  }, [clave]);
 
   const dias = useMemo(() => {
     const n = Math.max(0, Math.min(sede.diasParaReservar, DIAS_EN_LA_TIRA));
@@ -611,12 +825,40 @@ function PanelReserva({
       if (s.modoPrecio === 'desde') aproximado = true;
       total += s.precio;
     }
-    for (const p of apartados) total += p.precio;
+    for (const p of apartados) {
+      if (p.precio == null || p.modoPrecio === 'consultar') { aproximado = true; continue; }
+      if (p.modoPrecio === 'desde') aproximado = true;
+      total += p.precio;
+    }
     return { total, aproximado, minutos: elegidos.reduce((m, s) => m + s.duracionMin, 0) };
   }, [elegidos, apartados, oferta]);
 
   const telefonoOk = contacto.telefono.replace(/\D/g, '').length >= 7;
-  const listo = !!elegidos.length && !!hora && contacto.nombre.trim().length >= 2 && telefonoOk;
+  const datosOk = contacto.nombre.trim().length >= 2 && telefonoOk;
+  const listo = !!elegidos.length && !!hora && datosOk;
+
+  const respuesta = (tipo: string): RespuestaGusto => respuestas[tipo] ?? { ids: [], otra: '' };
+  const marcarGusto = (tipo: string, id: string) => {
+    const r = respuesta(tipo);
+    if (!r.ids.includes(id) && r.ids.length >= MAXIMO_POR_GUSTO) return;
+    setRespuestas((m) => ({ ...m, [tipo]: { ...r, ids: r.ids.includes(id) ? r.ids.filter((x) => x !== id) : [...r.ids, id] } }));
+  };
+  const loQueLeGusta = (tipo: string) => {
+    const g = gustos.find((x) => x.tipo === tipo);
+    const r = respuesta(tipo);
+    return [...r.ids.map((id) => g?.opciones.find((o) => o.id === id)?.valor).filter(Boolean), r.otra.trim()].filter(Boolean) as string[];
+  };
+
+  const puedeSeguir = (() => {
+    if (paso.clave === 'elegido') return !!elegidos.length;
+    if (paso.clave === 'cuando') return previa || !!hora;
+    if (paso.clave === 'datos') return previa || datosOk;
+    return true;
+  })();
+  const porQueNo = paso.clave === 'elegido' ? 'Elige al menos un servicio'
+    : paso.clave === 'cuando' ? 'Elige una hora'
+      : paso.clave === 'datos' ? (contacto.nombre.trim().length < 2 ? 'Escribe tu nombre' : 'Escribe tu WhatsApp con código de área')
+        : '';
 
   const reservar = async () => {
     if (!listo || !slug || previa || enviando) return;
@@ -629,92 +871,90 @@ function PanelReserva({
           nombre: contacto.nombre.trim(), telefono: contacto.telefono.trim(),
           productoIds: apartados.map((p) => p.id),
           nota: [oferta ? `Viene por la oferta «${oferta.nombre}»` : '', nota.trim()].filter(Boolean).join(' · '),
+          gustoIds: gustos.flatMap((g) => respuesta(g.tipo).ids),
+          gustosNuevos: gustos.map((g) => ({ tipo: g.tipo, valor: respuesta(g.tipo).otra.trim() })).filter((g) => g.valor),
         },
       });
       guardarContacto(contacto.nombre.trim(), contacto.telefono.trim());
       alHacer(r);
     } catch (e) {
+      const ocupada = e instanceof ErrorPublico && e.status === 409;
       setError(e instanceof ErrorPublico ? e.message : 'No se pudo reservar. Inténtalo de nuevo.');
-      // Si alguien tomó esa hora, se vuelven a pedir las libres
-      if (e instanceof ErrorPublico && e.status === 409) setRecargar((n) => n + 1);
+      // Si alguien tomó esa hora, se vuelven a pedir las libres y se vuelve a elegir
+      if (ocupada) { setRecargar((n) => n + 1); setDireccion(-1); setClave('cuando'); }
     } finally {
       setEnviando(false);
     }
   };
 
-  const paso = 'text-xs font-semibold uppercase tracking-wider text-[var(--v-suave)]';
   const campo = 'w-full rounded-2xl border border-[var(--v-borde)] bg-[var(--v-fondo)] px-4 py-3 text-[15px] outline-none transition placeholder:text-[var(--v-suave)] focus:border-[var(--v-p)]';
+  const chip = (activo: boolean) => `rounded-full px-4 py-2 text-sm font-medium transition active:scale-95 ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`;
+  const especialista = posibles.find((e) => e.id === especialistaId) ?? null;
 
-  return (
-    <div className={enHoja ? '[&>:first-child]:mt-0' : `${TARJETA} p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]`}>
-      {!enHoja && (
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-bold">Tu reserva</h2>
-          <span className="inline-flex items-center gap-1 text-xs text-[var(--v-suave)]"><MapPin className="size-3" />{sede.nombre}</span>
-        </div>
-      )}
+  const contenido = () => {
+    switch (true) {
+      case paso.clave === 'elegido':
+        return !elegidos.length && !apartados.length ? (
+          <div className="rounded-2xl border border-dashed border-[var(--v-borde)] p-4 text-center text-sm text-[var(--v-suave)]">
+            Toca <Plus className="inline size-3.5 align-[-2px]" /> en un servicio para empezar.
+          </div>
+        ) : (
+          <ul className="space-y-1.5">
+            <AnimatePresence initial={false}>
+              {elegidos.map((s) => (
+                <motion.li key={s.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -16 }}
+                  className="flex items-center gap-2 rounded-2xl bg-[var(--v-tinte)] py-2 pl-3 pr-1.5 text-sm">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{s.nombre}</span>
+                    <span className="text-xs text-[var(--v-suave)]">{duracion(s.duracionMin)}</span>
+                  </span>
+                  <button type="button" onClick={() => quitarServicio(s.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`Quitar ${s.nombre}`}>
+                    <Minus className="size-4" />
+                  </button>
+                </motion.li>
+              ))}
+              {apartados.map((p) => (
+                <motion.li key={p.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -16 }}
+                  className="flex items-center gap-2 rounded-2xl border border-[var(--v-borde)] py-2 pl-3 pr-1.5 text-sm">
+                  <ShoppingBag className="size-4 shrink-0 text-[var(--v-p)]" />
+                  <span className="min-w-0 flex-1 truncate">{p.nombre} <span className="text-xs text-[var(--v-suave)]">· para apartar</span></span>
+                  <button type="button" onClick={() => quitarProducto(p.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`No apartar ${p.nombre}`}>
+                    <Minus className="size-4" />
+                  </button>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+            {oferta && <li className="px-1 text-xs font-medium text-[var(--v-p)]"><Tag className="mr-1 inline size-3" />Oferta «{oferta.nombre}»</li>}
+            {!elegidos.length && <li className="px-1 pt-1 text-xs text-[var(--v-suave)]">Para reservar, agrega también un servicio.</li>}
+          </ul>
+        );
 
-      {/* 1. Lo elegido */}
-      {!elegidos.length && !apartados.length ? (
-        <div className="mt-3 rounded-2xl border border-dashed border-[var(--v-borde)] p-4 text-center text-sm text-[var(--v-suave)]">
-          Toca <Plus className="inline size-3.5 align-[-2px]" /> en un servicio para empezar.
-        </div>
-      ) : (
-        <ul className="mt-3 space-y-1.5">
-          {elegidos.map((s) => (
-            <li key={s.id} className="flex items-center gap-2 rounded-2xl bg-[var(--v-tinte)] py-2 pl-3 pr-1.5 text-sm">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{s.nombre}</span>
-                <span className="text-xs text-[var(--v-suave)]">{duracion(s.duracionMin)}</span>
-              </span>
-              <button type="button" onClick={() => quitarServicio(s.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`Quitar ${s.nombre}`}>
-                <Minus className="size-4" />
-              </button>
-            </li>
-          ))}
-          {apartados.map((p) => (
-            <li key={p.id} className="flex items-center gap-2 rounded-2xl border border-[var(--v-borde)] py-2 pl-3 pr-1.5 text-sm">
-              <ShoppingBag className="size-4 shrink-0 text-[var(--v-p)]" />
-              <span className="min-w-0 flex-1 truncate">{p.nombre} <span className="text-xs text-[var(--v-suave)]">· para apartar</span></span>
-              <button type="button" onClick={() => quitarProducto(p.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`No apartar ${p.nombre}`}>
-                <Minus className="size-4" />
-              </button>
-            </li>
-          ))}
-          {oferta && <li className="px-1 text-xs font-medium text-[var(--v-p)]"><Tag className="mr-1 inline size-3" />Oferta «{oferta.nombre}»</li>}
-        </ul>
-      )}
+      case paso.clave === 'quien':
+        return (
+          <div className="grid grid-cols-2 gap-2">
+            {[null, ...posibles].map((e) => {
+              const id = e?.id ?? null;
+              const activo = especialistaId === id;
+              return (
+                <button
+                  key={id ?? 'libre'} type="button" onClick={() => setEspecialistaId(id)} aria-pressed={activo}
+                  className={`flex flex-col items-center gap-1.5 rounded-3xl p-3 text-center text-sm transition active:scale-[0.97] ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
+                >
+                  <span className={`grid size-12 place-items-center rounded-full text-base font-bold ${activo ? 'bg-white/20' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}>
+                    {e ? iniciales(e.nombre) : <User className="size-5" />}
+                  </span>
+                  <span className="font-semibold leading-tight">{e ? e.nombre : 'Quien esté libre'}</span>
+                  <span className={`text-xs leading-tight ${activo ? 'opacity-85' : 'text-[var(--v-suave)]'}`}>{e ? e.especialidad || ' ' : 'Te damos la primera hora'}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
 
-      {!!elegidos.length && (
-        <>
-          {/* 2. Con quién */}
-          {posibles.length > 0 && (
-            <div className="mt-5">
-              <p className={paso}>Con quién</p>
-              <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
-                {[null, ...posibles].map((e) => {
-                  const id = e?.id ?? null;
-                  const activo = especialistaId === id;
-                  return (
-                    <button
-                      key={id ?? 'libre'} type="button" onClick={() => setEspecialistaId(id)} aria-pressed={activo}
-                      className={`flex shrink-0 items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5 text-sm transition ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)]'}`}
-                    >
-                      <span className={`grid size-7 place-items-center rounded-full text-[11px] font-bold ${activo ? 'bg-white/20' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}>
-                        {e ? iniciales(e.nombre) : <User className="size-3.5" />}
-                      </span>
-                      {e ? e.nombre.split(' ')[0] : 'Quien esté libre'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 3. El día */}
-          <div className="mt-5">
-            <p className={paso}>Día</p>
-            <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+      case paso.clave === 'cuando':
+        return (
+          <div className="space-y-4">
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
               {dias.map((d, i) => {
                 const activo = fecha === d.fecha;
                 const fechaD = new Date(`${d.fecha}T12:00:00Z`);
@@ -731,40 +971,61 @@ function PanelReserva({
                 );
               })}
             </div>
+            {previa ? (
+              <p className="rounded-2xl bg-[var(--v-tinte)] p-3 text-sm">En la vista previa no se ven las horas libres. Tus clientas sí las verán.</p>
+            ) : estado.cargando ? (
+              <div className="grid grid-cols-3 gap-2" aria-label="Buscando horas libres">
+                {Array.from({ length: 6 }, (_, i) => <span key={i} className="h-9 animate-pulse rounded-xl bg-[var(--v-tinte)]" />)}
+              </div>
+            ) : estado.error ? (
+              <p className="flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{estado.error}</p>
+            ) : estado.cerrado ? (
+              <p className="py-2 text-sm text-[var(--v-suave)]">Ese día el salón está cerrado. Elige otro.</p>
+            ) : !estado.horas.length ? (
+              <p className="py-2 text-sm text-[var(--v-suave)]">No quedan horas libres ese día{especialistaId ? ' con esa especialista' : ''}. Prueba otro día{especialistaId ? ' o «Quien esté libre»' : ''}.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {estado.horas.map((h, i) => (
+                  <motion.button
+                    key={h} type="button" onClick={() => setHora(h)} aria-pressed={hora === h}
+                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.02 }}
+                    className={`rounded-xl py-2 text-sm font-medium tabular-nums transition ${hora === h ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)]'}`}
+                  >
+                    {horaBonita(h)}
+                  </motion.button>
+                ))}
+              </div>
+            )}
           </div>
+        );
 
-          {/* 4. La hora */}
-          <div className="mt-5">
-            <p className={paso}>Hora</p>
-            <div className="mt-2">
-              {previa ? (
-                <p className="rounded-2xl bg-[var(--v-tinte)] p-3 text-sm">En la vista previa no se ven las horas libres. Tus clientas sí las verán.</p>
-              ) : estado.cargando ? (
-                <p className="flex items-center gap-2 py-3 text-sm text-[var(--v-suave)]"><Loader2 className="size-4 animate-spin" /> Buscando horas libres…</p>
-              ) : estado.error ? (
-                <p className="flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{estado.error}</p>
-              ) : estado.cerrado ? (
-                <p className="py-2 text-sm text-[var(--v-suave)]">Ese día el salón está cerrado. Elige otro.</p>
-              ) : !estado.horas.length ? (
-                <p className="py-2 text-sm text-[var(--v-suave)]">No quedan horas libres ese día{especialistaId ? ' con esa especialista' : ''}. Prueba otro día{especialistaId ? ' o «Quien esté libre»' : ''}.</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {estado.horas.map((h) => (
-                    <button
-                      key={h} type="button" onClick={() => setHora(h)} aria-pressed={hora === h}
-                      className={`rounded-xl py-2 text-sm font-medium tabular-nums transition ${hora === h ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)]'}`}
-                    >
-                      {horaBonita(h)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+      case paso.clave.startsWith('gusto-'): {
+        const g = gustos.find((x) => `gusto-${x.tipo}` === paso.clave)!;
+        const r = respuesta(g.tipo);
+        return (
+          <div className="space-y-3">
+            {!!g.opciones.length && (
+              <div className="flex flex-wrap gap-2">
+                {g.opciones.map((o) => (
+                  <button key={o.id} type="button" onClick={() => marcarGusto(g.tipo, o.id)} aria-pressed={r.ids.includes(o.id)} className={chip(r.ids.includes(o.id))}>
+                    {r.ids.includes(o.id) && <Check className="mr-1 inline size-3.5 align-[-2px]" />}{o.valor}
+                  </button>
+                ))}
+              </div>
+            )}
+            <input
+              className={campo} maxLength={60}
+              placeholder={g.opciones.length ? 'Otra (escríbela)' : g.tipo === 'music' ? 'Un artista o un género' : 'Lo que te gusta tomar'}
+              value={r.otra} onChange={(e) => setRespuestas((m) => ({ ...m, [g.tipo]: { ...respuesta(g.tipo), otra: e.target.value } }))}
+            />
+            {r.ids.length >= MAXIMO_POR_GUSTO && <p className="text-xs text-[var(--v-suave)]">Con {MAXIMO_POR_GUSTO} nos basta para conocerte.</p>}
           </div>
+        );
+      }
 
-          {/* 5. Quién reserva */}
-          <div className="mt-5 space-y-2">
-            <p className={paso}>Tus datos</p>
+      case paso.clave === 'datos':
+        return (
+          <div className="space-y-2">
             <input
               className={campo} placeholder="Tu nombre" autoComplete="name" maxLength={80}
               value={contacto.nombre} onChange={(e) => setContacto((c) => ({ ...c, nombre: e.target.value }))}
@@ -774,37 +1035,102 @@ function PanelReserva({
               value={contacto.telefono} onChange={(e) => setContacto((c) => ({ ...c, telefono: e.target.value }))}
             />
             <textarea
-              className={`${campo} min-h-[72px] resize-none`} placeholder="¿Algo que debamos saber? (opcional)" maxLength={300}
+              className={`${campo} min-h-[72px] resize-none`} placeholder="¿Algo que debamos saber? Una alergia, por ejemplo (opcional)" maxLength={300}
               value={nota} onChange={(e) => setNota(e.target.value)}
             />
+            <p className="px-1 text-xs text-[var(--v-suave)]">Solo lo usamos para tu cita.</p>
           </div>
-        </>
+        );
+
+      default: {
+        // El resumen: cada línea lleva a su paso para cambiarla
+        const fila = (icono: React.ReactNode, texto: React.ReactNode, a: ClavePaso) => (
+          <li>
+            <button type="button" onClick={() => ir(a)} className="flex w-full items-start gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition hover:bg-[var(--v-tinte)]">
+              <span className="mt-0.5 shrink-0 text-[var(--v-p)]">{icono}</span>
+              <span className="min-w-0 flex-1">{texto}</span>
+              <span className="shrink-0 text-xs font-semibold text-[var(--v-p)]">Cambiar</span>
+            </button>
+          </li>
+        );
+        const gustosDichos = gustos.map((g) => loQueLeGusta(g.tipo)).flat();
+        return (
+          <ul className="-mx-3">
+            {fila(<Sparkles className="size-4" />, <><b className="font-semibold">{elegidos.map((s) => s.nombre).join(' + ')}</b>{apartados.length ? <span className="block text-xs text-[var(--v-suave)]">Apartas: {apartados.map((p) => p.nombre).join(', ')}</span> : null}</>, 'elegido')}
+            {posibles.length > 0 && fila(<User className="size-4" />, especialista ? `Con ${especialista.nombre}` : 'Con quien esté libre', 'quien')}
+            {fila(<CalendarDays className="size-4" />, hora
+              ? <span className="first-letter:uppercase inline-block">{fmtFechaLarga.format(new Date(`${fecha}T12:00:00Z`))}, {horaBonita(hora)}</span>
+              : <span className="text-[var(--v-suave)]">{previa ? 'Aquí va el día y la hora' : 'Elige el día y la hora'}</span>, 'cuando')}
+            {gustos.length > 0 && fila(<Music className="size-4" />, gustosDichos.length ? gustosDichos.join(' · ') : <span className="text-[var(--v-suave)]">Sin gustos (puedes decirnos al llegar)</span>, `gusto-${gustos[0].tipo}`)}
+            {fila(<Phone className="size-4" />, contacto.nombre.trim() ? `${contacto.nombre.trim()} · ${contacto.telefono.trim()}` : <span className="text-[var(--v-suave)]">Tu nombre y tu WhatsApp</span>, 'datos')}
+          </ul>
+        );
+      }
+    }
+  };
+
+  const ultimo = paso.clave === 'resumen';
+  const esGusto = paso.clave.startsWith('gusto-');
+
+  return (
+    <div className={enHoja ? '' : `${TARJETA} p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]`}>
+      {!enHoja && (
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-bold">Tu reserva</h2>
+          <span className="inline-flex items-center gap-1 text-xs text-[var(--v-suave)]"><MapPin className="size-3" />{sede.nombre}</span>
+        </div>
       )}
 
-      {/* El total y el botón */}
+      {/* Cuánto falta */}
+      <div className={`${enHoja ? '' : 'mt-3'} flex items-center gap-3`}>
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--v-tinte)]" role="progressbar" aria-valuemin={1} aria-valuemax={pasos.length} aria-valuenow={indice + 1} aria-label="Paso de la reserva">
+          <motion.div className="h-full rounded-full bg-[var(--v-p)]" initial={false} animate={{ width: `${((indice + 1) / pasos.length) * 100}%` }} transition={{ type: 'spring', stiffness: 200, damping: 30 }} />
+        </div>
+        <span className="shrink-0 text-xs tabular-nums text-[var(--v-suave)]">{indice + 1} de {pasos.length}</span>
+      </div>
+
+      <AnimatePresence mode="wait" initial={false} custom={direccion}>
+        <motion.div
+          key={paso.clave} custom={direccion}
+          variants={{ entra: (d: number) => ({ opacity: 0, x: d * 28 }), quieto: { opacity: 1, x: 0 }, sale: (d: number) => ({ opacity: 0, x: d * -28 }) }}
+          initial="entra" animate="quieto" exit="sale" transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="mt-4"
+        >
+          <h3 ref={titulo} tabIndex={-1} className="text-lg font-bold leading-snug outline-none">{paso.titulo}</h3>
+          {paso.ayuda && <p className="mt-0.5 text-sm text-[var(--v-suave)]">{paso.ayuda}</p>}
+          <div className="mt-3">{contenido()}</div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* El total, los botones y por qué no se puede seguir */}
       {(!!elegidos.length || !!apartados.length) && (
         <div className="mt-5 border-t border-[var(--v-borde)] pt-4">
           <div className="flex items-baseline justify-between text-sm">
             <span className="text-[var(--v-suave)]">
               {resumen.minutos ? `${duracion(resumen.minutos)} · ` : ''}Total{resumen.aproximado ? ' estimado' : ''}
             </span>
-            <span className="text-lg font-bold">{resumen.aproximado ? 'Desde ' : ''}{dinero.format(resumen.total)}</span>
+            <span className="text-lg font-bold">{resumen.total > 0 ? `${resumen.aproximado ? 'Desde ' : ''}${dinero.format(resumen.total)}` : 'En el salón'}</span>
           </div>
-          {hora && (
-            <p className="mt-1 text-right text-xs text-[var(--v-suave)]">
-              <span className="inline-block first-letter:uppercase">{fmtFechaLarga.format(new Date(`${fecha}T12:00:00Z`))}</span> a las {horaBonita(hora)}
-            </p>
-          )}
           {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
-          <button type="button" onClick={reservar} disabled={!listo || previa || enviando} className={`${BOTON_P} mt-3 w-full py-3.5 text-[15px]`}>
-            {enviando ? <><Loader2 className="size-4 animate-spin" /> Reservando…</> : previa ? 'Así se ve el botón de reservar' : diseno.confirmaSola ? 'Reservar' : 'Pedir esta cita'}
-          </button>
-          {!listo && !previa && !!elegidos.length && (
-            <p className="mt-2 text-center text-xs text-[var(--v-suave)]">
-              {!hora ? 'Elige una hora' : contacto.nombre.trim().length < 2 ? 'Escribe tu nombre' : 'Escribe tu WhatsApp'} para terminar
-            </p>
-          )}
-          {!diseno.confirmaSola && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">El salón confirma tu cita por WhatsApp.</p>}
+          <div className="mt-3 flex gap-2">
+            {indice > 0 && (
+              <button type="button" onClick={atras} aria-label="Atrás" className="grid size-[50px] shrink-0 place-items-center rounded-full border border-[var(--v-borde)] transition active:scale-95">
+                <ChevronLeft className="size-5" />
+              </button>
+            )}
+            {ultimo ? (
+              <button type="button" onClick={reservar} disabled={!listo || previa || enviando} className={`${BOTON_P} flex-1 py-3.5 text-[15px]`}>
+                {enviando ? <><Loader2 className="size-4 animate-spin" /> Reservando…</> : previa ? 'Así se ve el botón de reservar' : diseno.confirmaSola ? 'Reservar' : 'Pedir esta cita'}
+              </button>
+            ) : (
+              <button type="button" onClick={siguiente} disabled={!puedeSeguir} className={`${BOTON_P} flex-1 py-3.5 text-[15px]`}>
+                {esGusto && !loQueLeGusta(paso.clave.slice(6)).length ? 'Saltar' : 'Siguiente'} <ChevronRight className="size-4" />
+              </button>
+            )}
+          </div>
+          {!puedeSeguir && porQueNo && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">{porQueNo} para seguir</p>}
+          {ultimo && !listo && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">Falta {!hora ? 'la hora' : 'tu nombre o tu WhatsApp'}: toca la línea para completarlo</p>}
+          {ultimo && !diseno.confirmaSola && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">El salón confirma tu cita por WhatsApp.</p>}
         </div>
       )}
     </div>

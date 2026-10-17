@@ -54,8 +54,20 @@ import { CopiarASede, EtiquetaSede } from '../components/ui/CopiarASede';
 import { ServicioEnSedes, agruparPorSede } from '../components/catalogo/ServicioEnSedes';
 import { VariantesDePrecio, preciosDeSedesDesde, preciosParaGuardar, type PreciosDeSedes } from '../components/catalogo/VariantesDePrecio';
 import { useSedeActiva } from '../context/SedeActivaContext';
-import { AvisoSinFoto, FotoDelCatalogo, MiniaturaCatalogo, urlFotoCatalogo } from '../components/catalogo/FotoDelCatalogo';
-import { SaleEnVitrina } from '../components/catalogo/SaleEnVitrina';
+import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
+import { usePlan } from '../context/PlanContext';
+import { SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
+
+/**
+ * Sube, en orden, las fotos que se eligieron antes de crear el artículo.
+ * Devuelve el motivo si alguna falló (las que ya subieron se quedan).
+ */
+async function subirFotos(fotos: FotoDeGaleria[], subir: (dataUrl: string) => Promise<unknown>): Promise<string | null> {
+  for (const f of fotos) {
+    try { await subir(f.url); } catch (e: any) { return e?.message ?? 'Una foto no se pudo subir.'; }
+  }
+  return null;
+}
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -81,10 +93,8 @@ export const CatalogScreen: React.FC = () => {
     categoriasDe,
     categoriaPorClave,
     guardarRecetaProducto,
-    ponerFotoServicio,
-    quitarFotoServicio,
-    ponerFotoProducto,
-    quitarFotoProducto,
+    galeriaServicio,
+    galeriaProducto,
   } = useApp();
   const { varias: variasSedes, actual: sedeActual, sedes: sedesDelSalon } = useSedeActiva();
   const sedeDelStockInicial = useSedeDelStock();
@@ -98,6 +108,7 @@ export const CatalogScreen: React.FC = () => {
     return { category: c?.key ?? '', categoryName: c?.name ?? '' };
   };
   const { currentUser } = useAuth();
+  const { tieneModulo } = usePlan();
 
   const [activeTab, setActiveTab] = useState<'services' | 'products' | 'ofertas'>('services');
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,8 +124,9 @@ export const CatalogScreen: React.FC = () => {
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   // La foto elegida para algo que todavía no existe: se sube al crearlo
-  const [fotoNuevoServicio, setFotoNuevoServicio] = useState<string | null>(null);
-  const [fotoNuevoProducto, setFotoNuevoProducto] = useState<string | null>(null);
+  // Las fotos elegidas antes de crear el artículo: se suben al crearlo
+  const [fotosNuevoServicio, setFotosNuevoServicio] = useState<FotoDeGaleria[]>([]);
+  const [fotosNuevoProducto, setFotosNuevoProducto] = useState<FotoDeGaleria[]>([]);
 
   // ── Ingredient state ──────────────────────────────────────────────────────
   const [serviceModalTab, setServiceModalTab] = useState<'config' | 'recipe'>('config');
@@ -145,6 +157,8 @@ export const CatalogScreen: React.FC = () => {
     priceTiers: PriceTier[];
     currencyCode: string;
     aiPrecio: ModoPrecioAsistente;
+    enVitrina: boolean;
+    vitrinaPrecio: ModoPrecioVitrina;
   }>({
     name: '',
     category: 'nails',
@@ -160,6 +174,8 @@ export const CatalogScreen: React.FC = () => {
     ],
     currencyCode: '',
     aiPrecio: 'exacto',
+    enVitrina: true,
+    vitrinaPrecio: 'exacto',
   });
 
   // Form State for Product
@@ -185,6 +201,8 @@ export const CatalogScreen: React.FC = () => {
     supplyOnly: boolean;
     receta: LineaDeReceta[];
     currencyCode: string;
+    enVitrina: boolean;
+    vitrinaPrecio: ModoPrecioVitrina;
   }>({
     name: '',
     category: 'nailcare',
@@ -209,6 +227,8 @@ export const CatalogScreen: React.FC = () => {
     supplyOnly: false,
     receta: [],
     currencyCode: '',
+    enVitrina: true,
+    vitrinaPrecio: 'exacto',
   });
 
   // Filtered Services
@@ -270,11 +290,13 @@ export const CatalogScreen: React.FC = () => {
       aiAvailable: true,
       priceTiers: tiersIniciales,
       aiPrecio: 'exacto',
+      enVitrina: true,
+      vitrinaPrecio: 'exacto',
     });
     setSedeDelServicio(sedeActual);
     // En "Todas las sedes" se elige desde ya qué cobra cada sede
     setServicioPorSede(variasSedes && !sedeActual ? preciosDeSedesDesde(tiersIniciales, sedesDelSalon, {}) : null);
-    setFotoNuevoServicio(null);
+    setFotosNuevoServicio([]);
     setServiceModalTab('config');
     setIngredients([]);
     setIngredientPickerProductId('');
@@ -302,6 +324,8 @@ export const CatalogScreen: React.FC = () => {
         return valid.length > 0 ? valid : [{ id: `tier_${Date.now()}`, name: 'Precio Base', price: service.price, isDefault: true }];
       })(),
       aiPrecio: service.aiPrecio ?? 'exacto',
+      enVitrina: service.enVitrina !== false,
+      vitrinaPrecio: service.vitrinaPrecio ?? 'exacto',
     });
     // En "Todas las sedes", un servicio de la cadena muestra qué cobra cada sede (sus copias)
     if (variasSedes && !sedeActual && !service.locationId) {
@@ -352,9 +376,11 @@ export const CatalogScreen: React.FC = () => {
       preparedToOrder: false,
       supplyOnly: false,
       receta: [],
+      enVitrina: true,
+      vitrinaPrecio: 'exacto',
     });
     setProductoPorSede(null);
-    setFotoNuevoProducto(null);
+    setFotosNuevoProducto([]);
     setShowProductModal(true);
   };
 
@@ -385,6 +411,8 @@ export const CatalogScreen: React.FC = () => {
       preparedToOrder: !!product.preparedToOrder,
       supplyOnly: !!product.supplyOnly,
       receta: product.receta ?? [],
+      enVitrina: product.enVitrina !== false,
+      vitrinaPrecio: product.vitrinaPrecio ?? 'exacto',
     });
     // En "Todas las sedes" se ve y se cambia lo que cobra cada sede
     if (variasSedes && !sedeActual) {
@@ -440,6 +468,8 @@ export const CatalogScreen: React.FC = () => {
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
           aiPrecio: serviceForm.aiPrecio,
+          enVitrina: serviceForm.enVitrina,
+          vitrinaPrecio: serviceForm.vitrinaPrecio,
         });
         if (servicioPorSede) await preciosServicioEnSedes(editingServiceId, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
         // Save ingredients if on recipe tab or if ingredients were loaded
@@ -471,13 +501,13 @@ export const CatalogScreen: React.FC = () => {
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
           aiPrecio: serviceForm.aiPrecio,
+          enVitrina: serviceForm.enVitrina,
+          vitrinaPrecio: serviceForm.vitrinaPrecio,
         });
         if (servicioPorSede) await preciosServicioEnSedes(creado.id, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
-        if (fotoNuevoServicio) {
-          // El servicio ya quedó creado: si la foto falla, se avisa y se puede poner después
-          await ponerFotoServicio(creado.id, fotoNuevoServicio)
-            .catch((err: any) => showToast('El servicio se creó sin foto', err?.message ?? 'Ponla desde Editar.', 'warning'));
-        }
+        // El servicio ya quedó creado: si una foto falla, se avisa y se puede poner después
+        const fallo = await subirFotos(fotosNuevoServicio, (f) => galeriaServicio(creado.id, { agregar: f }));
+        if (fallo) showToast('El servicio se creó con fotos de menos', `${fallo} Ponlas desde Editar.`, 'warning');
         showToast('Servicio creado', serviceForm.name, 'success');
       }
       setShowServiceModal(false);
@@ -513,6 +543,8 @@ export const CatalogScreen: React.FC = () => {
         description: productForm.description,
         aiAvailable: productForm.aiAvailable,
         priceTiers: productForm.priceTiers,
+        enVitrina: productForm.enVitrina,
+        vitrinaPrecio: productForm.vitrinaPrecio,
         costPrice: productForm.costPrice !== '' ? Number(productForm.costPrice) : undefined,
         minStock: productForm.minStock !== '' ? Number(productForm.minStock) : undefined,
         alertThreshold: productForm.alertThreshold !== '' ? Number(productForm.alertThreshold) : undefined,
@@ -527,10 +559,9 @@ export const CatalogScreen: React.FC = () => {
         if (productoPorSede) await preciosProductoEnSedes(editingProductId, preciosParaGuardar(productForm.priceTiers, sedesDelSalon, productoPorSede));
       } else {
         id = (await addProduct(productPayload, sedeDelStockInicial.sede)).id;
-        if (fotoNuevoProducto) {
-          await ponerFotoProducto(id, fotoNuevoProducto)
-            .catch((err: any) => showToast('El producto se creó sin foto', err?.message ?? 'Ponla desde Editar.', 'warning'));
-        }
+        const nuevo = id;
+        const fallo = await subirFotos(fotosNuevoProducto, (f) => galeriaProducto(nuevo, { agregar: f }));
+        if (fallo) showToast('El producto se creó con fotos de menos', `${fallo} Ponlas desde Editar.`, 'warning');
       }
       // La receta va aparte: necesita que el producto ya exista
       if (productForm.preparedToOrder && id) {
@@ -1262,21 +1293,25 @@ export const CatalogScreen: React.FC = () => {
                 />
               </div>
 
-              <FotoDelCatalogo
+              <FotosDelCatalogo
                 que="servicio"
                 nombre={serviceForm.name}
-                foto={editingServiceId ? urlFotoCatalogo(servicioEnEdicion?.fotoId) : fotoNuevoServicio}
+                fotos={editingServiceId ? fotosGuardadas(servicioEnEdicion) : fotosNuevoServicio}
                 sede={sedeDeLaFotoDelServicio}
-                onElegir={async (foto) => {
-                  if (!editingServiceId) { setFotoNuevoServicio(foto); return; }
+                onAgregar={async (foto) => {
+                  if (!editingServiceId) { setFotosNuevoServicio(l => [...l, { clave: `nueva-${Date.now()}-${l.length}`, url: foto }]); return; }
                   // Dentro de una sede, un servicio de la cadena se separa en su copia: se sigue editando la copia
-                  const listo = await ponerFotoServicio(editingServiceId, foto);
+                  const listo = await galeriaServicio(editingServiceId, { agregar: foto });
                   if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
-                  showToast('Foto guardada', serviceForm.name, 'success');
                 }}
-                onQuitar={async () => {
-                  if (!editingServiceId) { setFotoNuevoServicio(null); return; }
-                  const listo = await quitarFotoServicio(editingServiceId);
+                onQuitar={async (clave) => {
+                  if (!editingServiceId) { setFotosNuevoServicio(l => l.filter(f => f.clave !== clave)); return; }
+                  const listo = await galeriaServicio(editingServiceId, { quitar: clave });
+                  if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
+                }}
+                onOrdenar={async (claves) => {
+                  if (!editingServiceId) { setFotosNuevoServicio(l => claves.map(c => l.find(f => f.clave === c)!).filter(Boolean)); return; }
+                  const listo = await galeriaServicio(editingServiceId, { orden: claves });
                   if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
                 }}
               />
@@ -1362,6 +1397,7 @@ export const CatalogScreen: React.FC = () => {
                 sedeDeEstos={sedeDelServicio}
                 permiteNo
                 conAsistente
+                conVitrina={tieneModulo('vitrina') && serviceForm.enVitrina && serviceForm.vitrinaPrecio === 'exacto'}
                 nombreBase="Precio base"
               />
             </div>
@@ -1419,6 +1455,12 @@ export const CatalogScreen: React.FC = () => {
                 }`} />
               </button>
             </div>
+
+            <VitrinaEnFormulario
+              que="servicio"
+              activo={serviceForm.enVitrina} onActivo={v => setServiceForm(prev => ({ ...prev, enVitrina: v }))}
+              modo={serviceForm.vitrinaPrecio} onModo={m => setServiceForm(prev => ({ ...prev, vitrinaPrecio: m }))}
+            />
 
             {serviceApiError && (
               <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[0.75rem] font-medium">
@@ -1484,19 +1526,22 @@ export const CatalogScreen: React.FC = () => {
 
             {/* Un insumo no se vende: no sale en la Vitrina y no necesita foto */}
             {!productForm.supplyOnly && (
-              <FotoDelCatalogo
+              <FotosDelCatalogo
                 que="producto"
                 nombre={productForm.name}
-                foto={editingProductId ? urlFotoCatalogo(products.find(p => p.id === editingProductId)?.fotoId) : fotoNuevoProducto}
+                fotos={editingProductId ? fotosGuardadas(products.find(p => p.id === editingProductId)) : fotosNuevoProducto}
                 sede={variasSedes ? 'Todas las sedes' : null}
-                onElegir={async (foto) => {
-                  if (!editingProductId) { setFotoNuevoProducto(foto); return; }
-                  await ponerFotoProducto(editingProductId, foto);
-                  showToast('Foto guardada', productForm.name, 'success');
+                onAgregar={async (foto) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => [...l, { clave: `nueva-${Date.now()}-${l.length}`, url: foto }]); return; }
+                  await galeriaProducto(editingProductId, { agregar: foto });
                 }}
-                onQuitar={async () => {
-                  if (!editingProductId) { setFotoNuevoProducto(null); return; }
-                  await quitarFotoProducto(editingProductId);
+                onQuitar={async (clave) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => l.filter(f => f.clave !== clave)); return; }
+                  await galeriaProducto(editingProductId, { quitar: clave });
+                }}
+                onOrdenar={async (claves) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => claves.map(c => l.find(f => f.clave === c)!).filter(Boolean)); return; }
+                  await galeriaProducto(editingProductId, { orden: claves });
                 }}
               />
             )}
@@ -1756,6 +1801,7 @@ export const CatalogScreen: React.FC = () => {
               porSede={productoPorSede ?? undefined}
               onPorSede={setProductoPorSede}
               sedeDeEstos={sedeActual}
+              conVitrina={tieneModulo('vitrina') && !productForm.supplyOnly && productForm.enVitrina && productForm.vitrinaPrecio === 'exacto'}
               nombreBase="Precio al público"
               ejemploNombre="Ej: Mayorista, después de la cita"
             />
@@ -1906,6 +1952,17 @@ export const CatalogScreen: React.FC = () => {
               }`} />
             </button>
           </div>
+
+          {/* Un insumo no se vende: no sale en la Vitrina */}
+          {!productForm.supplyOnly && (
+            <div className="mb-5">
+              <VitrinaEnFormulario
+                que="producto"
+                activo={productForm.enVitrina} onActivo={v => setProductForm(prev => ({ ...prev, enVitrina: v }))}
+                modo={productForm.vitrinaPrecio} onModo={m => setProductForm(prev => ({ ...prev, vitrinaPrecio: m }))}
+              />
+            </div>
+          )}
 
           {productApiError && (
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[0.75rem] font-medium mb-4">
