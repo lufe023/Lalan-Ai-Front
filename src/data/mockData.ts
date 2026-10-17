@@ -424,7 +424,6 @@ export const INITIAL_PRODUCTS: SalonProduct[] = [
     basePrice: 32,
     unit: 'u',
     stock: 18,
-    image: 'https://images.unsplash.com/photo-1608248597359-21695cb38d9b?w=150&auto=format&fit=crop&q=80',
     description: 'Tratamiento reparador de enlaces capilares para usar en casa post-decoloración.',
     aiAvailable: true,
     priceTiers: [
@@ -442,7 +441,6 @@ export const INITIAL_PRODUCTS: SalonProduct[] = [
     basePrice: 12,
     unit: 'u',
     stock: 35,
-    image: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=150&auto=format&fit=crop&q=80',
     description: 'Gotero hidratante con aroma a vainilla francesa para extender la vida del Kapping y Acrílico.',
     aiAvailable: true,
     priceTiers: [
@@ -460,7 +458,6 @@ export const INITIAL_PRODUCTS: SalonProduct[] = [
     basePrice: 22,
     unit: 'u',
     stock: 14,
-    image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=150&auto=format&fit=crop&q=80',
     description: 'Cristales rosados ricos en 84 minerales con aceites botánicos de lavanda y eucalipto.',
     aiAvailable: true,
     priceTiers: [
@@ -477,7 +474,6 @@ export const INITIAL_PRODUCTS: SalonProduct[] = [
     basePrice: 28,
     unit: 'u',
     stock: 12,
-    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=150&auto=format&fit=crop&q=80',
     description: 'Fórmula no grasa que retiene 1000x su peso en agua para un efecto glow radiante.',
     aiAvailable: false, // El bot no lo ofrece automáticamente a menos que se active
     priceTiers: [

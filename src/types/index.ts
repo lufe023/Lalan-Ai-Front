@@ -93,6 +93,8 @@ export interface SalonService {
   priceTiers: PriceTier[]; // Multiple pricing table
   /** Cómo habla del precio la asistente */
   aiPrecio?: ModoPrecioAsistente;
+  /** Su foto (para el catálogo y la Vitrina). Puesta dentro de una sede, es de esa sede */
+  fotoId?: string | null;
 }
 
 /** Clave de una categoría de productos del salón (ver ServiceCategory) */
@@ -133,7 +135,8 @@ export interface SalonProduct {
   unit: string;        // ml | g | oz | L | unit
   unitQty?: number;    // contenido por unidad (ej: 15 ml por botella)
   unitQtyUnit?: string; // unidad del contenido (ml, g, oz, L)
-  image?: string;
+  /** Su foto (para el catálogo y la Vitrina): la misma en todas las sedes */
+  fotoId?: string | null;
   description: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
   priceTiers: PriceTier[]; // Multiple pricing table

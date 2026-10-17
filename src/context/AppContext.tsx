@@ -296,6 +296,9 @@ interface AppContextType {
   toggleServiceAi: (id: string, aiAvailable: boolean) => Promise<void>;
   /** "Copiar a otra sede": con su precio, variantes, duración y receta */
   copiarServicio: (id: string, sedes: string[]) => Promise<void>;
+  /** Pone o quita la foto. Dentro de una sede, un servicio de la cadena se separa en su copia: devuelve el que quedó */
+  ponerFotoServicio: (id: string, dataUrl: string) => Promise<SalonService>;
+  quitarFotoServicio: (id: string) => Promise<SalonService>;
   /** Desde "Todas las sedes": el precio de un servicio en cada sede (null = el del salón, [] = no se ofrece) */
   preciosServicioEnSedes: (id: string, sedes: PrecioEnSede[]) => Promise<void>;
   /** Desde "Todas las sedes": el precio de un producto en cada sede (null = el del salón) */
@@ -323,6 +326,8 @@ interface AppContextType {
   /** La sede activa vuelve a cobrar el precio del salón */
   usarPrecioDelSalon: (id: string) => Promise<SalonProduct>;
   toggleProductAi: (id: string, aiAvailable: boolean) => Promise<void>;
+  ponerFotoProducto: (id: string, dataUrl: string) => Promise<SalonProduct>;
+  quitarFotoProducto: (id: string) => Promise<SalonProduct>;
   appointments: Appointment[];
   addAppointment: (appointment: Omit<Appointment, 'id' | 'createdAt'>) => Promise<void>;
   /** Devuelve la comanda que se abrió al atender/completar y su saldo. `cancelado`: la persona se echó atrás */
@@ -704,6 +709,7 @@ function mapApiService(s: any): SalonService {
     aiPrecio: s.aiPrecio ?? 'exacto',
     locationId: s.locationId ?? null,
     ocultoEn: Array.isArray(s.ocultoEn) ? s.ocultoEn : [],
+    fotoId: s.fotoId ?? null,
   };
 }
 function mapApiProduct(p: any): SalonProduct {
@@ -721,7 +727,7 @@ function mapApiProduct(p: any): SalonProduct {
       alertThreshold: p.alertThreshold != null ? Number(p.alertThreshold) : undefined,
       hasLotTracking: p.hasLotTracking ?? false,
       lotStrategy: (p.lotStrategy as 'FEFO' | 'FIFO') ?? 'FEFO',
-    image: p.image, description: p.description ?? '',
+    fotoId: p.fotoId ?? null, description: p.description ?? '',
     aiAvailable: p.aiAvailable ?? true, priceTiers: ((p.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     preparedToOrder: !!p.preparedToOrder,
     supplyOnly: !!p.supplyOnly,
@@ -1197,6 +1203,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (svcs) setServices(svcs.map(mapApiService));
   }, []);
 
+  // La respuesta puede ser la copia de la sede (otro id): reemplaza al que se tocó, como al editarlo
+  const fotoDeServicio = useCallback(async (id: string, res: any) => {
+    const listo = mapApiService(res);
+    setServices(s => (s.some(x => x.id === listo.id) ? s.map(x => (x.id === listo.id ? listo : x)) : s.map(x => (x.id === id ? listo : x))));
+    return listo;
+  }, []);
+  const ponerFotoServicio = useCallback(async (id: string, dataUrl: string) =>
+    fotoDeServicio(id, await api.put<any>(`/services/${id}/foto`, { imagen: dataUrl })), [fotoDeServicio]);
+  const quitarFotoServicio = useCallback(async (id: string) =>
+    fotoDeServicio(id, await api.delete<any>(`/services/${id}/foto`)), [fotoDeServicio]);
+
   const preciosServicioEnSedes = useCallback(async (id: string, sedes: PrecioEnSede[]) => {
     const svcs = await api.patch<any[]>(`/services/${id}/precios-sede`, { sedes });
     if (Array.isArray(svcs)) setServices(svcs.map(mapApiService));
@@ -1220,7 +1237,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       alertThreshold: data.alertThreshold ?? undefined,
       hasLotTracking: data.hasLotTracking ?? undefined,
       lotStrategy: data.lotStrategy ?? undefined,
-      image: data.image || undefined, description: data.description || undefined,
+      description: data.description || undefined,
       aiAvailable: data.aiAvailable, priceTiers: data.priceTiers ?? [],
       preparedToOrder: data.preparedToOrder ?? false,
       supplyOnly: data.supplyOnly ?? false,
@@ -1244,7 +1261,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.categoryName !== undefined) payload.categoryName = updated.categoryName;
     if (updated.sku !== undefined)          payload.sku = updated.sku;
     if (updated.basePrice !== undefined)    payload.basePrice = updated.basePrice;
-    if (updated.image !== undefined)        payload.image = updated.image || undefined;
     if (updated.description !== undefined)  payload.description = updated.description || undefined;
     if (updated.aiAvailable !== undefined)    payload.aiAvailable = updated.aiAvailable;
     if (updated.priceTiers !== undefined)     payload.priceTiers = updated.priceTiers;
@@ -1274,6 +1290,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleProductAi = useCallback(async (id: string, aiAvailable: boolean) => {
     await api.patch(`/products/${id}/ai`, { aiAvailable });
     setProducts(p => p.map(x => x.id === id ? { ...x, aiAvailable } : x));
+  }, []);
+
+  const ponerFotoProducto = useCallback(async (id: string, dataUrl: string) => {
+    const p = mapApiProduct(await api.put<any>(`/products/${id}/foto`, { imagen: dataUrl }));
+    setProducts(l => l.map(x => (x.id === id ? p : x)));
+    return p;
+  }, []);
+  const quitarFotoProducto = useCallback(async (id: string) => {
+    const p = mapApiProduct(await api.delete<any>(`/products/${id}/foto`));
+    setProducts(l => l.map(x => (x.id === id ? p : x)));
+    return p;
   }, []);
 
   const crearCita = useCallback(async (data: Omit<Appointment, 'id' | 'createdAt'> & {
@@ -2863,6 +2890,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cargarMasClientas, buscarClientas,
       addClient, updateClient, deleteClient,
       services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, preciosServicioEnSedes, preciosProductoEnSedes,
+      ponerFotoServicio, quitarFotoServicio, ponerFotoProducto, quitarFotoProducto,
       products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
       preguntar, consulta,
