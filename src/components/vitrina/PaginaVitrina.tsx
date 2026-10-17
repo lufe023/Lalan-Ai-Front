@@ -14,8 +14,9 @@ import { IOSModal } from '../ui/IOSModal';
 /**
  * La Vitrina tal como la ve una clienta: los bloques en el orden que eligió la
  * dueña, con su paleta, y "Tu reserva" siempre a la vista (al lado en
- * pantallas anchas, como barra abajo en el teléfono). Al seguir, la reserva
- * ocupa toda la pantalla, como la bienvenida del quiosco: sin distracciones.
+ * pantallas anchas, como barra abajo en el teléfono). Al seguir, en la
+ * computadora la reserva ocupa toda la pantalla, como la bienvenida del
+ * quiosco; en el teléfono sube como hoja.
  *
  * El ancho se mide con container queries y no con el de la ventana: así la
  * vista previa de Ajustes, que vive en una caja angosta, se ve como en un
@@ -101,7 +102,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [ficha, setFicha] = useState<{ tipo: 'servicio'; item: ServicioVitrina } | { tipo: 'producto'; item: ProductoVitrina } | null>(null);
 
-  // "Tu reserva" al lado si la página es ancha, en la barra de abajo si no.
+  // "Tu reserva" al lado si la página es ancha, en la barra de abajo y la hoja si no.
   // Se mide la página y no la ventana, por la vista previa de Ajustes.
   const raiz = useRef<HTMLDivElement>(null);
   const [ancha, setAncha] = useState(false);
@@ -241,16 +242,32 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
         </div>
       )}
 
-      {/* La reserva a pantalla completa. No se desmonta al cerrarla: lo elegido (día, hora, nombre) sigue ahí */}
-      {!hecha && (
-        <PanelReserva
-          datos={datos} slug={slug} previa={previa} dinero={dinero} cuenta={cuenta}
-          abierta={abierta} cerrar={() => setAbierta(false)}
-          elegidos={elegidos} apartados={apartados} oferta={oferta}
-          quitarServicio={alternarServicio} quitarProducto={alternarProducto}
-          alHacer={(r) => { setHecha(r); setAbierta(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-        />
-      )}
+      {/* La reserva: a pantalla completa en pantallas anchas, en la hoja que sube en el teléfono.
+          No se desmonta al cerrarla: lo elegido (día, hora, nombre) sigue ahí */}
+      {!hecha && (() => {
+        const panel = (
+          <PanelReserva
+            datos={datos} slug={slug} previa={previa} dinero={dinero} cuenta={cuenta} completa={ancha}
+            abierta={abierta} cerrar={() => setAbierta(false)}
+            elegidos={elegidos} apartados={apartados} oferta={oferta}
+            quitarServicio={alternarServicio} quitarProducto={alternarProducto}
+            alHacer={(r) => { setHecha(r); setAbierta(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          />
+        );
+        return ancha ? panel : (
+          <IOSModal
+            isOpen={!!abierta} onClose={() => setAbierta(false)} title="Tu reserva" subtitle={sede.nombre}
+            id="vitrina-tu-reserva" fijo mantenerMontado fixedHeight={false} height="90%"
+            apariencia={{
+              hoja: 'bg-[var(--v-fondo)] border-[var(--v-borde)] text-[var(--v-texto)]',
+              titulo: 'text-[var(--v-texto)]', subtitulo: 'text-[var(--v-suave)]', borde: 'border-[var(--v-borde)]',
+              cerrar: 'bg-[var(--v-tinte)] text-[var(--v-suave)]', asa: 'bg-[var(--v-borde)]',
+            }}
+          >
+            {panel}
+          </IOSModal>
+        );
+      })()}
 
       {/* La ficha de un servicio o producto: sus fotos grandes y el botón de agregar */}
       <IOSModal
@@ -801,9 +818,11 @@ function ListaElegidos({ elegidos, apartados, oferta, quitarServicio, quitarProd
  * cualquiera puede escribir el teléfono de otra persona.
  */
 function PanelReserva({
-  datos, slug, previa, dinero, cuenta, abierta, cerrar, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
+  datos, slug, previa, dinero, cuenta, completa, abierta, cerrar, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
 }: {
   datos: DatosVitrina; slug: string | null; previa: boolean; dinero: Intl.NumberFormat; cuenta: CuentaDeLaReserva;
+  /** En pantallas anchas, a pantalla completa; en el teléfono va dentro de la hoja que sube */
+  completa: boolean;
   /** 'lista' empieza en lo elegido; 'siguiente' en lo que sigue (ya lo vio en el panel de al lado) */
   abierta: false | 'lista' | 'siguiente';
   cerrar: () => void;
@@ -849,15 +868,18 @@ function PanelReserva({
   const especialistas = elegidos.map((s) => conQuien[s.id] ?? '').join(',');
 
   const pasos = useMemo(() => {
-    const l: { clave: ClavePaso; titulo: string; ayuda?: string }[] = [{ clave: 'elegido', titulo: 'Lo que elegiste' }];
+    // Primero lo que hace falta para la cita (día, hora, nombre y WhatsApp); lo demás se puede saltar
+    const l: { clave: ClavePaso; titulo: string; ayuda?: string }[] = [
+      { clave: 'elegido', titulo: 'Lo que elegiste' },
+      { clave: 'cuando', titulo: '¿Qué día y a qué hora?' },
+      { clave: 'datos', titulo: '¿A nombre de quién reservamos?' },
+    ];
     conElegir.forEach((s, i) => l.push({
       clave: `quien-${s.id}`,
       titulo: conElegir.length > 1 ? `¿Con quién te haces ${s.nombre}?` : '¿Con quién te quieres atender?',
       ayuda: conElegir.length > 1 ? `Servicio ${i + 1} de ${conElegir.length}: puedes elegir a alguien distinto para cada uno.` : undefined,
     }));
-    l.push({ clave: 'cuando', titulo: '¿Qué día y a qué hora?' });
     for (const g of gustos) l.push({ clave: `gusto-${g.tipo}`, titulo: g.titulo, ayuda: g.ayuda });
-    l.push({ clave: 'datos', titulo: '¿A nombre de quién reservamos?' });
     l.push({ clave: 'resumen', titulo: 'Revisa y reserva' });
     return l;
   }, [conElegir, gustos]);
@@ -885,15 +907,15 @@ function PanelReserva({
   useEffect(() => {
     if (abierta) titulo.current?.focus({ preventScroll: true });
   }, [clave, abierta]);
-  // A pantalla completa la página de atrás no se mueve, y Escape la cierra
+  // A pantalla completa la página de atrás no se mueve, y Escape la cierra (la hoja ya lo hace sola)
   useEffect(() => {
-    if (!abierta) return;
+    if (!abierta || !completa) return;
     const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') cerrar(); };
     window.addEventListener('keydown', tecla);
     const antes = document.body.style.overflow;
     if (!previa) document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', tecla); document.body.style.overflow = antes; };
-  }, [abierta, cerrar, previa]);
+  }, [abierta, completa, cerrar, previa]);
 
   const dias = useMemo(() => {
     const n = Math.max(0, Math.min(sede.diasParaReservar, DIAS_EN_LA_TIRA));
@@ -904,16 +926,36 @@ function PanelReserva({
     });
   }, [sede.diasParaReservar, sede.hoyFecha, sede.semana]);
 
-  // Las horas libres de verdad: las mismas que ofrece Lalán en los chats
+  // Las horas libres de verdad: las mismas que ofrece Lalán en los chats.
+  // Al cambiar de día o de servicios se vuelve a elegir la hora; al cambiar
+  // de especialista se queda si ella está libre a esa hora.
+  const consulta = useRef('');
+  const [horaPerdida, setHoraPerdida] = useState<string | null>(null);
+  const horaRef = useRef(hora);
+  horaRef.current = hora;
+  const perdidaRef = useRef(horaPerdida);
+  perdidaRef.current = horaPerdida;
   useEffect(() => {
-    setHora(null);
+    const nueva = `${fecha}|${ids}|${recargar}`;
+    const mismaHora = consulta.current === nueva;
+    consulta.current = nueva;
+    if (!mismaHora) { setHora(null); setHoraPerdida(null); horaRef.current = null; perdidaRef.current = null; }
     if (previa || !slug || !ids) { setEstado({ cargando: false, horas: [], cerrado: false, error: null }); return; }
     const mio = ++turno.current;
     setEstado((e) => ({ ...e, cargando: true, error: null }));
     const q = new URLSearchParams({ fecha, servicios: ids });
     if (especialistas.replace(/,/g, '')) q.set('especialistas', especialistas);
     publicRequest<{ fecha: string; cerrado: boolean; horas: string[] }>(`/vitrina/publica/${encodeURIComponent(slug)}/horas?${q}`)
-      .then((r) => { if (mio === turno.current) setEstado({ cargando: false, horas: r.horas, cerrado: r.cerrado, error: null }); })
+      .then((r) => {
+        if (mio !== turno.current) return;
+        setEstado({ cargando: false, horas: r.horas, cerrado: r.cerrado, error: null });
+        // Si eligió a otra persona y a esa hora sí está libre, la hora vuelve sola
+        const quiere = horaRef.current ?? perdidaRef.current;
+        if (!quiere) return;
+        const libre = r.horas.includes(quiere);
+        setHora(libre ? quiere : null);
+        setHoraPerdida(libre ? null : quiere);
+      })
       .catch((e: unknown) => {
         if (mio === turno.current) setEstado({ cargando: false, horas: [], cerrado: false, error: e instanceof ErrorPublico ? e.message : 'No se pudieron cargar las horas' });
       });
@@ -988,24 +1030,37 @@ function PanelReserva({
         const sid = paso.clave.slice(6);
         const actual = conQuien[sid] ?? null;
         return (
-          <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-3">
-            {[null, ...(posiblesDe.get(sid) ?? [])].map((e) => {
-              const id = e?.id ?? null;
-              const activo = actual === id;
-              return (
-                <button
-                  key={id ?? 'libre'} type="button" aria-pressed={activo}
-                  onClick={() => setConQuien((m) => { const n = { ...m }; if (id) n[sid] = id; else delete n[sid]; return n; })}
-                  className={`flex flex-col items-center gap-1.5 rounded-3xl p-4 text-center text-sm transition active:scale-[0.97] ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
-                >
-                  <span className={`grid size-14 place-items-center rounded-full text-lg font-bold ${activo ? 'bg-white/20' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}>
-                    {e ? iniciales(e.nombre) : <User className="size-6" />}
-                  </span>
-                  <span className="font-semibold leading-tight">{e ? e.nombre : 'Quien esté libre'}</span>
-                  <span className={`text-xs leading-tight ${activo ? 'opacity-85' : 'text-[var(--v-suave)]'}`}>{e ? e.especialidad || ' ' : 'Te damos la primera hora'}</span>
-                </button>
-              );
-            })}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-3">
+              {[null, ...(posiblesDe.get(sid) ?? [])].map((e) => {
+                const id = e?.id ?? null;
+                const activo = actual === id;
+                return (
+                  <button
+                    key={id ?? 'libre'} type="button" aria-pressed={activo}
+                    onClick={() => setConQuien((m) => { const n = { ...m }; if (id) n[sid] = id; else delete n[sid]; return n; })}
+                    className={`flex flex-col items-center gap-1.5 rounded-3xl p-4 text-center text-sm transition active:scale-[0.97] ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
+                  >
+                    <span className={`grid size-14 place-items-center rounded-full text-lg font-bold ${activo ? 'bg-white/20' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}>
+                      {e ? iniciales(e.nombre) : <User className="size-6" />}
+                    </span>
+                    <span className="font-semibold leading-tight">{e ? e.nombre : 'Quien esté libre'}</span>
+                    <span className={`text-xs leading-tight ${activo ? 'opacity-85' : 'text-[var(--v-suave)]'}`}>{e ? e.especialidad || ' ' : 'Te asignamos a alguien'}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* La hora ya está elegida: si con quien eligió no hay hueco a esa hora, se le dice aquí */}
+            {!previa && estado.cargando && !!actual && <p className="flex items-center gap-2 text-sm text-[var(--v-suave)]"><Loader2 className="size-4 animate-spin" />Viendo si está libre a tu hora…</p>}
+            {!previa && !estado.cargando && horaPerdida && !hora && (
+              <div className="flex items-start gap-2 rounded-2xl bg-amber-500/10 p-3 text-sm">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <span className="min-w-0 flex-1">
+                  Con quien elegiste no hay hueco a las {horaBonita(horaPerdida)}: elige a otra persona o{' '}
+                  <button type="button" onClick={() => ir('cuando')} className="font-semibold text-[var(--v-p)] underline underline-offset-2">cambia la hora</button>.
+                </span>
+              </div>
+            )}
           </div>
         );
       }
@@ -1116,6 +1171,10 @@ function PanelReserva({
         return (
           <ul className={`divide-y divide-[var(--v-borde)] ${TARJETA} px-3`}>
             {fila(<Sparkles className="size-4" />, <><b className="font-semibold">{elegidos.map((s) => s.nombre).join(' + ')}</b>{apartados.length ? <span className="block text-xs text-[var(--v-suave)]">Apartas: {apartados.map((p) => p.nombre).join(', ')}</span> : null}</>, 'elegido')}
+            {fila(<CalendarDays className="size-4" />, hora
+              ? <span className="first-letter:uppercase inline-block">{fmtFechaLarga.format(new Date(`${fecha}T12:00:00Z`))}, {horaBonita(hora)}</span>
+              : <span className="text-[var(--v-suave)]">{previa ? 'Aquí va el día y la hora' : 'Elige el día y la hora'}</span>, 'cuando')}
+            {fila(<Phone className="size-4" />, contacto.nombre.trim() ? `${contacto.nombre.trim()} · ${contacto.telefono.trim()}` : <span className="text-[var(--v-suave)]">Tu nombre y tu WhatsApp</span>, 'datos')}
             {!!conElegir.length && fila(<User className="size-4" />, (
               <span className="block space-y-0.5">
                 {conElegir.map((s) => (
@@ -1126,11 +1185,7 @@ function PanelReserva({
                 ))}
               </span>
             ), `quien-${conElegir[0].id}`)}
-            {fila(<CalendarDays className="size-4" />, hora
-              ? <span className="first-letter:uppercase inline-block">{fmtFechaLarga.format(new Date(`${fecha}T12:00:00Z`))}, {horaBonita(hora)}</span>
-              : <span className="text-[var(--v-suave)]">{previa ? 'Aquí va el día y la hora' : 'Elige el día y la hora'}</span>, 'cuando')}
             {gustos.length > 0 && fila(<Music className="size-4" />, gustosDichos.length ? gustosDichos.join(' · ') : <span className="text-[var(--v-suave)]">Sin gustos (puedes decirnos al llegar)</span>, `gusto-${gustos[0].tipo}`)}
-            {fila(<Phone className="size-4" />, contacto.nombre.trim() ? `${contacto.nombre.trim()} · ${contacto.telefono.trim()}` : <span className="text-[var(--v-suave)]">Tu nombre y tu WhatsApp</span>, 'datos')}
           </ul>
         );
       }
@@ -1139,6 +1194,74 @@ function PanelReserva({
 
   const ultimo = paso.clave === 'resumen';
   const esGusto = paso.clave.startsWith('gusto-');
+  // Con quién y los gustos se pueden saltar: de un toque al resumen
+  const opcional = esGusto || paso.clave.startsWith('quien-');
+
+  const progreso = (
+    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--v-tinte)]" role="progressbar" aria-valuemin={1} aria-valuemax={pasos.length} aria-valuenow={indice + 1} aria-label="Paso de la reserva">
+      <motion.div className="h-full rounded-full bg-[var(--v-p)]" initial={false} animate={{ width: `${((indice + 1) / pasos.length) * 100}%` }} transition={{ type: 'spring', stiffness: 200, damping: 30 }} />
+    </div>
+  );
+
+  // Una cosa por pantalla
+  const pantalla = (
+    <AnimatePresence mode="wait" initial={false} custom={direccion}>
+      <motion.section
+        key={paso.clave} custom={direccion}
+        variants={{ entra: (d: number) => ({ opacity: 0, x: d * 32 }), quieto: { opacity: 1, x: 0 }, sale: (d: number) => ({ opacity: 0, x: d * -32 }) }}
+        initial="entra" animate="quieto" exit="sale" transition={{ duration: 0.2, ease: 'easeOut' }}
+        className={completa ? 'mx-auto w-full max-w-xl px-4 pt-8 pb-10 @4xl:pt-14' : 'mt-4'}
+      >
+        <h2 ref={titulo} tabIndex={-1} className={`font-bold outline-none ${completa ? 'text-2xl leading-tight tracking-tight @4xl:text-3xl' : 'text-lg leading-snug'}`}>{paso.titulo}</h2>
+        {paso.ayuda && <p className={`text-[var(--v-suave)] ${completa ? 'mt-1.5 text-[15px]' : 'mt-0.5 text-sm'}`}>{paso.ayuda}</p>}
+        <div className={completa ? 'mt-6' : 'mt-3'}>{contenido()}</div>
+      </motion.section>
+    </AnimatePresence>
+  );
+
+  // El total, los botones y por qué no se puede seguir
+  const botones = (
+    <>
+      {!!elegidos.length && <Total cuenta={cuenta} dinero={dinero} />}
+      {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
+      <div className="mt-3 flex gap-2">
+        {(completa || indice > 0) && (
+          <button type="button" onClick={indice > 0 ? atras : cerrar} aria-label={indice > 0 ? 'Atrás' : 'Seguir viendo la Vitrina'} className="grid size-[50px] shrink-0 place-items-center rounded-full border border-[var(--v-borde)] transition active:scale-95">
+            <ChevronLeft className="size-5" />
+          </button>
+        )}
+        {ultimo ? (
+          <button type="button" onClick={reservar} disabled={!listo || previa || enviando} className={`${BOTON_P} flex-1 py-3.5 text-[15px]`}>
+            {enviando ? <><Loader2 className="size-4 animate-spin" /> Reservando…</> : previa ? 'Así se ve el botón de reservar' : diseno.confirmaSola ? 'Reservar' : 'Pedir esta cita'}
+          </button>
+        ) : (
+          <button type="button" onClick={siguiente} disabled={!puedeSeguir} className={`${BOTON_P} flex-1 py-3.5 text-[15px]`}>
+            {esGusto && !loQueLeGusta(paso.clave.slice(6)).length ? 'Saltar' : 'Siguiente'} <ChevronRight className="size-4" />
+          </button>
+        )}
+      </div>
+      {opcional && pasos[indice + 1]?.clave !== 'resumen' && (
+        <button type="button" onClick={() => ir('resumen')} className="mt-2 w-full text-center text-xs font-semibold text-[var(--v-p)]">Saltar lo demás e ir a reservar</button>
+      )}
+      {!puedeSeguir && porQueNo && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">{porQueNo} para seguir</p>}
+      {ultimo && !listo && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">Falta {!hora ? 'la hora' : 'tu nombre o tu WhatsApp'}: toca la línea para completarlo</p>}
+      {ultimo && !diseno.confirmaSola && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">El salón confirma tu cita por WhatsApp.</p>}
+    </>
+  );
+
+  // En el teléfono, dentro de la hoja que sube: el título y el marco los pone la hoja
+  if (!completa) {
+    return (
+      <div>
+        <div className="flex items-center gap-3">
+          {progreso}
+          <span className="shrink-0 text-xs tabular-nums text-[var(--v-suave)]">{indice + 1} de {pasos.length}</span>
+        </div>
+        {pantalla}
+        {(!!elegidos.length || !!apartados.length) && <div className="mt-5 border-t border-[var(--v-borde)] pt-4">{botones}</div>}
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -1160,52 +1283,13 @@ function PanelReserva({
           </div>
           <span className="w-10 shrink-0 text-right text-xs tabular-nums text-[var(--v-suave)]">{indice + 1}/{pasos.length}</span>
         </div>
-        <div className="mx-auto w-full max-w-xl px-4 pb-3">
-          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--v-tinte)]" role="progressbar" aria-valuemin={1} aria-valuemax={pasos.length} aria-valuenow={indice + 1} aria-label="Paso de la reserva">
-            <motion.div className="h-full rounded-full bg-[var(--v-p)]" initial={false} animate={{ width: `${((indice + 1) / pasos.length) * 100}%` }} transition={{ type: 'spring', stiffness: 200, damping: 30 }} />
-          </div>
-        </div>
+        <div className="mx-auto flex w-full max-w-xl px-4 pb-3">{progreso}</div>
       </header>
 
-      {/* Una cosa por pantalla */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-        <AnimatePresence mode="wait" initial={false} custom={direccion}>
-          <motion.section
-            key={paso.clave} custom={direccion}
-            variants={{ entra: (d: number) => ({ opacity: 0, x: d * 40 }), quieto: { opacity: 1, x: 0 }, sale: (d: number) => ({ opacity: 0, x: d * -40 }) }}
-            initial="entra" animate="quieto" exit="sale" transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="mx-auto w-full max-w-xl px-4 pt-8 pb-10 @4xl:pt-14"
-          >
-            <h2 ref={titulo} tabIndex={-1} className="text-2xl font-bold leading-tight tracking-tight outline-none @4xl:text-3xl">{paso.titulo}</h2>
-            {paso.ayuda && <p className="mt-1.5 text-[15px] text-[var(--v-suave)]">{paso.ayuda}</p>}
-            <div className="mt-6">{contenido()}</div>
-          </motion.section>
-        </AnimatePresence>
-      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">{pantalla}</div>
 
-      {/* Abajo: el total, los botones y por qué no se puede seguir */}
       <footer className="shrink-0 border-t border-[var(--v-borde)] bg-[var(--v-sup)] pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto w-full max-w-xl px-4 py-3">
-          {!!elegidos.length && <Total cuenta={cuenta} dinero={dinero} />}
-          {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
-          <div className="mt-3 flex gap-2">
-            <button type="button" onClick={indice > 0 ? atras : cerrar} aria-label={indice > 0 ? 'Atrás' : 'Seguir viendo la Vitrina'} className="grid size-[52px] shrink-0 place-items-center rounded-full border border-[var(--v-borde)] transition active:scale-95">
-              <ChevronLeft className="size-5" />
-            </button>
-            {ultimo ? (
-              <button type="button" onClick={reservar} disabled={!listo || previa || enviando} className={`${BOTON_P} flex-1 py-3.5 text-[15px]`}>
-                {enviando ? <><Loader2 className="size-4 animate-spin" /> Reservando…</> : previa ? 'Así se ve el botón de reservar' : diseno.confirmaSola ? 'Reservar' : 'Pedir esta cita'}
-              </button>
-            ) : (
-              <button type="button" onClick={siguiente} disabled={!puedeSeguir} className={`${BOTON_P} flex-1 py-3.5 text-[15px]`}>
-                {esGusto && !loQueLeGusta(paso.clave.slice(6)).length ? 'Saltar' : 'Siguiente'} <ChevronRight className="size-4" />
-              </button>
-            )}
-          </div>
-          {!puedeSeguir && porQueNo && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">{porQueNo} para seguir</p>}
-          {ultimo && !listo && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">Falta {!hora ? 'la hora' : 'tu nombre o tu WhatsApp'}: toca la línea para completarlo</p>}
-          {ultimo && !diseno.confirmaSola && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">El salón confirma tu cita por WhatsApp.</p>}
-        </div>
+        <div className="mx-auto w-full max-w-xl px-4 py-3">{botones}</div>
       </footer>
     </motion.div>
   );
