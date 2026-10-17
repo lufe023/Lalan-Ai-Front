@@ -10,7 +10,7 @@ interface Resumen {
 }
 
 /** Nombre de cada pantalla de la app, como sale en el menú */
-const PANTALLAS: { id: string; nombre: string }[] = [
+export const PANTALLAS: { id: string; nombre: string }[] = [
   { id: 'dashboard', nombre: 'Métricas' }, { id: 'calendar', nombre: 'Agenda' }, { id: 'sala', nombre: 'Sala' }, { id: 'clients', nombre: 'Clientas' },
   { id: 'lounge', nombre: 'Lounge' }, { id: 'caja', nombre: 'Caja' }, { id: 'chats', nombre: 'Chats' }, { id: 'catalog', nombre: 'Catálogo' },
   { id: 'settings', nombre: 'Ajustes' }, { id: 'price-lists', nombre: 'Precios' }, { id: 'ganancias', nombre: 'Ganancias' },

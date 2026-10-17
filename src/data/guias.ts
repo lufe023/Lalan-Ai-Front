@@ -14,10 +14,22 @@ import type { SeccionAjustes } from '../components/ajustes/MenuAjustes';
  */
 export interface PasoGuia {
   /** El valor de `data-guia` del elemento que se señala */
-  ancla: string;
+  ancla?: string;
   texto: string;
   /** No hay que tocar nada: se avanza con Siguiente (o Listo, si es el último) */
   leer?: boolean;
+  /**
+   * Los pasos grabados en Plataforma (Lo que Lalan sabe hacer) dicen además
+   * en qué pantalla están y, si lo tocado no tiene marca fija, cómo
+   * encontrarlo: por su nombre (el n-ésimo con ese nombre) o por el punto
+   * donde se tocó (de 0 a 1 sobre lo que se desplaza de la pantalla).
+   */
+  pantalla?: ScreenName;
+  seccion?: SeccionAjustes;
+  etiqueta?: string;
+  indice?: number;
+  x?: number;
+  y?: number;
 }
 
 export interface GuiaApp {
