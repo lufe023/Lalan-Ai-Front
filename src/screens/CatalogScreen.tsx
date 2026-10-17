@@ -54,6 +54,7 @@ import { CopiarASede, EtiquetaSede } from '../components/ui/CopiarASede';
 import { ServicioEnSedes, agruparPorSede } from '../components/catalogo/ServicioEnSedes';
 import { VariantesDePrecio, preciosDeSedesDesde, preciosParaGuardar, type PreciosDeSedes } from '../components/catalogo/VariantesDePrecio';
 import { useSedeActiva } from '../context/SedeActivaContext';
+import { AvisoSinFoto, FotoDelCatalogo, MiniaturaCatalogo, urlFotoCatalogo } from '../components/catalogo/FotoDelCatalogo';
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -79,6 +80,10 @@ export const CatalogScreen: React.FC = () => {
     categoriasDe,
     categoriaPorClave,
     guardarRecetaProducto,
+    ponerFotoServicio,
+    quitarFotoServicio,
+    ponerFotoProducto,
+    quitarFotoProducto,
   } = useApp();
   const { varias: variasSedes, actual: sedeActual, sedes: sedesDelSalon } = useSedeActiva();
   const sedeDelStockInicial = useSedeDelStock();
@@ -106,6 +111,9 @@ export const CatalogScreen: React.FC = () => {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  // La foto elegida para algo que todavía no existe: se sube al crearlo
+  const [fotoNuevoServicio, setFotoNuevoServicio] = useState<string | null>(null);
+  const [fotoNuevoProducto, setFotoNuevoProducto] = useState<string | null>(null);
 
   // ── Ingredient state ──────────────────────────────────────────────────────
   const [serviceModalTab, setServiceModalTab] = useState<'config' | 'recipe'>('config');
@@ -164,7 +172,6 @@ export const CatalogScreen: React.FC = () => {
     unit: string;
     unitQty: string;
     unitQtyUnit: string;
-    image: string;
     description: string;
     aiAvailable: boolean;
     priceTiers: PriceTier[];
@@ -187,7 +194,6 @@ export const CatalogScreen: React.FC = () => {
     unit: 'unit',
     unitQty: '',
     unitQtyUnit: 'ml',
-    image: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=150&auto=format&fit=crop&q=80',
     description: '',
     aiAvailable: true,
     priceTiers: [
@@ -229,6 +235,17 @@ export const CatalogScreen: React.FC = () => {
     return matchesSearch && matchesCat;
   });
 
+  // La foto del servicio que se edita y dónde vale: la de una copia es de su sede;
+  // puesta dentro de una sede queda solo en ella; en "Todas las sedes", de todas
+  const servicioEnEdicion = editingServiceId ? services.find(s => s.id === editingServiceId) : undefined;
+  const sedeDeLaFotoDelServicio = !variasSedes ? null
+    : servicioEnEdicion?.locationId ? (sedesDelSalon.find(x => x.id === servicioEnEdicion.locationId)?.name ?? 'Otra sede')
+    : sedeActual ? `Solo ${sedeActual.name}`
+    : 'Todas las sedes';
+  // Lo que se ofrece y aún no tiene foto (los insumos no se venden: no cuentan)
+  const serviciosSinFoto = services.filter(s => !s.fotoId).length;
+  const productosSinFoto = products.filter(p => !p.fotoId && !p.supplyOnly).length;
+
   // Count AI enabled items
   const aiEnabledServicesCount = services.filter(s => s.aiAvailable).length;
   const aiEnabledProductsCount = products.filter(p => p.aiAvailable).length;
@@ -256,6 +273,7 @@ export const CatalogScreen: React.FC = () => {
     setSedeDelServicio(sedeActual);
     // En "Todas las sedes" se elige desde ya qué cobra cada sede
     setServicioPorSede(variasSedes && !sedeActual ? preciosDeSedesDesde(tiersIniciales, sedesDelSalon, {}) : null);
+    setFotoNuevoServicio(null);
     setServiceModalTab('config');
     setIngredients([]);
     setIngredientPickerProductId('');
@@ -319,7 +337,6 @@ export const CatalogScreen: React.FC = () => {
       unit: 'unit',
       unitQty: '',
       unitQtyUnit: 'ml',
-      image: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=150&auto=format&fit=crop&q=80',
       description: '',
       aiAvailable: true,
       priceTiers: [
@@ -336,6 +353,7 @@ export const CatalogScreen: React.FC = () => {
       receta: [],
     });
     setProductoPorSede(null);
+    setFotoNuevoProducto(null);
     setShowProductModal(true);
   };
 
@@ -352,7 +370,6 @@ export const CatalogScreen: React.FC = () => {
       unit: product.unit ?? 'unit',
       unitQty: product.unitQty != null ? String(product.unitQty) : '',
       unitQtyUnit: product.unitQtyUnit ?? 'ml',
-      image: product.image || '',
       description: product.description,
       aiAvailable: product.aiAvailable,
       priceTiers: (() => {
@@ -455,6 +472,11 @@ export const CatalogScreen: React.FC = () => {
           aiPrecio: serviceForm.aiPrecio,
         });
         if (servicioPorSede) await preciosServicioEnSedes(creado.id, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
+        if (fotoNuevoServicio) {
+          // El servicio ya quedó creado: si la foto falla, se avisa y se puede poner después
+          await ponerFotoServicio(creado.id, fotoNuevoServicio)
+            .catch((err: any) => showToast('El servicio se creó sin foto', err?.message ?? 'Ponla desde Editar.', 'warning'));
+        }
         showToast('Servicio creado', serviceForm.name, 'success');
       }
       setShowServiceModal(false);
@@ -487,7 +509,6 @@ export const CatalogScreen: React.FC = () => {
         unit: productForm.unit,
         unitQty: productForm.unitQty !== '' ? Number(productForm.unitQty) : undefined,
         unitQtyUnit: productForm.unitQty !== '' ? productForm.unitQtyUnit : undefined,
-        image: productForm.image,
         description: productForm.description,
         aiAvailable: productForm.aiAvailable,
         priceTiers: productForm.priceTiers,
@@ -505,6 +526,10 @@ export const CatalogScreen: React.FC = () => {
         if (productoPorSede) await preciosProductoEnSedes(editingProductId, preciosParaGuardar(productForm.priceTiers, sedesDelSalon, productoPorSede));
       } else {
         id = (await addProduct(productPayload, sedeDelStockInicial.sede)).id;
+        if (fotoNuevoProducto) {
+          await ponerFotoProducto(id, fotoNuevoProducto)
+            .catch((err: any) => showToast('El producto se creó sin foto', err?.message ?? 'Ponla desde Editar.', 'warning'));
+        }
       }
       // La receta va aparte: necesita que el producto ya exista
       if (productForm.preparedToOrder && id) {
@@ -611,6 +636,7 @@ export const CatalogScreen: React.FC = () => {
               que="Los servicios y precios de abajo son de esta sede: lo que cambies aquí queda solo en ella."
               enTodas="Estás viendo los servicios de todas las sedes. Un cambio aquí llega a todas las sedes que no tengan su propio precio. Para cambiar una sola sede, elígela:"
             />
+            <AvisoSinFoto cuantos={serviciosSinFoto} que="servicio" />
             {filteredServices.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-neutral-900 rounded-2xl border border-dashed border-slate-300 dark:border-neutral-800">
                 <Sparkles className="w-10 h-10 text-slate-300 dark:text-neutral-700 mb-2" />
@@ -637,15 +663,12 @@ export const CatalogScreen: React.FC = () => {
                   {/* Service Header */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-xs"
-                        style={{
-                          backgroundColor: `${service.color || '#e11d48'}20`,
-                          color: service.color || '#e11d48',
-                        }}
-                      >
-                        <span className="text-base leading-none">{iconoCategoria('service', service.category)}</span>
-                      </div>
+                      <MiniaturaCatalogo
+                        fotoId={service.fotoId}
+                        nombre={service.name}
+                        icono={iconoCategoria('service', service.category)}
+                        color={service.color || '#e11d48'}
+                      />
                       <div className="min-w-0">
                         <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
                           {service.name}
@@ -799,6 +822,7 @@ export const CatalogScreen: React.FC = () => {
                 </span>
               </button>
             )}
+            <AvisoSinFoto cuantos={productosSinFoto} que="producto" />
             {filteredProducts.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-neutral-900 rounded-2xl border border-dashed border-slate-300 dark:border-neutral-800">
                 <Package className="w-10 h-10 text-slate-300 dark:text-neutral-700 mb-2" />
@@ -825,13 +849,12 @@ export const CatalogScreen: React.FC = () => {
                   {/* Product Header */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={
-                          product.image ||
-                          'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=150&auto=format&fit=crop&q=80'
-                        }
-                        alt={product.name}
-                        className="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-neutral-700 shrink-0"
+                      <MiniaturaCatalogo
+                        fotoId={product.fotoId}
+                        nombre={product.name}
+                        icono={iconoCategoria('product', product.category)}
+                        className="w-12 h-12"
+                        pideFoto={!product.supplyOnly}
                       />
                       <div className="min-w-0">
                         <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
@@ -1234,6 +1257,25 @@ export const CatalogScreen: React.FC = () => {
                 />
               </div>
 
+              <FotoDelCatalogo
+                que="servicio"
+                nombre={serviceForm.name}
+                foto={editingServiceId ? urlFotoCatalogo(servicioEnEdicion?.fotoId) : fotoNuevoServicio}
+                sede={sedeDeLaFotoDelServicio}
+                onElegir={async (foto) => {
+                  if (!editingServiceId) { setFotoNuevoServicio(foto); return; }
+                  // Dentro de una sede, un servicio de la cadena se separa en su copia: se sigue editando la copia
+                  const listo = await ponerFotoServicio(editingServiceId, foto);
+                  if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
+                  showToast('Foto guardada', serviceForm.name, 'success');
+                }}
+                onQuitar={async () => {
+                  if (!editingServiceId) { setFotoNuevoServicio(null); return; }
+                  const listo = await quitarFotoServicio(editingServiceId);
+                  if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
+                }}
+              />
+
               <SelectorDeCategoria kind="service" value={serviceForm.category} onChange={(key, nombre) => setServiceForm({ ...serviceForm, category: key, categoryName: nombre })} />
 
               <div>
@@ -1434,6 +1476,25 @@ export const CatalogScreen: React.FC = () => {
                 className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-semibold text-[0.875rem] placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition"
               />
             </div>
+
+            {/* Un insumo no se vende: no sale en la Vitrina y no necesita foto */}
+            {!productForm.supplyOnly && (
+              <FotoDelCatalogo
+                que="producto"
+                nombre={productForm.name}
+                foto={editingProductId ? urlFotoCatalogo(products.find(p => p.id === editingProductId)?.fotoId) : fotoNuevoProducto}
+                sede={variasSedes ? 'Todas las sedes' : null}
+                onElegir={async (foto) => {
+                  if (!editingProductId) { setFotoNuevoProducto(foto); return; }
+                  await ponerFotoProducto(editingProductId, foto);
+                  showToast('Foto guardada', productForm.name, 'success');
+                }}
+                onQuitar={async () => {
+                  if (!editingProductId) { setFotoNuevoProducto(null); return; }
+                  await quitarFotoProducto(editingProductId);
+                }}
+              />
+            )}
 
             <SelectorDeCategoria kind="product" value={productForm.category} onChange={(key, nombre) => setProductForm({ ...productForm, category: key, categoryName: nombre })} />
 
