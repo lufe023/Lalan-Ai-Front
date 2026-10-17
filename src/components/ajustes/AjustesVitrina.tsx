@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowDown, ArrowUp, Check, Copy, Eye, EyeOff, ExternalLink, Globe, ImagePlus, Loader2, Lock, MapPin, Monitor,
-  Pencil, Smartphone, Trash2,
+  MoveVertical, Pencil, Smartphone, Trash2,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { api, urlDeFoto, urlDeVitrina } from '../../services/api';
@@ -138,10 +138,15 @@ export const AjustesVitrina: React.FC = () => {
           {/* Portada */}
           <div className={`${TARJETA} space-y-3`}>
             <Encabezado titulo="Foto de portada" sede={cfg.sede.nombre} />
+            {cfg.portada && (
+              <AcomodarPortada url={urlDeFoto(cfg.portada)!} y={borrador.portadaY ?? 50} cambiar={(portadaY) => cambiar({ portadaY })} />
+            )}
             <div className="flex items-center gap-3">
-              <div className="w-28 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-100 dark:bg-neutral-800 grid place-items-center">
-                {cfg.portada ? <img src={urlDeFoto(cfg.portada)} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-6 h-6 text-slate-300" />}
-              </div>
+              {!cfg.portada && (
+                <div className="w-28 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-100 dark:bg-neutral-800 grid place-items-center">
+                  <ImagePlus className="w-6 h-6 text-slate-300" />
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <label className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[0.75rem] font-semibold bg-[var(--primary)] text-white cursor-pointer ${subiendo ? 'opacity-60 pointer-events-none' : ''}`}>
                   {subiendo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
@@ -155,7 +160,7 @@ export const AjustesVitrina: React.FC = () => {
                 )}
               </div>
             </div>
-            <p className={AYUDA}>Una foto del local o de un trabajo tuyo. Se ve arriba, detrás del nombre. Esta foto se cambia aparte y se guarda sola.</p>
+            <p className={AYUDA}>Una foto del local o de un trabajo tuyo. Se ve arriba, detrás del nombre. La foto se guarda sola al subirla; dónde la acomodas se guarda con el diseño.</p>
           </div>
 
           {/* Colores */}
@@ -434,3 +439,42 @@ const VistaPrevia: React.FC<{ datos: DatosVitrina | null }> = ({ datos }) => {
     </div>
   );
 };
+
+/**
+ * La foto de portada con el mismo recorte que tendrá en la Vitrina: la dueña
+ * la arrastra hacia arriba o hacia abajo (o usa la barra) hasta que se vea lo
+ * que importa, sin caras cortadas. Se guarda con el diseño.
+ */
+function AcomodarPortada({ url, y, cambiar }: { url: string; y: number; cambiar: (y: number) => void }) {
+  const caja = React.useRef<HTMLDivElement>(null);
+  const inicio = React.useRef<{ py: number; y: number } | null>(null);
+  const mover = (e: React.PointerEvent) => {
+    if (!inicio.current || !caja.current) return;
+    // Arrastrar hacia abajo muestra lo de arriba de la foto, como al acomodar una foto de perfil
+    const delta = ((e.clientY - inicio.current.py) / caja.current.clientHeight) * 100;
+    cambiar(Math.round(Math.min(100, Math.max(0, inicio.current.y - delta))));
+  };
+  return (
+    <div className="space-y-2">
+      <div
+        ref={caja}
+        onPointerDown={(e) => { (e.target as Element).setPointerCapture?.(e.pointerId); inicio.current = { py: e.clientY, y }; }}
+        onPointerMove={mover}
+        onPointerUp={() => { inicio.current = null; }}
+        onPointerCancel={() => { inicio.current = null; }}
+        className="relative w-full aspect-[16/6] rounded-2xl overflow-hidden bg-slate-100 dark:bg-neutral-800 cursor-grab active:cursor-grabbing touch-none select-none"
+      >
+        <img src={url} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover pointer-events-none" style={{ objectPosition: `50% ${y}%` }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+        <span className="absolute left-2 bottom-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/55 text-white text-[0.6875rem] font-semibold pointer-events-none">
+          <MoveVertical className="w-3 h-3" /> Arrastra para acomodarla
+        </span>
+      </div>
+      <label className="flex items-center gap-3 text-[0.75rem] text-slate-600 dark:text-neutral-300">
+        <span className="shrink-0">Arriba</span>
+        <input type="range" min={0} max={100} value={y} onChange={(e) => cambiar(Number(e.target.value))} className="flex-1 accent-[var(--primary)]" aria-label="Qué parte de la foto se ve" />
+        <span className="shrink-0">Abajo</span>
+      </label>
+    </div>
+  );
+}

@@ -55,7 +55,8 @@ import { ServicioEnSedes, agruparPorSede } from '../components/catalogo/Servicio
 import { VariantesDePrecio, preciosDeSedesDesde, preciosParaGuardar, type PreciosDeSedes } from '../components/catalogo/VariantesDePrecio';
 import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
-import { SaleEnVitrina } from '../components/catalogo/SaleEnVitrina';
+import { usePlan } from '../context/PlanContext';
+import { SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
 
 /**
  * Sube, en orden, las fotos que se eligieron antes de crear el artículo.
@@ -107,6 +108,7 @@ export const CatalogScreen: React.FC = () => {
     return { category: c?.key ?? '', categoryName: c?.name ?? '' };
   };
   const { currentUser } = useAuth();
+  const { tieneModulo } = usePlan();
 
   const [activeTab, setActiveTab] = useState<'services' | 'products' | 'ofertas'>('services');
   const [searchQuery, setSearchQuery] = useState('');
@@ -155,6 +157,8 @@ export const CatalogScreen: React.FC = () => {
     priceTiers: PriceTier[];
     currencyCode: string;
     aiPrecio: ModoPrecioAsistente;
+    enVitrina: boolean;
+    vitrinaPrecio: ModoPrecioVitrina;
   }>({
     name: '',
     category: 'nails',
@@ -170,6 +174,8 @@ export const CatalogScreen: React.FC = () => {
     ],
     currencyCode: '',
     aiPrecio: 'exacto',
+    enVitrina: true,
+    vitrinaPrecio: 'exacto',
   });
 
   // Form State for Product
@@ -195,6 +201,8 @@ export const CatalogScreen: React.FC = () => {
     supplyOnly: boolean;
     receta: LineaDeReceta[];
     currencyCode: string;
+    enVitrina: boolean;
+    vitrinaPrecio: ModoPrecioVitrina;
   }>({
     name: '',
     category: 'nailcare',
@@ -219,6 +227,8 @@ export const CatalogScreen: React.FC = () => {
     supplyOnly: false,
     receta: [],
     currencyCode: '',
+    enVitrina: true,
+    vitrinaPrecio: 'exacto',
   });
 
   // Filtered Services
@@ -280,6 +290,8 @@ export const CatalogScreen: React.FC = () => {
       aiAvailable: true,
       priceTiers: tiersIniciales,
       aiPrecio: 'exacto',
+      enVitrina: true,
+      vitrinaPrecio: 'exacto',
     });
     setSedeDelServicio(sedeActual);
     // En "Todas las sedes" se elige desde ya qué cobra cada sede
@@ -312,6 +324,8 @@ export const CatalogScreen: React.FC = () => {
         return valid.length > 0 ? valid : [{ id: `tier_${Date.now()}`, name: 'Precio Base', price: service.price, isDefault: true }];
       })(),
       aiPrecio: service.aiPrecio ?? 'exacto',
+      enVitrina: service.enVitrina !== false,
+      vitrinaPrecio: service.vitrinaPrecio ?? 'exacto',
     });
     // En "Todas las sedes", un servicio de la cadena muestra qué cobra cada sede (sus copias)
     if (variasSedes && !sedeActual && !service.locationId) {
@@ -362,6 +376,8 @@ export const CatalogScreen: React.FC = () => {
       preparedToOrder: false,
       supplyOnly: false,
       receta: [],
+      enVitrina: true,
+      vitrinaPrecio: 'exacto',
     });
     setProductoPorSede(null);
     setFotosNuevoProducto([]);
@@ -395,6 +411,8 @@ export const CatalogScreen: React.FC = () => {
       preparedToOrder: !!product.preparedToOrder,
       supplyOnly: !!product.supplyOnly,
       receta: product.receta ?? [],
+      enVitrina: product.enVitrina !== false,
+      vitrinaPrecio: product.vitrinaPrecio ?? 'exacto',
     });
     // En "Todas las sedes" se ve y se cambia lo que cobra cada sede
     if (variasSedes && !sedeActual) {
@@ -450,6 +468,8 @@ export const CatalogScreen: React.FC = () => {
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
           aiPrecio: serviceForm.aiPrecio,
+          enVitrina: serviceForm.enVitrina,
+          vitrinaPrecio: serviceForm.vitrinaPrecio,
         });
         if (servicioPorSede) await preciosServicioEnSedes(editingServiceId, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
         // Save ingredients if on recipe tab or if ingredients were loaded
@@ -481,6 +501,8 @@ export const CatalogScreen: React.FC = () => {
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
           aiPrecio: serviceForm.aiPrecio,
+          enVitrina: serviceForm.enVitrina,
+          vitrinaPrecio: serviceForm.vitrinaPrecio,
         });
         if (servicioPorSede) await preciosServicioEnSedes(creado.id, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
         // El servicio ya quedó creado: si una foto falla, se avisa y se puede poner después
@@ -521,6 +543,8 @@ export const CatalogScreen: React.FC = () => {
         description: productForm.description,
         aiAvailable: productForm.aiAvailable,
         priceTiers: productForm.priceTiers,
+        enVitrina: productForm.enVitrina,
+        vitrinaPrecio: productForm.vitrinaPrecio,
         costPrice: productForm.costPrice !== '' ? Number(productForm.costPrice) : undefined,
         minStock: productForm.minStock !== '' ? Number(productForm.minStock) : undefined,
         alertThreshold: productForm.alertThreshold !== '' ? Number(productForm.alertThreshold) : undefined,
@@ -1373,6 +1397,7 @@ export const CatalogScreen: React.FC = () => {
                 sedeDeEstos={sedeDelServicio}
                 permiteNo
                 conAsistente
+                conVitrina={tieneModulo('vitrina') && serviceForm.enVitrina && serviceForm.vitrinaPrecio === 'exacto'}
                 nombreBase="Precio base"
               />
             </div>
@@ -1430,6 +1455,12 @@ export const CatalogScreen: React.FC = () => {
                 }`} />
               </button>
             </div>
+
+            <VitrinaEnFormulario
+              que="servicio"
+              activo={serviceForm.enVitrina} onActivo={v => setServiceForm(prev => ({ ...prev, enVitrina: v }))}
+              modo={serviceForm.vitrinaPrecio} onModo={m => setServiceForm(prev => ({ ...prev, vitrinaPrecio: m }))}
+            />
 
             {serviceApiError && (
               <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[0.75rem] font-medium">
@@ -1770,6 +1801,7 @@ export const CatalogScreen: React.FC = () => {
               porSede={productoPorSede ?? undefined}
               onPorSede={setProductoPorSede}
               sedeDeEstos={sedeActual}
+              conVitrina={tieneModulo('vitrina') && !productForm.supplyOnly && productForm.enVitrina && productForm.vitrinaPrecio === 'exacto'}
               nombreBase="Precio al público"
               ejemploNombre="Ej: Mayorista, después de la cita"
             />
@@ -1920,6 +1952,17 @@ export const CatalogScreen: React.FC = () => {
               }`} />
             </button>
           </div>
+
+          {/* Un insumo no se vende: no sale en la Vitrina */}
+          {!productForm.supplyOnly && (
+            <div className="mb-5">
+              <VitrinaEnFormulario
+                que="producto"
+                activo={productForm.enVitrina} onActivo={v => setProductForm(prev => ({ ...prev, enVitrina: v }))}
+                modo={productForm.vitrinaPrecio} onModo={m => setProductForm(prev => ({ ...prev, vitrinaPrecio: m }))}
+              />
+            </div>
+          )}
 
           {productApiError && (
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400 text-[0.75rem] font-medium mb-4">

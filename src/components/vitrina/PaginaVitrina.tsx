@@ -261,17 +261,30 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
           const servicio = ficha.tipo === 'servicio' ? ficha.item : null;
           const dentro = servicio ? servicioIds.includes(ficha.item.id) : productoIds.includes(ficha.item.id);
           return (
-            <div className="space-y-4">
-              <div className="aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
+            <div className="mx-auto max-w-md space-y-4">
+              <div className="mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
                 <Carrusel fotos={fotosDe(ficha.item)} alt={ficha.item.nombre} />
               </div>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 {servicio
                   ? <span><Precio s={servicio} dinero={dinero} /><span className="ml-2 text-xs text-[var(--v-suave)]">{duracion(servicio.duracionMin)}</span></span>
-                  : <span className="font-semibold">{dinero.format((ficha.item as ProductoVitrina).precio)}</span>}
+                  : <Precio s={ficha.item} dinero={dinero} />}
                 {!servicio && (ficha.item as ProductoVitrina).quedanPocos && <span className="text-xs text-[var(--v-suave)]">Quedan pocos</span>}
               </div>
               {ficha.item.descripcion && <p className="whitespace-pre-line text-[15px] leading-relaxed text-[var(--v-suave)]">{ficha.item.descripcion}</p>}
+              {!!ficha.item.variantes?.length && (
+                <ul className="divide-y divide-[var(--v-borde)] rounded-2xl border border-[var(--v-borde)] text-sm">
+                  {ficha.item.variantes.map((v) => (
+                    <li key={v.nombre} className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+                      <span className="min-w-0">
+                        <span className="block font-medium">{v.nombre}</span>
+                        {v.detalle && <span className="block text-xs text-[var(--v-suave)]">{v.detalle}</span>}
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums">{dinero.format(v.precio)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <button
                 type="button" className={`${BOTON_P} w-full py-3.5 text-[15px]`}
                 onClick={() => { if (servicio) alternarServicio(ficha.item.id); else alternarProducto(ficha.item.id); setFicha(null); }}
@@ -317,7 +330,7 @@ function Portada({ datos }: { datos: DatosVitrina }) {
   return (
     <section className="relative overflow-hidden rounded-[28px] bg-[var(--v-p)]">
       {foto ? (
-        <img src={foto} alt="" className="absolute inset-0 size-full object-cover" />
+        <img src={foto} alt="" className="absolute inset-0 size-full object-cover" style={{ objectPosition: `50% ${datos.diseno.portadaY ?? 50}%` }} />
       ) : (
         <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_10%_0%,var(--v-a),transparent_60%),radial-gradient(90%_90%_at_100%_100%,var(--v-t),transparent_55%)] opacity-80" />
       )}
@@ -352,7 +365,8 @@ function Mensaje({ texto }: { texto: string }) {
   );
 }
 
-function Precio({ s, dinero }: { s: ServicioVitrina; dinero: Intl.NumberFormat }) {
+/** El precio como lo deja ver la dueña: exacto, «desde» o «Precio en el salón» */
+function Precio({ s, dinero }: { s: { precio: number | null; modoPrecio?: ServicioVitrina['modoPrecio'] }; dinero: Intl.NumberFormat }) {
   if (s.precio == null || s.modoPrecio === 'consultar') return <span className="text-[var(--v-suave)]">Precio en el salón</span>;
   return <span className="font-semibold">{s.modoPrecio === 'desde' ? 'Desde ' : ''}{dinero.format(s.precio)}</span>;
 }
@@ -390,6 +404,64 @@ function Carrusel({ fotos, alt }: { fotos: string[]; alt: string }) {
   );
 }
 
+/** ¿Hay un mouse de verdad? (no un dedo): para lo que pasa al pasar por encima */
+function useConMouse() {
+  const [si, setSi] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia?.('(hover: hover) and (pointer: fine)');
+    if (!m) return;
+    setSi(m.matches);
+    const cambio = () => setSi(m.matches);
+    m.addEventListener?.('change', cambio);
+    return () => m.removeEventListener?.('change', cambio);
+  }, []);
+  return si;
+}
+
+/** Cuántas fotos se abren en abanico; si hay más, una tarjeta gris detrás dice cuántas */
+const FOTOS_EN_ABANICO = 4;
+
+/**
+ * Al pasar el mouse por un servicio con varias fotos, salen de la miniatura
+ * como un abanico de cartas, una tras otra. Es solo para mirar: el clic
+ * sigue llegando a la tarjeta (abre la ficha con el carrusel).
+ */
+function Abanico({ fotos, abierto, alt }: { fotos: string[]; abierto: boolean; alt: string }) {
+  if (fotos.length <= 1) return null;
+  const vistas = fotos.slice(0, FOTOS_EN_ABANICO);
+  const mas = fotos.length - vistas.length;
+  const cartas = [...vistas.map((f) => ({ f, mas: 0 })), ...(mas > 0 ? [{ f: null as string | null, mas }] : [])];
+  const centro = (cartas.length - 1) / 2;
+  return (
+    <div className="pointer-events-none absolute left-0 top-0 z-20 h-full w-28 @md:w-32" aria-hidden>
+      <AnimatePresence>
+        {abierto && cartas.map((c, i) => {
+          const d = i - centro;
+          return (
+            <motion.div
+              key={c.f ?? 'mas'}
+              initial={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.6 }}
+              animate={{ opacity: 1, x: 36 + d * 52, y: -64 - Math.abs(d) * 10, rotate: d * 11, scale: 1 }}
+              exit={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.6, transition: { duration: 0.15 } }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24, delay: i * 0.04 }}
+              style={{ zIndex: c.f ? 30 - Math.round(Math.abs(d) * 2) : 1, transformOrigin: '50% 100%' }}
+              className="absolute left-1/2 top-1/2 -ml-11 -mt-14 h-28 w-22 overflow-hidden rounded-2xl border-2 border-white bg-[var(--v-sup)] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.55)]"
+            >
+              {c.f ? (
+                <Foto src={c.f} alt={i === 0 ? alt : ''} />
+              ) : (
+                <div className="grid size-full place-items-center bg-neutral-400/90 text-center text-white">
+                  <span><span className="block text-lg font-bold leading-none">+{c.mas}</span><span className="text-[11px] font-semibold">más</span></span>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /** Cuántas fotos tiene, sobre la miniatura: invita a abrirla */
 function MasFotos({ cuantas }: { cuantas: number }) {
   if (cuantas <= 1) return null;
@@ -420,6 +492,9 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
   }, [servicios]);
   const [cat, setCat] = useState<string | null>(null);
   const lista = cat ? servicios.filter((s) => s.categoria === cat) : servicios;
+  // El abanico de fotos solo con mouse: en el teléfono se desliza en la ficha
+  const conMouse = useConMouse();
+  const [encima, setEncima] = useState<string | null>(null);
 
   return (
     <section aria-labelledby="v-servicios">
@@ -445,11 +520,14 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
         <div className="grid grid-cols-1 gap-3 @xl:grid-cols-2">
           {lista.map((s) => {
             const dentro = elegidos.includes(s.id);
+            const fotos = fotosDe(s);
             return (
-              <article key={s.id} className={`${TARJETA} flex overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-18px_rgba(0,0,0,0.45)] ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
+              <div key={s.id} className="relative" onMouseEnter={() => setEncima(s.id)} onMouseLeave={() => setEncima((x) => (x === s.id ? null : x))}>
+              {conMouse && <Abanico fotos={fotos} abierto={encima === s.id} alt={s.nombre} />}
+              <article className={`${TARJETA} flex overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-18px_rgba(0,0,0,0.45)] ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
                 <button type="button" onClick={() => abrir(s)} aria-label={`Ver ${s.nombre}`} className="group relative w-28 shrink-0 overflow-hidden @md:w-32">
                   <span className="block size-full transition duration-500 group-hover:scale-105"><Foto src={s.foto} alt={s.nombre} /></span>
-                  <MasFotos cuantas={fotosDe(s).length} />
+                  <MasFotos cuantas={fotos.length} />
                   {s.popular && (
                     <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
                       <Star className="size-3 fill-current" /> Favorito
@@ -474,6 +552,7 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
                   </div>
                 </div>
               </article>
+              </div>
             );
           })}
         </div>
@@ -547,7 +626,7 @@ function Productos({ productos, elegidos, alternar, dinero, abrir }: {
               <div className="p-3">
                 <h3 className="line-clamp-2 text-sm font-semibold leading-snug"><button type="button" onClick={() => abrir(p)} className="text-left">{p.nombre}</button></h3>
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold">{dinero.format(p.precio)}</span>
+                  <span className="min-w-0 truncate text-sm"><Precio s={p} dinero={dinero} /></span>
                   <button
                     type="button" onClick={() => alternar(p.id)} aria-pressed={dentro}
                     aria-label={dentro ? `No apartar ${p.nombre}` : `Apartar ${p.nombre}`}
@@ -746,7 +825,11 @@ function PanelReserva({
       if (s.modoPrecio === 'desde') aproximado = true;
       total += s.precio;
     }
-    for (const p of apartados) total += p.precio;
+    for (const p of apartados) {
+      if (p.precio == null || p.modoPrecio === 'consultar') { aproximado = true; continue; }
+      if (p.modoPrecio === 'desde') aproximado = true;
+      total += p.precio;
+    }
     return { total, aproximado, minutos: elegidos.reduce((m, s) => m + s.duracionMin, 0) };
   }, [elegidos, apartados, oferta]);
 
@@ -1026,7 +1109,7 @@ function PanelReserva({
             <span className="text-[var(--v-suave)]">
               {resumen.minutos ? `${duracion(resumen.minutos)} · ` : ''}Total{resumen.aproximado ? ' estimado' : ''}
             </span>
-            <span className="text-lg font-bold">{resumen.aproximado ? 'Desde ' : ''}{dinero.format(resumen.total)}</span>
+            <span className="text-lg font-bold">{resumen.total > 0 ? `${resumen.aproximado ? 'Desde ' : ''}${dinero.format(resumen.total)}` : 'En el salón'}</span>
           </div>
           {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
           <div className="mt-3 flex gap-2">

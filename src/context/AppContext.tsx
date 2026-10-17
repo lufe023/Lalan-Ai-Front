@@ -709,6 +709,7 @@ function mapApiService(s: any): SalonService {
     icon: s.icon ?? 'sparkles', color: s.color ?? '#6366f1',
     popular: s.popular ?? false, description: s.description,
     enVitrina: s.enVitrina ?? true,
+    vitrinaPrecio: s.vitrinaPrecio ?? 'exacto',
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     aiPrecio: s.aiPrecio ?? 'exacto',
     locationId: s.locationId ?? null,
@@ -743,6 +744,7 @@ function mapApiProduct(p: any): SalonProduct {
       lotStrategy: (p.lotStrategy as 'FEFO' | 'FIFO') ?? 'FEFO',
     fotoId: p.fotoId ?? null, masFotos: Array.isArray(p.masFotos) ? p.masFotos : [], description: p.description ?? '',
     enVitrina: p.enVitrina ?? true,
+    vitrinaPrecio: p.vitrinaPrecio ?? 'exacto',
     aiAvailable: p.aiAvailable ?? true, priceTiers: ((p.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     preparedToOrder: !!p.preparedToOrder,
     supplyOnly: !!p.supplyOnly,
@@ -1179,6 +1181,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       icon: data.icon, color: data.color, popular: data.popular,
       description: data.description, aiAvailable: data.aiAvailable, priceTiers: data.priceTiers,
       aiPrecio: data.aiPrecio,
+      enVitrina: data.enVitrina, vitrinaPrecio: data.vitrinaPrecio,
     });
     const creado = mapApiService(res);
     setServices(s => [...s, creado]);
@@ -1200,6 +1203,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.priceTiers !== undefined)      payload.priceTiers = updated.priceTiers;
     if (updated.currencyCode !== undefined)    payload.currencyCode = updated.currencyCode;
     if (updated.aiPrecio !== undefined)        payload.aiPrecio = updated.aiPrecio;
+    if (updated.vitrinaPrecio !== undefined)   payload.vitrinaPrecio = updated.vitrinaPrecio;
     const res = await api.patch<any>(`/services/${id}`, payload);
     setServices(s => s.map(x => x.id === id ? mapApiService(res) : x));
   }, []);
@@ -1257,6 +1261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lotStrategy: data.lotStrategy ?? undefined,
       description: data.description || undefined,
       aiAvailable: data.aiAvailable, priceTiers: data.priceTiers ?? [],
+      enVitrina: data.enVitrina, vitrinaPrecio: data.vitrinaPrecio,
       preparedToOrder: data.preparedToOrder ?? false,
       supplyOnly: data.supplyOnly ?? false,
     });
@@ -1282,6 +1287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.description !== undefined)  payload.description = updated.description || undefined;
     if (updated.aiAvailable !== undefined)    payload.aiAvailable = updated.aiAvailable;
     if (updated.enVitrina !== undefined)      payload.enVitrina = updated.enVitrina;
+    if (updated.vitrinaPrecio !== undefined)  payload.vitrinaPrecio = updated.vitrinaPrecio;
     if (updated.priceTiers !== undefined)     payload.priceTiers = updated.priceTiers;
     if (updated.unit !== undefined)           payload.unit = updated.unit;
     if (updated.unitQty !== undefined)        payload.unitQty = updated.unitQty;

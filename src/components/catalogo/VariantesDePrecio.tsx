@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, CheckCircle2, MapPin, Plus, Trash2 } from 'lucide-react';
+import { Bot, CheckCircle2, Globe, MapPin, Plus, Trash2 } from 'lucide-react';
 import type { PriceTier } from '../../types';
 import { useSedeActiva, type SedeDelSalon } from '../../context/SedeActivaContext';
 
@@ -96,9 +96,11 @@ export const VariantesDePrecio: React.FC<{
   permiteNo?: boolean;
   /** Servicios: la asistente ofrece o no cada variante */
   conAsistente?: boolean;
+  /** Muestra en cada fila «Se ve en la Vitrina» (la Vitrina está en el plan y el artículo se publica) */
+  conVitrina?: boolean;
   nombreBase?: string;
   ejemploNombre?: string;
-}> = ({ tiers, onTiers, moneda, porSede, onPorSede, sedeDeEstos, permiteNo = false, conAsistente = false, nombreBase = 'Precio base', ejemploNombre = 'Ej: Cabello largo, retoque' }) => {
+}> = ({ tiers, onTiers, moneda, porSede, onPorSede, sedeDeEstos, permiteNo = false, conAsistente = false, conVitrina = false, nombreBase = 'Precio base', ejemploNombre = 'Ej: Cabello largo, retoque' }) => {
   const { sedes, varias } = useSedeActiva();
   const conSedes = !!porSede && !!onPorSede && varias;
   const [borrando, setBorrando] = useState<string | null>(null);
@@ -187,11 +189,21 @@ export const VariantesDePrecio: React.FC<{
             onChange={e => cambiarTier(t.id, { description: e.target.value })}
             className={`w-full text-[0.75rem] text-slate-600 dark:text-neutral-300 ${campo} py-1.5`} />
 
-          {conAsistente && i > 0 && (
-            <label className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-600 dark:text-neutral-300 cursor-pointer">
-              <input type="checkbox" checked={t.aiOfrece !== false} onChange={e => cambiarTier(t.id, { aiOfrece: e.target.checked })} className="accent-purple-500" />
-              <Bot className="w-3.5 h-3.5 text-purple-500" /> La asistente la ofrece
-            </label>
+          {((conAsistente && i > 0) || conVitrina) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {conAsistente && i > 0 && (
+                <label className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-600 dark:text-neutral-300 cursor-pointer">
+                  <input type="checkbox" checked={t.aiOfrece !== false} onChange={e => cambiarTier(t.id, { aiOfrece: e.target.checked })} className="accent-purple-500" />
+                  <Bot className="w-3.5 h-3.5 text-purple-500" /> La asistente la ofrece
+                </label>
+              )}
+              {conVitrina && (
+                <label className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-600 dark:text-neutral-300 cursor-pointer">
+                  <input type="checkbox" checked={t.enVitrina !== false} onChange={e => cambiarTier(t.id, { enVitrina: e.target.checked })} className="accent-fuchsia-500" />
+                  <Globe className="w-3.5 h-3.5 text-fuchsia-500" /> Se ve en la Vitrina
+                </label>
+              )}
+            </div>
           )}
 
           {conSedes && (

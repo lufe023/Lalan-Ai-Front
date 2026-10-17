@@ -21,6 +21,8 @@ export interface DisenoVitrina {
   mensaje: string | null;
   confirmaSola: boolean;
   elegirEspecialista: boolean;
+  /** Qué parte de la foto de portada se ve, de arriba (0) a abajo (100) */
+  portadaY?: number;
 }
 
 /** Lo que la dueña ve de cada bloque al ordenarlos */
@@ -37,6 +39,8 @@ export const INFO_BLOQUE_VITRINA: Record<TipoBloqueVitrina, { nombre: string; ay
 
 export type ModoPrecio = 'exacto' | 'desde' | 'consultar';
 
+export interface VarianteVitrina { nombre: string; precio: number; detalle: string | null }
+
 export interface ServicioVitrina {
   id: string;
   nombre: string;
@@ -46,6 +50,8 @@ export interface ServicioVitrina {
   descripcion: string | null;
   precio: number | null;
   modoPrecio: ModoPrecio;
+  /** Las variantes que la dueña deja ver (solo si son varias y muestra el precio exacto) */
+  variantes?: VarianteVitrina[];
   foto: string | null;
   /** Todas sus fotos (hasta 10), la primera es `foto` */
   fotos?: string[];
@@ -57,7 +63,10 @@ export interface ProductoVitrina {
   nombre: string;
   categoriaNombre: string;
   descripcion: string | null;
-  precio: number;
+  /** null = la dueña no muestra el precio («Precio en el salón») */
+  precio: number | null;
+  modoPrecio?: ModoPrecio;
+  variantes?: VarianteVitrina[];
   foto: string | null;
   fotos?: string[];
   quedanPocos: boolean;
