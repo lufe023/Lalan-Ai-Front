@@ -45,6 +45,7 @@ import { AvisoBienvenida } from './components/bienvenida/AvisoBienvenida';
 import { RetornoInstagram } from './components/canales/RetornoInstagram';
 import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
+import { GrabadorRuta } from './components/guias/GrabadorRuta';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
 import { PWAInstallBanner } from './components/ui/PWAInstallBanner';
 import { PWAUpdateNotification } from './components/ui/PWAUpdateNotification';
@@ -55,6 +56,11 @@ const MODO_CALOR = (() => {
   const q = new URLSearchParams(window.location.search);
   return q.get('calor') === 'app' ? { pantalla: q.get('pantalla') || 'dashboard', dispositivo: q.get('dispositivo') || 'pc', desde: q.get('desde') || undefined, negocio: q.get('negocio') || undefined } : null;
 })();
+/** Plataforma → Lalan → Lo que sabe hacer abre la app con ?grabar=ruta&pantalla=… para grabar un Llévame a clics */
+const MODO_GRABAR = (() => {
+  const q = new URLSearchParams(window.location.search);
+  return q.get('grabar') === 'ruta' ? { pantalla: q.get('pantalla') || 'dashboard' } : null;
+})();
 import { pantallaRecordada, esAplicacionInstalada } from './utils/pantallaRecordada';
 import { conectarComoUsuario, desconectar } from './services/socket';
 
@@ -64,10 +70,11 @@ const MainAppContent: React.FC = () => {
   const { currentScreen, showSplash, activeConversationId, navigateTo } = useApp();
   const { isAuthenticated, isLoading, currentUser } = useAuth();
   // Se mide el uso de los salones; no el de Lalan (super admin, soporte) ni el modo mapa de calor
-  const medir = isAuthenticated && !MODO_CALOR && !currentUser?.soporte && currentUser?.role !== 'super_admin' && currentUser?.role !== 'support';
+  const medir = isAuthenticated && !MODO_CALOR && !MODO_GRABAR && !currentUser?.soporte && currentUser?.role !== 'super_admin' && currentUser?.role !== 'support';
   useUsoApp(currentScreen, medir);
   React.useEffect(() => {
     if (MODO_CALOR && isAuthenticated) navigateTo(MODO_CALOR.pantalla as ScreenName);
+    if (MODO_GRABAR && isAuthenticated) navigateTo(MODO_GRABAR.pantalla as ScreenName);
   }, [isAuthenticated, navigateTo]);
 
   /**
@@ -177,6 +184,7 @@ const MainAppContent: React.FC = () => {
             <GuiaEnCurso />
             {/* La Bienvenida: configurar el salón paso a paso (se abre sola la primera vez) */}
             <Bienvenida />
+            {MODO_GRABAR && currentUser?.role === 'super_admin' && <GrabadorRuta />}
             {MODO_CALOR && currentUser?.role === 'super_admin' && <CalorApp key={currentScreen} {...MODO_CALOR} pantalla={currentScreen} />}
 
             {/* ── Main content column ── */}
