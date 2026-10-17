@@ -419,7 +419,7 @@ const VistaPrevia: React.FC<{ datos: DatosVitrina | null }> = ({ datos }) => {
         </div>
       </div>
       <div ref={caja} className="w-full">
-        {/* El transform hace que lo "fixed" de la página (la barra, la hoja) quede dentro de la caja */}
+        {/* El transform hace que lo "fixed" de la página (la barra, la reserva a pantalla completa) quede dentro de la caja */}
         <div
           className={`relative mx-auto overflow-hidden border border-slate-200 dark:border-neutral-700 bg-white [transform:translateZ(0)] ${modo === 'movil' ? 'rounded-[32px]' : 'rounded-xl'}`}
           style={{ width: modo === 'movil' ? Math.min(380, ancho || 380) : '100%', height: alto }}

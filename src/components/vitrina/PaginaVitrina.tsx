@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, ChevronUp, Clock, Facebook, Images, Instagram, Loader2, MapPin, Minus,
-  Music, Phone, Plus, ShoppingBag, Sparkles, Star, Tag, User,
+  AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Minus,
+  Music, Phone, Plus, ShoppingBag, Sparkles, Star, Tag, User, X,
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
 import type {
@@ -13,8 +13,9 @@ import { IOSModal } from '../ui/IOSModal';
 
 /**
  * La Vitrina tal como la ve una clienta: los bloques en el orden que eligió la
- * dueña, con su paleta, y el panel "Tu reserva" siempre a la vista (al lado
- * en pantallas anchas, como hoja que sube desde abajo en el teléfono).
+ * dueña, con su paleta, y "Tu reserva" siempre a la vista (al lado en
+ * pantallas anchas, como barra abajo en el teléfono). Al seguir, la reserva
+ * ocupa toda la pantalla, como la bienvenida del quiosco: sin distracciones.
  *
  * El ancho se mide con container queries y no con el de la ventana: así la
  * vista previa de Ajustes, que vive en una caja angosta, se ve como en un
@@ -94,12 +95,13 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const [servicioIds, setServicioIds] = useState<string[]>([]);
   const [productoIds, setProductoIds] = useState<string[]>([]);
   const [ofertaId, setOfertaId] = useState<string | null>(null);
-  const [hoja, setHoja] = useState(false);
+  // La reserva a pantalla completa. Desde el panel de al lado ya vio lo que eligió: empieza en lo que sigue
+  const [abierta, setAbierta] = useState<false | 'lista' | 'siguiente'>(false);
   const [hecha, setHecha] = useState<ReservaHecha | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [ficha, setFicha] = useState<{ tipo: 'servicio'; item: ServicioVitrina } | { tipo: 'producto'; item: ProductoVitrina } | null>(null);
 
-  // Una sola "Tu reserva": al lado si la página es ancha, en la hoja si no.
+  // "Tu reserva" al lado si la página es ancha, en la barra de abajo si no.
   // Se mide la página y no la ventana, por la vista previa de Ajustes.
   const raiz = useRef<HTMLDivElement>(null);
   const [ancha, setAncha] = useState(false);
@@ -112,7 +114,6 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     medir();
     return () => ro.disconnect();
   }, []);
-  useEffect(() => { if (ancha) setHoja(false); }, [ancha]);
 
   // Si la dueña cambia el diseño en la vista previa, lo elegido que ya no está se suelta
   useEffect(() => {
@@ -158,7 +159,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const apartados = productoIds.map((id) => datos.productos.find((p) => p.id === id)).filter(Boolean) as ProductoVitrina[];
 
   const reiniciar = () => {
-    setHecha(null); setServicioIds([]); setProductoIds([]); setOfertaId(null); setHoja(false);
+    setHecha(null); setServicioIds([]); setProductoIds([]); setOfertaId(null); setAbierta(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -179,15 +180,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     }
   };
 
-  const panel = (enHoja: boolean) => (
-    <PanelReserva
-      datos={datos} slug={slug} previa={previa} dinero={dinero} enHoja={enHoja}
-      elegidos={elegidos} apartados={apartados} oferta={oferta}
-      quitarServicio={alternarServicio} quitarProducto={alternarProducto}
-      alHacer={(r) => { setHecha(r); setHoja(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-    />
-  );
-
+  const cuenta = useMemo(() => cuentaDeLaReserva(elegidos, apartados, oferta), [elegidos, apartados, oferta]);
   const cuantos = elegidos.length + apartados.length;
 
   return (
@@ -204,47 +197,59 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
 
           {ancha && (
             <aside>
-              <div className="sticky top-4">{panel(false)}</div>
+              <div className={`sticky top-4 ${TARJETA} p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]`}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="text-lg font-bold">Tu reserva</h2>
+                  <span className="inline-flex min-w-0 items-center gap-1 truncate text-xs text-[var(--v-suave)]"><MapPin className="size-3 shrink-0" />{sede.nombre}</span>
+                </div>
+                <div className="mt-3">
+                  <ListaElegidos elegidos={elegidos} apartados={apartados} oferta={oferta} quitarServicio={alternarServicio} quitarProducto={alternarProducto} />
+                </div>
+                {!!cuantos && (
+                  <div className="mt-4 border-t border-[var(--v-borde)] pt-4">
+                    <Total cuenta={cuenta} dinero={dinero} />
+                    <button type="button" onClick={() => setAbierta('siguiente')} disabled={!elegidos.length} className={`${BOTON_P} mt-3 w-full py-3.5 text-[15px]`}>
+                      Reservar <ChevronRight className="size-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </aside>
           )}
         </div>
       )}
 
-      {/* Teléfono: la barra de abajo siempre a la vista, y la hoja que sube.
-          La hoja no se desmonta al cerrarla: lo elegido (día, hora, nombre) sigue ahí. */}
+      {/* Teléfono: la barra de abajo siempre a la vista */}
       {!hecha && !ancha && (
-        <>
-          <div className="fixed inset-x-0 bottom-0 z-30">
-            <div className="mx-3 mb-3 rounded-3xl border border-[var(--v-borde)] bg-[var(--v-sup)] p-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.35)]">
-              <button type="button" onClick={() => setHoja(true)} className="flex w-full items-center gap-3 text-left" aria-haspopup="dialog" aria-expanded={hoja}>
-                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[var(--v-tinte)] text-[var(--v-p)]">
-                  <CalendarDays className="size-5" />
+        <div className="fixed inset-x-0 bottom-0 z-30">
+          <div className="mx-3 mb-3 rounded-3xl border border-[var(--v-borde)] bg-[var(--v-sup)] p-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.35)]">
+            <button type="button" onClick={() => setAbierta('lista')} className="flex w-full items-center gap-3 text-left" aria-haspopup="dialog" aria-expanded={!!abierta}>
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[var(--v-tinte)] text-[var(--v-p)]">
+                <CalendarDays className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">Tu reserva</span>
+                <span className="block truncate text-xs text-[var(--v-suave)]">
+                  {cuantos ? `${elegidos.length} servicio${elegidos.length === 1 ? '' : 's'}${apartados.length ? ` · ${apartados.length} para apartar` : ''}` : 'Elige un servicio para empezar'}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">Tu reserva</span>
-                  <span className="block truncate text-xs text-[var(--v-suave)]">
-                    {cuantos ? `${elegidos.length} servicio${elegidos.length === 1 ? '' : 's'}${apartados.length ? ` · ${apartados.length} para apartar` : ''}` : 'Elige un servicio para empezar'}
-                  </span>
-                </span>
-                <span className={BOTON_P + ' px-4 py-2.5'}>
-                  {elegidos.length ? 'Continuar' : 'Ver'} <ChevronUp className="size-4" />
-                </span>
-              </button>
-            </div>
+              </span>
+              <span className={BOTON_P + ' px-4 py-2.5'}>
+                {elegidos.length ? 'Continuar' : 'Ver'} <ChevronRight className="size-4" />
+              </span>
+            </button>
           </div>
+        </div>
+      )}
 
-          <IOSModal
-            isOpen={hoja} onClose={() => setHoja(false)} title="Tu reserva" subtitle={sede.nombre}
-            id="vitrina-tu-reserva" fijo mantenerMontado fixedHeight={false} height="90%"
-            apariencia={{
-              hoja: 'bg-[var(--v-fondo)] border-[var(--v-borde)] text-[var(--v-texto)]',
-              titulo: 'text-[var(--v-texto)]', subtitulo: 'text-[var(--v-suave)]', borde: 'border-[var(--v-borde)]',
-              cerrar: 'bg-[var(--v-tinte)] text-[var(--v-suave)]', asa: 'bg-[var(--v-borde)]',
-            }}
-          >
-            {panel(true)}
-          </IOSModal>
-        </>
+      {/* La reserva a pantalla completa. No se desmonta al cerrarla: lo elegido (día, hora, nombre) sigue ahí */}
+      {!hecha && (
+        <PanelReserva
+          datos={datos} slug={slug} previa={previa} dinero={dinero} cuenta={cuenta}
+          abierta={abierta} cerrar={() => setAbierta(false)}
+          elegidos={elegidos} apartados={apartados} oferta={oferta}
+          quitarServicio={alternarServicio} quitarProducto={alternarProducto}
+          alHacer={(r) => { setHecha(r); setAbierta(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        />
       )}
 
       {/* La ficha de un servicio o producto: sus fotos grandes y el botón de agregar */}
@@ -711,24 +716,97 @@ interface RespuestaGusto { ids: string[]; otra: string }
 /** Opciones que se pueden marcar en cada pregunta del Lounge */
 const MAXIMO_POR_GUSTO = 3;
 
-type ClavePaso = 'elegido' | 'quien' | 'cuando' | `gusto-${string}` | 'datos' | 'resumen';
+type ClavePaso = 'elegido' | `quien-${string}` | 'cuando' | `gusto-${string}` | 'datos' | 'resumen';
+
+interface CuentaDeLaReserva { total: number; aproximado: boolean; minutos: number }
+
+/** Lo que suma: la oferta a su precio y lo demás por separado */
+function cuentaDeLaReserva(elegidos: ServicioVitrina[], apartados: ProductoVitrina[], oferta: OfertaVitrina | null): CuentaDeLaReserva {
+  const enOferta = new Set(oferta?.servicioIds ?? []);
+  let total = oferta ? oferta.precio : 0;
+  let aproximado = false;
+  for (const x of [...elegidos.filter((s) => !enOferta.has(s.id)), ...apartados]) {
+    if (x.precio == null || x.modoPrecio === 'consultar') { aproximado = true; continue; }
+    if (x.modoPrecio === 'desde') aproximado = true;
+    total += x.precio;
+  }
+  return { total, aproximado, minutos: elegidos.reduce((m, s) => m + s.duracionMin, 0) };
+}
+
+function Total({ cuenta, dinero }: { cuenta: CuentaDeLaReserva; dinero: Intl.NumberFormat }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="text-[var(--v-suave)]">
+        {cuenta.minutos ? `${duracion(cuenta.minutos)} · ` : ''}Total{cuenta.aproximado ? ' estimado' : ''}
+      </span>
+      <span className="text-lg font-bold">{cuenta.total > 0 ? `${cuenta.aproximado ? 'Desde ' : ''}${dinero.format(cuenta.total)}` : 'En el salón'}</span>
+    </div>
+  );
+}
+
+/** Lo elegido, con el botón para quitar cada cosa */
+function ListaElegidos({ elegidos, apartados, oferta, quitarServicio, quitarProducto }: {
+  elegidos: ServicioVitrina[]; apartados: ProductoVitrina[]; oferta: OfertaVitrina | null;
+  quitarServicio: (id: string) => void; quitarProducto: (id: string) => void;
+}) {
+  if (!elegidos.length && !apartados.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[var(--v-borde)] p-4 text-center text-sm text-[var(--v-suave)]">
+        Toca <Plus className="inline size-3.5 align-[-2px]" /> en un servicio para empezar.
+      </div>
+    );
+  }
+  return (
+    <ul className="space-y-1.5">
+      <AnimatePresence initial={false}>
+        {elegidos.map((s) => (
+          <motion.li key={s.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -16 }}
+            className="flex items-center gap-2 rounded-2xl bg-[var(--v-tinte)] py-2 pl-3 pr-1.5 text-sm">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{s.nombre}</span>
+              <span className="text-xs text-[var(--v-suave)]">{duracion(s.duracionMin)}</span>
+            </span>
+            <button type="button" onClick={() => quitarServicio(s.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`Quitar ${s.nombre}`}>
+              <Minus className="size-4" />
+            </button>
+          </motion.li>
+        ))}
+        {apartados.map((p) => (
+          <motion.li key={p.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -16 }}
+            className="flex items-center gap-2 rounded-2xl border border-[var(--v-borde)] py-2 pl-3 pr-1.5 text-sm">
+            <ShoppingBag className="size-4 shrink-0 text-[var(--v-p)]" />
+            <span className="min-w-0 flex-1 truncate">{p.nombre} <span className="text-xs text-[var(--v-suave)]">· para apartar</span></span>
+            <button type="button" onClick={() => quitarProducto(p.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`No apartar ${p.nombre}`}>
+              <Minus className="size-4" />
+            </button>
+          </motion.li>
+        ))}
+      </AnimatePresence>
+      {oferta && <li className="px-1 text-xs font-medium text-[var(--v-p)]"><Tag className="mr-1 inline size-3" />Oferta «{oferta.nombre}»</li>}
+      {!elegidos.length && <li className="px-1 pt-1 text-xs text-[var(--v-suave)]">Para reservar, agrega también un servicio.</li>}
+    </ul>
+  );
+}
 
 /**
- * "Tu reserva" como la bienvenida del quiosco: una cosa por pantalla, con
- * Siguiente y Atrás, y una barra que dice cuánto falta. Lo elegido, con
- * quién (si la Vitrina deja elegir), día y hora, los gustos del Lounge (si el
- * salón lo tiene: una pregunta por pantalla, con «Otra» y «Saltar»), sus
- * datos y al final el resumen con el botón de reservar.
+ * "Tu reserva" a pantalla completa, como la bienvenida del quiosco: una cosa
+ * por pantalla, con Siguiente y Atrás, y una barra que dice cuánto falta. Lo
+ * elegido, con quién se hace cada servicio (si la Vitrina deja elegir: una
+ * pantalla por servicio, así puede pedir a una para el cabello y a otra para
+ * las uñas), día y hora, los gustos del Lounge (si el salón lo tiene: una
+ * pregunta por pantalla, con «Otra» y «Saltar»), sus datos y al final el
+ * resumen con el botón de reservar.
  *
  * Nunca la saluda por su nombre ni le dice si ya es clienta: desde internet
  * cualquiera puede escribir el teléfono de otra persona.
  */
 function PanelReserva({
-  datos, slug, previa, dinero, enHoja, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
+  datos, slug, previa, dinero, cuenta, abierta, cerrar, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
 }: {
-  datos: DatosVitrina; slug: string | null; previa: boolean; dinero: Intl.NumberFormat;
-  /** En la hoja del teléfono el título y el marco los pone la hoja */
-  enHoja: boolean;
+  datos: DatosVitrina; slug: string | null; previa: boolean; dinero: Intl.NumberFormat; cuenta: CuentaDeLaReserva;
+  /** 'lista' empieza en lo elegido; 'siguiente' en lo que sigue (ya lo vio en el panel de al lado) */
+  abierta: false | 'lista' | 'siguiente';
+  cerrar: () => void;
   elegidos: ServicioVitrina[]; apartados: ProductoVitrina[]; oferta: OfertaVitrina | null;
   quitarServicio: (id: string) => void; quitarProducto: (id: string) => void; alHacer: (r: ReservaHecha) => void;
 }) {
@@ -738,7 +816,8 @@ function PanelReserva({
   const [direccion, setDireccion] = useState(1);
   const [fecha, setFecha] = useState<string>(sede.hoyFecha);
   const [hora, setHora] = useState<string | null>(null);
-  const [especialistaId, setEspecialistaId] = useState<string | null>(null);
+  /** Con quién quiere cada servicio (sin entrada = quien esté libre) */
+  const [conQuien, setConQuien] = useState<Record<string, string>>({});
   const [contacto, setContacto] = useState(leerContacto);
   const [nota, setNota] = useState('');
   const [respuestas, setRespuestas] = useState<Record<string, RespuestaGusto>>({});
@@ -751,24 +830,37 @@ function PanelReserva({
 
   const ids = elegidos.map((s) => s.id).join(',');
 
-  // Solo quien hace TODO lo elegido
-  const posibles = useMemo(() => {
-    if (!diseno.elegirEspecialista) return [];
-    return datos.especialistas.filter((e) => !e.categorias || elegidos.every((s) => e.categorias!.includes(s.categoria)));
+  // Para cada servicio, quien lo hace
+  const posiblesDe = useMemo(() => {
+    const m = new Map<string, EspecialistaVitrina[]>();
+    for (const s of elegidos) {
+      m.set(s.id, diseno.elegirEspecialista ? datos.especialistas.filter((e) => !e.categorias || e.categorias.includes(s.categoria)) : []);
+    }
+    return m;
   }, [datos.especialistas, diseno.elegirEspecialista, elegidos]);
+  // Si quitó el servicio o esa especialista ya no está, se suelta
   useEffect(() => {
-    if (especialistaId && !posibles.some((e) => e.id === especialistaId)) setEspecialistaId(null);
-  }, [posibles, especialistaId]);
+    setConQuien((m) => {
+      const limpio = Object.fromEntries(Object.entries(m).filter(([sid, eid]) => posiblesDe.get(sid)?.some((e) => e.id === eid)));
+      return Object.keys(limpio).length === Object.keys(m).length ? m : limpio;
+    });
+  }, [posiblesDe]);
+  const conElegir = useMemo(() => elegidos.filter((s) => posiblesDe.get(s.id)?.length), [elegidos, posiblesDe]);
+  const especialistas = elegidos.map((s) => conQuien[s.id] ?? '').join(',');
 
   const pasos = useMemo(() => {
     const l: { clave: ClavePaso; titulo: string; ayuda?: string }[] = [{ clave: 'elegido', titulo: 'Lo que elegiste' }];
-    if (posibles.length) l.push({ clave: 'quien', titulo: '¿Con quién te quieres atender?' });
+    conElegir.forEach((s, i) => l.push({
+      clave: `quien-${s.id}`,
+      titulo: conElegir.length > 1 ? `¿Con quién te haces ${s.nombre}?` : '¿Con quién te quieres atender?',
+      ayuda: conElegir.length > 1 ? `Servicio ${i + 1} de ${conElegir.length}: puedes elegir a alguien distinto para cada uno.` : undefined,
+    }));
     l.push({ clave: 'cuando', titulo: '¿Qué día y a qué hora?' });
     for (const g of gustos) l.push({ clave: `gusto-${g.tipo}`, titulo: g.titulo, ayuda: g.ayuda });
     l.push({ clave: 'datos', titulo: '¿A nombre de quién reservamos?' });
     l.push({ clave: 'resumen', titulo: 'Revisa y reserva' });
     return l;
-  }, [posibles.length, gustos]);
+  }, [conElegir, gustos]);
   const indice = Math.max(0, pasos.findIndex((p) => p.clave === clave));
   const paso = pasos[indice];
 
@@ -781,14 +873,27 @@ function PanelReserva({
   const siguiente = () => { if (indice < pasos.length - 1) ir(pasos[indice + 1].clave); };
   const atras = () => { if (indice > 0) ir(pasos[indice - 1].clave); };
 
+  // Desde el panel de al lado ya vio lo que eligió: arranca en lo que sigue
+  useEffect(() => {
+    if (abierta === 'siguiente' && clave === 'elegido' && elegidos.length && pasos[1]) { setDireccion(1); setClave(pasos[1].clave); }
+  }, [abierta]);
   // Sin servicios no hay a dónde avanzar: de vuelta al principio
   useEffect(() => { if (!elegidos.length && clave !== 'elegido') { setDireccion(-1); setClave('elegido'); } }, [elegidos.length, clave]);
-  // Al cambiar de pantalla, el lector de pantalla oye el título nuevo
-  const primera = useRef(true);
+  // Si se quitó el servicio de ese paso, al que quedó en su lugar
+  useEffect(() => { if (!pasos.some((p) => p.clave === clave)) setClave(pasos[Math.min(indice, pasos.length - 1)].clave); }, [pasos, clave, indice]);
+  // Al abrir y al cambiar de pantalla, el lector de pantalla oye el título nuevo
   useEffect(() => {
-    if (primera.current) { primera.current = false; return; }
-    titulo.current?.focus({ preventScroll: true });
-  }, [clave]);
+    if (abierta) titulo.current?.focus({ preventScroll: true });
+  }, [clave, abierta]);
+  // A pantalla completa la página de atrás no se mueve, y Escape la cierra
+  useEffect(() => {
+    if (!abierta) return;
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') cerrar(); };
+    window.addEventListener('keydown', tecla);
+    const antes = document.body.style.overflow;
+    if (!previa) document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', tecla); document.body.style.overflow = antes; };
+  }, [abierta, cerrar, previa]);
 
   const dias = useMemo(() => {
     const n = Math.max(0, Math.min(sede.diasParaReservar, DIAS_EN_LA_TIRA));
@@ -806,32 +911,13 @@ function PanelReserva({
     const mio = ++turno.current;
     setEstado((e) => ({ ...e, cargando: true, error: null }));
     const q = new URLSearchParams({ fecha, servicios: ids });
-    if (especialistaId) q.set('especialista', especialistaId);
+    if (especialistas.replace(/,/g, '')) q.set('especialistas', especialistas);
     publicRequest<{ fecha: string; cerrado: boolean; horas: string[] }>(`/vitrina/publica/${encodeURIComponent(slug)}/horas?${q}`)
       .then((r) => { if (mio === turno.current) setEstado({ cargando: false, horas: r.horas, cerrado: r.cerrado, error: null }); })
       .catch((e: unknown) => {
         if (mio === turno.current) setEstado({ cargando: false, horas: [], cerrado: false, error: e instanceof ErrorPublico ? e.message : 'No se pudieron cargar las horas' });
       });
-  }, [previa, slug, ids, fecha, especialistaId, recargar]);
-
-  // Lo que suma: la oferta a su precio y lo demás por separado
-  const resumen = useMemo(() => {
-    const enOferta = new Set(oferta?.servicioIds ?? []);
-    let total = oferta ? oferta.precio : 0;
-    let aproximado = false;
-    for (const s of elegidos) {
-      if (enOferta.has(s.id)) continue;
-      if (s.precio == null || s.modoPrecio === 'consultar') { aproximado = true; continue; }
-      if (s.modoPrecio === 'desde') aproximado = true;
-      total += s.precio;
-    }
-    for (const p of apartados) {
-      if (p.precio == null || p.modoPrecio === 'consultar') { aproximado = true; continue; }
-      if (p.modoPrecio === 'desde') aproximado = true;
-      total += p.precio;
-    }
-    return { total, aproximado, minutos: elegidos.reduce((m, s) => m + s.duracionMin, 0) };
-  }, [elegidos, apartados, oferta]);
+  }, [previa, slug, ids, fecha, especialistas, recargar]);
 
   const telefonoOk = contacto.telefono.replace(/\D/g, '').length >= 7;
   const datosOk = contacto.nombre.trim().length >= 2 && telefonoOk;
@@ -867,7 +953,8 @@ function PanelReserva({
       const r = await publicRequest<ReservaHecha>(`/vitrina/publica/${encodeURIComponent(slug)}/reservas`, {
         method: 'POST',
         body: {
-          servicioIds: elegidos.map((s) => s.id), fecha, hora, especialistaId,
+          servicioIds: elegidos.map((s) => s.id), fecha, hora,
+          especialistaIds: elegidos.map((s) => conQuien[s.id] ?? null),
           nombre: contacto.nombre.trim(), telefono: contacto.telefono.trim(),
           productoIds: apartados.map((p) => p.id),
           nota: [oferta ? `Viene por la oferta «${oferta.nombre}»` : '', nota.trim()].filter(Boolean).join(' · '),
@@ -887,74 +974,46 @@ function PanelReserva({
     }
   };
 
-  const campo = 'w-full rounded-2xl border border-[var(--v-borde)] bg-[var(--v-fondo)] px-4 py-3 text-[15px] outline-none transition placeholder:text-[var(--v-suave)] focus:border-[var(--v-p)]';
-  const chip = (activo: boolean) => `rounded-full px-4 py-2 text-sm font-medium transition active:scale-95 ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`;
-  const especialista = posibles.find((e) => e.id === especialistaId) ?? null;
+  const campo = 'w-full rounded-2xl border border-[var(--v-borde)] bg-[var(--v-sup)] px-4 py-3.5 text-base outline-none transition placeholder:text-[var(--v-suave)] focus:border-[var(--v-p)]';
+  const chip = (activo: boolean) => `rounded-full px-4 py-2.5 text-sm font-medium transition active:scale-95 ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`;
+  const nombreDe = (id: string | undefined) => datos.especialistas.find((e) => e.id === id)?.nombre ?? null;
+  const conAlguien = elegidos.some((s) => conQuien[s.id]);
 
   const contenido = () => {
     switch (true) {
       case paso.clave === 'elegido':
-        return !elegidos.length && !apartados.length ? (
-          <div className="rounded-2xl border border-dashed border-[var(--v-borde)] p-4 text-center text-sm text-[var(--v-suave)]">
-            Toca <Plus className="inline size-3.5 align-[-2px]" /> en un servicio para empezar.
-          </div>
-        ) : (
-          <ul className="space-y-1.5">
-            <AnimatePresence initial={false}>
-              {elegidos.map((s) => (
-                <motion.li key={s.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -16 }}
-                  className="flex items-center gap-2 rounded-2xl bg-[var(--v-tinte)] py-2 pl-3 pr-1.5 text-sm">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{s.nombre}</span>
-                    <span className="text-xs text-[var(--v-suave)]">{duracion(s.duracionMin)}</span>
-                  </span>
-                  <button type="button" onClick={() => quitarServicio(s.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`Quitar ${s.nombre}`}>
-                    <Minus className="size-4" />
-                  </button>
-                </motion.li>
-              ))}
-              {apartados.map((p) => (
-                <motion.li key={p.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -16 }}
-                  className="flex items-center gap-2 rounded-2xl border border-[var(--v-borde)] py-2 pl-3 pr-1.5 text-sm">
-                  <ShoppingBag className="size-4 shrink-0 text-[var(--v-p)]" />
-                  <span className="min-w-0 flex-1 truncate">{p.nombre} <span className="text-xs text-[var(--v-suave)]">· para apartar</span></span>
-                  <button type="button" onClick={() => quitarProducto(p.id)} className="grid size-8 place-items-center rounded-full text-[var(--v-suave)] hover:bg-[var(--v-sup)]" aria-label={`No apartar ${p.nombre}`}>
-                    <Minus className="size-4" />
-                  </button>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-            {oferta && <li className="px-1 text-xs font-medium text-[var(--v-p)]"><Tag className="mr-1 inline size-3" />Oferta «{oferta.nombre}»</li>}
-            {!elegidos.length && <li className="px-1 pt-1 text-xs text-[var(--v-suave)]">Para reservar, agrega también un servicio.</li>}
-          </ul>
-        );
+        return <ListaElegidos elegidos={elegidos} apartados={apartados} oferta={oferta} quitarServicio={quitarServicio} quitarProducto={quitarProducto} />;
 
-      case paso.clave === 'quien':
+      case paso.clave.startsWith('quien-'): {
+        const sid = paso.clave.slice(6);
+        const actual = conQuien[sid] ?? null;
         return (
-          <div className="grid grid-cols-2 gap-2">
-            {[null, ...posibles].map((e) => {
+          <div className="grid grid-cols-2 gap-2 @2xl:grid-cols-3">
+            {[null, ...(posiblesDe.get(sid) ?? [])].map((e) => {
               const id = e?.id ?? null;
-              const activo = especialistaId === id;
+              const activo = actual === id;
               return (
                 <button
-                  key={id ?? 'libre'} type="button" onClick={() => setEspecialistaId(id)} aria-pressed={activo}
-                  className={`flex flex-col items-center gap-1.5 rounded-3xl p-3 text-center text-sm transition active:scale-[0.97] ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
+                  key={id ?? 'libre'} type="button" aria-pressed={activo}
+                  onClick={() => setConQuien((m) => { const n = { ...m }; if (id) n[sid] = id; else delete n[sid]; return n; })}
+                  className={`flex flex-col items-center gap-1.5 rounded-3xl p-4 text-center text-sm transition active:scale-[0.97] ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
                 >
-                  <span className={`grid size-12 place-items-center rounded-full text-base font-bold ${activo ? 'bg-white/20' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}>
-                    {e ? iniciales(e.nombre) : <User className="size-5" />}
+                  <span className={`grid size-14 place-items-center rounded-full text-lg font-bold ${activo ? 'bg-white/20' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}>
+                    {e ? iniciales(e.nombre) : <User className="size-6" />}
                   </span>
                   <span className="font-semibold leading-tight">{e ? e.nombre : 'Quien esté libre'}</span>
-                  <span className={`text-xs leading-tight ${activo ? 'opacity-85' : 'text-[var(--v-suave)]'}`}>{e ? e.especialidad || ' ' : 'Te damos la primera hora'}</span>
+                  <span className={`text-xs leading-tight ${activo ? 'opacity-85' : 'text-[var(--v-suave)]'}`}>{e ? e.especialidad || ' ' : 'Te damos la primera hora'}</span>
                 </button>
               );
             })}
           </div>
         );
+      }
 
       case paso.clave === 'cuando':
         return (
-          <div className="space-y-4">
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+          <div className="space-y-5">
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
               {dias.map((d, i) => {
                 const activo = fecha === d.fecha;
                 const fechaD = new Date(`${d.fecha}T12:00:00Z`);
@@ -962,10 +1021,10 @@ function PanelReserva({
                   <button
                     key={d.fecha} type="button" disabled={!d.abierto} onClick={() => setFecha(d.fecha)} aria-pressed={activo}
                     aria-label={fmtFechaLarga.format(fechaD) + (d.abierto ? '' : ', cerrado')}
-                    className={`flex w-14 shrink-0 flex-col items-center rounded-2xl py-2 text-center transition disabled:opacity-35 ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)]'}`}
+                    className={`flex w-16 shrink-0 flex-col items-center rounded-2xl py-2.5 text-center transition disabled:opacity-35 ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
                   >
                     <span className="text-[11px] capitalize opacity-80">{i === 0 ? 'Hoy' : fmtDiaCorto.format(fechaD).replace('.', '')}</span>
-                    <span className="text-lg font-bold leading-tight">{fechaD.getUTCDate()}</span>
+                    <span className="text-xl font-bold leading-tight">{fechaD.getUTCDate()}</span>
                     <span className="text-[10px] capitalize opacity-70">{fmtMes.format(fechaD).replace('.', '')}</span>
                   </button>
                 );
@@ -974,22 +1033,22 @@ function PanelReserva({
             {previa ? (
               <p className="rounded-2xl bg-[var(--v-tinte)] p-3 text-sm">En la vista previa no se ven las horas libres. Tus clientas sí las verán.</p>
             ) : estado.cargando ? (
-              <div className="grid grid-cols-3 gap-2" aria-label="Buscando horas libres">
-                {Array.from({ length: 6 }, (_, i) => <span key={i} className="h-9 animate-pulse rounded-xl bg-[var(--v-tinte)]" />)}
+              <div className="grid grid-cols-3 gap-2 @2xl:grid-cols-4" aria-label="Buscando horas libres">
+                {Array.from({ length: 8 }, (_, i) => <span key={i} className="h-11 animate-pulse rounded-xl bg-[var(--v-tinte)]" />)}
               </div>
             ) : estado.error ? (
               <p className="flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{estado.error}</p>
             ) : estado.cerrado ? (
               <p className="py-2 text-sm text-[var(--v-suave)]">Ese día el salón está cerrado. Elige otro.</p>
             ) : !estado.horas.length ? (
-              <p className="py-2 text-sm text-[var(--v-suave)]">No quedan horas libres ese día{especialistaId ? ' con esa especialista' : ''}. Prueba otro día{especialistaId ? ' o «Quien esté libre»' : ''}.</p>
+              <p className="py-2 text-sm text-[var(--v-suave)]">No quedan horas libres ese día{conAlguien ? ' con quien elegiste' : ''}. Prueba otro día{conAlguien ? ' o «Quien esté libre»' : ''}.</p>
             ) : (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 @2xl:grid-cols-4">
                 {estado.horas.map((h, i) => (
                   <motion.button
                     key={h} type="button" onClick={() => setHora(h)} aria-pressed={hora === h}
                     initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.02 }}
-                    className={`rounded-xl py-2 text-sm font-medium tabular-nums transition ${hora === h ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)]'}`}
+                    className={`rounded-xl py-3 text-sm font-medium tabular-nums transition ${hora === h ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
                   >
                     {horaBonita(h)}
                   </motion.button>
@@ -1025,7 +1084,7 @@ function PanelReserva({
 
       case paso.clave === 'datos':
         return (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <input
               className={campo} placeholder="Tu nombre" autoComplete="name" maxLength={80}
               value={contacto.nombre} onChange={(e) => setContacto((c) => ({ ...c, nombre: e.target.value }))}
@@ -1035,7 +1094,7 @@ function PanelReserva({
               value={contacto.telefono} onChange={(e) => setContacto((c) => ({ ...c, telefono: e.target.value }))}
             />
             <textarea
-              className={`${campo} min-h-[72px] resize-none`} placeholder="¿Algo que debamos saber? Una alergia, por ejemplo (opcional)" maxLength={300}
+              className={`${campo} min-h-[88px] resize-none`} placeholder="¿Algo que debamos saber? Una alergia, por ejemplo (opcional)" maxLength={300}
               value={nota} onChange={(e) => setNota(e.target.value)}
             />
             <p className="px-1 text-xs text-[var(--v-suave)]">Solo lo usamos para tu cita.</p>
@@ -1046,7 +1105,7 @@ function PanelReserva({
         // El resumen: cada línea lleva a su paso para cambiarla
         const fila = (icono: React.ReactNode, texto: React.ReactNode, a: ClavePaso) => (
           <li>
-            <button type="button" onClick={() => ir(a)} className="flex w-full items-start gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition hover:bg-[var(--v-tinte)]">
+            <button type="button" onClick={() => ir(a)} className="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left text-[15px] transition hover:bg-[var(--v-tinte)]">
               <span className="mt-0.5 shrink-0 text-[var(--v-p)]">{icono}</span>
               <span className="min-w-0 flex-1">{texto}</span>
               <span className="shrink-0 text-xs font-semibold text-[var(--v-p)]">Cambiar</span>
@@ -1055,9 +1114,18 @@ function PanelReserva({
         );
         const gustosDichos = gustos.map((g) => loQueLeGusta(g.tipo)).flat();
         return (
-          <ul className="-mx-3">
+          <ul className={`divide-y divide-[var(--v-borde)] ${TARJETA} px-3`}>
             {fila(<Sparkles className="size-4" />, <><b className="font-semibold">{elegidos.map((s) => s.nombre).join(' + ')}</b>{apartados.length ? <span className="block text-xs text-[var(--v-suave)]">Apartas: {apartados.map((p) => p.nombre).join(', ')}</span> : null}</>, 'elegido')}
-            {posibles.length > 0 && fila(<User className="size-4" />, especialista ? `Con ${especialista.nombre}` : 'Con quien esté libre', 'quien')}
+            {!!conElegir.length && fila(<User className="size-4" />, (
+              <span className="block space-y-0.5">
+                {conElegir.map((s) => (
+                  <span key={s.id} className="block">
+                    {conElegir.length > 1 && <span className="text-[var(--v-suave)]">{s.nombre}: </span>}
+                    {nombreDe(conQuien[s.id]) ? `Con ${nombreDe(conQuien[s.id])}` : 'Con quien esté libre'}
+                  </span>
+                ))}
+              </span>
+            ), `quien-${conElegir[0].id}`)}
             {fila(<CalendarDays className="size-4" />, hora
               ? <span className="first-letter:uppercase inline-block">{fmtFechaLarga.format(new Date(`${fecha}T12:00:00Z`))}, {horaBonita(hora)}</span>
               : <span className="text-[var(--v-suave)]">{previa ? 'Aquí va el día y la hora' : 'Elige el día y la hora'}</span>, 'cuando')}
@@ -1073,51 +1141,57 @@ function PanelReserva({
   const esGusto = paso.clave.startsWith('gusto-');
 
   return (
-    <div className={enHoja ? '' : `${TARJETA} p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]`}>
-      {!enHoja && (
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-bold">Tu reserva</h2>
-          <span className="inline-flex items-center gap-1 text-xs text-[var(--v-suave)]"><MapPin className="size-3" />{sede.nombre}</span>
+    <motion.div
+      role="dialog" aria-modal="true" aria-label="Tu reserva" aria-hidden={!abierta}
+      initial={false}
+      animate={abierta ? { opacity: 1, y: 0, visibility: 'visible' } : { opacity: 0, y: 32, transitionEnd: { visibility: 'hidden' } }}
+      transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+      className="fixed inset-0 z-40 flex flex-col bg-[var(--v-fondo)] text-[var(--v-texto)]"
+    >
+      {/* Arriba: cerrar, dónde reserva y cuánto falta */}
+      <header className="shrink-0 border-b border-[var(--v-borde)]">
+        <div className="mx-auto flex w-full max-w-xl items-center gap-3 px-4 pt-3 pb-2.5">
+          <button type="button" onClick={cerrar} aria-label="Volver a la Vitrina" className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--v-borde)] bg-[var(--v-sup)] transition active:scale-95">
+            <X className="size-5" />
+          </button>
+          <div className="min-w-0 flex-1 text-center">
+            <p className="truncate text-sm font-semibold">{datos.salon.nombre}</p>
+            <p className="inline-flex max-w-full items-center gap-1 truncate text-xs text-[var(--v-suave)]"><MapPin className="size-3 shrink-0" />{sede.nombre}</p>
+          </div>
+          <span className="w-10 shrink-0 text-right text-xs tabular-nums text-[var(--v-suave)]">{indice + 1}/{pasos.length}</span>
         </div>
-      )}
+        <div className="mx-auto w-full max-w-xl px-4 pb-3">
+          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--v-tinte)]" role="progressbar" aria-valuemin={1} aria-valuemax={pasos.length} aria-valuenow={indice + 1} aria-label="Paso de la reserva">
+            <motion.div className="h-full rounded-full bg-[var(--v-p)]" initial={false} animate={{ width: `${((indice + 1) / pasos.length) * 100}%` }} transition={{ type: 'spring', stiffness: 200, damping: 30 }} />
+          </div>
+        </div>
+      </header>
 
-      {/* Cuánto falta */}
-      <div className={`${enHoja ? '' : 'mt-3'} flex items-center gap-3`}>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--v-tinte)]" role="progressbar" aria-valuemin={1} aria-valuemax={pasos.length} aria-valuenow={indice + 1} aria-label="Paso de la reserva">
-          <motion.div className="h-full rounded-full bg-[var(--v-p)]" initial={false} animate={{ width: `${((indice + 1) / pasos.length) * 100}%` }} transition={{ type: 'spring', stiffness: 200, damping: 30 }} />
-        </div>
-        <span className="shrink-0 text-xs tabular-nums text-[var(--v-suave)]">{indice + 1} de {pasos.length}</span>
+      {/* Una cosa por pantalla */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <AnimatePresence mode="wait" initial={false} custom={direccion}>
+          <motion.section
+            key={paso.clave} custom={direccion}
+            variants={{ entra: (d: number) => ({ opacity: 0, x: d * 40 }), quieto: { opacity: 1, x: 0 }, sale: (d: number) => ({ opacity: 0, x: d * -40 }) }}
+            initial="entra" animate="quieto" exit="sale" transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="mx-auto w-full max-w-xl px-4 pt-8 pb-10 @4xl:pt-14"
+          >
+            <h2 ref={titulo} tabIndex={-1} className="text-2xl font-bold leading-tight tracking-tight outline-none @4xl:text-3xl">{paso.titulo}</h2>
+            {paso.ayuda && <p className="mt-1.5 text-[15px] text-[var(--v-suave)]">{paso.ayuda}</p>}
+            <div className="mt-6">{contenido()}</div>
+          </motion.section>
+        </AnimatePresence>
       </div>
 
-      <AnimatePresence mode="wait" initial={false} custom={direccion}>
-        <motion.div
-          key={paso.clave} custom={direccion}
-          variants={{ entra: (d: number) => ({ opacity: 0, x: d * 28 }), quieto: { opacity: 1, x: 0 }, sale: (d: number) => ({ opacity: 0, x: d * -28 }) }}
-          initial="entra" animate="quieto" exit="sale" transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="mt-4"
-        >
-          <h3 ref={titulo} tabIndex={-1} className="text-lg font-bold leading-snug outline-none">{paso.titulo}</h3>
-          {paso.ayuda && <p className="mt-0.5 text-sm text-[var(--v-suave)]">{paso.ayuda}</p>}
-          <div className="mt-3">{contenido()}</div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* El total, los botones y por qué no se puede seguir */}
-      {(!!elegidos.length || !!apartados.length) && (
-        <div className="mt-5 border-t border-[var(--v-borde)] pt-4">
-          <div className="flex items-baseline justify-between text-sm">
-            <span className="text-[var(--v-suave)]">
-              {resumen.minutos ? `${duracion(resumen.minutos)} · ` : ''}Total{resumen.aproximado ? ' estimado' : ''}
-            </span>
-            <span className="text-lg font-bold">{resumen.total > 0 ? `${resumen.aproximado ? 'Desde ' : ''}${dinero.format(resumen.total)}` : 'En el salón'}</span>
-          </div>
+      {/* Abajo: el total, los botones y por qué no se puede seguir */}
+      <footer className="shrink-0 border-t border-[var(--v-borde)] bg-[var(--v-sup)] pb-[env(safe-area-inset-bottom)]">
+        <div className="mx-auto w-full max-w-xl px-4 py-3">
+          {!!elegidos.length && <Total cuenta={cuenta} dinero={dinero} />}
           {error && <p role="alert" className="mt-3 flex items-start gap-2 rounded-2xl bg-rose-500/10 p-3 text-sm text-rose-600"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</p>}
           <div className="mt-3 flex gap-2">
-            {indice > 0 && (
-              <button type="button" onClick={atras} aria-label="Atrás" className="grid size-[50px] shrink-0 place-items-center rounded-full border border-[var(--v-borde)] transition active:scale-95">
-                <ChevronLeft className="size-5" />
-              </button>
-            )}
+            <button type="button" onClick={indice > 0 ? atras : cerrar} aria-label={indice > 0 ? 'Atrás' : 'Seguir viendo la Vitrina'} className="grid size-[52px] shrink-0 place-items-center rounded-full border border-[var(--v-borde)] transition active:scale-95">
+              <ChevronLeft className="size-5" />
+            </button>
             {ultimo ? (
               <button type="button" onClick={reservar} disabled={!listo || previa || enviando} className={`${BOTON_P} flex-1 py-3.5 text-[15px]`}>
                 {enviando ? <><Loader2 className="size-4 animate-spin" /> Reservando…</> : previa ? 'Así se ve el botón de reservar' : diseno.confirmaSola ? 'Reservar' : 'Pedir esta cita'}
@@ -1132,8 +1206,8 @@ function PanelReserva({
           {ultimo && !listo && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">Falta {!hora ? 'la hora' : 'tu nombre o tu WhatsApp'}: toca la línea para completarlo</p>}
           {ultimo && !diseno.confirmaSola && !previa && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">El salón confirma tu cita por WhatsApp.</p>}
         </div>
-      )}
-    </div>
+      </footer>
+    </motion.div>
   );
 }
 
