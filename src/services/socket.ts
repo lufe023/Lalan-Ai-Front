@@ -64,6 +64,8 @@ const EVENTOS = [
   'chat:cambio', 'chat:atencion',
   /* La asistente agendó sin especialista: solo viaja el id de la cita */
   'agenda:sin-especialista',
+  /* La asistente agendó sola desde un chat: solo viaja el id de la primera cita */
+  'agenda:cita-lalan',
   /* Llegó (o se fue) una clienta y el Lounge ya se preparó: solo su id */
   'lounge:llegada',
 ];

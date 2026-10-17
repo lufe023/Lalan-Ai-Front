@@ -1550,11 +1550,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
       avisarAlSistema(`Cita sin especialista: ${cita.clientName}`, motivo);
     });
+    /* Agendó sola y quedó todo asignado: buena noticia, va en un aviso que se
+       va solo (no fijo) y al sistema si la app está en segundo plano. */
+    const quitarCitaLalan = alRecibir('agenda:cita-lalan', async (carga: any) => {
+      const citaId: string | undefined = carga?.motivo ?? undefined;
+      if (!citaId) return;
+      const lista = await api.get<any[]>('/appointments').then(l => l.map(mapApiAppointment)).catch(() => null);
+      if (lista) setAppointments(lista);
+      const cita = lista?.find(c => c.id === citaId);
+      if (!cita) return;
+      const cuando = new Date(cita.startsAt ?? `${cita.date}T${cita.time}`)
+        .toLocaleString('es', { weekday: 'long', day: 'numeric', hour: 'numeric', hour12: true, minute: '2-digit' });
+      const titulo = `${settingsRef.current.aiAgentName || 'Lalan'} agendó a ${cita.clientName}`;
+      const detalle = `${cita.serviceName}, ${cuando}`;
+      showToast(titulo, detalle, 'success');
+      avisarAlSistema(titulo, detalle);
+    });
     const quitarConexion = alConectar(recargar);
     // Red de seguridad por si el socket se cae sin avisar
     const intervalo = window.setInterval(recargar, RED_DE_SEGURIDAD_CHAT_MS);
     return () => {
-      quitarSala(); quitarSinEspecialista(); window.clearTimeout(esperaAgenda);
+      quitarSala(); quitarSinEspecialista(); quitarCitaLalan(); window.clearTimeout(esperaAgenda);
       quitarCambio(); quitarAtencion(); quitarConexion();
       window.clearTimeout(espera); window.clearInterval(intervalo);
     };
