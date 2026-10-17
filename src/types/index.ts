@@ -90,6 +90,8 @@ export interface SalonService {
   popular?: boolean;
   description?: string;
   aiAvailable: boolean; // Accessible by the AI Chat Bot to offer
+  /** Sale en la Vitrina (la página pública de reservas) */
+  enVitrina?: boolean;
   priceTiers: PriceTier[]; // Multiple pricing table
   /** Cómo habla del precio la asistente */
   aiPrecio?: ModoPrecioAsistente;
@@ -139,6 +141,8 @@ export interface SalonProduct {
   fotoId?: string | null;
   description: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
+  /** Sale en la Vitrina, si hay existencias en la sede */
+  enVitrina?: boolean;
   priceTiers: PriceTier[]; // Multiple pricing table
   // ── Costeo e inventario inteligente ──────────────────────────────────
   costPrice?: number;       // costo de compra por unidad base

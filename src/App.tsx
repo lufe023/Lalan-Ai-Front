@@ -27,6 +27,7 @@ import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
 import { ReproductorSala } from './screens/ReproductorSala';
 import { PedirCancionScreen } from './screens/PedirCancionScreen';
+import VitrinaScreen from './screens/VitrinaScreen';
 import { QuioscoScreen } from './screens/QuioscoScreen';
 import { AprobarQuiosco } from './components/ajustes/AprobarQuiosco';
 import { PlataformaScreen } from './screens/PlataformaScreen';
@@ -268,6 +269,12 @@ function tokenDePedirCancion(): string | null {
   return m ? m[1] : null;
 }
 
+/** La Vitrina pública de una sede (#/v/:slug): donde las clientas reservan solas */
+function slugDeVitrina(): string | null {
+  const m = /^#\/v\/([a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?)\/?$/.exec(window.location.hash || '');
+  return m ? m[1] : null;
+}
+
 /** El quiosco de la entrada (#/quiosco): su token vive en el aparato, no en la URL */
 function esQuiosco(): boolean {
   return /^#\/quiosco(\/[A-Za-z0-9_-]*)?$/.test(window.location.hash || '');
@@ -296,6 +303,7 @@ export default function App() {
   const [tokenReproductor, setTokenReproductor] = React.useState<string | null>(tokenDeReproductor);
   const [tokenPedirCancion, setTokenPedirCancion] = React.useState<string | null>(tokenDePedirCancion);
   const [quiosco, setQuiosco] = React.useState<boolean>(esQuiosco);
+  const [slugVitrina, setSlugVitrina] = React.useState<string | null>(slugDeVitrina);
 
   React.useEffect(() => {
     const alCambiar = () => {
@@ -303,6 +311,7 @@ export default function App() {
       setTokenReproductor(tokenDeReproductor());
       setTokenPedirCancion(tokenDePedirCancion());
       setQuiosco(esQuiosco());
+      setSlugVitrina(slugDeVitrina());
     };
     window.addEventListener('hashchange', alCambiar);
     return () => window.removeEventListener('hashchange', alCambiar);
@@ -331,6 +340,14 @@ export default function App() {
           <QuioscoScreen />
         </MotionConfig>
       </ThemeProvider>
+    );
+  }
+
+  if (slugVitrina) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <VitrinaScreen slug={slugVitrina} />
+      </MotionConfig>
     );
   }
 

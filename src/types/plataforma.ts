@@ -61,7 +61,7 @@ export interface CatalogosPiloto { tiposNegocio: Opcion[]; queAutomatizar: Opcio
 
 export type ClaveModulo =
   | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
-  | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco';
+  | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco' | 'vitrina';
 
 export type GrupoModulo = 'atencion' | 'salon' | 'dinero' | 'experiencia';
 export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo; /** Qué deja de funcionar sin él */ queBloquea?: string }

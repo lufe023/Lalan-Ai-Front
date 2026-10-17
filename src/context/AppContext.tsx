@@ -705,6 +705,7 @@ function mapApiService(s: any): SalonService {
     price: Number(s.basePrice), currencyCode: s.currencyCode, durationMinutes: s.durationMinutes,
     icon: s.icon ?? 'sparkles', color: s.color ?? '#6366f1',
     popular: s.popular ?? false, description: s.description,
+    enVitrina: s.enVitrina ?? true,
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     aiPrecio: s.aiPrecio ?? 'exacto',
     locationId: s.locationId ?? null,
@@ -728,6 +729,7 @@ function mapApiProduct(p: any): SalonProduct {
       hasLotTracking: p.hasLotTracking ?? false,
       lotStrategy: (p.lotStrategy as 'FEFO' | 'FIFO') ?? 'FEFO',
     fotoId: p.fotoId ?? null, description: p.description ?? '',
+    enVitrina: p.enVitrina ?? true,
     aiAvailable: p.aiAvailable ?? true, priceTiers: ((p.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
     preparedToOrder: !!p.preparedToOrder,
     supplyOnly: !!p.supplyOnly,
@@ -1181,6 +1183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.popular !== undefined)         payload.popular = updated.popular;
     if (updated.description !== undefined)     payload.description = updated.description || undefined;
     if (updated.aiAvailable !== undefined)     payload.aiAvailable = updated.aiAvailable;
+    if (updated.enVitrina !== undefined)       payload.enVitrina = updated.enVitrina;
     if (updated.priceTiers !== undefined)      payload.priceTiers = updated.priceTiers;
     if (updated.currencyCode !== undefined)    payload.currencyCode = updated.currencyCode;
     if (updated.aiPrecio !== undefined)        payload.aiPrecio = updated.aiPrecio;
@@ -1263,6 +1266,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.basePrice !== undefined)    payload.basePrice = updated.basePrice;
     if (updated.description !== undefined)  payload.description = updated.description || undefined;
     if (updated.aiAvailable !== undefined)    payload.aiAvailable = updated.aiAvailable;
+    if (updated.enVitrina !== undefined)      payload.enVitrina = updated.enVitrina;
     if (updated.priceTiers !== undefined)     payload.priceTiers = updated.priceTiers;
     if (updated.unit !== undefined)           payload.unit = updated.unit;
     if (updated.unitQty !== undefined)        payload.unitQty = updated.unitQty;
