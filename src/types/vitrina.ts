@@ -47,6 +47,8 @@ export interface ServicioVitrina {
   precio: number | null;
   modoPrecio: ModoPrecio;
   foto: string | null;
+  /** Todas sus fotos (hasta 10), la primera es `foto` */
+  fotos?: string[];
   popular: boolean;
 }
 
@@ -57,6 +59,7 @@ export interface ProductoVitrina {
   descripcion: string | null;
   precio: number;
   foto: string | null;
+  fotos?: string[];
   quedanPocos: boolean;
 }
 
@@ -108,6 +111,15 @@ export interface DatosVitrina {
   productos: ProductoVitrina[];
   ofertas: OfertaVitrina[];
   especialistas: EspecialistaVitrina[];
+  /** Las preguntas del Lounge al reservar (vacío si el salón no tiene hospitalidad) */
+  gustos?: PreguntaDeGusto[];
+}
+
+export interface PreguntaDeGusto {
+  tipo: 'music' | 'drink';
+  titulo: string;
+  ayuda: string;
+  opciones: { id: string; valor: string }[];
 }
 
 export interface ConfigVitrina {
