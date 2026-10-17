@@ -55,6 +55,7 @@ import { ServicioEnSedes, agruparPorSede } from '../components/catalogo/Servicio
 import { VariantesDePrecio, preciosDeSedesDesde, preciosParaGuardar, type PreciosDeSedes } from '../components/catalogo/VariantesDePrecio';
 import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSinFoto, FotoDelCatalogo, MiniaturaCatalogo, urlFotoCatalogo } from '../components/catalogo/FotoDelCatalogo';
+import { SaleEnVitrina } from '../components/catalogo/SaleEnVitrina';
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -799,6 +800,7 @@ export const CatalogScreen: React.FC = () => {
                       {service.aiAvailable ? '✓ Activo' : 'Inactivo'}
                     </button>
                   </div>
+                  <SaleEnVitrina activo={service.enVitrina !== false} cambiar={(v) => updateService(service.id, { enVitrina: v })} />
                   <CopiarASede desde={service.locationId} onCopiar={(sedes) => copiarServicio(service.id, sedes)} />
                 </Aparecer>
               ))
@@ -1020,6 +1022,9 @@ export const CatalogScreen: React.FC = () => {
                       {product.aiAvailable ? '✓ Activo' : 'Inactivo'}
                     </button>
                   </div>
+                  {!product.supplyOnly && (
+                    <SaleEnVitrina activo={product.enVitrina !== false} cambiar={(v) => updateProduct(product.id, { enVitrina: v })} />
+                  )}
                 </Aparecer>
               ))
             )}

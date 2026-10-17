@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bot, Gift, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Bot, Gift, Globe, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useDinero } from '../../hooks/useDinero';
+import { usePlan } from '../../context/PlanContext';
 import { IOSModal } from '../ui/IOSModal';
 import type { SalonService } from '../../types';
 import { AvisoSedeActiva } from '../ui/AvisoSedeActiva';
@@ -21,6 +22,8 @@ interface Oferta {
   dias: number[];
   activa: boolean;
   aiOfrece: boolean;
+  /** Sale en la Vitrina de la sede */
+  enVitrina?: boolean;
   /** La sede donde vale; null = todas */
   locationId?: string | null;
 }
@@ -77,6 +80,7 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
     } finally { setGuardando(false); }
   };
 
+  const conVitrina = usePlan().tieneModulo('vitrina');
   const cambiar = async (o: Oferta, cambio: Partial<Oferta>) => {
     setOfertas((l) => l?.map((x) => (x.id === o.id ? { ...x, ...cambio } : x)) ?? l);
     try { await api.patch(`/ofertas/${o.id}`, cambio); }
@@ -151,6 +155,12 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
                   className={`px-2 py-1 rounded-lg text-[0.6875rem] font-bold flex items-center gap-1 cursor-pointer ${o.aiOfrece ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300' : 'bg-slate-100 dark:bg-neutral-800 text-slate-500'}`}>
                   <Bot className="w-3.5 h-3.5" /> {o.aiOfrece ? 'La asistente la ofrece' : 'La asistente no la ofrece'}
                 </button>
+                {conVitrina && (
+                  <button type="button" onClick={() => void cambiar(o, { enVitrina: o.enVitrina === false })} aria-pressed={o.enVitrina !== false}
+                    className={`px-2 py-1 rounded-lg text-[0.6875rem] font-bold flex items-center gap-1 cursor-pointer ${o.enVitrina !== false ? 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300' : 'bg-slate-100 dark:bg-neutral-800 text-slate-500'}`}>
+                    <Globe className="w-3.5 h-3.5" /> {o.enVitrina !== false ? 'En la Vitrina' : 'No sale en la Vitrina'}
+                  </button>
+                )}
                 <button type="button" onClick={() => void cambiar(o, { activa: !o.activa })}
                   className="px-2 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 cursor-pointer">
                   {o.activa ? 'Pausar' : 'Activar'}

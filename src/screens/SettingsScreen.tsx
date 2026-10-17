@@ -69,6 +69,7 @@ import { SeguridadCuenta } from '../components/ajustes/SeguridadCuenta';
 import { LoQueLalanSabe } from '../components/ajustes/LoQueLalanSabe';
 import { puedeHablarConLalan } from '../components/lalan/PantallaLalan';
 import { QuioscosSalon } from '../components/ajustes/QuioscosSalon';
+import { AjustesVitrina } from '../components/ajustes/AjustesVitrina';
 import { enSoporte } from '../services/soporte';
 import { DisenadorRecibo } from '../components/ajustes/DisenadorRecibo';
 
@@ -1406,6 +1407,7 @@ export const SettingsScreen: React.FC = () => {
 
           </>
         )}
+        {seccion === 'vitrina' && <AjustesVitrina />}
         {seccion === 'caja' && (
           <>
         {/* SECTION 3.5: MONEDAS Y DENOMINACIONES */}

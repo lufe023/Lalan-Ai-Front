@@ -180,6 +180,10 @@ export const urlDeReproductor = (token: string) =>
 export const urlDePedirCancion = (token: string) =>
   `${window.location.origin}${window.location.pathname}#/pedir-cancion/${token}`;
 
+/** La Vitrina pública de una sede, para compartirla o meterla en un QR */
+export const urlDeVitrina = (slug: string) =>
+  `${window.location.origin}${window.location.pathname}#/v/${slug}`;
+
 /**
  * Avisa al servidor que esta sesión se cierra (deja de salir en Mi cuenta y
  * su refresh ya no sirve). keepalive: llega aunque la página se recargue.
