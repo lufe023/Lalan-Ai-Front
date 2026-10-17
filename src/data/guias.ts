@@ -150,6 +150,21 @@ export const GUIAS: GuiaApp[] = [
     ],
   },
   {
+    id: 'configurar-vitrina', nombre: 'Armar y publicar la Vitrina', pantalla: 'settings', ajustes: true, cambiaSede: true,
+    pasos: [
+      fila('vitrina', 'Vitrina'),
+      { ancla: 'vitrina-colores', texto: 'Sube una foto de portada y elige los colores. A la derecha ves cómo queda.', leer: true },
+      { ancla: 'vitrina-bloques', texto: 'Sube, baja o esconde los bloques: servicios, productos, ofertas. Cuando te guste, toca «Guardar».', leer: true },
+      { ancla: 'vitrina-publicar', texto: 'Prende «Publicar» para que tus clientas la vean. Debajo salen el enlace y el QR para compartirla.', leer: true },
+    ],
+  },
+  {
+    id: 'sale-en-vitrina', nombre: 'Poner o quitar algo de la Vitrina', pantalla: 'catalog', cambiaSede: true,
+    pasos: [
+      { ancla: 'sale-en-vitrina', texto: 'Cada servicio, producto y oferta tiene este botón. «Publicado» sale en la Vitrina; «Oculto» no sale.', leer: true },
+    ],
+  },
+  {
     id: 'tema-colores', nombre: 'Cambiar el modo oscuro y los colores', pantalla: 'settings', ajustes: true,
     pasos: [
       fila('apariencia', 'Apariencia'),

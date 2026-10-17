@@ -16,7 +16,7 @@ export const SaleEnVitrina: React.FC<{ activo: boolean; cambiar: (v: boolean) =>
     try { await cambiar(!activo); } finally { setOcupado(false); }
   };
   return (
-    <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-neutral-800/60 text-xs">
+    <div data-guia="sale-en-vitrina" className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-neutral-800/60 text-xs">
       <div className="flex items-center gap-1.5">
         <Globe className={`w-4 h-4 ${activo ? 'text-fuchsia-500' : 'text-slate-400'}`} />
         <span className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-300">{activo ? que : 'No sale en la Vitrina'}</span>
