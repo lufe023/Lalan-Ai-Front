@@ -12,7 +12,7 @@ const RECARGA_DE_SEGURIDAD_MS = 60_000;
  * atendidas, canceladas, también las que agenda la asistente) y los chats
  * (lo que respondió la asistente).
  */
-const SENALES = ['ventas:cambio', 'sala:cambio', 'chat:cambio', 'agenda:sin-especialista'];
+const SENALES = ['ventas:cambio', 'sala:cambio', 'chat:cambio', 'agenda:sin-especialista', 'agenda:cita-lalan'];
 
 /**
  * Las métricas en vivo. Antes se pedían una vez al abrir la app: una cita
