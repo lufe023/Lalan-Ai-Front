@@ -28,7 +28,7 @@ export default function VitrinaScreen({ slug }: { slug: string }) {
 
   useEffect(() => { setDatos(null); cargar(); }, [cargar]);
 
-  if (datos) return <div className="min-h-dvh bg-[#FAF7F6]"><PaginaVitrina datos={datos} slug={slug} /></div>;
+  if (datos) return <PaginaVitrina datos={datos} slug={slug} />;
 
   return (
     <div className="grid min-h-dvh place-items-center bg-[#FAF7F6] px-6 text-center text-[#1F1A1C]">

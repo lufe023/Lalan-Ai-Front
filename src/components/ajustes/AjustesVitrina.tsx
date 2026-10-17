@@ -133,14 +133,14 @@ export const AjustesVitrina: React.FC = () => {
     <div className="space-y-4">
       <Publicacion cfg={cfg} q={q} selector={selector} publicar={publicar} recargar={setCfg} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:items-start">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:items-start">
+        <div className="min-w-0 space-y-4">
           {/* Portada */}
           <div className={`${TARJETA} space-y-3`}>
             <Encabezado titulo="Foto de portada" sede={cfg.sede.nombre} />
             <div className="flex items-center gap-3">
               <div className="w-28 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-100 dark:bg-neutral-800 grid place-items-center">
-                {cfg.portada ? <img src={urlDeFoto(cfg.portada)} alt="Portada" className="w-full h-full object-cover" /> : <ImagePlus className="w-6 h-6 text-slate-300" />}
+                {cfg.portada ? <img src={urlDeFoto(cfg.portada)} alt="" className="w-full h-full object-cover" /> : <ImagePlus className="w-6 h-6 text-slate-300" />}
               </div>
               <div className="flex flex-wrap gap-2">
                 <label className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[0.75rem] font-semibold bg-[var(--primary)] text-white cursor-pointer ${subiendo ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -215,13 +215,13 @@ export const AjustesVitrina: React.FC = () => {
               <span className="text-[0.75rem] font-semibold text-slate-600 dark:text-neutral-300">Título de la portada</span>
               <input value={borrador.titulo ?? ''} maxLength={80} onChange={(e) => cambiar({ titulo: e.target.value || null })}
                 placeholder={cfg.sede.nombre}
-                className="w-full px-3 py-2 rounded-xl text-[0.875rem] bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" />
+                className="w-full px-3 py-2 rounded-xl text-[0.875rem] text-slate-800 dark:text-neutral-100 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" />
             </label>
             <label className="block space-y-1">
               <span className="text-[0.75rem] font-semibold text-slate-600 dark:text-neutral-300">Mensaje <span className="font-normal text-slate-400">(sale en el bloque «Mensaje»)</span></span>
               <textarea value={borrador.mensaje ?? ''} maxLength={400} rows={3} onChange={(e) => cambiar({ mensaje: e.target.value || null })}
                 placeholder="Bienvenida, promoción del mes, un aviso…"
-                className="w-full px-3 py-2 rounded-xl text-[0.875rem] bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 resize-none" />
+                className="w-full px-3 py-2 rounded-xl text-[0.875rem] text-slate-800 dark:text-neutral-100 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 resize-none" />
             </label>
             {!!borrador.mensaje && !borrador.bloques.find((b) => b.tipo === 'mensaje')?.visible && (
               <p className="text-[0.75rem] text-amber-600">El bloque «Mensaje» está escondido: muéstralo para que se vea.</p>
@@ -236,7 +236,7 @@ export const AjustesVitrina: React.FC = () => {
         </div>
 
         {/* Vista previa */}
-        <div className="xl:sticky xl:top-4 space-y-3">
+        <div className="min-w-0 xl:sticky xl:top-4 space-y-3">
           <VistaPrevia datos={previa ? { ...previa, diseno: { ...borrador, paleta: borrador.paleta ?? cfg.sede.paleta }, portada: cfg.portada } : null} />
         </div>
       </div>
@@ -260,8 +260,8 @@ export const AjustesVitrina: React.FC = () => {
 const Encabezado: React.FC<{ titulo: string; sede: string }> = ({ titulo, sede }) => (
   <div className="flex items-center justify-between gap-2">
     <h2 className={TITULO}>{titulo}</h2>
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-      <MapPin className="w-3 h-3" />{sede}
+    <span className="inline-flex min-w-0 max-w-[55%] items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+      <MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{sede}</span>
     </span>
   </div>
 );
@@ -346,7 +346,7 @@ const Publicacion: React.FC<{
             {editando ? (
               <div className="flex gap-2">
                 <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} maxLength={80} aria-label="Dirección de la Vitrina"
-                  className="flex-1 min-w-0 px-3 py-2 rounded-xl text-[0.8125rem] bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" />
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl text-[0.8125rem] text-slate-800 dark:text-neutral-100 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" />
                 <button type="button" onClick={cambiarSlug} disabled={!slug || slug === cfg.slug} className="px-3 py-2 rounded-xl text-[0.75rem] font-semibold bg-[var(--primary)] text-white disabled:opacity-50">Cambiar</button>
                 <button type="button" onClick={() => { setEditando(false); setSlug(cfg.slug ?? ''); }} className="px-2 text-[0.75rem] text-slate-500">Cancelar</button>
               </div>
@@ -354,9 +354,9 @@ const Publicacion: React.FC<{
               <p className="text-[0.8125rem] font-mono break-all text-slate-700 dark:text-neutral-200">{url}</p>
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={copiar} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold bg-slate-100 dark:bg-neutral-800"><Copy className="w-3.5 h-3.5" /> Copiar enlace</button>
-              <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold bg-slate-100 dark:bg-neutral-800"><ExternalLink className="w-3.5 h-3.5" /> Abrir</a>
-              {!editando && <button type="button" onClick={() => setEditando(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold bg-slate-100 dark:bg-neutral-800"><Pencil className="w-3.5 h-3.5" /> Cambiar dirección</button>}
+              <button type="button" onClick={copiar} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 bg-slate-100 dark:bg-neutral-800"><Copy className="w-3.5 h-3.5" /> Copiar enlace</button>
+              <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 bg-slate-100 dark:bg-neutral-800"><ExternalLink className="w-3.5 h-3.5" /> Abrir</a>
+              {!editando && <button type="button" onClick={() => setEditando(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 bg-slate-100 dark:bg-neutral-800"><Pencil className="w-3.5 h-3.5" /> Cambiar dirección</button>}
             </div>
             {!cfg.activa && <p className="text-[0.6875rem] text-amber-600">El enlace no abre mientras la Vitrina esté sin publicar.</p>}
           </div>

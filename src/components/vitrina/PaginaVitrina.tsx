@@ -9,6 +9,7 @@ import type {
   DatosVitrina, EspecialistaVitrina, OfertaVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina, TipoBloqueVitrina,
 } from '../../types/vitrina';
 import { estiloVitrina } from './temaVitrina';
+import { IOSModal } from '../ui/IOSModal';
 
 /**
  * La Vitrina tal como la ve una clienta: los bloques en el orden que eligió la
@@ -177,9 +178,9 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     }
   };
 
-  const panel = (
+  const panel = (enHoja: boolean) => (
     <PanelReserva
-      datos={datos} slug={slug} previa={previa} dinero={dinero}
+      datos={datos} slug={slug} previa={previa} dinero={dinero} enHoja={enHoja}
       elegidos={elegidos} apartados={apartados} oferta={oferta}
       quitarServicio={alternarServicio} quitarProducto={alternarProducto}
       alHacer={(r) => { setHecha(r); setHoja(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -189,7 +190,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const cuantos = elegidos.length + apartados.length;
 
   return (
-    <div ref={raiz} style={estiloVitrina(diseno)} className="@container min-h-full bg-[var(--v-fondo)] text-[var(--v-texto)] antialiased">
+    <div ref={raiz} style={estiloVitrina(diseno)} className={`@container ${previa ? 'min-h-full' : 'min-h-dvh'} bg-[var(--v-fondo)] text-[var(--v-texto)] antialiased`}>
       {hecha ? (
         <Exito hecha={hecha} salon={datos.salon.nombre} otra={reiniciar} />
       ) : (
@@ -202,7 +203,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
 
           {ancha && (
             <aside>
-              <div className="sticky top-4">{panel}</div>
+              <div className="sticky top-4">{panel(false)}</div>
             </aside>
           )}
         </div>
@@ -231,26 +232,17 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
             </div>
           </div>
 
-          <div className={`fixed inset-0 z-40 ${hoja ? '' : 'pointer-events-none'}`} inert={!hoja} aria-hidden={!hoja}>
-            <motion.button
-              type="button" aria-label="Cerrar" tabIndex={-1} className="absolute inset-0 bg-black/45"
-              initial={false} animate={{ opacity: hoja ? 1 : 0 }} onClick={() => setHoja(false)}
-            />
-            <motion.div
-              role="dialog" aria-modal="true" aria-label="Tu reserva"
-              className="absolute inset-x-0 bottom-0 max-h-[90%] overflow-y-auto rounded-t-[28px] bg-[var(--v-fondo)] px-3 pb-6 pt-2"
-              initial={false} animate={{ y: hoja ? 0 : '105%' }} transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-              onKeyDown={(e) => { if (e.key === 'Escape') setHoja(false); }}
-            >
-              <div className="sticky top-0 z-10 flex items-center justify-between bg-[var(--v-fondo)] px-1 pb-2 pt-1">
-                <span className="mx-auto h-1.5 w-10 rounded-full bg-[var(--v-borde)]" />
-                <button type="button" onClick={() => setHoja(false)} className="absolute right-1 top-0 grid size-9 place-items-center rounded-full text-[var(--v-suave)]" aria-label="Cerrar">
-                  <X className="size-5" />
-                </button>
-              </div>
-              {panel}
-            </motion.div>
-          </div>
+          <IOSModal
+            isOpen={hoja} onClose={() => setHoja(false)} title="Tu reserva" subtitle={sede.nombre}
+            id="vitrina-tu-reserva" fijo mantenerMontado fixedHeight={false} height="90%"
+            apariencia={{
+              hoja: 'bg-[var(--v-fondo)] border-[var(--v-borde)] text-[var(--v-texto)]',
+              titulo: 'text-[var(--v-texto)]', subtitulo: 'text-[var(--v-suave)]', borde: 'border-[var(--v-borde)]',
+              cerrar: 'bg-[var(--v-tinte)] text-[var(--v-suave)]', asa: 'bg-[var(--v-borde)]',
+            }}
+          >
+            {panel(true)}
+          </IOSModal>
         </>
       )}
 
@@ -553,9 +545,11 @@ function Ubicacion({ datos }: { datos: DatosVitrina }) {
 interface EstadoHoras { cargando: boolean; horas: string[]; cerrado: boolean; error: string | null }
 
 function PanelReserva({
-  datos, slug, previa, dinero, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
+  datos, slug, previa, dinero, enHoja, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
 }: {
   datos: DatosVitrina; slug: string | null; previa: boolean; dinero: Intl.NumberFormat;
+  /** En la hoja del teléfono el título y el marco los pone la hoja */
+  enHoja: boolean;
   elegidos: ServicioVitrina[]; apartados: ProductoVitrina[]; oferta: OfertaVitrina | null;
   quitarServicio: (id: string) => void; quitarProducto: (id: string) => void; alHacer: (r: ReservaHecha) => void;
 }) {
@@ -652,11 +646,13 @@ function PanelReserva({
   const campo = 'w-full rounded-2xl border border-[var(--v-borde)] bg-[var(--v-fondo)] px-4 py-3 text-[15px] outline-none transition placeholder:text-[var(--v-suave)] focus:border-[var(--v-p)]';
 
   return (
-    <div className={`${TARJETA} p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]`}>
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-bold">Tu reserva</h2>
-        <span className="inline-flex items-center gap-1 text-xs text-[var(--v-suave)]"><MapPin className="size-3" />{sede.nombre}</span>
-      </div>
+    <div className={enHoja ? '[&>:first-child]:mt-0' : `${TARJETA} p-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.35)]`}>
+      {!enHoja && (
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-bold">Tu reserva</h2>
+          <span className="inline-flex items-center gap-1 text-xs text-[var(--v-suave)]"><MapPin className="size-3" />{sede.nombre}</span>
+        </div>
+      )}
 
       {/* 1. Lo elegido */}
       {!elegidos.length && !apartados.length ? (
