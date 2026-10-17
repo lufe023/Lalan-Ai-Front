@@ -104,7 +104,7 @@ function conectar(auth: () => Record<string, any>, modo: string) {
      arriba, la reconexión ya manda el token nuevo. */
   socket.on('rechazado', () => {
     if (modoActual.startsWith('app')) {
-      void refrescarSesion().then(nuevo => { if (nuevo) socket?.connect(); });
+      void refrescarSesion().then(nuevo => { if (nuevo) socket?.connect(); }).catch(() => undefined);
     }
   });
   return socket;
