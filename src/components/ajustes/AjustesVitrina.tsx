@@ -159,7 +159,7 @@ export const AjustesVitrina: React.FC = () => {
           </div>
 
           {/* Colores */}
-          <div className={`${TARJETA} space-y-3`}>
+          <div data-guia="vitrina-colores" className={`${TARJETA} space-y-3`}>
             <Encabezado titulo="Colores" sede={cfg.sede.nombre} />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <ChipPaleta activa={borrador.paleta === null} onClick={() => cambiar({ paleta: null })} id={cfg.sede.paleta} nombre="La de la sede" />
@@ -178,7 +178,7 @@ export const AjustesVitrina: React.FC = () => {
           </div>
 
           {/* Bloques */}
-          <div className={`${TARJETA} space-y-3`}>
+          <div data-guia="vitrina-bloques" className={`${TARJETA} space-y-3`}>
             <Encabezado titulo="Bloques" sede={cfg.sede.nombre} />
             <p className={AYUDA}>Sube, baja o esconde cada bloque. «Tu reserva» no es un bloque: siempre está a la vista.</p>
             <ul className="space-y-1.5">
@@ -331,7 +331,7 @@ const Publicacion: React.FC<{
         La página de <b>{cfg.sede.nombre}</b> donde tus clientas ven servicios, productos y ofertas, eligen la hora y reservan solas.
         Cada sede tiene la suya, con sus precios y su horario. Las horas libres son las mismas que ofrece Lalan en los chats.
       </p>
-      <div className="flex items-center gap-3 py-1">
+      <div data-guia="vitrina-publicar" className="flex items-center gap-3 py-1">
         <span className="flex-1">
           <span className="block text-[0.875rem] font-semibold text-slate-800 dark:text-neutral-100">{cfg.activa ? 'Publicada' : 'Sin publicar'}</span>
           <span className="block text-[0.6875rem] text-slate-400">{cfg.activa ? 'Cualquiera con el enlace puede verla y reservar.' : 'Nadie la ve todavía. Ármala y publícala cuando esté lista.'}</span>
