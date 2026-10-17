@@ -85,9 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (err?.message === 'Session expired') {
           tokenStore.clear();
           localStorage.removeItem('lalan_cached_user');
-        } else if (!isNetworkErr && !isOffline) {
-          tokenStore.clear();
-          localStorage.removeItem('lalan_cached_user');
+        } else if (cachedRaw) {
+          // El servidor falló (un despliegue, un 500): eso no cierra la sesión
+          try { setCurrentUser(buildProfile(JSON.parse(cachedRaw))); } catch {}
         }
       } finally {
         setIsLoading(false);

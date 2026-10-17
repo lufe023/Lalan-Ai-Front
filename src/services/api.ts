@@ -31,31 +31,67 @@ export const tokenStore = {
  */
 let refrescoEnCurso: Promise<string | null> | null = null;
 
+/**
+ * El refresco no pudo ni preguntar (sin red, o el servidor caído o
+ * reiniciándose en un despliegue). La sesión NO se da por cerrada: antes se
+ * borraban los tokens y quien estaba trabajando caía al inicio de sesión.
+ */
+export class SinServidor extends Error {
+  constructor() { super('No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.'); }
+}
+
+/**
+ * Devuelve el access token nuevo, o null si el servidor dijo que la sesión
+ * ya no vale. Lanza `SinServidor` si no se pudo saber.
+ */
 export function refrescarSesion(): Promise<string | null> {
   if (!refrescoEnCurso) {
-    refrescoEnCurso = refreshAccessToken().finally(() => { refrescoEnCurso = null; });
+    refrescoEnCurso = refrescarEntrePestanas().finally(() => { refrescoEnCurso = null; });
   }
   return refrescoEnCurso;
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+/**
+ * Las pestañas comparten los tokens (localStorage) y por eso caducan a la
+ * vez. Si dos refrescan con el mismo refresh token, el servidor lo rota con
+ * la primera y rechaza a la segunda, que borraba los tokens nuevos de la
+ * primera: se cerraba la sesión en todas (pasaba con la Vitrina o el
+ * catálogo abiertos en otra pestaña). El candado hace que refresquen de una
+ * en una, y la que llega tarde usa lo que ya renovó la otra.
+ */
+function refrescarEntrePestanas(): Promise<string | null> {
+  const conElQueFallo = tokenStore.getRefresh();
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks) return refreshAccessToken(conElQueFallo);
+  return locks.request('lalan-refresco', () => refreshAccessToken(conElQueFallo));
+}
+
+async function refreshAccessToken(conElQueFallo: string | null): Promise<string | null> {
   const refreshToken = tokenStore.getRefresh();
   if (!refreshToken) return null;
+  // Otra pestaña ya renovó mientras esta esperaba
+  if (refreshToken !== conElQueFallo) return tokenStore.get();
+  let res: Response;
   try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+    res = await fetch(`${BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
-    if (!res.ok) { tokenStore.clear(); return null; }
-    const data = await res.json();
-    tokenStore.set(data.accessToken);
-    tokenStore.setRefresh(data.refreshToken);
-    return data.accessToken;
   } catch {
+    throw new SinServidor();
+  }
+  if (res.status === 401 || res.status === 403) {
+    // Por si otra pestaña sin candado (navegador viejo) le ganó la rotación
+    if (tokenStore.getRefresh() !== refreshToken) return tokenStore.get();
     tokenStore.clear();
     return null;
   }
+  if (!res.ok) throw new SinServidor();
+  const data = await res.json();
+  tokenStore.set(data.accessToken);
+  tokenStore.setRefresh(data.refreshToken);
+  return data.accessToken;
 }
 
 export async function apiFetch<T = unknown>(
