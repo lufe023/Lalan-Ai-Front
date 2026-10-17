@@ -54,8 +54,19 @@ import { CopiarASede, EtiquetaSede } from '../components/ui/CopiarASede';
 import { ServicioEnSedes, agruparPorSede } from '../components/catalogo/ServicioEnSedes';
 import { VariantesDePrecio, preciosDeSedesDesde, preciosParaGuardar, type PreciosDeSedes } from '../components/catalogo/VariantesDePrecio';
 import { useSedeActiva } from '../context/SedeActivaContext';
-import { AvisoSinFoto, FotoDelCatalogo, MiniaturaCatalogo, urlFotoCatalogo } from '../components/catalogo/FotoDelCatalogo';
+import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
 import { SaleEnVitrina } from '../components/catalogo/SaleEnVitrina';
+
+/**
+ * Sube, en orden, las fotos que se eligieron antes de crear el artículo.
+ * Devuelve el motivo si alguna falló (las que ya subieron se quedan).
+ */
+async function subirFotos(fotos: FotoDeGaleria[], subir: (dataUrl: string) => Promise<unknown>): Promise<string | null> {
+  for (const f of fotos) {
+    try { await subir(f.url); } catch (e: any) { return e?.message ?? 'Una foto no se pudo subir.'; }
+  }
+  return null;
+}
 
 export const CatalogScreen: React.FC = () => {
   const {
@@ -81,10 +92,8 @@ export const CatalogScreen: React.FC = () => {
     categoriasDe,
     categoriaPorClave,
     guardarRecetaProducto,
-    ponerFotoServicio,
-    quitarFotoServicio,
-    ponerFotoProducto,
-    quitarFotoProducto,
+    galeriaServicio,
+    galeriaProducto,
   } = useApp();
   const { varias: variasSedes, actual: sedeActual, sedes: sedesDelSalon } = useSedeActiva();
   const sedeDelStockInicial = useSedeDelStock();
@@ -113,8 +122,9 @@ export const CatalogScreen: React.FC = () => {
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   // La foto elegida para algo que todavía no existe: se sube al crearlo
-  const [fotoNuevoServicio, setFotoNuevoServicio] = useState<string | null>(null);
-  const [fotoNuevoProducto, setFotoNuevoProducto] = useState<string | null>(null);
+  // Las fotos elegidas antes de crear el artículo: se suben al crearlo
+  const [fotosNuevoServicio, setFotosNuevoServicio] = useState<FotoDeGaleria[]>([]);
+  const [fotosNuevoProducto, setFotosNuevoProducto] = useState<FotoDeGaleria[]>([]);
 
   // ── Ingredient state ──────────────────────────────────────────────────────
   const [serviceModalTab, setServiceModalTab] = useState<'config' | 'recipe'>('config');
@@ -274,7 +284,7 @@ export const CatalogScreen: React.FC = () => {
     setSedeDelServicio(sedeActual);
     // En "Todas las sedes" se elige desde ya qué cobra cada sede
     setServicioPorSede(variasSedes && !sedeActual ? preciosDeSedesDesde(tiersIniciales, sedesDelSalon, {}) : null);
-    setFotoNuevoServicio(null);
+    setFotosNuevoServicio([]);
     setServiceModalTab('config');
     setIngredients([]);
     setIngredientPickerProductId('');
@@ -354,7 +364,7 @@ export const CatalogScreen: React.FC = () => {
       receta: [],
     });
     setProductoPorSede(null);
-    setFotoNuevoProducto(null);
+    setFotosNuevoProducto([]);
     setShowProductModal(true);
   };
 
@@ -473,11 +483,9 @@ export const CatalogScreen: React.FC = () => {
           aiPrecio: serviceForm.aiPrecio,
         });
         if (servicioPorSede) await preciosServicioEnSedes(creado.id, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
-        if (fotoNuevoServicio) {
-          // El servicio ya quedó creado: si la foto falla, se avisa y se puede poner después
-          await ponerFotoServicio(creado.id, fotoNuevoServicio)
-            .catch((err: any) => showToast('El servicio se creó sin foto', err?.message ?? 'Ponla desde Editar.', 'warning'));
-        }
+        // El servicio ya quedó creado: si una foto falla, se avisa y se puede poner después
+        const fallo = await subirFotos(fotosNuevoServicio, (f) => galeriaServicio(creado.id, { agregar: f }));
+        if (fallo) showToast('El servicio se creó con fotos de menos', `${fallo} Ponlas desde Editar.`, 'warning');
         showToast('Servicio creado', serviceForm.name, 'success');
       }
       setShowServiceModal(false);
@@ -527,10 +535,9 @@ export const CatalogScreen: React.FC = () => {
         if (productoPorSede) await preciosProductoEnSedes(editingProductId, preciosParaGuardar(productForm.priceTiers, sedesDelSalon, productoPorSede));
       } else {
         id = (await addProduct(productPayload, sedeDelStockInicial.sede)).id;
-        if (fotoNuevoProducto) {
-          await ponerFotoProducto(id, fotoNuevoProducto)
-            .catch((err: any) => showToast('El producto se creó sin foto', err?.message ?? 'Ponla desde Editar.', 'warning'));
-        }
+        const nuevo = id;
+        const fallo = await subirFotos(fotosNuevoProducto, (f) => galeriaProducto(nuevo, { agregar: f }));
+        if (fallo) showToast('El producto se creó con fotos de menos', `${fallo} Ponlas desde Editar.`, 'warning');
       }
       // La receta va aparte: necesita que el producto ya exista
       if (productForm.preparedToOrder && id) {
@@ -1262,21 +1269,25 @@ export const CatalogScreen: React.FC = () => {
                 />
               </div>
 
-              <FotoDelCatalogo
+              <FotosDelCatalogo
                 que="servicio"
                 nombre={serviceForm.name}
-                foto={editingServiceId ? urlFotoCatalogo(servicioEnEdicion?.fotoId) : fotoNuevoServicio}
+                fotos={editingServiceId ? fotosGuardadas(servicioEnEdicion) : fotosNuevoServicio}
                 sede={sedeDeLaFotoDelServicio}
-                onElegir={async (foto) => {
-                  if (!editingServiceId) { setFotoNuevoServicio(foto); return; }
+                onAgregar={async (foto) => {
+                  if (!editingServiceId) { setFotosNuevoServicio(l => [...l, { clave: `nueva-${Date.now()}-${l.length}`, url: foto }]); return; }
                   // Dentro de una sede, un servicio de la cadena se separa en su copia: se sigue editando la copia
-                  const listo = await ponerFotoServicio(editingServiceId, foto);
+                  const listo = await galeriaServicio(editingServiceId, { agregar: foto });
                   if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
-                  showToast('Foto guardada', serviceForm.name, 'success');
                 }}
-                onQuitar={async () => {
-                  if (!editingServiceId) { setFotoNuevoServicio(null); return; }
-                  const listo = await quitarFotoServicio(editingServiceId);
+                onQuitar={async (clave) => {
+                  if (!editingServiceId) { setFotosNuevoServicio(l => l.filter(f => f.clave !== clave)); return; }
+                  const listo = await galeriaServicio(editingServiceId, { quitar: clave });
+                  if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
+                }}
+                onOrdenar={async (claves) => {
+                  if (!editingServiceId) { setFotosNuevoServicio(l => claves.map(c => l.find(f => f.clave === c)!).filter(Boolean)); return; }
+                  const listo = await galeriaServicio(editingServiceId, { orden: claves });
                   if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
                 }}
               />
@@ -1484,19 +1495,22 @@ export const CatalogScreen: React.FC = () => {
 
             {/* Un insumo no se vende: no sale en la Vitrina y no necesita foto */}
             {!productForm.supplyOnly && (
-              <FotoDelCatalogo
+              <FotosDelCatalogo
                 que="producto"
                 nombre={productForm.name}
-                foto={editingProductId ? urlFotoCatalogo(products.find(p => p.id === editingProductId)?.fotoId) : fotoNuevoProducto}
+                fotos={editingProductId ? fotosGuardadas(products.find(p => p.id === editingProductId)) : fotosNuevoProducto}
                 sede={variasSedes ? 'Todas las sedes' : null}
-                onElegir={async (foto) => {
-                  if (!editingProductId) { setFotoNuevoProducto(foto); return; }
-                  await ponerFotoProducto(editingProductId, foto);
-                  showToast('Foto guardada', productForm.name, 'success');
+                onAgregar={async (foto) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => [...l, { clave: `nueva-${Date.now()}-${l.length}`, url: foto }]); return; }
+                  await galeriaProducto(editingProductId, { agregar: foto });
                 }}
-                onQuitar={async () => {
-                  if (!editingProductId) { setFotoNuevoProducto(null); return; }
-                  await quitarFotoProducto(editingProductId);
+                onQuitar={async (clave) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => l.filter(f => f.clave !== clave)); return; }
+                  await galeriaProducto(editingProductId, { quitar: clave });
+                }}
+                onOrdenar={async (claves) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => claves.map(c => l.find(f => f.clave === c)!).filter(Boolean)); return; }
+                  await galeriaProducto(editingProductId, { orden: claves });
                 }}
               />
             )}

@@ -97,6 +97,8 @@ export interface SalonService {
   aiPrecio?: ModoPrecioAsistente;
   /** Su foto (para el catálogo y la Vitrina). Puesta dentro de una sede, es de esa sede */
   fotoId?: string | null;
+  /** Las demás fotos del carrusel, en orden, después de `fotoId` (hasta 10 en total) */
+  masFotos?: string[];
 }
 
 /** Clave de una categoría de productos del salón (ver ServiceCategory) */
@@ -139,6 +141,8 @@ export interface SalonProduct {
   unitQtyUnit?: string; // unidad del contenido (ml, g, oz, L)
   /** Su foto (para el catálogo y la Vitrina): la misma en todas las sedes */
   fotoId?: string | null;
+  /** Las demás fotos del carrusel, en orden, después de `fotoId` (hasta 10 en total) */
+  masFotos?: string[];
   description: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
   /** Sale en la Vitrina, si hay existencias en la sede */
