@@ -168,6 +168,8 @@ export interface ConfigVitrina {
   direccionCorta?: string | null;
   /** El pin del local en el mapa; null = solo la dirección */
   ubicacion?: { latitud: number; longitud: number } | null;
+  /** El Instagram y el Facebook de la sede que salen en el bloque de ubicación */
+  redes?: { instagram: string | null; facebook: string | null };
   diseno: DisenoVitrina;
   portada: string | null;
   incluidaEnElPlan: boolean;
