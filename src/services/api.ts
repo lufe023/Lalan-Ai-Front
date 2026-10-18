@@ -220,6 +220,9 @@ export const urlDePedirCancion = (token: string) =>
 export const urlDeVitrina = (slug: string) =>
   `${window.location.origin}${window.location.pathname}#/v/${slug}`;
 
+/** La dirección corta de la Vitrina ("lalanspa/piantini"), sin /app/ ni # */
+export const urlCortaDeVitrina = (direccion: string) => `${window.location.origin}/${direccion}`;
+
 /**
  * Avisa al servidor que esta sesión se cierra (deja de salir en Mi cuenta y
  * su refresh ya no sirve). keepalive: llega aunque la página se recargue.

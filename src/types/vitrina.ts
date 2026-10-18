@@ -120,6 +120,8 @@ export interface DatosVitrina {
   productos: ProductoVitrina[];
   ofertas: OfertaVitrina[];
   especialistas: EspecialistaVitrina[];
+  /** Su dirección corta sin dominio ("lalanspa" o "lalanspa/piantini"); null si el salón no eligió nombre */
+  direccionCorta?: string | null;
   /** Las preguntas del Lounge al reservar (vacío si el salón no tiene hospitalidad) */
   gustos?: PreguntaDeGusto[];
 }
@@ -135,6 +137,12 @@ export interface ConfigVitrina {
   sede: { id: string; nombre: string; paleta: string | null };
   activa: boolean;
   slug: string | null;
+  /** El nombre corto del salón (lalan…/<nombre>), el mismo en todas las sedes; null si no eligió */
+  nombreCorto?: string | null;
+  /** La parte de esta sede en la dirección (lalan…/<nombre>/<corto>) */
+  corto?: string;
+  /** La dirección corta de esta sede, sin dominio; null si no hay nombre o no está publicada */
+  direccionCorta?: string | null;
   diseno: DisenoVitrina;
   portada: string | null;
   incluidaEnElPlan: boolean;
@@ -149,3 +157,13 @@ export interface ReservaHecha {
   citas: { servicio: string; hora: string; texto: string; especialista: string | null }[];
   apartados: string[];
 }
+
+/** Lo que hay detrás de una dirección corta (/<nombre>): el nombre de hoy y las sedes publicadas */
+export interface DireccionCortaVitrina {
+  nombre: string;
+  salon: string;
+  sedes: { corto: string; nombre: string; direccion: string | null; slug: string; portada: string | null }[];
+}
+
+/** ¿Está libre ese nombre corto? */
+export interface NombreCortoDisponible { nombre: string; libre: boolean; motivo: string | null }

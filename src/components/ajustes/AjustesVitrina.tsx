@@ -4,7 +4,8 @@ import {
   MoveVertical, Pencil, Smartphone, Trash2,
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { api, urlDeFoto, urlDeVitrina } from '../../services/api';
+import { api, urlCortaDeVitrina, urlDeFoto, urlDeVitrina } from '../../services/api';
+import { sedePropia } from '../../services/sedeActiva';
 import { useApp } from '../../context/AppContext';
 import { useSedes } from '../../hooks/useSedes';
 import { SelectorSede } from '../ui/SelectorSede';
@@ -13,7 +14,7 @@ import { THEME_PALETTE_PRESETS } from '../../theme/ThemeContext';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
 import PaginaVitrina from '../vitrina/PaginaVitrina';
 import { paletaVitrina } from '../vitrina/temaVitrina';
-import { INFO_BLOQUE_VITRINA, type ConfigVitrina, type DatosVitrina, type DisenoVitrina } from '../../types/vitrina';
+import { INFO_BLOQUE_VITRINA, type ConfigVitrina, type DatosVitrina, type DisenoVitrina, type NombreCortoDisponible } from '../../types/vitrina';
 
 /**
  * Ajustes → Vitrina: la página pública de cada sede.
@@ -299,7 +300,8 @@ const Publicacion: React.FC<{
   cfg: ConfigVitrina; q: string; selector: React.ReactNode; publicar: (v: boolean) => void; recargar: (c: ConfigVitrina) => void;
 }> = ({ cfg, q, selector, publicar, recargar }) => {
   const { showToast } = useApp();
-  const url = cfg.slug ? urlDeVitrina(cfg.slug) : null;
+  // La corta si el salón ya eligió nombre; si no, la larga de siempre
+  const url = cfg.direccionCorta ? urlCortaDeVitrina(cfg.direccionCorta) : cfg.slug ? urlDeVitrina(cfg.slug) : null;
   const [qr, setQr] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const [slug, setSlug] = useState(cfg.slug ?? '');
@@ -361,10 +363,130 @@ const Publicacion: React.FC<{
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={copiar} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 bg-slate-100 dark:bg-neutral-800"><Copy className="w-3.5 h-3.5" /> Copiar enlace</button>
               <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 bg-slate-100 dark:bg-neutral-800"><ExternalLink className="w-3.5 h-3.5" /> Abrir</a>
-              {!editando && <button type="button" onClick={() => setEditando(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 bg-slate-100 dark:bg-neutral-800"><Pencil className="w-3.5 h-3.5" /> Cambiar dirección</button>}
+              {!editando && !cfg.nombreCorto && <button type="button" onClick={() => setEditando(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 bg-slate-100 dark:bg-neutral-800"><Pencil className="w-3.5 h-3.5" /> Cambiar dirección</button>}
             </div>
             {!cfg.activa && <p className="text-[0.6875rem] text-amber-600">El enlace no abre mientras la Vitrina esté sin publicar.</p>}
           </div>
+        </div>
+      )}
+
+      <DireccionCorta cfg={cfg} q={q} recargar={recargar} />
+    </div>
+  );
+};
+
+/** Solo lo que vale en un nombre corto: "@Lalan Spa" → "lalanspa" */
+const limpiarNombre = (v: string) => v.trim().replace(/^@+/, '').toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 30);
+
+/**
+ * La dirección corta, como el usuario de Instagram: el nombre es de todo el
+ * salón (lo cambia quien ve todas las sedes) y cada sede suma su parte
+ * cuando hay más de una publicada.
+ */
+const DireccionCorta: React.FC<{ cfg: ConfigVitrina; q: string; recargar: (c: ConfigVitrina) => void }> = ({ cfg, q, recargar }) => {
+  const { showToast } = useApp();
+  const variasSedes = useSedes({ todasLasDelSalon: true }).length > 1;
+  const atada = !!sedePropia();
+  const [nombre, setNombre] = useState(cfg.nombreCorto ?? '');
+  const [corto, setCorto] = useState(cfg.corto ?? '');
+  const [revision, setRevision] = useState<NombreCortoDisponible | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  useEffect(() => { setNombre(cfg.nombreCorto ?? ''); setCorto(cfg.corto ?? ''); }, [cfg.nombreCorto, cfg.corto]);
+
+  // ¿Está libre? Se pregunta cuando deja de escribir
+  useEffect(() => {
+    setRevision(null);
+    if (!nombre || nombre === cfg.nombreCorto) return;
+    let vigente = true;
+    const t = window.setTimeout(() => {
+      api.get<NombreCortoDisponible>(`/vitrina/nombre-corto/disponible?nombre=${encodeURIComponent(nombre)}`)
+        .then((r) => { if (vigente) setRevision(r); })
+        .catch(() => undefined);
+    }, 400);
+    return () => { vigente = false; window.clearTimeout(t); };
+  }, [nombre, cfg.nombreCorto]);
+
+  const releer = async () => {
+    const c = await api.get<ConfigVitrina>(`/vitrina${q}`);
+    recargar({ ...c, diseno: cfg.diseno });
+  };
+
+  const guardarNombre = async () => {
+    if (cfg.nombreCorto && !window.confirm(`La dirección de antes (/${cfg.nombreCorto}) seguirá llevando aquí unos días y luego quedará libre para otro salón. ¿Cambiarla por /${nombre}?`)) return;
+    setOcupado(true);
+    try {
+      await api.put(`/vitrina/nombre-corto`, { nombre });
+      await releer();
+      showToast('Dirección guardada', 'Ya puedes compartir el enlace corto.', 'success');
+    } catch (e: any) { showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning'); }
+    finally { setOcupado(false); }
+  };
+
+  const guardarCorto = async () => {
+    setOcupado(true);
+    try {
+      const c = await api.patch<ConfigVitrina>(`/vitrina${q}`, { corto });
+      recargar({ ...c, diseno: cfg.diseno });
+      showToast('Dirección de la sede guardada', `${cfg.sede.nombre} ya abre con /${c.nombreCorto ?? 'tu-nombre'}/${c.corto}.`, 'success');
+    } catch (e: any) { showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning'); }
+    finally { setOcupado(false); }
+  };
+
+  const dominio = `${window.location.host}/`;
+  const puedeGuardar = !!nombre && nombre !== cfg.nombreCorto && revision?.nombre === nombre && revision.libre;
+  const CAMPO = 'flex items-center min-w-0 flex-1 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 overflow-hidden';
+  const BOTON = 'px-3 py-2 rounded-xl text-[0.75rem] font-semibold bg-[var(--primary)] text-white disabled:opacity-50 inline-flex items-center gap-1.5';
+
+  return (
+    <div data-guia="vitrina-direccion" className="pt-3 border-t border-slate-100 dark:border-neutral-800 space-y-3">
+      <div>
+        <span className="block text-[0.8125rem] font-semibold text-slate-800 dark:text-neutral-100">Dirección corta</span>
+        <span className={`block ${AYUDA}`}>
+          Como tu usuario de Instagram: un nombre para todo el salón{variasSedes ? ', y cada sede le suma su parte' : ''}. Fácil de decir y de poner en tu biografía.
+        </span>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex gap-2">
+          <label className={CAMPO}>
+            <span className="pl-3 text-[0.75rem] text-slate-400 whitespace-nowrap">{dominio}</span>
+            <input value={nombre} onChange={(e) => setNombre(limpiarNombre(e.target.value))} disabled={atada} maxLength={30}
+              placeholder="tusalon" aria-label="Nombre corto del salón" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              className="flex-1 min-w-0 bg-transparent py-2 pr-3 text-[0.8125rem] font-mono text-slate-800 dark:text-neutral-100 outline-none disabled:opacity-60" />
+          </label>
+          {!atada && (
+            <button type="button" onClick={guardarNombre} disabled={!puedeGuardar || ocupado} className={BOTON}>
+              {ocupado && <Loader2 className="w-3.5 h-3.5 animate-spin" />} {cfg.nombreCorto ? 'Cambiar' : 'Guardar'}
+            </button>
+          )}
+        </div>
+        {atada ? (
+          <p className="text-[0.6875rem] text-slate-400">El nombre del salón lo cambia quien ve todas las sedes.</p>
+        ) : revision && revision.nombre === nombre ? (
+          <p className={`text-[0.6875rem] flex items-center gap-1 ${revision.libre ? 'text-emerald-600' : 'text-rose-500'}`}>
+            {revision.libre ? <><Check className="w-3.5 h-3.5" /> Está libre</> : revision.motivo}
+          </p>
+        ) : !cfg.nombreCorto ? (
+          <p className="text-[0.6875rem] text-slate-400">De 3 a 30 letras o números; puedes usar punto, guion y guion bajo.</p>
+        ) : null}
+      </div>
+
+      {variasSedes && (
+        <div className="space-y-1">
+          <span className="block text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">La parte de {cfg.sede.nombre}</span>
+          <div className="flex gap-2">
+            <label className={CAMPO}>
+              <span className="pl-3 text-[0.75rem] text-slate-400 whitespace-nowrap">/{cfg.nombreCorto || 'tusalon'}/</span>
+              <input value={corto} onChange={(e) => setCorto(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 40))} maxLength={40}
+                aria-label={`Parte de la dirección de ${cfg.sede.nombre}`} autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                className="flex-1 min-w-0 bg-transparent py-2 pr-3 text-[0.8125rem] font-mono text-slate-800 dark:text-neutral-100 outline-none" />
+            </label>
+            <button type="button" onClick={guardarCorto} disabled={!corto || corto === cfg.corto || ocupado} className={BOTON}>Guardar</button>
+          </div>
+          <p className="text-[0.6875rem] text-slate-400">
+            Quien entra solo con /{cfg.nombreCorto || 'tusalon'} elige la sede viendo la dirección de cada una.
+          </p>
         </div>
       )}
     </div>
@@ -419,7 +541,7 @@ const VistaPrevia: React.FC<{ datos: DatosVitrina | null }> = ({ datos }) => {
         </div>
       </div>
       <div ref={caja} className="w-full">
-        {/* El transform hace que lo "fixed" de la página (la barra, la hoja) quede dentro de la caja */}
+        {/* El transform hace que lo "fixed" de la página (la barra, la hoja, la reserva a pantalla completa) quede dentro de la caja */}
         <div
           className={`relative mx-auto overflow-hidden border border-slate-200 dark:border-neutral-700 bg-white [transform:translateZ(0)] ${modo === 'movil' ? 'rounded-[32px]' : 'rounded-xl'}`}
           style={{ width: modo === 'movil' ? Math.min(380, ancho || 380) : '100%', height: alto }}

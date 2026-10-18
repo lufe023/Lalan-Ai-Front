@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { direccionCorta } from './worker/direccion-corta.js';
 
 /**
  * Lee la versión más fresca de CACHE_NAME directamente desde .env.local
@@ -21,6 +22,26 @@ function getCurrentCacheName(): string {
     }
   } catch {}
   return process.env.VITE_CACHE_NAME || process.env.CACHE_NAME || 'lalan-shell-v3';
+}
+
+/**
+ * En desarrollo, lo mismo que hace worker/index.js en Cloudflare: /<salón> y
+ * /<salón>/<sede> abren la app para que resuelva la Vitrina.
+ */
+function direccionCortaPlugin(): Plugin {
+  return {
+    name: 'vitrina-direccion-corta',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const ruta = req.url ? req.url.split('?')[0] : '';
+        const esPagina = (req.headers.accept || '').includes('text/html');
+        if (req.method === 'GET' && esPagina && direccionCorta(ruta) && !fs.existsSync(path.resolve(__dirname, 'public', `.${ruta}`))) {
+          req.url = '/app/index.html';
+        }
+        next();
+      });
+    },
+  };
 }
 
 function pwaServiceWorkerPlugin(): Plugin {
@@ -91,7 +112,7 @@ export default defineConfig(({ mode }) => {
   const cacheName = env.VITE_CACHE_NAME || env.CACHE_NAME || 'lalan-shell-v3';
 
   return {
-    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin()],
+    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin(), direccionCortaPlugin()],
     define: {
       'import.meta.env.VITE_CACHE_NAME': JSON.stringify(cacheName),
     },

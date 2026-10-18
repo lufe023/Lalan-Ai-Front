@@ -19,6 +19,10 @@ export default function VitrinaScreen({ slug }: { slug: string }) {
       .then((d) => {
         setDatos(d);
         document.title = `${d.salon.nombre} · ${d.sede.nombre}`;
+        // Un enlace largo de antes (/app/#/v/…): la barra muestra la dirección corta
+        if (d.direccionCorta && window.location.hash.startsWith('#/v/')) {
+          window.history.replaceState(null, '', `/${d.direccionCorta}${window.location.search}`);
+        }
       })
       .catch((e: unknown) => {
         const noExiste = e instanceof ErrorPublico && e.status === 404;
