@@ -176,6 +176,10 @@ export interface ConfigVitrina {
 
 export interface ReservaHecha {
   confirmada: boolean;
+  /** «V-1A2B3C4D»: va en el mensaje a Lalán para que sepa que es esta reserva y no una cita nueva */
+  codigo?: string;
+  /** El WhatsApp de Lalán en la sede (solo dígitos); null si no está conectado */
+  whatsapp?: string | null;
   dia: string;
   fecha: string;
   sede: { nombre: string; direccion: string | null };
