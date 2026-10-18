@@ -131,7 +131,8 @@ export const SettingsScreen: React.FC = () => {
   };
   // "Llévame": la guía empieza en el menú, para que la persona aprenda el camino
   useEffect(() => {
-    const alMenu = () => abrirSeccion(null);
+    // Con `detail`, una ruta grabada dentro de una sección empieza en esa sección
+    const alMenu = (e: Event) => abrirSeccion(((e as CustomEvent).detail as SeccionAjustes | undefined) ?? null);
     window.addEventListener(EVENTO_AJUSTES_MENU, alMenu);
     return () => window.removeEventListener(EVENTO_AJUSTES_MENU, alMenu);
   }, []);
@@ -336,7 +337,7 @@ export const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <div id="settings-screen" className="flex-1 w-full h-full flex flex-col overflow-hidden">
+    <div id="settings-screen" data-seccion-ajustes={seccion ?? ''} className="flex-1 w-full h-full flex flex-col overflow-hidden">
       <IOSHeader
         title={grupoAbierto ? grupoAbierto.titulo : 'Configuración'}
         subtitle={grupoAbierto ? grupoAbierto.resumen : 'Tu cuenta, tu equipo y todo lo del salón'}

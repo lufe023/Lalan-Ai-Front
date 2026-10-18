@@ -20,7 +20,8 @@ function dispositivo(): 'movil' | 'tableta' | 'pc' {
   return w < 640 ? 'movil' : w < 1024 ? 'tableta' : 'pc';
 }
 
-function etiqueta(el: Element | null): string | undefined {
+/** El nombre fijo de lo tocado (también lo usan el grabador de rutas y el Llévame para encontrarlo) */
+export function etiqueta(el: Element | null): string | undefined {
   const c = el?.closest('[data-medir], button, a, [role="button"], input, select, textarea, label');
   if (!c) return undefined;
   const v = c.getAttribute('data-medir') || c.getAttribute('aria-label') || c.getAttribute('title') || c.id

@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Sparkles, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { guiaPorId, type GuiaApp } from '../../data/guias';
+import { guiaPorId, type GuiaApp, type PasoGuia } from '../../data/guias';
+import { cargarRutas, elementoDelPaso, EVENTO_RUTAS, puntoDelPaso, rutaGrabada, rutasCargadas } from '../../data/rutasLalan';
+import { pedirSeccionAjustes } from '../ajustes/MenuAjustes';
 import { guardarSedeActiva, sedeActiva, sedePropia } from '../../services/sedeActiva';
 
 /**
@@ -60,8 +62,19 @@ export function sedeDeLaGuia(): string | null {
   return leer()?.sedeId ?? null;
 }
 
-/** Ajustes escucha esto para volver al menú y que la guía empiece por la fila */
+/** Ajustes escucha esto para volver al menú (o abrir la sección del `detail`) y que la guía empiece ahí */
 export const EVENTO_AJUSTES_MENU = 'lalan:ajustes-menu';
+
+/** Lo que señala un paso: su elemento o, si se grabó un punto, ese punto (y cuánto desplazar para verlo) */
+function buscarPaso(p: PasoGuia): { caja: DOMRect; mostrar: () => void } | null {
+  const el = elementoDelPaso(p);
+  const r = el?.getBoundingClientRect();
+  if (el && r && r.width > 0 && r.height > 0) return { caja: r, mostrar: () => el.scrollIntoView({ block: 'center', behavior: 'smooth' }) };
+  const punto = puntoDelPaso(p);
+  if (!punto) return null;
+  const { contenedor, arriba } = punto;
+  return { caja: punto.caja, mostrar: () => contenedor.scrollTo({ top: Math.max(0, arriba - contenedor.clientHeight / 2), behavior: 'smooth' }) };
+}
 
 export const GuiaEnCurso: React.FC = () => {
   const { navigateTo, currentScreen } = useApp();
@@ -71,13 +84,19 @@ export const GuiaEnCurso: React.FC = () => {
   const desde = useRef(Date.now());
   const yaSeMovio = useRef<string>('');
 
+  // Las rutas grabadas en Plataforma mandan sobre las de la app
+  const [, setRutas] = useState(0);
   useEffect(() => {
     const oir = () => setEstado(leer());
+    const oirRutas = () => setRutas((n) => n + 1);
     window.addEventListener(EVENTO, oir);
-    return () => window.removeEventListener(EVENTO, oir);
+    window.addEventListener(EVENTO_RUTAS, oirRutas);
+    void cargarRutas();
+    return () => { window.removeEventListener(EVENTO, oir); window.removeEventListener(EVENTO_RUTAS, oirRutas); };
   }, []);
 
-  const guia: GuiaApp | null = estado ? guiaPorId(estado.id) : null;
+  // Hasta que lleguen las rutas no se empieza: una grabada puede cambiar la de la app
+  const guia: GuiaApp | null = estado && rutasCargadas() ? rutaGrabada(estado.id) ?? guiaPorId(estado.id) : null;
   const paso = guia && estado ? guia.pasos[estado.paso] ?? null : null;
   const total = guia?.pasos.length ?? 0;
 
@@ -91,8 +110,10 @@ export const GuiaEnCurso: React.FC = () => {
 
   // Abrir la pantalla de la tarea (una sola vez por guía)
   useEffect(() => {
-    if (!estado || !guia) { if (estado && !guia) guardar(null); return; }
+    // Una tarea que no está en la app puede venir en las rutas grabadas: se espera a que lleguen
+    if (!estado || !guia) { if (estado && !guia && rutasCargadas()) guardar(null); return; }
     if (estado.abierta) return;
+    const primero = guia.pasos[0];
     // Lo que trabaja con la sede activa se hace en la sede que eligió Lalan:
     // la app cambia de sede (y se recarga, como al elegirla en el menú)
     if (guia.cambiaSede && estado.sedeId && !sedePropia() && sedeActiva() !== estado.sedeId) {
@@ -103,9 +124,21 @@ export const GuiaEnCurso: React.FC = () => {
       return;
     }
     guardar({ ...estado, abierta: true });
+    // Grabada dentro de una sección de Ajustes: empieza en esa sección
+    if (guia.pantalla === 'settings' && primero?.seccion) {
+      if (currentScreen === 'settings') window.dispatchEvent(new CustomEvent(EVENTO_AJUSTES_MENU, { detail: primero.seccion }));
+      else pedirSeccionAjustes(primero.seccion);
+    }
     if (currentScreen !== guia.pantalla) navigateTo(guia.pantalla);
     if (guia.ajustes) window.dispatchEvent(new Event(EVENTO_AJUSTES_MENU));
   }, [estado, guia, currentScreen, navigateTo]);
+
+  // Un paso grabado en otra pantalla: si la persona no llegó tocando, la app la lleva
+  useEffect(() => {
+    if (!estado?.abierta || !paso?.pantalla || estado.paso === 0) return;
+    const t = window.setTimeout(() => { if (paso.pantalla && paso.pantalla !== currentScreen) navigateTo(paso.pantalla); }, 600);
+    return () => window.clearTimeout(t);
+  }, [estado?.abierta, estado?.paso, paso, currentScreen, navigateTo]);
 
   // Buscar lo que hay que señalar y seguirlo (se mueve con el scroll y las animaciones)
   useEffect(() => {
@@ -115,14 +148,14 @@ export const GuiaEnCurso: React.FC = () => {
     desde.current = Date.now();
     const clave = `${estado.id}:${estado.paso}`;
     const medir = () => {
-      const el = document.querySelector<HTMLElement>(`[data-guia="${paso.ancla}"]`);
-      const r = el?.getBoundingClientRect();
-      if (el && r && r.width > 0 && r.height > 0) {
+      const hallado = buscarPaso(paso);
+      if (hallado) {
+        // Cada paso lleva la pantalla hasta su globito, aunque la persona esté arriba del todo
         if (yaSeMovio.current !== clave) {
           yaSeMovio.current = clave;
-          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          hallado.mostrar();
         }
-        setCaja(r);
+        setCaja(hallado.caja);
         setPerdida(false);
       } else {
         setCaja(null);
@@ -139,8 +172,15 @@ export const GuiaEnCurso: React.FC = () => {
   useEffect(() => {
     if (!paso || paso.leer) return;
     const alTocar = (ev: MouseEvent) => {
-      const t = ev.target as Element | null;
-      if (t?.closest?.(`[data-guia="${paso.ancla}"]`)) window.setTimeout(avanzar, 350);
+      const t = ev.target as Node | null;
+      const el = elementoDelPaso(paso);
+      let tocado = !!(el && t && el.contains(t));
+      if (!tocado && !el) {
+        // Un punto grabado: vale tocar dentro de su círculo
+        const r = puntoDelPaso(paso)?.caja;
+        tocado = !!r && ev.clientX >= r.left - MARGEN && ev.clientX <= r.right + MARGEN && ev.clientY >= r.top - MARGEN && ev.clientY <= r.bottom + MARGEN;
+      }
+      if (tocado) window.setTimeout(avanzar, 350);
     };
     document.addEventListener('click', alTocar, true);
     return () => document.removeEventListener('click', alTocar, true);
