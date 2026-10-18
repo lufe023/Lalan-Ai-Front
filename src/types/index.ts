@@ -225,6 +225,14 @@ export interface Client {
 export type AppointmentStatus = 'confirmed' | 'confirmed_by_ai' | 'attending' | 'completed' | 'cancelled' | 'pending';
 export type CommunicationChannel = 'whatsapp' | 'instagram' | 'messenger';
 
+/** Cómo se le avisó a la clienta desde el número de Lalan (o por qué no se pudo) */
+export interface AvisoCita {
+  avisada: boolean;
+  /** plantilla = WhatsApp con plantilla aprobada, que Meta cobra */
+  via?: 'whatsapp' | 'instagram' | 'messenger' | 'plantilla';
+  motivo?: string;
+}
+
 export interface Appointment {
   id: string;
   clientId?: string;
