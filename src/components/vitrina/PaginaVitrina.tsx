@@ -118,7 +118,8 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const [abierta, setAbierta] = useState<false | 'lista' | 'siguiente'>(false);
   const [hecha, setHecha] = useState<ReservaHecha | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [ficha, setFicha] = useState<{ tipo: 'servicio'; item: ServicioVitrina } | { tipo: 'producto'; item: ProductoVitrina } | null>(null);
+  // `foto`: en cuál abre el carrusel (la carta del abanico que tocó)
+  const [ficha, setFicha] = useState<({ tipo: 'servicio'; item: ServicioVitrina } | { tipo: 'producto'; item: ProductoVitrina }) & { foto?: number } | null>(null);
 
   // "Tu reserva" al lado si la página es ancha, en la barra de abajo y la hoja si no.
   // Se mide la página y no la ventana, por la vista previa de Ajustes.
@@ -189,7 +190,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     switch (tipo) {
       case 'portada': return <Portada key={tipo} datos={datos} />;
       case 'mensaje': return diseno.mensaje ? <Mensaje key={tipo} texto={diseno.mensaje} /> : null;
-      case 'servicios': return <Servicios key={tipo} servicios={servicios} destacados={destacados} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero} abrir={(item) => setFicha({ tipo: 'servicio', item })} />;
+      case 'servicios': return <Servicios key={tipo} servicios={servicios} destacados={destacados} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero} abrir={(item, foto) => setFicha({ tipo: 'servicio', item, foto })} />;
       case 'ofertas': return datos.ofertas.length ? <Ofertas key={tipo} ofertas={datos.ofertas} elegida={ofertaId} elegir={elegirOferta} dinero={dinero} /> : null;
       case 'productos': return productos.length ? <Productos key={tipo} productos={productos} destacados={destacados} elegidos={productoIds} alternar={alternarProducto} dinero={dinero} abrir={(item) => setFicha({ tipo: 'producto', item })} /> : null;
       case 'especialistas': return datos.especialistas.length ? <Especialistas key={tipo} lista={datos.especialistas} /> : null;
@@ -304,7 +305,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
           return (
             <div className="mx-auto max-w-md space-y-4">
               <div className="mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
-                <Carrusel fotos={fotosDe(ficha.item)} alt={ficha.item.nombre} />
+                <Carrusel key={`${ficha.item.id}-${ficha.foto ?? 0}`} fotos={fotosDe(ficha.item)} alt={ficha.item.nombre} inicio={ficha.foto} />
               </div>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 {servicio
@@ -417,25 +418,90 @@ const fotosDe = (x: { foto: string | null; fotos?: string[] }) => (x.fotos?.leng
 
 /**
  * Las fotos como en Instagram: se desliza con el dedo (scroll con imán, sin
- * librerías) y los puntos dicen en cuál va. Con una sola foto, la foto.
+ * librerías) y los puntos dicen en cuál va. Con mouse, además, flechas a los
+ * lados y se puede agarrar la foto y arrastrarla. Con una sola foto, la foto.
  */
-function Carrusel({ fotos, alt }: { fotos: string[]; alt: string }) {
+function Carrusel({ fotos, alt, inicio = 0 }: { fotos: string[]; alt: string; inicio?: number }) {
   const caja = useRef<HTMLDivElement>(null);
-  const [actual, setActual] = useState(0);
+  const [actual, setActual] = useState(inicio);
+  const conMouse = useConMouse();
+  // El arrastre con mouse: dónde empezó y si ya se movió (para no tomarlo como clic)
+  const arrastre = useRef<{ x: number; desde: number; movido: boolean } | null>(null);
+  const [agarrando, setAgarrando] = useState(false);
+  useLayoutEffect(() => {
+    const el = caja.current;
+    if (el && inicio) el.scrollLeft = inicio * el.clientWidth;
+  }, [inicio]);
   if (fotos.length <= 1) return <Foto src={fotos[0] ?? null} alt={alt} />;
   const alDeslizar = () => {
     const el = caja.current;
     if (el) setActual(Math.round(el.scrollLeft / Math.max(el.clientWidth, 1)));
   };
+  const ir = (i: number) => {
+    const el = caja.current;
+    if (!el) return;
+    const n = Math.max(0, Math.min(fotos.length - 1, i));
+    el.scrollTo({ left: n * el.clientWidth, behavior: 'smooth' });
+  };
+  const soltar = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = caja.current;
+    const a = arrastre.current;
+    if (!el || !a) return;
+    arrastre.current = null;
+    setAgarrando(false);
+    el.releasePointerCapture?.(e.pointerId);
+    // Como en Instagram: basta con arrastrar un poco para pasar a la otra
+    const dx = e.clientX - a.x;
+    const ancho = Math.max(el.clientWidth, 1);
+    const base = Math.round(a.desde / ancho);
+    const destino = Math.abs(dx) > ancho * 0.15 ? base + (dx < 0 ? 1 : -1) : base;
+    ir(destino);
+    // El imán vuelve cuando la foto ya llegó, si no la jala de regreso a medio camino
+    window.setTimeout(() => { el.style.scrollSnapType = ''; }, 450);
+  };
+  const FLECHA = 'absolute top-1/2 z-10 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-white/85 text-neutral-800 shadow-md backdrop-blur transition hover:bg-white active:scale-95';
   return (
     <div className="relative size-full">
-      <div ref={caja} onScroll={alDeslizar} className="flex size-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={caja} onScroll={alDeslizar}
+        onPointerDown={conMouse ? (e) => {
+          if (e.pointerType !== 'mouse' || e.button !== 0) return;
+          const el = caja.current;
+          if (!el) return;
+          arrastre.current = { x: e.clientX, desde: el.scrollLeft, movido: false };
+          el.setPointerCapture?.(e.pointerId);
+          el.style.scrollSnapType = 'none';
+          setAgarrando(true);
+        } : undefined}
+        onPointerMove={conMouse ? (e) => {
+          const el = caja.current;
+          const a = arrastre.current;
+          if (!el || !a) return;
+          const dx = e.clientX - a.x;
+          if (Math.abs(dx) > 3) a.movido = true;
+          el.scrollLeft = a.desde - dx;
+        } : undefined}
+        onPointerUp={conMouse ? soltar : undefined}
+        onPointerCancel={conMouse ? soltar : undefined}
+        onDragStart={(e) => e.preventDefault()}
+        className={`flex size-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${conMouse ? (agarrando ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+      >
         {fotos.map((f, i) => (
           <div key={f} className="size-full shrink-0 snap-center">
             <Foto src={f} alt={i === 0 ? alt : `${alt} (${i + 1})`} />
           </div>
         ))}
       </div>
+      {conMouse && actual > 0 && (
+        <button type="button" onClick={() => ir(actual - 1)} aria-label="Foto anterior" className={`${FLECHA} left-2`}>
+          <ChevronLeft className="size-4" />
+        </button>
+      )}
+      {conMouse && actual < fotos.length - 1 && (
+        <button type="button" onClick={() => ir(actual + 1)} aria-label="Foto siguiente" className={`${FLECHA} right-2`}>
+          <ChevronRight className="size-4" />
+        </button>
+      )}
       <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1" aria-hidden>
         {fotos.map((f, i) => (
           <span key={f} className={`h-1.5 rounded-full bg-white shadow transition-all duration-300 ${i === actual ? 'w-4 opacity-100' : 'w-1.5 opacity-60'}`} />
@@ -464,10 +530,10 @@ const FOTOS_EN_ABANICO = 4;
 
 /**
  * Al pasar el mouse por un servicio con varias fotos, salen de la miniatura
- * como un abanico de cartas, una tras otra. Es solo para mirar: el clic
- * sigue llegando a la tarjeta (abre la ficha con el carrusel).
+ * como un abanico de cartas, una tras otra. Cada carta abre la ficha en esa
+ * foto; la tarjeta gris de «más», en la que sigue.
  */
-function Abanico({ fotos, abierto, alt }: { fotos: string[]; abierto: boolean; alt: string }) {
+function Abanico({ fotos, abierto, alt, abrir }: { fotos: string[]; abierto: boolean; alt: string; abrir: (foto: number) => void }) {
   if (fotos.length <= 1) return null;
   const vistas = fotos.slice(0, FOTOS_EN_ABANICO);
   const mas = fotos.length - vistas.length;
@@ -479,14 +545,14 @@ function Abanico({ fotos, abierto, alt }: { fotos: string[]; abierto: boolean; a
         {abierto && cartas.map((c, i) => {
           const d = i - centro;
           return (
-            <motion.div
-              key={c.f ?? 'mas'}
+            <motion.button
+              type="button" key={c.f ?? 'mas'} tabIndex={-1} onClick={() => abrir(Math.min(i, fotos.length - 1))}
               initial={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.6 }}
               animate={{ opacity: 1, x: 36 + d * 52, y: -64 - Math.abs(d) * 10, rotate: d * 11, scale: 1 }}
               exit={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 0.6, transition: { duration: 0.15 } }}
               transition={{ type: 'spring', stiffness: 320, damping: 24, delay: i * 0.04 }}
               style={{ zIndex: c.f ? 30 - Math.round(Math.abs(d) * 2) : 1, transformOrigin: '50% 100%' }}
-              className="absolute left-1/2 top-1/2 -ml-11 -mt-14 h-28 w-22 overflow-hidden rounded-2xl border-2 border-white bg-[var(--v-sup)] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.55)]"
+              className="pointer-events-auto absolute left-1/2 top-1/2 -ml-11 -mt-14 h-28 w-22 cursor-pointer overflow-hidden rounded-2xl border-2 border-white bg-[var(--v-sup)] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.55)]"
             >
               {c.f ? (
                 <Foto src={c.f} alt={i === 0 ? alt : ''} />
@@ -495,7 +561,7 @@ function Abanico({ fotos, abierto, alt }: { fotos: string[]; abierto: boolean; a
                   <span><span className="block text-lg font-bold leading-none">+{c.mas}</span><span className="text-[11px] font-semibold">más</span></span>
                 </div>
               )}
-            </motion.div>
+            </motion.button>
           );
         })}
       </AnimatePresence>
@@ -577,7 +643,7 @@ function Recomendado() {
 
 function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }: {
   servicios: ServicioVitrina[]; destacados: Set<string>; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
-  abrir: (s: ServicioVitrina) => void;
+  abrir: (s: ServicioVitrina, foto?: number) => void;
 }) {
   const categorias = useMemo(() => {
     const m = new Map<string, string>();
@@ -603,7 +669,7 @@ function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }:
           {[[null, 'Todo'] as const, ...categorias].map(([id, nombre]) => (
             <button
               key={id ?? 'todo'} type="button" onClick={() => { setCat(id); paginas.reiniciar(); }} aria-pressed={cat === id}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${cat === id ? 'bg-[var(--v-texto)] text-[var(--v-fondo)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
+              className={`shrink-0 cursor-pointer rounded-full px-4 py-2 text-sm font-medium transition ${cat === id ? 'bg-[var(--v-texto)] text-[var(--v-fondo)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
             >
               {nombre}
             </button>
@@ -619,9 +685,9 @@ function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }:
             const fotos = fotosDe(s);
             return (
               <div key={s.id} className="relative" onMouseEnter={() => setEncima(s.id)} onMouseLeave={() => setEncima((x) => (x === s.id ? null : x))}>
-              {conMouse && <Abanico fotos={fotos} abierto={encima === s.id} alt={s.nombre} />}
+              {conMouse && <Abanico fotos={fotos} abierto={encima === s.id} alt={s.nombre} abrir={(foto) => abrir(s, foto)} />}
               <article className={`${TARJETA} flex overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-18px_rgba(0,0,0,0.45)] ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
-                <button type="button" onClick={() => abrir(s)} aria-label={`Ver ${s.nombre}`} className="group relative w-28 shrink-0 overflow-hidden @md:w-32">
+                <button type="button" onClick={() => abrir(s)} aria-label={`Ver ${s.nombre}`} className="group relative w-28 cursor-pointer shrink-0 overflow-hidden @md:w-32">
                   <span className="block size-full transition duration-500 group-hover:scale-105"><Foto src={s.foto} alt={s.nombre} /></span>
                   <MasFotos cuantas={fotos.length} />
                   {destacados.has(s.id) ? <Recomendado /> : s.popular && (
@@ -631,7 +697,7 @@ function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }:
                   )}
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col p-3.5">
-                  <h3 className="font-semibold leading-snug"><button type="button" onClick={() => abrir(s)} className="text-left">{s.nombre}</button></h3>
+                  <h3 className="font-semibold leading-snug"><button type="button" onClick={() => abrir(s)} className="cursor-pointer text-left hover:underline">{s.nombre}</button></h3>
                   {s.descripcion && <p className="mt-0.5 line-clamp-2 text-xs text-[var(--v-suave)]">{s.descripcion}</p>}
                   <div className="mt-auto flex items-center justify-between gap-2 pt-3 text-sm">
                     <div className="min-w-0">
@@ -641,7 +707,7 @@ function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }:
                     <button
                       type="button" onClick={() => alternar(s.id)} aria-pressed={dentro}
                       aria-label={dentro ? `Quitar ${s.nombre}` : `Agregar ${s.nombre}`}
-                      className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${dentro ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}
+                      className={`grid size-9 shrink-0 cursor-pointer place-items-center rounded-full transition active:scale-95 ${dentro ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}
                     >
                       {dentro ? <Check className="size-4" /> : <Plus className="size-4" />}
                     </button>
@@ -723,13 +789,13 @@ function Productos({ productos, destacados, elegidos, alternar, dinero, abrir }:
                 {destacados.has(p.id) ? <Recomendado /> : p.quedanPocos && <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">Quedan pocos</span>}
               </div>
               <div className="p-3">
-                <h3 className="line-clamp-2 text-sm font-semibold leading-snug"><button type="button" onClick={() => abrir(p)} className="text-left">{p.nombre}</button></h3>
+                <h3 className="line-clamp-2 text-sm font-semibold leading-snug"><button type="button" onClick={() => abrir(p)} className="cursor-pointer text-left hover:underline">{p.nombre}</button></h3>
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <span className="min-w-0 truncate text-sm"><Precio s={p} dinero={dinero} /></span>
                   <button
                     type="button" onClick={() => alternar(p.id)} aria-pressed={dentro}
                     aria-label={dentro ? `No apartar ${p.nombre}` : `Apartar ${p.nombre}`}
-                    className={`grid size-8 place-items-center rounded-full transition active:scale-95 ${dentro ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}
+                    className={`grid size-8 cursor-pointer place-items-center rounded-full transition active:scale-95 ${dentro ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}
                   >
                     {dentro ? <Check className="size-4" /> : <ShoppingBag className="size-4" />}
                   </button>
