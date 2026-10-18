@@ -304,6 +304,12 @@ const Opcion: React.FC<{ titulo: string; detalle: string; valor: boolean; cambia
   </div>
 );
 
+/** El enlace con `?de=…` antes del #, para contar desde dónde llegan las visitas */
+const conOrigen = (url: string, de: string) => {
+  const [base, hash] = url.split('#');
+  return `${base}${base.includes('?') ? '&' : '?'}de=${encodeURIComponent(de)}${hash !== undefined ? `#${hash}` : ''}`;
+};
+
 /** Publicar, el enlace, el QR y cambiar la dirección */
 const Publicacion: React.FC<{
   cfg: ConfigVitrina; q: string; selector: React.ReactNode; publicar: (v: boolean) => void; recargar: (c: ConfigVitrina) => void;
@@ -318,7 +324,8 @@ const Publicacion: React.FC<{
   useEffect(() => {
     setSlug(cfg.slug ?? '');
     if (!url) { setQr(null); return; }
-    QRCode.toDataURL(url, { margin: 1, width: 240 }).then(setQr).catch(() => setQr(null));
+    // El QR lleva ?de=qr: así en Métricas las visitas del mostrador salen aparte
+    QRCode.toDataURL(conOrigen(url, 'qr'), { margin: 1, width: 240 }).then(setQr).catch(() => setQr(null));
   }, [url, cfg.slug]);
 
   const copiar = async () => {

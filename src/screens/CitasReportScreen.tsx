@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { motion } from 'motion/react';
 import { Aparecer, NumeroAnimado } from '../components/ui/movimiento';
 import {
-  CalendarClock, Clock, Users, Scissors, XCircle, Coffee, TrendingUp, Bot,
+  CalendarClock, Clock, Users, Scissors, XCircle, Coffee, TrendingUp, Bot, Store, CalendarPlus,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
@@ -328,7 +328,7 @@ export const CitasReportScreen: React.FC = () => {
           </Tarjeta>
         )}
 
-        {/* Quién agendó: la asistente frente a cada persona del equipo */}
+        {/* Quién agendó: la asistente, cada persona del equipo o la clienta en la Vitrina */}
         {!!informe?.porOrigen?.length && (
           <Tarjeta className="overflow-hidden mb-4">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-neutral-800">
@@ -341,6 +341,8 @@ export const CitasReportScreen: React.FC = () => {
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5">
                     {o.tipo === 'asistente'
                       ? <Bot className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                      : o.tipo === 'vitrina'
+                      ? <Store className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
                       : <Users className="w-3.5 h-3.5 text-sky-500 shrink-0" />}
                     {o.nombre}
                   </span>
@@ -351,7 +353,46 @@ export const CitasReportScreen: React.FC = () => {
                 </div>
                 <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${o.tipo === 'asistente' ? 'bg-purple-500' : o.tipo === 'equipo' ? 'bg-sky-500' : 'bg-slate-300'}`}
+                    className={`h-full rounded-full transition-all duration-500 ${o.tipo === 'asistente' ? 'bg-purple-500' : o.tipo === 'equipo' ? 'bg-sky-500' : o.tipo === 'vitrina' ? 'bg-[var(--primary)]' : 'bg-slate-300'}`}
+                    style={{ width: `${o.porcentaje}%` }}
+                  />
+                </div>
+                <p className="text-[0.6875rem] text-slate-400 mt-1">
+                  {o.completadas} completada{o.completadas === 1 ? '' : 's'}
+                  {o.canceladas > 0 && ` · ${o.canceladas} cancelada${o.canceladas === 1 ? '' : 's'} (${o.tasaCancelacion} %)`}
+                  {` · facturó ${plata(o.facturado)}`}
+                </p>
+              </div>
+            ))}
+          </Tarjeta>
+        )}
+
+        {/* Desde dónde: la Vitrina, cada chat o la agenda del salón */}
+        {!!informe?.porCanal?.length && (
+          <Tarjeta className="overflow-hidden mb-4">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-neutral-800">
+              <CalendarPlus className="w-4 h-4 text-[var(--primary)]" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white">Desde dónde llegaron</span>
+            </div>
+            {informe.porCanal.map((o: any) => (
+              <div key={o.id} className="px-4 py-3 border-b border-slate-50 dark:border-neutral-800/50 last:border-0">
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5">
+                    {o.id === 'vitrina'
+                      ? <Store className="w-3.5 h-3.5 text-[var(--primary)] shrink-0" />
+                      : o.id === 'agenda' || o.id === 'sin_registro'
+                      ? <Users className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                      : <Bot className="w-3.5 h-3.5 text-purple-500 shrink-0" />}
+                    {o.nombre}
+                  </span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white tabular-nums shrink-0">
+                    {o.citas + o.canceladas}
+                    <span className="text-[0.6875rem] text-slate-400 font-normal ml-1">({o.porcentaje} %)</span>
+                  </span>
+                </div>
+                <div className="h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${o.id === 'vitrina' ? 'bg-[var(--primary)]' : o.id === 'agenda' ? 'bg-sky-500' : o.id === 'sin_registro' ? 'bg-slate-300' : 'bg-purple-500'}`}
                     style={{ width: `${o.porcentaje}%` }}
                   />
                 </div>

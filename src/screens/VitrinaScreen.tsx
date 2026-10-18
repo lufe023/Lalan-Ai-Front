@@ -4,6 +4,30 @@ import { ErrorPublico, publicRequest } from '../services/api';
 import PaginaVitrina from '../components/vitrina/PaginaVitrina';
 import type { DatosVitrina } from '../types/vitrina';
 
+/** El `?de=` del enlace (o el `utm_source`), esté antes o después del # */
+function deDondeDice(): string | undefined {
+  const deHash = window.location.hash.split('?')[1] ?? '';
+  for (const q of [window.location.search, deHash]) {
+    const p = new URLSearchParams(q);
+    const v = p.get('de') ?? p.get('utm_source');
+    if (v) return v.slice(0, 30);
+  }
+  return undefined;
+}
+
+/**
+ * Cuenta la visita una vez por sesión del navegador (recargar o volver de
+ * otra pestaña no suma). Si no se puede guardar la marca, cuenta igual: mejor
+ * una de más que perderlas todas en navegación privada.
+ */
+function contarVisita(slug: string) {
+  const marca = `vitrina-visita:${slug}`;
+  try { if (sessionStorage.getItem(marca)) return; sessionStorage.setItem(marca, '1'); } catch { /* sin almacenamiento */ }
+  void publicRequest(`/vitrina/publica/${encodeURIComponent(slug)}/visita`, {
+    method: 'POST', body: { ref: document.referrer || undefined, de: deDondeDice() },
+  }).catch(() => undefined);
+}
+
 /**
  * La Vitrina de una sede (#/v/:slug), sin sesión: es lo que abre una clienta
  * desde el enlace de Instagram o el QR del mostrador. Como la pared y el
@@ -18,6 +42,7 @@ export default function VitrinaScreen({ slug }: { slug: string }) {
     publicRequest<DatosVitrina>(`/vitrina/publica/${encodeURIComponent(slug)}`)
       .then((d) => {
         setDatos(d);
+        contarVisita(slug);
         document.title = `${d.salon.nombre} · ${d.sede.nombre}`;
         // Un enlace largo de antes (/app/#/v/…): la barra muestra la dirección corta
         if (d.direccionCorta && window.location.hash.startsWith('#/v/')) {
