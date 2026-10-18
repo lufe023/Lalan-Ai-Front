@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Reorder, useDragControls } from 'motion/react';
-import { ArrowDown, ArrowUp, Crosshair, GripVertical, Loader2, MapPin, Search, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Crosshair, Facebook, GripVertical, Instagram, Loader2, MapPin, Search, Sparkles, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import MapaSede, { type PuntoMapa } from '../vitrina/MapaSede';
@@ -194,6 +194,54 @@ export const UbicacionSede: React.FC<{
         </button>
       )}
       {direccion && <p className="text-[0.6875rem] text-slate-400">Dirección de la sede: {direccion}</p>}
+    </div>
+  );
+};
+
+/**
+ * El Instagram y el Facebook que la Vitrina muestra en «Cómo llegar». Son de
+ * la sede y van aparte de las cuentas conectadas a Lalán (esas salen en
+ * «Escríbenos» solas). Vacío: no sale.
+ */
+export const RedesSede: React.FC<{ cfg: ConfigVitrina; q: string; recargar: (c: ConfigVitrina) => void }> = ({ cfg, q, recargar }) => {
+  const { showToast } = useApp();
+  const inicial = { instagram: cfg.redes?.instagram ?? '', facebook: cfg.redes?.facebook ?? '' };
+  const [v, setV] = useState(inicial);
+  const [ocupado, setOcupado] = useState(false);
+  useEffect(() => { setV({ instagram: cfg.redes?.instagram ?? '', facebook: cfg.redes?.facebook ?? '' }); }, [cfg.redes?.instagram, cfg.redes?.facebook, cfg.sede.id]);
+  const sucio = v.instagram.trim() !== inicial.instagram || v.facebook.trim() !== inicial.facebook;
+
+  const guardar = async () => {
+    setOcupado(true);
+    try {
+      recargar(await api.patch<ConfigVitrina>(`/vitrina${q}`, { redes: { instagram: v.instagram, facebook: v.facebook } }));
+      showToast('Redes guardadas', 'Ya salen así en la Vitrina.', 'success');
+    } catch (e: any) { showToast('No se pudo guardar', e?.message ?? 'Inténtalo de nuevo.', 'warning'); }
+    finally { setOcupado(false); }
+  };
+
+  const CAMPO = 'flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 px-3';
+  const INPUT = 'flex-1 min-w-0 bg-transparent py-2 text-[0.8125rem] text-slate-800 dark:text-neutral-100 outline-none';
+  return (
+    <div data-guia="vitrina-redes" className={`${TARJETA} space-y-3`}>
+      <div className="flex items-center justify-between gap-2"><h2 className={TITULO}>Redes de la sede</h2><Etiqueta sede={cfg.sede.nombre} /></div>
+      <p className={AYUDA}>Salen en «Cómo llegar» para que te sigan. Para chatear con Lalán, los botones de «Escríbenos» usan las cuentas conectadas en Lalan en los chats. Déjalos vacíos para que no salgan.</p>
+      <label className={CAMPO}>
+        <Instagram className="w-4 h-4 text-slate-400 shrink-0" />
+        <input value={v.instagram} onChange={(e) => setV({ ...v, instagram: e.target.value })} placeholder="@tusalon" aria-label="Instagram de la sede"
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={80} className={INPUT} />
+      </label>
+      <label className={CAMPO}>
+        <Facebook className="w-4 h-4 text-slate-400 shrink-0" />
+        <input value={v.facebook} onChange={(e) => setV({ ...v, facebook: e.target.value })} placeholder="Página o enlace de Facebook" aria-label="Facebook de la sede"
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={200} className={INPUT} />
+      </label>
+      {sucio && (
+        <button type="button" onClick={() => void guardar()} disabled={ocupado}
+          className="w-full min-h-[40px] rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2">
+          {ocupado && <Loader2 className="w-4 h-4 animate-spin" />} Guardar redes
+        </button>
+      )}
     </div>
   );
 };

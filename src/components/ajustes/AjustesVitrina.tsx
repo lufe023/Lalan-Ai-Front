@@ -13,7 +13,7 @@ import { IOSToggle } from '../ui/IOSToggle';
 import { THEME_PALETTE_PRESETS } from '../../theme/ThemeContext';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
 import PaginaVitrina from '../vitrina/PaginaVitrina';
-import { OrdenCatalogo, UbicacionSede } from './VitrinaOrdenYMapa';
+import { OrdenCatalogo, RedesSede, UbicacionSede } from './VitrinaOrdenYMapa';
 import { paletaVitrina } from '../vitrina/temaVitrina';
 import { INFO_BLOQUE_VITRINA, type ConfigVitrina, type DatosVitrina, type DisenoVitrina, type NombreCortoDisponible } from '../../types/vitrina';
 
@@ -219,6 +219,8 @@ export const AjustesVitrina: React.FC = () => {
 
           <UbicacionSede cfg={cfg} q={q} direccion={previa?.sede.direccion ?? null} recargar={(c) => setCfg((v) => (v ? { ...c, diseno: v.diseno } : c))} />
 
+          <RedesSede cfg={cfg} q={q} recargar={(c) => setCfg((v) => (v ? { ...c, diseno: v.diseno } : c))} />
+
           {/* Textos y reservas */}
           <div className={`${TARJETA} space-y-3`}>
             <Encabezado titulo="Textos y reservas" sede={cfg.sede.nombre} />
@@ -251,7 +253,10 @@ export const AjustesVitrina: React.FC = () => {
           <VistaPrevia datos={previa ? {
             ...previa, diseno: { ...borrador, paleta: borrador.paleta ?? cfg.sede.paleta }, portada: cfg.portada,
             // El pin recién guardado, sin esperar a recargar la vista previa
-            sede: { ...previa.sede, latitud: cfg.ubicacion?.latitud ?? null, longitud: cfg.ubicacion?.longitud ?? null },
+            sede: {
+              ...previa.sede, latitud: cfg.ubicacion?.latitud ?? null, longitud: cfg.ubicacion?.longitud ?? null,
+              ...(cfg.redes ? { instagram: cfg.redes.instagram, facebook: cfg.redes.facebook } : {}),
+            },
           } : null} />
         </div>
       </div>
