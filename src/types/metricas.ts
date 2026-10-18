@@ -9,6 +9,26 @@ export interface Comparado {
   variacion: number | null;
 }
 
+export type CanalDeCita = 'vitrina' | 'whatsapp' | 'instagram' | 'messenger' | 'agenda' | 'sin_registro';
+
+export interface FilaVisitas {
+  clave: string;
+  nombre: string;
+  visitas: number;
+  porcentaje: number;
+}
+
+export interface ResumenVitrina {
+  visitas: number;
+  /** Citas reservadas desde la Vitrina en el período (sin las canceladas) */
+  reservas: number;
+  /** De cada 100 visitas, cuántas terminaron en reserva */
+  conversion: number;
+  porOrigen: FilaVisitas[];
+  porDispositivo: FilaVisitas[];
+  porDia: { dia: string; visitas: number }[];
+}
+
 export interface Barra {
   clave: string;
   nombre: string;
@@ -58,7 +78,12 @@ export interface ResumenMetricas {
   porDiaSemana: { dia: number; nombre: string; citas: number }[];
   servicios: Barra[];
   equipo: (Barra & { minutos: number })[];
-  quienAgendo: (Barra & { esAsistente: boolean })[];
+  /** tipo: 'asistente' | 'equipo' | 'vitrina' | 'sin_registro' */
+  quienAgendo: (Barra & { esAsistente: boolean; tipo?: string })[];
+  /** Por dónde entraron las citas creadas en el período */
+  desdeDonde?: (Barra & { canal: CanalDeCita })[];
+  /** Visitas y reservas de la Vitrina; null si no hay Vitrina publicada ni visitas */
+  vitrina?: ResumenVitrina | null;
   productos: Barra[];
   clientas: {
     atendidas: number;

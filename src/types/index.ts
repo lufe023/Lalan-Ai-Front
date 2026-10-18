@@ -225,6 +225,14 @@ export interface Client {
 export type AppointmentStatus = 'confirmed' | 'confirmed_by_ai' | 'attending' | 'completed' | 'cancelled' | 'pending';
 export type CommunicationChannel = 'whatsapp' | 'instagram' | 'messenger';
 
+/** Cómo se le avisó a la clienta desde el número de Lalan (o por qué no se pudo) */
+export interface AvisoCita {
+  avisada: boolean;
+  /** plantilla = WhatsApp con plantilla aprobada, que Meta cobra */
+  via?: 'whatsapp' | 'instagram' | 'messenger' | 'plantilla';
+  motivo?: string;
+}
+
 export interface Appointment {
   id: string;
   clientId?: string;
@@ -247,7 +255,8 @@ export interface Appointment {
   /** La especialista enlazada (si se eligió de la plantilla) */
   staffId?: string | null;
   status: AppointmentStatus;
-  channel: CommunicationChannel;
+  /** Por dónde se contacta; 'vitrina' = la clienta reservó sola en la Vitrina */
+  channel: CommunicationChannel | 'vitrina';
   notes?: string;
   createdAt: string;
   startsAt?: string;       // ISO full datetime from backend
@@ -260,6 +269,8 @@ export interface Appointment {
   fueraDeHorario?: boolean;
   /** Quién del equipo la agendó desde la app */
   createdByName?: string | null;
+  /** Quién del salón la confirmó, si llegó pendiente (de la Vitrina, por ejemplo) */
+  confirmadaPor?: string | null;
   /** La hora que tenía agendada, si llegó en otro momento y la cita se movió a la hora real */
   originalStartsAt?: string;
   /** El salón le cambió la especialista: con quién era al principio */

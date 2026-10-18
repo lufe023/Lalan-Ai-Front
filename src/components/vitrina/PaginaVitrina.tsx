@@ -1451,6 +1451,22 @@ function PanelReserva({
 
 /* ───────────── listo ───────────── */
 
+/**
+ * La clienta le escribe a Lalán con su reserva (el mensaje va listo, con el
+ * código). Así el salón le confirma por ese chat sin pagar una plantilla, y
+ * Lalán reconoce el código: sabe que es esta reserva y no una cita nueva.
+ */
+function Agilizar({ hecha, salon }: { hecha: ReservaHecha; salon: string }) {
+  const servicios = hecha.citas.map((c) => c.servicio).join(' + ');
+  const texto = `Hola 👋 Reservé en la Vitrina de ${salon}: ${servicios} el ${hecha.dia} a las ${hecha.citas[0]?.texto ?? ''}. Reserva ${hecha.codigo}`;
+  return (
+    <a href={`https://wa.me/${hecha.whatsapp}?text=${encodeURIComponent(texto)}`} target="_blank" rel="noreferrer"
+      className={`${BOTON_P} mt-5 w-full py-3.5 text-[15px]`}>
+      <MessageCircle className="size-5" /> Agilizar mi confirmación
+    </a>
+  );
+}
+
 function Exito({ hecha, salon, otra }: { hecha: ReservaHecha; salon: string; otra: () => void }) {
   return (
     <div className="mx-auto flex min-h-[80vh] max-w-md flex-col items-center justify-center px-4 py-10 text-center">
@@ -1464,6 +1480,12 @@ function Exito({ hecha, salon, otra }: { hecha: ReservaHecha; salon: string; otr
       <p className="mt-1 text-[var(--v-suave)]">
         {hecha.confirmada ? `Te esperamos en ${salon}.` : `${salon} te confirma la cita por WhatsApp.`}
       </p>
+      {!hecha.confirmada && hecha.whatsapp && hecha.codigo && (
+        <>
+          <Agilizar hecha={hecha} salon={salon} />
+          <p className="mt-2 text-xs text-[var(--v-suave)]">Envía el mensaje que te dejamos listo en WhatsApp y te confirmamos por ahí.</p>
+        </>
+      )}
 
       <div className={`${TARJETA} mt-6 w-full p-4 text-left`}>
         <p className="flex items-center gap-2 text-sm font-semibold first-letter:uppercase"><CalendarDays className="size-4 text-[var(--v-p)]" />{hecha.dia}</p>

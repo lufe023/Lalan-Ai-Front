@@ -13,6 +13,8 @@ import {
   Minus,
   MoonStar,
   RefreshCw,
+  Smartphone,
+  Store,
   UserRound,
   UserX,
   Users,
@@ -25,7 +27,7 @@ import { Aparecer, NumeroAnimado, RESORTE } from '../components/ui/movimiento';
 import { PageContent } from '../components/ui/PageContent';
 import { InventarioYMargenes } from '../components/metricas/InventarioYMargenes';
 import { useMetricas } from '../hooks/useMetricas';
-import { Barra, Comparado, PeriodoMetricas, ResumenMetricas } from '../types/metricas';
+import { Barra, CanalDeCita, Comparado, FilaVisitas, PeriodoMetricas, ResumenMetricas, ResumenVitrina } from '../types/metricas';
 import { usePlan } from '../context/PlanContext';
 
 const PERIODOS: { id: PeriodoMetricas; label: string }[] = [
@@ -574,17 +576,35 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
         </Tarjeta>
       </div>
 
-      {/* ── Quién agendó y qué se vendió ─────────────────────────────── */}
+      {/* ── Quién agendó y desde dónde ──────────────────────────────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Tarjeta>
           <Titulo texto="Quién agendó las citas" nota="Citas creadas en el período" />
           <Barras
             filas={d.quienAgendo}
             valor={b => `${plural(b.citas, 'cita', 'citas')} · ${b.porcentaje}%`}
-            icono={b => ((b as any).esAsistente ? <Bot className="w-3.5 h-3.5 text-[var(--primary)]" /> : <UserRound className="w-3.5 h-3.5 text-slate-400" />)}
+            icono={b => {
+              const q = b as ResumenMetricas['quienAgendo'][number];
+              if (q.tipo === 'vitrina') return <Store className="w-3.5 h-3.5 text-[var(--primary)]" />;
+              return q.esAsistente ? <Bot className="w-3.5 h-3.5 text-[var(--primary)]" /> : <UserRound className="w-3.5 h-3.5 text-slate-400" />;
+            }}
             vacio="No se agendaron citas en este período"
           />
         </Tarjeta>
+        <Tarjeta>
+          <Titulo texto="Por dónde llegaron" nota="Citas creadas en el período" />
+          <Barras
+            filas={d.desdeDonde ?? []}
+            valor={b => `${plural(b.citas, 'cita', 'citas')} · ${dinero(b.monto)}`}
+            icono={b => <IconoCanal canal={(b as Barra & { canal: CanalDeCita }).canal} />}
+            vacio="No se agendaron citas en este período"
+          />
+        </Tarjeta>
+      </div>
+
+      {/* ── La Vitrina y qué se vendió ──────────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {d.vitrina && tieneModulo('vitrina') && <VisitasVitrina v={d.vitrina} periodo={d.periodo.id} />}
         <Tarjeta>
           <Titulo texto="Lo más vendido en caja" nota="Productos cobrados" />
           <Barras
@@ -595,5 +615,55 @@ const Contenido: React.FC<{ d: ResumenMetricas; dinero: (v: number) => string; n
         </Tarjeta>
       </div>
     </>
+  );
+};
+
+/** Cada canal con su ícono: la Vitrina, los chats de la asistente o la agenda */
+const IconoCanal: React.FC<{ canal: CanalDeCita }> = ({ canal }) => {
+  if (canal === 'vitrina') return <Store className="w-3.5 h-3.5 text-[var(--primary)]" />;
+  if (canal === 'agenda') return <CalendarX2 className="w-3.5 h-3.5 text-slate-400" />;
+  if (canal === 'sin_registro') return <Minus className="w-3.5 h-3.5 text-slate-300" />;
+  return <Bot className="w-3.5 h-3.5 text-[var(--primary)]" />;
+};
+
+/** Las filas de visitas dibujadas con las mismas barras del resto del tablero */
+const comoBarras = (filas: FilaVisitas[]): Barra[] =>
+  filas.map(f => ({ clave: f.clave, nombre: f.nombre, citas: f.visitas, monto: 0, porcentaje: f.porcentaje }));
+
+/**
+ * Cuánta gente abre la Vitrina, desde dónde llega y cuántas terminan
+ * reservando. Lo de «desde dónde» sale del enlace o de la app que la abrió;
+ * WhatsApp no lo dice, así que lo que llega por ahí cuenta como enlace directo.
+ */
+const VisitasVitrina: React.FC<{ v: ResumenVitrina; periodo: PeriodoMetricas }> = ({ v, periodo }) => {
+  const mayor = Math.max(...v.porDia.map(x => x.visitas), 1);
+  const movil = v.porDispositivo.find(x => x.clave === 'movil');
+  return (
+    <Tarjeta>
+      <Titulo icono={<Store className="w-4 h-4 text-[var(--primary)]" />} texto="Tu Vitrina" nota="Visitas y reservas del período" />
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <Dato etiqueta="Visitas" valor={v.visitas.toLocaleString('es-DO')} detalle={movil && v.visitas ? `${movil.porcentaje}% desde el teléfono` : undefined} icono={<Smartphone className="w-3 h-3" />} />
+        <Dato etiqueta="Reservaron" valor={v.reservas.toLocaleString('es-DO')} detalle={plural(v.reservas, 'cita', 'citas')} icono={<CheckCircle2 className="w-3 h-3" />} tono={v.reservas ? 'bien' : 'normal'} />
+        <Dato etiqueta="Conversión" valor={`${v.conversion}%`} detalle="de las visitas reservó" />
+      </div>
+      {periodo !== 'day' && v.porDia.length > 1 && (
+        <div className="flex items-end gap-1 h-12 mb-4" aria-label="Visitas por día">
+          {v.porDia.map(x => (
+            <div key={x.dia} className="flex-1 rounded-t bg-[var(--primary)] opacity-70 min-h-[2px]"
+              style={{ height: `${(x.visitas / mayor) * 100}%` }}
+              title={`${new Date(`${x.dia}T12:00:00`).toLocaleDateString('es-DO', { weekday: 'short', day: 'numeric', month: 'short' })}: ${plural(x.visitas, 'visita', 'visitas')}`} />
+          ))}
+        </div>
+      )}
+      <p className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-300 mb-1.5">Desde dónde la visitan</p>
+      <Barras
+        filas={comoBarras(v.porOrigen)}
+        valor={b => `${plural(b.citas, 'visita', 'visitas')} · ${b.porcentaje}%`}
+        vacio="Todavía nadie la ha visitado en este período"
+      />
+      <p className="text-[0.6875rem] text-slate-400 mt-3 leading-snug">
+        Instagram, Facebook y TikTok se reconocen solos. Lo que se comparte por WhatsApp sale como enlace directo, y el QR de Ajustes cuenta aparte.
+      </p>
+    </Tarjeta>
   );
 };

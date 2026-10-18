@@ -18,6 +18,7 @@ import {
   Loader2,
   Check,
   UserCheck,
+  AlertCircle,
 } from 'lucide-react';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
@@ -32,6 +33,7 @@ import { hora12 } from '../utils/hora';
 import { SelectorHora } from '../components/ui/SelectorHora';
 import { CitasPendientes, citasPendientes } from '../components/agenda/CitasPendientes';
 import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
+import { ConfirmarCita, sinEspecialista } from '../components/agenda/ConfirmarCita';
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
@@ -78,6 +80,8 @@ export const CalendarScreen: React.FC = () => {
   // ── UI State ─────────────────────────────────────────────────────────────
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | 'all'>('all');
   const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null);
+  /** La cita que se acaba de confirmar en la ficha: el panel sigue abierto para avisarle */
+  const [recienConfirmada, setRecienConfirmada] = useState<string | null>(null);
   /** La cita a la que se le está cambiando la especialista */
   const [cambiandoDe, setCambiandoDe] = useState<Appointment | null>(null);
   /* Pendientes: la lista, y saltar al día de la cita elegida (el calendario se vuelve a montar en esa fecha) */
@@ -127,6 +131,7 @@ export const CalendarScreen: React.FC = () => {
   useEffect(() => {
     setConfirmarBorrar(false);
     setAccion(null);
+    setRecienConfirmada(null);
     // Al abrir una cita se refresca la lista de comandas: si no, la tira de
     // abajo podría decir "sin comanda" con una recién abierta desde Caja.
     if (activeAppointment?.id) void loadOpenFolios?.();
@@ -286,9 +291,9 @@ export const CalendarScreen: React.FC = () => {
    * estadísticas tienen que reflejar lo que pasó; antes todo salía como "IA".
    */
   const getStatusBadge = (status: AppointmentStatus, apt?: Appointment) => {
-    const quien = apt?.bookedByAssistant
-      ? (settings.aiAgentName || 'IA')
-      : apt?.createdByName?.split(' ')[0] ?? null;
+    // Si llegó pendiente y la confirmó alguien del salón, es su nombre el que va
+    const quien = apt?.confirmadaPor?.split(' ')[0]
+      ?? (apt?.bookedByAssistant ? (settings.aiAgentName || 'IA') : apt?.createdByName?.split(' ')[0] ?? null);
     switch (status) {
       case 'confirmed': return (
         <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
@@ -310,9 +315,10 @@ export const CalendarScreen: React.FC = () => {
           <CheckCircle2 className="w-3 h-3" />Completada
         </span>
       );
+      // Que no pase desapercibida: ámbar, como los demás avisos de la agenda
       case 'pending': return (
-        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center gap-1">
-          <Clock className="w-3 h-3" />Pendiente
+        <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-extrabold bg-amber-500/15 text-amber-700 dark:text-amber-400 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" />Por confirmar
         </span>
       );
       case 'cancelled': return (
@@ -437,7 +443,11 @@ export const CalendarScreen: React.FC = () => {
                         key={apt.id}
                         indice={idx}
                         onClick={() => setActiveAppointment(apt)}
-                        className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-start gap-3"
+                        className={`p-3.5 rounded-2xl border shadow-2xs hover:shadow-md transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-start gap-3 ${
+                          apt.status === 'pending'
+                            ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-800/70 hover:border-amber-400'
+                            : 'bg-white dark:bg-neutral-900 border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'
+                        }`}
                       >
                         <div className="flex flex-col items-center justify-center min-w-[50px] pt-0.5">
                           <span className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight whitespace-nowrap">{hora12(apt.time)}</span>
@@ -448,7 +458,7 @@ export const CalendarScreen: React.FC = () => {
                           )}
                           <span className="text-[0.6875rem] text-slate-400 font-medium">{apt.durationMinutes} min</span>
                         </div>
-                        <div className="w-1 self-stretch rounded-full shrink-0 bg-[var(--primary)] opacity-70" />
+                        <div className={`w-1 self-stretch rounded-full shrink-0 ${apt.status === 'pending' ? 'bg-amber-500' : 'bg-[var(--primary)] opacity-70'}`} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">{apt.clientName}</h4>
@@ -466,7 +476,9 @@ export const CalendarScreen: React.FC = () => {
                             <span>{apt.serviceName}</span>
                           </p>
                           <div className="flex items-center justify-between text-[0.6875rem] text-slate-400 mt-1.5 pt-1 border-t border-slate-100 dark:border-neutral-800/60">
-                            <span>{apt.staffName}</span>
+                            {sinEspecialista(apt) && ['pending', 'confirmed', 'confirmed_by_ai'].includes(apt.status)
+                              ? <span className="font-bold text-amber-700 dark:text-amber-400">Sin especialista</span>
+                              : <span>{apt.staffName}</span>}
                             <span className="font-semibold text-slate-700 dark:text-slate-300">{dinero(apt.price, apt.currencyCode)}</span>
                           </div>
                         </div>
@@ -593,6 +605,19 @@ export const CalendarScreen: React.FC = () => {
                 <div className="shrink-0">{getStatusBadge(activeAppointment.status, activeAppointment)}</div>
               </div>
 
+              {/* ── Por confirmar: aquí mismo, con quién la atiende si no tiene ── */}
+              {(activeAppointment.status === 'pending' || recienConfirmada === activeAppointment.id) && (
+                <ConfirmarCita
+                  key={activeAppointment.id}
+                  cita={activeAppointment}
+                  onConfirmada={(c) => {
+                    setRecienConfirmada(c.id);
+                    setActiveAppointment((a) => (a && a.id === c.id ? { ...a, ...c } : a));
+                  }}
+                  onCerrar={() => setActiveAppointment(null)}
+                />
+              )}
+
               {/* ── Qué ─────────────────────────────────────────────────── */}
               <div className="rounded-3xl border border-slate-200/80 dark:border-neutral-800 overflow-hidden">
                 <div className="px-4 py-3.5">
@@ -604,7 +629,9 @@ export const CalendarScreen: React.FC = () => {
                     <Clock className="w-3 h-3 shrink-0" />
                     {activeAppointment.durationMinutes} min
                     <span className="text-slate-300 dark:text-neutral-700">·</span>
-                    {activeAppointment.staffName}
+                    {sinEspecialista(activeAppointment)
+                      ? <span className="font-semibold text-amber-700 dark:text-amber-400">Sin especialista</span>
+                      : activeAppointment.staffName}
                     {['pending', 'confirmed', 'confirmed_by_ai'].includes(activeAppointment.status)
                       && new Date(activeAppointment.startsAt ?? `${activeAppointment.date}T${activeAppointment.time}`).getTime() > Date.now() && (
                       <button type="button" onClick={() => setCambiandoDe(activeAppointment)}

@@ -35,7 +35,11 @@ const Fila: React.FC<{ a: Appointment; onAbrir: (a: Appointment) => void }> = ({
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[0.875rem] font-bold truncate text-slate-900 dark:text-white">{a.clientName}</div>
-        <div className="text-[0.75rem] text-slate-500 truncate">{hora12(a.time)} · {a.serviceName}{a.staffName ? ` · ${a.staffName}` : ''}</div>
+        <div className="text-[0.75rem] text-slate-500 truncate">
+          {hora12(a.time)} · {a.serviceName}
+          {a.staffId ? ` · ${a.staffName}` : <span className="font-semibold text-amber-700 dark:text-amber-400"> · sin especialista</span>}
+          {a.channel === 'vitrina' && ' · Vitrina'}
+        </div>
         {f.getFullYear() !== new Date().getFullYear() && <div className="text-[0.6875rem] text-slate-400">{f.getFullYear()}</div>}
       </div>
       <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
@@ -65,6 +69,7 @@ export const CitasPendientes: React.FC<{ abierto: boolean; onCerrar: () => void;
             <h4 className="text-[0.75rem] font-bold uppercase tracking-wider text-[var(--primary)] flex items-center gap-1.5">
               <CalendarClock className="w-3.5 h-3.5" /> Vienen y están sin confirmar ({porConfirmar.length})
             </h4>
+            <p className="text-[0.75rem] text-slate-500">Ábrela para confirmarla y, si no tiene, elegir quién la atiende.</p>
             {porConfirmar.map(a => <Fila key={a.id} a={a} onAbrir={onAbrir} />)}
           </section>
         )}

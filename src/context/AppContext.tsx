@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  Appointment, AppointmentStatus, BotChannelConfig, ChatMessage,
+  Appointment, AppointmentStatus, AvisoCita, BotChannelConfig, ChatMessage,
   Client, CommunicationChannel, Conversation, LoungeTrack, ServiceCategory,
   SalonBusinessSettings, SalonProduct, SalonService, SystemLog, CategoriaCatalogo, TipoCategoria, PapelEnLounge, LineaDeReceta,
 } from '../types';
@@ -337,6 +337,12 @@ interface AppContextType {
   updateAppointmentStatus: (
     id: string, status: AppointmentStatus, completedAt?: string,
   ) => Promise<{ saleId: string | null; saldoPendiente: number | null; cancelado?: boolean }>;
+  /**
+   * Confirma una cita que llegó pendiente. Con `staffId`, antes se la asigna
+   * a esa especialista (`forzar`: aunque tenga otra cita a esa hora).
+   */
+  /** Con `avisar`, el servidor le escribe a la clienta desde el número de Lalan y dice cómo le llegó */
+  confirmarCita: (id: string, staffId?: string | null, forzar?: boolean, avisar?: boolean) => Promise<{ cita: Appointment; aviso: AvisoCita | null }>;
   /** Pregunta en pantalla y espera la respuesta: el id de la opción, o null si la cierran */
   preguntar: (c: Consulta) => Promise<string | null>;
   consulta: (Consulta & { responder: (id: string | null) => void }) | null;
@@ -815,6 +821,7 @@ function mapApiAppointment(a: any): Appointment {
     startsAt: a.startsAt, completedAt: a.completedAt ?? undefined,
     arrivedAt: a.arrivedAt ?? undefined, originalStartsAt: a.originalStartsAt ?? undefined,
     bookedByAssistant: !!a.bookedByAssistant, createdByName: a.createdByName ?? null,
+    confirmadaPor: a.confirmadaPor ?? null,
     fueraDeHorario: !!a.fueraDeHorario,
     staffId: a.staffId ?? null,
     cambioEspecialistaDe: a.cambioEspecialistaDe ?? null, cambioRespuesta: a.cambioRespuesta ?? null,
@@ -1443,6 +1450,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return cambiarEstadoCita(id, status, completedAt);
   }, [cambiarEstadoCita, preguntar]);
+
+  const confirmarCita = useCallback(async (id: string, staffId?: string | null, forzar?: boolean, avisar?: boolean) => {
+    const res = await api.post<any>(`/appointments/${id}/confirmar`, {
+      ...(staffId ? { staffId } : {}), ...(forzar ? { forzar: true } : {}), ...(avisar ? { avisar: true } : {}),
+    });
+    const cita = mapApiAppointment(res);
+    setAppointments(a => a.map(x => (x.id === id ? { ...x, ...cita } : x)));
+    return { cita, aviso: (res?.aviso as AvisoCita | undefined) ?? null };
+  }, []);
 
   /**
    * Antes de crear una cita, mirar si esa clienta ya tiene una por venir.
@@ -2922,7 +2938,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, preciosServicioEnSedes, preciosProductoEnSedes,
       ponerFotoServicio, quitarFotoServicio, ponerFotoProducto, quitarFotoProducto, galeriaServicio, galeriaProducto,
       products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
-      appointments, addAppointment, updateAppointmentStatus, deleteAppointment,
+      appointments, addAppointment, updateAppointmentStatus, confirmarCita, deleteAppointment,
       preguntar, consulta,
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,
