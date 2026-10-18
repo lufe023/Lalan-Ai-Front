@@ -29,6 +29,8 @@ import { IOSModal } from '../ui/IOSModal';
 const MAXIMO_SERVICIOS = 4;
 const MAXIMO_PRODUCTOS = 6;
 const DIAS_EN_LA_TIRA = 30;
+/** Servicios o productos por página: más que eso y la página se hace muy larga */
+const POR_PAGINA = 15;
 const CLAVE_CONTACTO = 'lalan_vitrina_contacto';
 /** Desde este ancho "Tu reserva" va al lado (el mismo corte que @4xl, 56rem) */
 const ANCHO_CON_PANEL = 896;
@@ -503,6 +505,50 @@ function Foto({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
+/**
+ * De 15 en 15. Al cambiar de página, la lista vuelve a quedar a la vista
+ * (si no, en el teléfono se queda abajo, en los botones).
+ */
+function usePaginas<T>(lista: T[], seccion: React.RefObject<HTMLElement | null>) {
+  const [pagina, setPagina] = useState(0);
+  const total = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  const actual = Math.min(pagina, total - 1);
+  const ir = (n: number) => {
+    setPagina(n);
+    const el = seccion.current;
+    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+  return { visibles: lista.slice(actual * POR_PAGINA, (actual + 1) * POR_PAGINA), pagina: actual, total, ir, reiniciar: () => setPagina(0), cuantos: lista.length };
+}
+
+function Paginas({ pagina, total, ir, cuantos, que }: { pagina: number; total: number; ir: (n: number) => void; cuantos: number; que: string }) {
+  if (total <= 1) return null;
+  const desde = pagina * POR_PAGINA + 1;
+  const hasta = Math.min(cuantos, (pagina + 1) * POR_PAGINA);
+  const BOTON = 'grid size-10 place-items-center rounded-full text-sm font-semibold transition active:scale-95 disabled:opacity-35';
+  return (
+    <nav aria-label={`Páginas de ${que}`} className="mt-4 flex flex-col items-center gap-2">
+      <div className="flex items-center gap-1.5">
+        <button type="button" onClick={() => ir(pagina - 1)} disabled={pagina === 0} aria-label="Página anterior" className={`${BOTON} border border-[var(--v-borde)] bg-[var(--v-sup)]`}>
+          <ChevronLeft className="size-4" />
+        </button>
+        {total <= 7 ? Array.from({ length: total }, (_, i) => (
+          <button key={i} type="button" onClick={() => ir(i)} aria-label={`Página ${i + 1}`} aria-current={i === pagina ? 'page' : undefined}
+            className={`${BOTON} ${i === pagina ? 'bg-[var(--v-texto)] text-[var(--v-fondo)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}>
+            {i + 1}
+          </button>
+        )) : (
+          <span className="px-3 text-sm font-medium">Página {pagina + 1} de {total}</span>
+        )}
+        <button type="button" onClick={() => ir(pagina + 1)} disabled={pagina === total - 1} aria-label="Página siguiente" className={`${BOTON} border border-[var(--v-borde)] bg-[var(--v-sup)]`}>
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+      <span className="text-xs text-[var(--v-suave)]">{desde}–{hasta} de {cuantos} {que}</span>
+    </nav>
+  );
+}
+
 function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
   servicios: ServicioVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
   abrir: (s: ServicioVitrina) => void;
@@ -514,12 +560,14 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
   }, [servicios]);
   const [cat, setCat] = useState<string | null>(null);
   const lista = cat ? servicios.filter((s) => s.categoria === cat) : servicios;
+  const seccion = useRef<HTMLElement>(null);
+  const paginas = usePaginas(lista, seccion);
   // El abanico de fotos solo con mouse: en el teléfono se desliza en la ficha
   const conMouse = useConMouse();
   const [encima, setEncima] = useState<string | null>(null);
 
   return (
-    <section aria-labelledby="v-servicios">
+    <section ref={seccion} aria-labelledby="v-servicios" className="scroll-mt-20">
       <div className="mb-3 flex items-end justify-between gap-3">
         <h2 id="v-servicios" className={TITULO_BLOQUE}>Servicios</h2>
         <span className="text-xs text-[var(--v-suave)]">Toca para agregar a tu reserva</span>
@@ -528,7 +576,7 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
         <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
           {[[null, 'Todo'] as const, ...categorias].map(([id, nombre]) => (
             <button
-              key={id ?? 'todo'} type="button" onClick={() => setCat(id)} aria-pressed={cat === id}
+              key={id ?? 'todo'} type="button" onClick={() => { setCat(id); paginas.reiniciar(); }} aria-pressed={cat === id}
               className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${cat === id ? 'bg-[var(--v-texto)] text-[var(--v-fondo)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
             >
               {nombre}
@@ -540,7 +588,7 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
         <p className={`${TARJETA} p-5 text-sm text-[var(--v-suave)]`}>Pronto verás aquí los servicios de esta sede.</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 @xl:grid-cols-2">
-          {lista.map((s) => {
+          {paginas.visibles.map((s) => {
             const dentro = elegidos.includes(s.id);
             const fotos = fotosDe(s);
             return (
@@ -579,6 +627,7 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
           })}
         </div>
       )}
+      <Paginas {...paginas} que="servicios" />
     </section>
   );
 }
@@ -630,14 +679,16 @@ function Productos({ productos, elegidos, alternar, dinero, abrir }: {
   productos: ProductoVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
   abrir: (p: ProductoVitrina) => void;
 }) {
+  const seccion = useRef<HTMLElement>(null);
+  const paginas = usePaginas(productos, seccion);
   return (
-    <section aria-labelledby="v-productos">
+    <section ref={seccion} aria-labelledby="v-productos" className="scroll-mt-20">
       <div className="mb-3 flex items-end justify-between gap-3">
         <h2 id="v-productos" className={TITULO_BLOQUE}>Productos</h2>
         <span className="text-xs text-[var(--v-suave)]">Apártalos y los pagas en el salón</span>
       </div>
       <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-3 @6xl:grid-cols-4">
-        {productos.map((p) => {
+        {paginas.visibles.map((p) => {
           const dentro = elegidos.includes(p.id);
           return (
             <article key={p.id} className={`${TARJETA} overflow-hidden transition ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
@@ -662,6 +713,7 @@ function Productos({ productos, elegidos, alternar, dinero, abrir }: {
           );
         })}
       </div>
+      <Paginas {...paginas} que="productos" />
     </section>
   );
 }
