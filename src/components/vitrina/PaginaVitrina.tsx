@@ -2,14 +2,15 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Minus,
-  Music, Phone, Plus, ShoppingBag, Sparkles, Star, Tag, User, X,
+  MessageCircle, Music, Navigation, Phone, Plus, ShoppingBag, Sparkles, Star, Store, Tag, User, X,
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
 import type {
-  DatosVitrina, EspecialistaVitrina, OfertaVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina, TipoBloqueVitrina,
+  DatosVitrina, EspecialistaVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina, TipoBloqueVitrina,
 } from '../../types/vitrina';
 import { estiloVitrina } from './temaVitrina';
 import { IOSModal } from '../ui/IOSModal';
+import MapaSede from './MapaSede';
 
 /**
  * La Vitrina tal como la ve una clienta: los bloques en el orden que eligió la
@@ -89,11 +90,26 @@ const TARJETA = 'rounded-3xl border border-[var(--v-borde)] bg-[var(--v-sup)]';
 const TITULO_BLOQUE = 'text-lg font-bold tracking-tight text-[var(--v-texto)]';
 const BOTON_P = 'inline-flex items-center justify-center gap-2 rounded-full bg-[var(--v-p)] px-5 py-3 text-sm font-semibold text-[var(--v-sobre-p)] transition active:scale-[0.98] disabled:opacity-45 disabled:active:scale-100';
 
+/**
+ * Como en un menú: primero lo que la dueña recomienda, después lo que puso
+ * en orden y al final lo demás, como venía.
+ */
+export function ordenarParaVitrina<T extends { id: string }>(lista: T[], orden: string[] = [], destacados: string[] = []): T[] {
+  if (!orden.length && !destacados.length) return lista;
+  const lugar = new Map(orden.map((id, i) => [id, i]));
+  const recomendado = new Set(destacados);
+  const peso = (x: T, i: number) => (recomendado.has(x.id) ? 0 : 1) * 1e6 + (lugar.get(x.id) ?? orden.length + i);
+  return lista.map((x, i) => ({ x, p: peso(x, i) })).sort((a, b) => a.p - b.p).map((y) => y.x);
+}
+
 /* ───────────── la página ───────────── */
 
 export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const { diseno, sede } = datos;
   const dinero = useMemo(() => formateador(sede.moneda), [sede.moneda]);
+  const destacados = useMemo(() => new Set(diseno.destacados ?? []), [diseno.destacados]);
+  const servicios = useMemo(() => ordenarParaVitrina(datos.servicios, diseno.orden?.servicios, diseno.destacados), [datos.servicios, diseno.orden, diseno.destacados]);
+  const productos = useMemo(() => ordenarParaVitrina(datos.productos, diseno.orden?.productos, diseno.destacados), [datos.productos, diseno.orden, diseno.destacados]);
 
   const [servicioIds, setServicioIds] = useState<string[]>([]);
   const [productoIds, setProductoIds] = useState<string[]>([]);
@@ -173,12 +189,13 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     switch (tipo) {
       case 'portada': return <Portada key={tipo} datos={datos} />;
       case 'mensaje': return diseno.mensaje ? <Mensaje key={tipo} texto={diseno.mensaje} /> : null;
-      case 'servicios': return <Servicios key={tipo} servicios={datos.servicios} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero} abrir={(item) => setFicha({ tipo: 'servicio', item })} />;
+      case 'servicios': return <Servicios key={tipo} servicios={servicios} destacados={destacados} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero} abrir={(item) => setFicha({ tipo: 'servicio', item })} />;
       case 'ofertas': return datos.ofertas.length ? <Ofertas key={tipo} ofertas={datos.ofertas} elegida={ofertaId} elegir={elegirOferta} dinero={dinero} /> : null;
-      case 'productos': return datos.productos.length ? <Productos key={tipo} productos={datos.productos} elegidos={productoIds} alternar={alternarProducto} dinero={dinero} abrir={(item) => setFicha({ tipo: 'producto', item })} /> : null;
+      case 'productos': return productos.length ? <Productos key={tipo} productos={productos} destacados={destacados} elegidos={productoIds} alternar={alternarProducto} dinero={dinero} abrir={(item) => setFicha({ tipo: 'producto', item })} /> : null;
       case 'especialistas': return datos.especialistas.length ? <Especialistas key={tipo} lista={datos.especialistas} /> : null;
       case 'horario': return <Horario key={tipo} semana={sede.semana} hoy={sede.hoyFecha} />;
       case 'ubicacion': return <Ubicacion key={tipo} datos={datos} />;
+      case 'chat': return <Chat key={tipo} datos={datos} />;
       default: return null;
     }
   };
@@ -549,8 +566,17 @@ function Paginas({ pagina, total, ir, cuantos, que }: { pagina: number; total: n
   );
 }
 
-function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
-  servicios: ServicioVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
+/** La etiqueta de lo que recomienda la dueña */
+function Recomendado() {
+  return (
+    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[var(--v-p)] px-2 py-0.5 text-[11px] font-semibold text-[var(--v-sobre-p)] shadow">
+      <Sparkles className="size-3" /> Recomendado
+    </span>
+  );
+}
+
+function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }: {
+  servicios: ServicioVitrina[]; destacados: Set<string>; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
   abrir: (s: ServicioVitrina) => void;
 }) {
   const categorias = useMemo(() => {
@@ -598,7 +624,7 @@ function Servicios({ servicios, elegidos, alternar, dinero, abrir }: {
                 <button type="button" onClick={() => abrir(s)} aria-label={`Ver ${s.nombre}`} className="group relative w-28 shrink-0 overflow-hidden @md:w-32">
                   <span className="block size-full transition duration-500 group-hover:scale-105"><Foto src={s.foto} alt={s.nombre} /></span>
                   <MasFotos cuantas={fotos.length} />
-                  {s.popular && (
+                  {destacados.has(s.id) ? <Recomendado /> : s.popular && (
                     <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
                       <Star className="size-3 fill-current" /> Favorito
                     </span>
@@ -675,8 +701,8 @@ function Ofertas({ ofertas, elegida, elegir, dinero }: {
   );
 }
 
-function Productos({ productos, elegidos, alternar, dinero, abrir }: {
-  productos: ProductoVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
+function Productos({ productos, destacados, elegidos, alternar, dinero, abrir }: {
+  productos: ProductoVitrina[]; destacados: Set<string>; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
   abrir: (p: ProductoVitrina) => void;
 }) {
   const seccion = useRef<HTMLElement>(null);
@@ -694,7 +720,7 @@ function Productos({ productos, elegidos, alternar, dinero, abrir }: {
             <article key={p.id} className={`${TARJETA} overflow-hidden transition ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
               <div className="relative aspect-square">
                 <Carrusel fotos={fotosDe(p)} alt={p.nombre} />
-                {p.quedanPocos && <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">Quedan pocos</span>}
+                {destacados.has(p.id) ? <Recomendado /> : p.quedanPocos && <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">Quedan pocos</span>}
               </div>
               <div className="p-3">
                 <h3 className="line-clamp-2 text-sm font-semibold leading-snug"><button type="button" onClick={() => abrir(p)} className="text-left">{p.nombre}</button></h3>
@@ -756,21 +782,97 @@ function Horario({ semana, hoy }: { semana: DatosVitrina['sede']['semana']; hoy:
   );
 }
 
+/** Cómo llegar: con el pin si la dueña lo marcó; si no, buscando la dirección */
+function enlacesDeLlegada(salon: string, x: { direccion: string | null; latitud?: number | null; longitud?: number | null }) {
+  const conPin = x.latitud != null && x.longitud != null;
+  if (!conPin && !x.direccion) return null;
+  const q = conPin ? `${x.latitud},${x.longitud}` : `${salon} ${x.direccion}`;
+  return {
+    google: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`,
+    waze: conPin ? `https://waze.com/ul?ll=${x.latitud},${x.longitud}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(x.direccion!)}&navigate=yes`,
+  };
+}
+
+/** La Vitrina de otra sede: por su dirección corta o, si el salón no eligió nombre, la larga */
+const enlaceDeSede = (o: OtraSedeVitrina) => (o.direccionCorta ? `/${o.direccionCorta}` : `/app/#/v/${o.slug}`);
+
 function Ubicacion({ datos }: { datos: DatosVitrina }) {
-  const { direccion, telefono, instagram, facebook } = datos.sede;
-  if (!direccion && !telefono && !instagram && !facebook) return null;
-  const mapa = direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${datos.salon.nombre} ${direccion}`)}` : null;
+  const { direccion, telefono, instagram, facebook, latitud, longitud, nombre, hoy } = datos.sede;
+  const otras = datos.otrasSedes ?? [];
+  if (!direccion && !telefono && !instagram && !facebook && latitud == null && !otras.length) return null;
+  const llegar = enlacesDeLlegada(datos.salon.nombre, datos.sede);
   const ig = instagram ? `https://instagram.com/${instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '')}` : null;
   const fb = facebook ? (/^https?:/.test(facebook) ? facebook : `https://facebook.com/${facebook}`) : null;
   const fila = 'flex items-center gap-3 rounded-2xl px-3 py-2.5 transition hover:bg-[var(--v-tinte)]';
+  const BOTON = 'inline-flex items-center gap-1.5 rounded-full border border-[var(--v-borde)] px-3.5 py-2 text-xs font-semibold transition hover:bg-[var(--v-tinte)]';
   return (
     <section aria-labelledby="v-ubicacion" className={`${TARJETA} p-5`}>
-      <h2 id="v-ubicacion" className={`${TITULO_BLOQUE} mb-2`}>Cómo llegar</h2>
-      <div className="-mx-3 text-sm">
-        {direccion && <a href={mapa!} target="_blank" rel="noreferrer" className={fila}><MapPin className="size-4 shrink-0 text-[var(--v-p)]" /><span>{direccion}</span></a>}
-        {telefono && <a href={`tel:${telefono.replace(/[^\d+]/g, '')}`} className={fila}><Phone className="size-4 shrink-0 text-[var(--v-p)]" /><span>{telefono}</span></a>}
-        {ig && <a href={ig} target="_blank" rel="noreferrer" className={fila}><Instagram className="size-4 shrink-0 text-[var(--v-p)]" /><span>@{instagram!.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}</span></a>}
-        {fb && <a href={fb} target="_blank" rel="noreferrer" className={fila}><Facebook className="size-4 shrink-0 text-[var(--v-p)]" /><span>Facebook</span></a>}
+      <h2 id="v-ubicacion" className={`${TITULO_BLOQUE} mb-3`}>{otras.length ? 'Nuestras sedes' : 'Cómo llegar'}</h2>
+      {latitud != null && longitud != null && (
+        <div className="mb-3"><MapaSede punto={{ latitud, longitud }} color="var(--v-p)" etiqueta={`Mapa de ${nombre}`} /></div>
+      )}
+      {otras.length > 0 && <p className="font-semibold">{nombre}</p>}
+      {direccion && <p className="mt-0.5 flex items-start gap-2 text-sm"><MapPin className="mt-0.5 size-4 shrink-0 text-[var(--v-p)]" />{direccion}</p>}
+      <p className="mt-1 flex items-center gap-2 text-sm text-[var(--v-suave)]"><Clock className="size-4 shrink-0" />{hoy}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {llegar && <a href={llegar.google} target="_blank" rel="noreferrer" className={BOTON}><MapPin className="size-3.5" /> Google Maps</a>}
+        {llegar && <a href={llegar.waze} target="_blank" rel="noreferrer" className={BOTON}><Navigation className="size-3.5" /> Waze</a>}
+        {telefono && <a href={`tel:${telefono.replace(/[^\d+]/g, '')}`} className={BOTON}><Phone className="size-3.5" /> Llamar</a>}
+      </div>
+      {(ig || fb) && (
+        <div className="-mx-3 mt-2 text-sm">
+          {ig && <a href={ig} target="_blank" rel="noreferrer" className={fila}><Instagram className="size-4 shrink-0 text-[var(--v-p)]" /><span>@{instagram!.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}</span></a>}
+          {fb && <a href={fb} target="_blank" rel="noreferrer" className={fila}><Facebook className="size-4 shrink-0 text-[var(--v-p)]" /><span>Facebook</span></a>}
+        </div>
+      )}
+      {otras.length > 0 && (
+        <ul className="mt-4 space-y-3 border-t border-[var(--v-borde)] pt-4">
+          {otras.map((o) => {
+            const ir = enlacesDeLlegada(datos.salon.nombre, o);
+            return (
+              <li key={o.slug} className="rounded-2xl border border-[var(--v-borde)] p-3.5">
+                <p className="flex items-center gap-2 font-semibold"><Store className="size-4 text-[var(--v-p)]" />{o.nombre}</p>
+                {o.direccion && <p className="mt-0.5 pl-6 text-sm text-[var(--v-suave)]">{o.direccion}</p>}
+                <div className="mt-2.5 flex flex-wrap gap-2 pl-6">
+                  <a href={enlaceDeSede(o)} className={`${BOTON} border-transparent bg-[var(--v-p)] text-[var(--v-sobre-p)] hover:bg-[var(--v-p)]`}><CalendarDays className="size-3.5" /> Reservar aquí</a>
+                  {ir && <a href={ir.google} target="_blank" rel="noreferrer" className={BOTON}><MapPin className="size-3.5" /> Maps</a>}
+                  {ir && <a href={ir.waze} target="_blank" rel="noreferrer" className={BOTON}><Navigation className="size-3.5" /> Waze</a>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Escribirle a Lalán, la asistente del salón, por las cuentas que la sede
+ * tiene conectadas. El WhatsApp lleva escrito de dónde viene, así Lalán ya
+ * sabe la sede aunque el número sea el mismo para todas.
+ */
+function Chat({ datos }: { datos: DatosVitrina }) {
+  const c = datos.chat;
+  if (!c || (!c.whatsapp && !c.instagram && !c.messenger)) return null;
+  const saludo = `Hola, vengo de la Vitrina de ${datos.salon.nombre} (${datos.sede.nombre})`;
+  const canales = [
+    c.whatsapp && { nombre: 'WhatsApp', href: `https://wa.me/${c.whatsapp}?text=${encodeURIComponent(saludo)}`, icono: <MessageCircle className="size-5" />, color: '#25D366' },
+    c.instagram && { nombre: 'Instagram', href: `https://ig.me/m/${c.instagram}`, icono: <Instagram className="size-5" />, color: '#E1306C' },
+    c.messenger && { nombre: 'Messenger', href: `https://m.me/${c.messenger}`, icono: <Facebook className="size-5" />, color: '#0084FF' },
+  ].filter(Boolean) as { nombre: string; href: string; icono: React.ReactNode; color: string }[];
+  return (
+    <section aria-labelledby="v-chat" className={`${TARJETA} p-5`}>
+      <h2 id="v-chat" className={TITULO_BLOQUE}>Escríbenos</h2>
+      <p className="mt-1 text-sm text-[var(--v-suave)]">Lalán, la asistente del salón, te contesta por aquí: pregunta, reserva o cambia tu cita.</p>
+      <div className="mt-3 grid grid-cols-1 gap-2 @md:grid-cols-3">
+        {canales.map((x) => (
+          <a key={x.nombre} href={x.href} target="_blank" rel="noreferrer"
+            className="flex items-center gap-3 rounded-2xl border border-[var(--v-borde)] px-4 py-3 font-semibold transition hover:bg-[var(--v-tinte)]">
+            <span className="grid size-9 place-items-center rounded-full text-white" style={{ background: x.color }}>{x.icono}</span>
+            {x.nombre}
+          </a>
+        ))}
       </div>
     </section>
   );
