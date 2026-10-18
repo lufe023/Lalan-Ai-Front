@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Check, CheckCircle2, Loader2, MessageCircle, Phone, Store, UserX } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, Loader2, MessageCircle, Phone, Store, UserRound, UserX } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import type { Appointment, AvisoCita } from '../../types';
@@ -26,7 +26,9 @@ function deDonde(a: Appointment, agente: string) {
 /**
  * Confirmar una cita pendiente desde su ficha. Si no tiene especialista, se
  * elige aquí mismo (libres primero, como al cambiarla): así la Vitrina no
- * deja citas «por asignar» que se descubren cuando la clienta ya llegó.
+ * deja citas «por asignar» que se descubren cuando la clienta ya llegó. Si ya
+ * tiene, se puede cambiar antes de confirmar: el aviso le llega completo y,
+ * si quiere otra persona, se lo dice a Lalan por el mismo chat.
  * Si se quiere, se le avisa a la clienta (la Vitrina le dijo que el salón le
  * confirmaría por WhatsApp) desde el número de Lalan de la sede, nunca desde
  * el de la dueña o el equipo: gratis si escribió en las últimas 24 horas, o
@@ -43,14 +45,19 @@ export const ConfirmarCita: React.FC<{ cita: Appointment; onConfirmada: (c: Appo
   const [error, setError] = useState('');
   const [hecha, setHecha] = useState<{ cita: Appointment; aviso: AvisoCita | null } | null>(null);
   const [avisar, setAvisar] = useState(true);
+  // Con especialista, la lista sale solo si la quieren cambiar
+  const [cambiando, setCambiando] = useState(false);
+  const elegir = necesita || cambiando;
 
   // Una cita por montaje: quien lo usa le pone key={cita.id}
   useEffect(() => {
-    if (!necesita) return;
+    if (!elegir || personas) return;
     api.get<{ reemplazos: Persona[] }>(`/appointments/${cita.id}/reemplazos`)
       .then((r) => setPersonas(r.reemplazos))
       .catch((e) => setError(e?.message ?? 'No se pudo cargar el equipo.'));
-  }, [cita.id, necesita]);
+  }, [cita.id, elegir, personas]);
+
+  const dejarComoEstaba = () => { setCambiando(false); setElegida(null); };
 
   const persona = personas?.find((p) => p.id === elegida) ?? null;
 
@@ -120,14 +127,38 @@ export const ConfirmarCita: React.FC<{ cita: Appointment; onConfirmada: (c: Appo
         </div>
       </div>
 
-      {necesita && (
+      {!necesita && !cambiando && (
+        <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/70 dark:bg-neutral-900/60">
+          <UserRound className="w-4 h-4 text-slate-400 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">La atiende</span>
+            <span className="block text-[0.8125rem] font-semibold text-slate-900 dark:text-white truncate">{cita.staffName}</span>
+          </span>
+          <button type="button" onClick={() => setCambiando(true)}
+            className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 cursor-pointer">
+            Cambiar
+          </button>
+        </div>
+      )}
+
+      {elegir && (
         <div className="space-y-2">
-          <span className="text-[0.6875rem] uppercase font-bold tracking-wider text-amber-800/70 dark:text-amber-300/70 block">¿Quién la atiende?</span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[0.6875rem] uppercase font-bold tracking-wider text-amber-800/70 dark:text-amber-300/70 block">
+              {necesita ? '¿Quién la atiende?' : `¿Con quién, en vez de ${primerNombre(cita.staffName)}?`}
+            </span>
+            {cambiando && (
+              <button type="button" onClick={dejarComoEstaba}
+                className="text-[0.75rem] font-semibold text-amber-800 dark:text-amber-300 hover:underline cursor-pointer">
+                Dejar con {primerNombre(cita.staffName)}
+              </button>
+            )}
+          </div>
           {!personas && !error && (
             <div className="flex items-center gap-2 text-[0.75rem] text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Buscando quién está libre…</div>
           )}
           {personas && !personas.length && (
-            <p className="text-[0.75rem] text-slate-500 flex items-center gap-1.5"><UserX className="w-4 h-4" /> Nadie del equipo de esta sede hace este servicio.</p>
+            <p className="text-[0.75rem] text-slate-500 flex items-center gap-1.5"><UserX className="w-4 h-4" /> {necesita ? 'Nadie del equipo de esta sede hace este servicio.' : 'Nadie más del equipo de esta sede hace este servicio.'}</p>
           )}
           {!!personas?.length && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -153,7 +184,9 @@ export const ConfirmarCita: React.FC<{ cita: Appointment; onConfirmada: (c: Appo
         <span className="min-w-0">
           <span className="block text-[0.8125rem] font-semibold text-slate-900 dark:text-white">Avisarle a {primerNombre(cita.clientName) || 'la clienta'} que quedó confirmada</span>
           <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-            Le llega desde el WhatsApp de {settings.aiAgentName || 'Lalan'} de esta sede, no desde tu número. Si escribió en las últimas 24 horas es gratis; si no, sale con una plantilla que Meta cobra.
+            Le llega desde el WhatsApp de {settings.aiAgentName || 'Lalan'} de esta sede, no desde tu número, con quién la atiende: si quiere a otra persona, se lo dice por ahí. {cita.vitrinaChatId
+              ? 'Ya escribió por WhatsApp con su reserva, así que le llega gratis.'
+              : 'Si escribió en las últimas 24 horas es gratis; si no, sale con una plantilla que Meta cobra.'}
           </span>
         </span>
         <input type="checkbox" checked={avisar} onChange={(e) => setAvisar(e.target.checked)} className="w-5 h-5 mt-0.5 shrink-0 accent-[var(--primary)]" />
@@ -162,10 +195,10 @@ export const ConfirmarCita: React.FC<{ cita: Appointment; onConfirmada: (c: Appo
       {error && <p className="text-[0.75rem] font-semibold text-rose-600" role="alert">{error}</p>}
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <button type="button" onClick={() => void confirmar(necesita ? elegida : null)} disabled={guardando || (necesita && !elegida)}
+        <button type="button" onClick={() => void confirmar(elegir ? elegida : null)} disabled={guardando || (elegir && !elegida)}
           className="flex-1 py-2.5 rounded-2xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
           {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          {necesita ? (persona ? `Confirmar con ${primerNombre(persona.nombre)}` : 'Elige quién la atiende') : 'Confirmar cita'}
+          {elegir ? (persona ? `Confirmar con ${primerNombre(persona.nombre)}` : 'Elige quién la atiende') : `Confirmar con ${primerNombre(cita.staffName)}`}
         </button>
         {necesita && (
           <button type="button" onClick={() => void confirmar(null)} disabled={guardando}

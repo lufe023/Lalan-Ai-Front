@@ -820,7 +820,7 @@ function mapApiAppointment(a: any): Appointment {
     status: a.status, channel: a.channel, notes: a.notes, createdAt: a.createdAt,
     startsAt: a.startsAt, completedAt: a.completedAt ?? undefined,
     arrivedAt: a.arrivedAt ?? undefined, originalStartsAt: a.originalStartsAt ?? undefined,
-    bookedByAssistant: !!a.bookedByAssistant, createdByName: a.createdByName ?? null,
+    bookedByAssistant: !!a.bookedByAssistant, createdByName: a.createdByName ?? null, vitrinaChatId: a.vitrinaChatId ?? null,
     confirmadaPor: a.confirmadaPor ?? null,
     fueraDeHorario: !!a.fueraDeHorario,
     staffId: a.staffId ?? null,

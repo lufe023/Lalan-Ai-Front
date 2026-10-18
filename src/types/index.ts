@@ -265,6 +265,8 @@ export interface Appointment {
   arrivedAt?: string;
   /** La agendó la asistente por chat */
   bookedByAssistant?: boolean;
+  /** El chat donde escribió con el código de su reserva de la Vitrina: el aviso le llega por ahí, gratis */
+  vitrinaChatId?: string | null;
   /** Turno especial: se agendó fuera del horario, con autorización de la dueña */
   fueraDeHorario?: boolean;
   /** Quién del equipo la agendó desde la app */
