@@ -28,6 +28,8 @@ import { PantallaTurnos } from './screens/PantallaTurnos';
 import { ReproductorSala } from './screens/ReproductorSala';
 import { PedirCancionScreen } from './screens/PedirCancionScreen';
 import VitrinaScreen from './screens/VitrinaScreen';
+import VitrinaCortaScreen from './screens/VitrinaCortaScreen';
+import { direccionCorta } from '../worker/direccion-corta.js';
 import { QuioscoScreen } from './screens/QuioscoScreen';
 import { AprobarQuiosco } from './components/ajustes/AprobarQuiosco';
 import { PlataformaScreen } from './screens/PlataformaScreen';
@@ -275,6 +277,13 @@ function slugDeVitrina(): string | null {
   return m ? m[1] : null;
 }
 
+/** La Vitrina por su dirección corta (/<salón> o /<salón>/<sede>), fuera de /app/ */
+function direccionDeVitrina(): { nombre: string; sede: string | null } | null {
+  const ruta = window.location.pathname;
+  if (ruta === '/app' || ruta.startsWith('/app/')) return null;
+  return direccionCorta(ruta);
+}
+
 /** El quiosco de la entrada (#/quiosco): su token vive en el aparato, no en la URL */
 function esQuiosco(): boolean {
   return /^#\/quiosco(\/[A-Za-z0-9_-]*)?$/.test(window.location.hash || '');
@@ -304,6 +313,7 @@ export default function App() {
   const [tokenPedirCancion, setTokenPedirCancion] = React.useState<string | null>(tokenDePedirCancion);
   const [quiosco, setQuiosco] = React.useState<boolean>(esQuiosco);
   const [slugVitrina, setSlugVitrina] = React.useState<string | null>(slugDeVitrina);
+  const [vitrinaCorta, setVitrinaCorta] = React.useState(direccionDeVitrina);
 
   React.useEffect(() => {
     const alCambiar = () => {
@@ -315,6 +325,13 @@ export default function App() {
     };
     window.addEventListener('hashchange', alCambiar);
     return () => window.removeEventListener('hashchange', alCambiar);
+  }, []);
+
+  // La Vitrina corta cambia de sede con la dirección (elegir sede, atrás)
+  React.useEffect(() => {
+    const alCambiar = () => setVitrinaCorta(direccionDeVitrina());
+    window.addEventListener('popstate', alCambiar);
+    return () => window.removeEventListener('popstate', alCambiar);
   }, []);
 
   if (tokenPantalla) {
@@ -340,6 +357,14 @@ export default function App() {
           <QuioscoScreen />
         </MotionConfig>
       </ThemeProvider>
+    );
+  }
+
+  if (vitrinaCorta) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <VitrinaCortaScreen nombre={vitrinaCorta.nombre} sede={vitrinaCorta.sede} />
+      </MotionConfig>
     );
   }
 

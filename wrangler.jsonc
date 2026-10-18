@@ -1,12 +1,16 @@
 // Cloudflare: publica dist (lo que genera `npm run build`) como sitio estático.
 //   /      → landing de Lalan
-//   /app/  → la aplicación (rutas con #, no necesita más reglas)
+//   /app/  → la aplicación (rutas con #)
+//   /<salón> y /<salón>/<sede> → la Vitrina por su dirección corta: si ningún
+//   archivo coincide, worker/index.js responde con la app
 // La dirección de la API NO va aquí: es VITE_API_URL en las "Variables de compilación"
 // del proyecto en Cloudflare (Vite la mete en el código al compilar).
 {
   "name": "lalan-front",
   "compatibility_date": "2026-10-01",
+  "main": "worker/index.js",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "binding": "ASSETS"
   }
 }
