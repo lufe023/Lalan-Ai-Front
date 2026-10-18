@@ -241,6 +241,7 @@ export const AjustesVitrina: React.FC = () => {
             )}
             <Opcion titulo="La reserva entra confirmada" detalle={borrador.confirmaSola ? 'La cita queda confirmada al momento y te llega el aviso.' : 'La cita queda pendiente hasta que la confirmes tú.'}
               valor={borrador.confirmaSola} cambiar={(v) => cambiar({ confirmaSola: v })} />
+            {!borrador.confirmaSola && <Recordatorio minutos={borrador.minutosParaRecordar ?? MINUTOS_PARA_RECORDAR} cambiar={(m) => cambiar({ minutosParaRecordar: m })} />}
             <Opcion titulo="Puede elegir especialista" detalle={borrador.elegirEspecialista ? 'Elige con quién, o «quien esté libre».' : 'Se le asigna quien esté libre.'}
               valor={borrador.elegirEspecialista} cambiar={(v) => cambiar({ elegirEspecialista: v })} />
           </div>
@@ -306,6 +307,33 @@ const Opcion: React.FC<{ titulo: string; detalle: string; valor: boolean; cambia
       <span className="block text-[0.6875rem] text-slate-400">{detalle}</span>
     </span>
     <IOSToggle checked={valor} onChange={cambiar} ariaLabel={titulo} />
+  </div>
+);
+
+const MINUTOS_PARA_RECORDAR = 5;
+const OPCIONES_RECORDAR = [5, 10, 15, 30, 0];
+
+/**
+ * Si nadie confirma una reserva en esos minutos, Lalan le vuelve a avisar al
+ * equipo y, si la clienta ya escribió por WhatsApp, le dice que la están
+ * revisando. Una sola vez, con un texto fijo: no gasta mensajes del plan.
+ */
+const Recordatorio: React.FC<{ minutos: number; cambiar: (m: number) => void }> = ({ minutos, cambiar }) => (
+  <div className="pt-1 space-y-1.5">
+    <span className="block text-[0.8125rem] font-semibold text-slate-800 dark:text-neutral-100">Si nadie la confirma</span>
+    <div className="flex gap-1.5" role="group" aria-label="Si nadie la confirma">
+      {OPCIONES_RECORDAR.map((m) => (
+        <button key={m} type="button" onClick={() => cambiar(m)} aria-pressed={minutos === m}
+          className={`flex-1 py-2 rounded-xl text-[0.75rem] font-semibold border transition cursor-pointer ${minutos === m ? 'border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700 text-slate-500'}`}>
+          {m ? `${m} min` : 'No'}
+        </button>
+      ))}
+    </div>
+    <span className="block text-[0.6875rem] text-slate-400">
+      {minutos
+        ? `A los ${minutos} minutos te lo volvemos a avisar y, si la clienta ya escribió por WhatsApp, le decimos que la estás revisando. No gasta mensajes de tu plan.`
+        : 'No se te recuerda ni se le escribe a la clienta mientras esperas.'}
+    </span>
   </div>
 );
 

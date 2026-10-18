@@ -632,7 +632,8 @@ export const CalendarScreen: React.FC = () => {
                     {sinEspecialista(activeAppointment)
                       ? <span className="font-semibold text-amber-700 dark:text-amber-400">Sin especialista</span>
                       : activeAppointment.staffName}
-                    {['pending', 'confirmed', 'confirmed_by_ai'].includes(activeAppointment.status)
+                    {/* Por confirmar se cambia en el panel de confirmar, sin escribirle aún a la clienta */}
+                    {['confirmed', 'confirmed_by_ai'].includes(activeAppointment.status)
                       && new Date(activeAppointment.startsAt ?? `${activeAppointment.date}T${activeAppointment.time}`).getTime() > Date.now() && (
                       <button type="button" onClick={() => setCambiandoDe(activeAppointment)}
                         className="ml-1 px-2 py-0.5 rounded-lg text-[0.6875rem] font-bold text-[var(--primary)] bg-[var(--primary)]/10 cursor-pointer">

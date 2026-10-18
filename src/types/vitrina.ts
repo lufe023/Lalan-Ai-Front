@@ -20,6 +20,8 @@ export interface DisenoVitrina {
   titulo: string | null;
   mensaje: string | null;
   confirmaSola: boolean;
+  /** Reservas por confirmar: a los cuántos minutos se le recuerda al equipo y se le escribe a la clienta. 0 = no. Falta = 5 */
+  minutosParaRecordar?: number;
   elegirEspecialista: boolean;
   /** Qué parte de la foto de portada se ve, de arriba (0) a abajo (100) */
   portadaY?: number;

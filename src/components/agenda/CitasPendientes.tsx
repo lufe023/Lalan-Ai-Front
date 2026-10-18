@@ -69,7 +69,7 @@ export const CitasPendientes: React.FC<{ abierto: boolean; onCerrar: () => void;
             <h4 className="text-[0.75rem] font-bold uppercase tracking-wider text-[var(--primary)] flex items-center gap-1.5">
               <CalendarClock className="w-3.5 h-3.5" /> Vienen y están sin confirmar ({porConfirmar.length})
             </h4>
-            <p className="text-[0.75rem] text-slate-500">Ábrela para confirmarla y, si no tiene, elegir quién la atiende.</p>
+            <p className="text-[0.75rem] text-slate-500">Ábrela para confirmarla y elegir o cambiar quién la atiende.</p>
             {porConfirmar.map(a => <Fila key={a.id} a={a} onAbrir={onAbrir} />)}
           </section>
         )}

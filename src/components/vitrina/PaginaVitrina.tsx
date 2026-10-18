@@ -1461,7 +1461,7 @@ function Agilizar({ hecha, salon }: { hecha: ReservaHecha; salon: string }) {
   const texto = `Hola 👋 Reservé en la Vitrina de ${salon}: ${servicios} el ${hecha.dia} a las ${hecha.citas[0]?.texto ?? ''}. Reserva ${hecha.codigo}`;
   return (
     <a href={`https://wa.me/${hecha.whatsapp}?text=${encodeURIComponent(texto)}`} target="_blank" rel="noreferrer"
-      className={`${BOTON_P} mt-5 w-full py-3.5 text-[15px]`}>
+      className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-3.5 text-[15px] font-bold text-white shadow-lg shadow-[#25D366]/30 transition hover:bg-[#1FBA59] active:scale-[0.98]">
       <MessageCircle className="size-5" /> Agilizar mi confirmación
     </a>
   );
