@@ -136,6 +136,10 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const [servicioIds, setServicioIds] = useState<string[]>([]);
   const [productoIds, setProductoIds] = useState<string[]>([]);
   const [ofertaId, setOfertaId] = useState<string | null>(null);
+  /** Con quién quiere cada servicio (sin entrada = quien esté libre) */
+  const [conQuien, setConQuien] = useState<Record<string, string>>({});
+  /** La especialista que está mirando: sus servicios y reservar con ella */
+  const [persona, setPersona] = useState<EspecialistaVitrina | null>(null);
   // La reserva a pantalla completa. Desde el panel de al lado ya vio lo que eligió: empieza en lo que sigue
   const [abierta, setAbierta] = useState<false | 'lista' | 'siguiente'>(false);
   const [hecha, setHecha] = useState<ReservaHecha | null>(null);
@@ -201,7 +205,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const apartados = productoIds.map((id) => datos.productos.find((p) => p.id === id)).filter(Boolean) as ProductoVitrina[];
 
   const reiniciar = () => {
-    setHecha(null); setServicioIds([]); setProductoIds([]); setOfertaId(null); setAbierta(false);
+    setHecha(null); setServicioIds([]); setProductoIds([]); setOfertaId(null); setConQuien({}); setAbierta(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -215,7 +219,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
       case 'servicios': return <Servicios key={tipo} servicios={servicios} destacados={destacados} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero} abrir={(item, foto) => setFicha({ tipo: 'servicio', item, foto })} />;
       case 'ofertas': return datos.ofertas.length ? <Ofertas key={tipo} ofertas={datos.ofertas} elegida={ofertaId} elegir={elegirOferta} dinero={dinero} /> : null;
       case 'productos': return productos.length ? <Productos key={tipo} productos={productos} destacados={destacados} elegidos={productoIds} alternar={alternarProducto} dinero={dinero} abrir={(item) => setFicha({ tipo: 'producto', item })} /> : null;
-      case 'especialistas': return datos.especialistas.length ? <Especialistas key={tipo} lista={datos.especialistas} /> : null;
+      case 'especialistas': return datos.especialistas.length ? <Especialistas key={tipo} lista={datos.especialistas} abrir={setPersona} /> : null;
       case 'horario': return <Horario key={tipo} semana={sede.semana} hoy={sede.hoyFecha} />;
       case 'ubicacion': return <Ubicacion key={tipo} datos={datos} />;
       case 'chat': return <Chat key={tipo} datos={datos} />;
@@ -297,6 +301,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
             abierta={abierta} cerrar={() => setAbierta(false)}
             elegidos={elegidos} apartados={apartados} oferta={oferta}
             quitarServicio={alternarServicio} quitarProducto={alternarProducto}
+            conQuien={conQuien} setConQuien={setConQuien}
             alHacer={(r) => { setHecha(r); setAbierta(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           />
         );
@@ -362,6 +367,29 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
             </div>
           );
         })()}
+      </IOSModal>
+
+      {/* La ficha de una especialista: cuándo atiende, lo que hace y reservar con ella */}
+      <IOSModal
+        isOpen={!!persona} onClose={() => setPersona(null)} title={persona?.nombre ?? ''} subtitle={persona?.especialidad || undefined} id="vitrina-especialista"
+        fijo fixedHeight={false} height="92%"
+        apariencia={{
+          hoja: 'bg-[var(--v-fondo)] border-[var(--v-borde)] text-[var(--v-texto)]',
+          titulo: 'text-[var(--v-texto)]', subtitulo: 'text-[var(--v-suave)]', borde: 'border-[var(--v-borde)]',
+          cerrar: 'bg-[var(--v-tinte)] text-[var(--v-suave)]', asa: 'bg-[var(--v-borde)]',
+        }}
+      >
+        {persona && (
+          <FichaEspecialista
+            persona={persona} servicios={servicios} elegidos={servicioIds} alternar={alternarServicio} dinero={dinero}
+            conElla={!!diseno.elegirEspecialista}
+            reservar={(ids) => {
+              if (diseno.elegirEspecialista) setConQuien((m) => ({ ...m, ...Object.fromEntries(ids.map((id) => [id, persona.id])) }));
+              setPersona(null);
+              setAbierta('siguiente');
+            }}
+          />
+        )}
       </IOSModal>
 
       <AnimatePresence>
@@ -527,6 +555,8 @@ function Carrusel({ fotos, alt, inicio = 0, puntosArriba = false }: { fotos: str
         ref={caja} onScroll={alDeslizar}
         onPointerDown={conMouse ? (e) => {
           if (e.pointerType !== 'mouse' || e.button !== 0) return;
+          // La bocina del video es un botón: si se agarra la foto, el clic no le llega
+          if ((e.target as HTMLElement).closest('button')) return;
           const el = caja.current;
           if (!el) return;
           arrastre.current = { x: e.clientX, desde: el.scrollLeft, movido: false };
@@ -616,7 +646,7 @@ function Abanico({ fotos, abierto, alt, abrir }: { fotos: string[]; abierto: boo
               className="pointer-events-auto absolute left-1/2 top-1/2 -ml-11 -mt-14 h-28 w-22 cursor-pointer overflow-hidden rounded-2xl border-2 border-white bg-[var(--v-sup)] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.55)]"
             >
               {c.f ? (
-                <Foto src={c.f} alt={i === 0 ? alt : ''} />
+                <Foto src={c.f} alt={i === 0 ? alt : ''} activo />
               ) : (
                 <div className="grid size-full place-items-center bg-neutral-400/90 text-center text-white">
                   <span><span className="block text-lg font-bold leading-none">+{c.mas}</span><span className="text-[11px] font-semibold">más</span></span>
@@ -641,14 +671,17 @@ function MasFotos({ cuantas }: { cuantas: number }) {
 }
 
 /**
- * Una foto del catálogo. Si es un video: en una miniatura, su primer cuadro
- * con un ▶; con `reproducir` (el carrusel), el video.
+ * Una foto del catálogo. Si es un video: en una miniatura, una vista previa
+ * sin sonido (`activo`: con mouse, mientras está encima; sin `activo`, en el
+ * teléfono, mientras se ve); con `reproducir` (el carrusel), el video con su
+ * bocina.
  */
-function Foto({ src, alt, reproducir = false }: { src: string | null; alt: string; reproducir?: boolean }) {
+function Foto({ src, alt, reproducir = false, activo }: { src: string | null; alt: string; reproducir?: boolean; activo?: boolean }) {
   const url = urlDeFoto(src);
   const encuadre = useContext(EncuadresVitrina)[src ?? ''];
   const esVideo = useContext(VideosVitrina)[src ?? ''] != null;
   if (url && esVideo && reproducir) return <VideoVitrina cuadro={url} video={`${url}/video`} alt={alt} encuadre={encuadre} />;
+  if (url && esVideo) return <VideoPrevia cuadro={url} video={`${url}/video`} alt={alt} encuadre={encuadre} activo={activo} />;
   return url ? (
     <span className="relative block size-full"><FotoEncuadrada src={url} alt={alt} encuadre={encuadre} video={esVideo ? `${url}/video` : null} /></span>
   ) : (
@@ -682,12 +715,62 @@ function VideoVitrina({ cuadro, video, alt, encuadre }: { cuadro: string; video:
         className="absolute inset-0 size-full" style={estiloEncuadre(encuadre)}
       />
       <button
-        type="button" onClick={(e) => { e.stopPropagation(); setConSonido((v) => !v); }}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          const el = ref.current;
+          const sonar = !conSonido;
+          // Directo en el video y en el mismo clic: así el navegador deja que suene
+          if (el) { el.muted = !sonar; if (sonar && el.paused) void el.play().catch(() => undefined); }
+          setConSonido(sonar);
+        }}
         aria-label={conSonido ? 'Quitar el sonido' : 'Poner sonido'}
         className="absolute bottom-2 left-2 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/55 text-white backdrop-blur transition active:scale-95"
       >
         {conSonido ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
       </button>
+    </span>
+  );
+}
+
+/**
+ * La vista previa de un video en una miniatura: su primer cuadro y, al pasar
+ * el mouse (`activo`), el video sin sonido y en bucle; al salir vuelve al
+ * principio. Sin `activo` (en el teléfono no hay mouse) corre sin sonido
+ * mientras se ve. Sin ▶ encima: el movimiento ya dice que es un video. El
+ * video no se baja hasta que hace falta.
+ */
+function VideoPrevia({ cuadro, video, alt, encuadre, activo }: { cuadro: string; video: string; alt: string; encuadre?: Encuadre; activo?: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [aLaVista, setALaVista] = useState(false);
+  const porMouse = activo !== undefined;
+  useEffect(() => {
+    const el = ref.current;
+    if (porMouse || !el || typeof IntersectionObserver === 'undefined') return;
+    const vigia = new IntersectionObserver(([e]) => setALaVista(e.isIntersecting && e.intersectionRatio >= 0.6), { threshold: [0, 0.6] });
+    vigia.observe(el);
+    return () => vigia.disconnect();
+  }, [porMouse]);
+  const correr = porMouse ? !!activo : aLaVista;
+  const [usado, setUsado] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (correr) {
+      setUsado(true);
+      el.muted = true;
+      void el.play().catch(() => undefined);
+    } else if (!el.paused) {
+      el.pause();
+      if (porMouse) el.currentTime = 0;
+    }
+  }, [correr, porMouse, usado]);
+  return (
+    <span className="relative block size-full overflow-hidden">
+      <video
+        ref={ref} src={usado || correr ? video : undefined} poster={cuadro} aria-label={alt} muted loop playsInline preload="none"
+        className="pointer-events-none absolute inset-0 size-full" style={estiloEncuadre(encuadre)}
+      />
     </span>
   );
 }
@@ -792,7 +875,7 @@ function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }:
               {conMouse && <Abanico fotos={fotos} abierto={encima === s.id} alt={s.nombre} abrir={(foto) => abrir(s, foto)} />}
               <article className={`${TARJETA} flex overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-18px_rgba(0,0,0,0.45)] ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
                 <button type="button" onClick={() => abrir(s)} aria-label={`Ver ${s.nombre}`} className="group relative w-28 cursor-pointer shrink-0 overflow-hidden @md:w-32">
-                  <span className="block size-full transition duration-500 group-hover:scale-105"><Foto src={s.foto} alt={s.nombre} /></span>
+                  <span className="block size-full transition duration-500 group-hover:scale-105"><Foto src={s.foto} alt={s.nombre} activo={conMouse ? encima === s.id : undefined} /></span>
                   <MasFotos cuantas={fotos.length} />
                   {destacados.has(s.id) ? <Recomendado /> : s.popular && (
                     <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
@@ -914,24 +997,118 @@ function Productos({ productos, destacados, elegidos, alternar, dinero, abrir }:
   );
 }
 
-function Especialistas({ lista }: { lista: EspecialistaVitrina[] }) {
+/** Su foto redonda o, sin foto, sus iniciales */
+function Avatar({ e, tam = 'size-14' }: { e: EspecialistaVitrina; tam?: string }) {
+  return e.foto ? (
+    <span className={`mx-auto block ${tam} overflow-hidden rounded-full bg-[var(--v-tinte)]`}><Foto src={e.foto} alt={e.nombre} /></span>
+  ) : (
+    <span className={`mx-auto grid ${tam} place-items-center rounded-full bg-[var(--v-tinte)] text-lg font-bold text-[var(--v-p)]`}>{iniciales(e.nombre)}</span>
+  );
+}
+
+function Especialistas({ lista, abrir }: { lista: EspecialistaVitrina[]; abrir: (e: EspecialistaVitrina) => void }) {
   return (
     <section aria-labelledby="v-equipo">
-      <h2 id="v-equipo" className={`${TITULO_BLOQUE} mb-3`}>Quién te atiende</h2>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 id="v-equipo" className={TITULO_BLOQUE}>Quién te atiende</h2>
+        <span className="text-xs text-[var(--v-suave)]">Toca para ver lo que hace</span>
+      </div>
       <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {lista.map((e) => (
-          <div key={e.id} className={`${TARJETA} w-36 shrink-0 p-4 text-center`}>
-            {e.foto ? (
-              <span className="mx-auto block size-14 overflow-hidden rounded-full bg-[var(--v-tinte)]"><Foto src={e.foto} alt={e.nombre} /></span>
-            ) : (
-              <span className="mx-auto grid size-14 place-items-center rounded-full bg-[var(--v-tinte)] text-lg font-bold text-[var(--v-p)]">{iniciales(e.nombre)}</span>
-            )}
+          <button
+            key={e.id} type="button" onClick={() => abrir(e)} aria-label={`Ver a ${e.nombre}`}
+            className={`${TARJETA} w-36 shrink-0 cursor-pointer p-4 text-center transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_-18px_rgba(0,0,0,0.45)] active:scale-[0.98]`}
+          >
+            <Avatar e={e} />
             <p className="mt-2 truncate text-sm font-semibold">{e.nombre}</p>
             {e.especialidad && <p className="truncate text-xs text-[var(--v-suave)]">{e.especialidad}</p>}
-          </div>
+          </button>
         ))}
       </div>
     </section>
+  );
+}
+
+/**
+ * Lo que la clienta ve de una especialista: cuándo atiende, los servicios
+ * que hace (se agregan desde aquí) y «Reservar con ella», que deja esos
+ * servicios con ella y sigue al día y la hora. Si la dueña no deja elegir
+ * especialista, se reserva igual pero con quien esté libre.
+ */
+function FichaEspecialista({ persona, servicios, elegidos, alternar, dinero, conElla, reservar }: {
+  persona: EspecialistaVitrina; servicios: ServicioVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
+  conElla: boolean; reservar: (servicioIds: string[]) => void;
+}) {
+  const suyos = servicios.filter((s) => !persona.categorias || persona.categorias.includes(s.categoria));
+  const marcados = suyos.filter((s) => elegidos.includes(s.id)).map((s) => s.id);
+  // Empieza el lunes, como el horario de la sede; solo los días que viene
+  const dias = [1, 2, 3, 4, 5, 6, 0].map((d) => persona.semana?.find((x) => x.dia === d)).filter((d): d is NonNullable<typeof d> => !!d?.abierto);
+  return (
+    <div className="mx-auto max-w-md space-y-5">
+      <div className="flex flex-col items-center text-center">
+        <Avatar e={persona} tam="size-24" />
+        <p className="mt-3 text-lg font-bold">{persona.nombre}</p>
+        {persona.especialidad && <p className="text-sm text-[var(--v-suave)]">{persona.especialidad}</p>}
+      </div>
+
+      {persona.semana && (
+        <div className={`${TARJETA} p-4`}>
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4 text-[var(--v-p)]" />Cuándo atiende</h3>
+          {dias.length ? (
+            <ul className="divide-y divide-[var(--v-borde)] text-sm">
+              {dias.map((d) => (
+                <li key={d.dia} className="flex justify-between gap-4 py-1.5">
+                  <span>{NOMBRE_DIA[d.dia]}</span>
+                  <span className="text-right">{d.tramos.map((t) => `${horaBonita(t.desde)} – ${horaBonita(t.hasta)}`).join(', ')}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-[var(--v-suave)]">Ahora mismo no tiene días en el horario.</p>
+          )}
+        </div>
+      )}
+
+      <div>
+        <h3 className="mb-2 text-sm font-semibold">Lo que hace</h3>
+        {suyos.length ? (
+          <ul className="space-y-2">
+            {suyos.map((s) => {
+              const dentro = elegidos.includes(s.id);
+              return (
+                <li key={s.id} className={`${TARJETA} flex items-center gap-3 overflow-hidden p-2 pr-3 ${dentro ? 'ring-2 ring-[var(--v-p)]' : ''}`}>
+                  <span className="relative size-14 shrink-0 overflow-hidden rounded-2xl"><Foto src={s.foto} alt={s.nombre} activo={false} /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{s.nombre}</span>
+                    <span className="block truncate text-xs text-[var(--v-suave)]"><Precio s={s} dinero={dinero} /> · {duracion(s.duracionMin)}</span>
+                  </span>
+                  <button
+                    type="button" onClick={() => alternar(s.id)} aria-pressed={dentro}
+                    aria-label={dentro ? `Quitar ${s.nombre}` : `Agregar ${s.nombre}`}
+                    className={`grid size-9 shrink-0 cursor-pointer place-items-center rounded-full transition active:scale-95 ${dentro ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'bg-[var(--v-tinte)] text-[var(--v-p)]'}`}
+                  >
+                    {dentro ? <Check className="size-4" /> : <Plus className="size-4" />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-[var(--v-suave)]">Pronto verás aquí sus servicios.</p>
+        )}
+      </div>
+
+      {!!suyos.length && (
+        <div className="sticky bottom-0 -mx-1 bg-[var(--v-fondo)] px-1 pb-1 pt-2">
+          <button type="button" onClick={() => reservar(marcados)} disabled={!marcados.length} className={`${BOTON_P} w-full py-3.5 text-[15px]`}>
+            <CalendarDays className="size-4" />
+            {conElla ? `Reservar con ${persona.nombre}` : 'Reservar'}
+            {marcados.length > 0 && ` (${marcados.length})`}
+          </button>
+          {!marcados.length && <p className="mt-2 text-center text-xs text-[var(--v-suave)]">Agrega al menos un servicio para reservar</p>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1147,6 +1324,7 @@ function ListaElegidos({ elegidos, apartados, oferta, quitarServicio, quitarProd
  */
 function PanelReserva({
   datos, slug, previa, dinero, cuenta, completa, abierta, cerrar, elegidos, apartados, oferta, quitarServicio, quitarProducto, alHacer,
+  conQuien, setConQuien,
 }: {
   datos: DatosVitrina; slug: string | null; previa: boolean; dinero: Intl.NumberFormat; cuenta: CuentaDeLaReserva;
   /** En pantallas anchas, a pantalla completa; en el teléfono va dentro de la hoja que sube */
@@ -1156,6 +1334,9 @@ function PanelReserva({
   cerrar: () => void;
   elegidos: ServicioVitrina[]; apartados: ProductoVitrina[]; oferta: OfertaVitrina | null;
   quitarServicio: (id: string) => void; quitarProducto: (id: string) => void; alHacer: (r: ReservaHecha) => void;
+  /** Con quién quiere cada servicio (sin entrada = quien esté libre). Vive en la página: desde una especialista ya se elige */
+  conQuien: Record<string, string>;
+  setConQuien: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }) {
   const { sede, diseno } = datos;
   const gustos = datos.gustos ?? [];
@@ -1163,8 +1344,6 @@ function PanelReserva({
   const [direccion, setDireccion] = useState(1);
   const [fecha, setFecha] = useState<string>(sede.hoyFecha);
   const [hora, setHora] = useState<string | null>(null);
-  /** Con quién quiere cada servicio (sin entrada = quien esté libre) */
-  const [conQuien, setConQuien] = useState<Record<string, string>>({});
   const [contacto, setContacto] = useState(leerContacto);
   const [nota, setNota] = useState('');
   const [respuestas, setRespuestas] = useState<Record<string, RespuestaGusto>>({});
@@ -1245,14 +1424,26 @@ function PanelReserva({
     return () => { window.removeEventListener('keydown', tecla); document.body.style.overflow = antes; };
   }, [abierta, completa, cerrar, previa]);
 
+  // Con quien eligió: los días que ella no viene salen cerrados (la sede puede abrir)
+  const semanasElegidas = useMemo(() => [...new Set(Object.values(conQuien))]
+    .map((id) => datos.especialistas.find((e) => e.id === id)?.semana)
+    .filter((x): x is NonNullable<typeof x> => !!x), [conQuien, datos.especialistas]);
   const dias = useMemo(() => {
     const n = Math.max(0, Math.min(sede.diasParaReservar, DIAS_EN_LA_TIRA));
     return Array.from({ length: n + 1 }, (_, i) => {
       const f = sumarDias(sede.hoyFecha, i);
-      const abierto = sede.semana.find((d) => d.dia === diaDeSemana(f))?.abierto ?? true;
+      const dia = diaDeSemana(f);
+      const abierto = (sede.semana.find((d) => d.dia === dia)?.abierto ?? true)
+        && semanasElegidas.every((sem) => sem.find((d) => d.dia === dia)?.abierto ?? true);
       return { fecha: f, abierto };
     });
-  }, [sede.diasParaReservar, sede.hoyFecha, sede.semana]);
+  }, [sede.diasParaReservar, sede.hoyFecha, sede.semana, semanasElegidas]);
+  // Si el día elegido quedó cerrado (eligió a alguien que ese día no viene), al primero que sí
+  useEffect(() => {
+    if (dias.find((d) => d.fecha === fecha)?.abierto !== false || !semanasElegidas.length) return;
+    const primero = dias.find((d) => d.abierto);
+    if (primero) setFecha(primero.fecha);
+  }, [dias, fecha, semanasElegidas.length]);
 
   // Las horas libres de verdad: las mismas que ofrece Lalán en los chats.
   // Al cambiar de día o de servicios se vuelve a elegir la hora; al cambiar
