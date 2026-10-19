@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, PackageOpen, TrendingDown } from 'lucide-react';
+import { EtiquetaSede } from '../ui/CopiarASede';
 
 /**
  * Inventario (alertas de stock) y rentabilidad por servicio (precio contra
@@ -75,9 +76,13 @@ export const InventarioYMargenes: React.FC<{
                   ? `Aún no tiene receta o costo de productos configurado. Agrega los insumos en el Catálogo para ver la ganancia real.`
                   : `De cada ${dinero(svc.basePrice)} que cobras, ${dinero(svc.totalCogs)} se van en productos y te quedan ${dinero(svc.grossMargin)} de ganancia — el ${svc.marginPercent}% del precio.`;
                 return (
-                  <div key={idx} className="cursor-pointer group/row" onClick={() => navigateToCatalog({ serviceId: svc.serviceId, tab: 'recipe' })}>
+                  <div key={svc.serviceId ?? idx} className="cursor-pointer group/row" onClick={() => navigateToCatalog({ serviceId: svc.serviceId, tab: 'recipe' })}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[0.75rem] font-medium text-slate-800 dark:text-slate-200 truncate flex-1 group-hover/row:underline group-hover/row:text-[var(--primary)]">{svc.serviceName}</span>
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-[0.75rem] font-medium text-slate-800 dark:text-slate-200 truncate group-hover/row:underline group-hover/row:text-[var(--primary)]">{svc.serviceName}</span>
+                        {/* Con todas las sedes, cada sede trae su copia con su precio: se dice de cuál es */}
+                        <EtiquetaSede locationId={svc.locationId} />
+                      </div>
                       <div className="flex items-center gap-1.5 shrink-0 relative group/pct">
                         <span className="text-[0.6875rem] font-bold" style={{ color: ratingColor }}>{ratingLabel}</span>
                         <span className="text-xs font-extrabold cursor-help" style={{ color: ratingColor }}>
