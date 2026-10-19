@@ -4,6 +4,8 @@
  * servidor.
  */
 
+import type { Encuadre } from '../components/catalogo/FotoEncuadrada';
+
 export type TipoBloqueVitrina =
   | 'portada' | 'mensaje' | 'servicios' | 'ofertas' | 'productos' | 'especialistas' | 'horario' | 'ubicacion' | 'chat';
 
@@ -23,17 +25,24 @@ export interface DisenoVitrina {
   /** Reservas por confirmar: a los cuántos minutos se le recuerda al equipo y se le escribe a la clienta. 0 = no. Falta = 5 */
   minutosParaRecordar?: number;
   elegirEspecialista: boolean;
-  /** Qué parte de la foto de portada se ve, de arriba (0) a abajo (100) */
+  /** Qué parte de la foto de portada se ve, de arriba (0) a abajo (100). Lo viejo: solo vale para la primera foto mientras no tenga encuadre */
   portadaY?: number;
+  /** El nombre, el horario y la sede: sobre la foto (falta = así) o aparte, arriba o abajo */
+  portadaTexto?: TextoPortada;
+  /** Qué tan alta es la foto de portada (falta = media) */
+  portadaAlto?: AltoPortada;
   /** El orden de servicios y productos (ids): lo primero se vende más. Lo que no está va después */
   orden?: { servicios: string[]; productos: string[] };
   /** Lo que la dueña recomienda: sale primero y con su etiqueta */
   destacados?: string[];
 }
 
+export type TextoPortada = 'sobre' | 'arriba' | 'abajo';
+export type AltoPortada = 'baja' | 'media' | 'alta';
+
 /** Lo que la dueña ve de cada bloque al ordenarlos */
 export const INFO_BLOQUE_VITRINA: Record<TipoBloqueVitrina, { nombre: string; ayuda: string }> = {
-  portada: { nombre: 'Portada', ayuda: 'La foto de la sede, el título y si hoy está abierto' },
+  portada: { nombre: 'Portada', ayuda: 'Las fotos de la sede, el título y si hoy está abierto' },
   mensaje: { nombre: 'Mensaje', ayuda: 'Un texto tuyo: bienvenida, promoción del mes, aviso' },
   servicios: { nombre: 'Servicios', ayuda: 'Los servicios publicados, con foto y precio' },
   ofertas: { nombre: 'Ofertas', ayuda: 'Las ofertas activas de la sede' },
@@ -126,6 +135,10 @@ export interface DatosVitrina {
   };
   diseno: DisenoVitrina;
   portada: string | null;
+  /** Todas las fotos de la portada, en orden (la primera es `portada`); con varias se desliza */
+  portadas?: string[];
+  /** Cómo se acomoda cada foto (portada, servicios, productos), por su dirección */
+  encuadres?: Record<string, Encuadre>;
   servicios: ServicioVitrina[];
   productos: ProductoVitrina[];
   ofertas: OfertaVitrina[];
@@ -174,6 +187,9 @@ export interface ConfigVitrina {
   redes?: { instagram: string | null; facebook: string | null };
   diseno: DisenoVitrina;
   portada: string | null;
+  portadas?: string[];
+  /** Cómo se acomoda cada foto de la portada, por su dirección */
+  encuadres?: Record<string, Encuadre>;
   incluidaEnElPlan: boolean;
   publicados: { servicios: number; serviciosPublicados: number; productos: number; productosPublicados: number };
 }

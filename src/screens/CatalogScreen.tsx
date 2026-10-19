@@ -56,6 +56,7 @@ import { VariantesDePrecio, preciosDeSedesDesde, preciosParaGuardar, type Precio
 import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
 import { usePlan } from '../context/PlanContext';
+import { useEncuadres } from '../hooks/useEncuadres';
 import { SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
 
 /**
@@ -70,6 +71,8 @@ async function subirFotos(fotos: FotoDeGaleria[], subir: (dataUrl: string) => Pr
 }
 
 export const CatalogScreen: React.FC = () => {
+  // Cómo acomodó la dueña cada foto: igual en la lista, en el formulario y en la Vitrina
+  const { encuadres, guardar: guardarEncuadre } = useEncuadres();
   const {
     services,
     addService,
@@ -697,6 +700,7 @@ export const CatalogScreen: React.FC = () => {
                     <div className="flex items-center gap-2.5 min-w-0">
                       <MiniaturaCatalogo
                         fotoId={service.fotoId}
+                        encuadre={service.fotoId ? encuadres[service.fotoId] : null}
                         nombre={service.name}
                         icono={iconoCategoria('service', service.category)}
                         color={service.color || '#e11d48'}
@@ -884,6 +888,7 @@ export const CatalogScreen: React.FC = () => {
                     <div className="flex items-center gap-3 min-w-0">
                       <MiniaturaCatalogo
                         fotoId={product.fotoId}
+                        encuadre={product.fotoId ? encuadres[product.fotoId] : null}
                         nombre={product.name}
                         icono={iconoCategoria('product', product.category)}
                         className="w-12 h-12"
@@ -1314,6 +1319,8 @@ export const CatalogScreen: React.FC = () => {
                   const listo = await galeriaServicio(editingServiceId, { orden: claves });
                   if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
                 }}
+                encuadres={encuadres}
+                onEncuadre={guardarEncuadre}
               />
 
               <SelectorDeCategoria kind="service" value={serviceForm.category} onChange={(key, nombre) => setServiceForm({ ...serviceForm, category: key, categoryName: nombre })} />
@@ -1543,6 +1550,8 @@ export const CatalogScreen: React.FC = () => {
                   if (!editingProductId) { setFotosNuevoProducto(l => claves.map(c => l.find(f => f.clave === c)!).filter(Boolean)); return; }
                   await galeriaProducto(editingProductId, { orden: claves });
                 }}
+                encuadres={encuadres}
+                onEncuadre={guardarEncuadre}
               />
             )}
 

@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { Camera, ChevronLeft, ChevronRight, ImagePlus, Loader2, MapPin, Plus, Star, Trash2 } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, Crop, ImagePlus, Loader2, MapPin, Plus, RotateCcw, Star, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { urlDeFoto } from '../../services/api';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
+import { AjustesDeEncuadre, CAJA_ARRASTRABLE, ENCUADRE_NORMAL, EtiquetaArrastrar, FotoEncuadrada, esNormal, useArrastrarEncuadre, type Encuadre } from './FotoEncuadrada';
 
 /** La dirección de la foto de un producto o servicio (la sirve la API, pública) */
 export const urlFotoCatalogo = (fotoId?: string | null) => (fotoId ? urlDeFoto(`catalogo/fotos/${fotoId}`) : undefined);
@@ -20,11 +21,17 @@ export const MiniaturaCatalogo: React.FC<{
   className?: string;
   /** false = no lleva la camarita (un insumo no sale en la Vitrina) */
   pideFoto?: boolean;
-}> = ({ fotoId, nombre, icono, color = '#e11d48', className = 'w-10 h-10', pideFoto = true }) => {
+  /** Cómo la acomodó la dueña */
+  encuadre?: Encuadre | null;
+}> = ({ fotoId, nombre, icono, color = '#e11d48', className = 'w-10 h-10', pideFoto = true, encuadre }) => {
   const [rota, setRota] = useState(false);
   const url = urlFotoCatalogo(fotoId);
   if (url && !rota) {
-    return <img src={url} alt={nombre} loading="lazy" onError={() => setRota(true)} className={`${className} rounded-2xl object-cover shrink-0 border border-slate-200 dark:border-neutral-700`} />;
+    return (
+      <span className={`${className} relative block rounded-2xl overflow-hidden shrink-0 border border-slate-200 dark:border-neutral-700`}>
+        <FotoEncuadrada src={url} alt={nombre} encuadre={encuadre} onError={() => setRota(true)} />
+      </span>
+    );
   }
   return (
     <div className={`${className} relative rounded-2xl flex items-center justify-center shrink-0 shadow-xs`} style={{ backgroundColor: `${color}20`, color }} title={pideFoto ? 'Sin foto: agrégala para que se vea en tu Vitrina' : undefined}>
@@ -46,6 +53,13 @@ export interface FotoDeGaleria { clave: string; url: string }
 export const fotosGuardadas = (x?: { fotoId?: string | null; masFotos?: string[] } | null): FotoDeGaleria[] =>
   [x?.fotoId, ...(x?.masFotos ?? [])].filter((id): id is string => !!id).map(id => ({ clave: id, url: urlFotoCatalogo(id)! }));
 
+/** Los textos que cambian si son las fotos de la portada de la Vitrina */
+const TEXTOS = {
+  servicio: { titulo: 'Fotos', detalle: 'la primera es la portada en la Vitrina', primera: 'Portada', vacia: 'Agrega fotos del servicio', sinFotos: 'En la Vitrina se verá sin foto.' },
+  producto: { titulo: 'Fotos', detalle: 'la primera es la portada en la Vitrina', primera: 'Portada', vacia: 'Agrega fotos del producto', sinFotos: 'En la Vitrina se verá sin foto.' },
+  portada: { titulo: 'Fotos de portada', detalle: 'con varias, se deslizan como en Instagram', primera: 'Primera', vacia: 'Agrega la foto de portada', sinFotos: 'La Vitrina usará los colores de la paleta.' },
+};
+
 /**
  * Las fotos de un producto o servicio dentro de su formulario, como un
  * carrusel de Instagram: hasta MAXIMO_FOTOS, la primera es la portada (la que
@@ -56,20 +70,33 @@ export const fotosGuardadas = (x?: { fotoId?: string | null; masFotos?: string[]
  *
  * Si el artículo todavía no existe, quien lo usa guarda las fotos y las sube
  * al crearlo.
+ *
+ * Con `onEncuadre`, cada foto guardada se puede acomodar («Ajustar»): zoom,
+ * llenar o completa, y de lado a lado y de arriba a abajo. La vista grande usa
+ * el mismo recuadro (`aspecto`) que tendrá la foto donde sale.
  */
 export const FotosDelCatalogo: React.FC<{
   fotos: FotoDeGaleria[];
   nombre: string;
-  /** "servicio" o "producto": para los textos */
-  que: 'servicio' | 'producto';
+  /** "servicio", "producto" o la "portada" de la Vitrina: para los textos */
+  que: 'servicio' | 'producto' | 'portada';
   /** Dónde valen las fotos (con varias sedes). Se muestra como etiqueta */
   sede?: string | null;
   onAgregar: (dataUrl: string) => Promise<void> | void;
   onQuitar: (clave: string) => Promise<void> | void;
   onOrdenar: (claves: string[]) => Promise<void> | void;
-}> = ({ fotos, nombre, que, sede, onAgregar, onQuitar, onOrdenar }) => {
+  /** El recuadro de la vista grande (clase de Tailwind) */
+  aspecto?: string;
+  /** Cómo está acomodada cada foto, por su clave */
+  encuadres?: Record<string, Encuadre>;
+  /** Guarda cómo se acomoda una foto ya subida. Sin esto no sale «Ajustar» */
+  onEncuadre?: (clave: string, encuadre: Encuadre) => Promise<void> | void;
+}> = ({ fotos, nombre, que, sede, onAgregar, onQuitar, onOrdenar, aspecto = 'aspect-[4/3]', encuadres, onEncuadre }) => {
   const entrada = useRef<HTMLInputElement>(null);
-  const [trabajando, setTrabajando] = useState<'' | 'subiendo' | 'quitando' | 'ordenando'>('');
+  const [trabajando, setTrabajando] = useState<'' | 'subiendo' | 'quitando' | 'ordenando' | 'ajustando'>('');
+  /** Mientras acomoda una foto: cómo va quedando (se guarda al tocar «Listo») */
+  const [ajuste, setAjuste] = useState<Encuadre | null>(null);
+  const textos = TEXTOS[que];
   const [subidas, setSubidas] = useState<{ van: number; de: number } | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [error, setError] = useState('');
@@ -78,6 +105,24 @@ export const FotosDelCatalogo: React.FC<{
   const caben = MAXIMO_FOTOS - fotos.length;
   const i = Math.min(elegida, Math.max(fotos.length - 1, 0));
   const actual = fotos[i];
+  // Una foto que todavía no se subió no tiene dónde guardar su encuadre
+  const sePuedeAjustar = !!onEncuadre && !!actual && !actual.clave.startsWith('nueva-');
+  const encuadreDe = (clave: string) => encuadres?.[clave] ?? null;
+  const arrastre = useArrastrarEncuadre(ajuste, setAjuste);
+
+  const guardarAjuste = async () => {
+    if (!actual || !ajuste || !onEncuadre) return;
+    setError('');
+    setTrabajando('ajustando');
+    try {
+      await onEncuadre(actual.clave, ajuste);
+      setAjuste(null);
+    } catch (e: any) {
+      setError(e?.message || 'No se pudo guardar cómo se acomoda. Intenta de nuevo.');
+    } finally {
+      setTrabajando('');
+    }
+  };
 
   const elegir = async (lista?: FileList | null) => {
     const archivos = Array.from(lista ?? []).slice(0, caben);
@@ -144,7 +189,7 @@ export const FotosDelCatalogo: React.FC<{
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-          Fotos <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(hasta {MAXIMO_FOTOS}, la primera es la portada en la Vitrina)</span>
+          {textos.titulo} <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(hasta {MAXIMO_FOTOS}, {textos.detalle})</span>
         </label>
         {etiqueta}
       </div>
@@ -160,23 +205,31 @@ export const FotosDelCatalogo: React.FC<{
 
       {actual ? (
         <>
-          <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-neutral-700 bg-slate-100 dark:bg-neutral-800 aspect-[4/3]">
+          <div {...arrastre} className={`relative rounded-2xl overflow-hidden border bg-slate-100 dark:bg-neutral-800 ${aspecto} ${ajuste ? `border-[var(--primary)] ${CAJA_ARRASTRABLE}` : 'border-slate-200 dark:border-neutral-700'}`}>
             {rotas.includes(actual.clave) ? (
               <div className="w-full h-full flex items-center justify-center text-slate-400"><Camera className="w-6 h-6" /></div>
             ) : (
-              <motion.img key={actual.clave} initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }} src={actual.url} alt={nombre || `Foto del ${que}`} onError={() => setRotas(r => [...r, actual.clave])} className="w-full h-full object-cover" />
+              <motion.div key={actual.clave} initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }} className="absolute inset-0">
+                <FotoEncuadrada src={actual.url} alt={nombre || (que === 'portada' ? 'Foto de portada' : `Foto del ${que}`)} encuadre={ajuste ?? encuadreDe(actual.clave)} loading="eager" onError={() => setRotas(r => [...r, actual.clave])} />
+              </motion.div>
             )}
-            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/55 text-white text-[0.6875rem] font-semibold">
-              {i === 0 ? 'Portada' : `${i + 1} de ${fotos.length}`}
+            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/55 text-white text-[0.6875rem] font-semibold pointer-events-none">
+              {i === 0 ? textos.primera : `${i + 1} de ${fotos.length}`}
             </span>
+            {ajuste && <EtiquetaArrastrar />}
             {trabajando && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[0.8125rem] font-semibold gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {trabajando === 'subiendo' ? (subidas && subidas.de > 1 ? `Subiendo ${subidas.van} de ${subidas.de}…` : 'Subiendo foto…') : trabajando === 'quitando' ? 'Quitando foto…' : 'Ordenando…'}
+                {trabajando === 'subiendo' ? (subidas && subidas.de > 1 ? `Subiendo ${subidas.van} de ${subidas.de}…` : 'Subiendo foto…') : trabajando === 'quitando' ? 'Quitando foto…' : trabajando === 'ajustando' ? 'Guardando…' : 'Ordenando…'}
               </div>
             )}
-            {!trabajando && !confirmando && (
+            {!trabajando && !confirmando && !ajuste && (
               <div className="absolute bottom-2 inset-x-2 flex flex-wrap justify-end gap-1.5">
+                {sePuedeAjustar && !rotas.includes(actual.clave) && (
+                  <button type="button" onClick={() => setAjuste(encuadreDe(actual.clave) ?? ENCUADRE_NORMAL)} className={`${boton} text-slate-800 dark:text-neutral-100 hover:text-[var(--primary)]`}>
+                    <Crop className="w-3.5 h-3.5" /> Ajustar
+                  </button>
+                )}
                 {fotos.length > 1 && (
                   <>
                     <button type="button" aria-label="Mover a la izquierda" disabled={i === 0} onClick={() => mover(i - 1)} className={`${boton} text-slate-800 dark:text-neutral-100`}>
@@ -187,7 +240,7 @@ export const FotosDelCatalogo: React.FC<{
                     </button>
                     {i > 0 && (
                       <button type="button" onClick={() => mover(0)} className={`${boton} text-slate-800 dark:text-neutral-100 hover:text-[var(--primary)]`}>
-                        <Star className="w-3.5 h-3.5" /> Portada
+                        <Star className="w-3.5 h-3.5" /> {textos.primera}
                       </button>
                     )}
                   </>
@@ -200,8 +253,8 @@ export const FotosDelCatalogo: React.FC<{
             {confirmando && !trabajando && (
               <div className="absolute inset-x-2 bottom-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 shadow-md space-y-2">
                 <p className="text-[0.75rem] text-slate-700 dark:text-neutral-200">
-                  ¿Quitar esta foto de <b>{nombre || `este ${que}`}</b>?{' '}
-                  {fotos.length === 1 ? 'En la Vitrina se verá sin foto.' : i === 0 ? 'La siguiente pasa a ser la portada.' : ''}
+                  {que === 'portada' ? '¿Quitar esta foto de la portada?' : <>¿Quitar esta foto de <b>{nombre || `este ${que}`}</b>?</>}{' '}
+                  {fotos.length === 1 ? textos.sinFotos : i === 0 ? `La siguiente pasa a ser la ${textos.primera.toLowerCase()}.` : ''}
                 </p>
                 <div className="flex gap-1.5 justify-end">
                   <button type="button" onClick={() => setConfirmando(false)} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 ios-touch cursor-pointer">
@@ -215,27 +268,45 @@ export const FotosDelCatalogo: React.FC<{
             )}
           </div>
 
+          {ajuste && (
+            <div className="p-3 rounded-2xl border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 space-y-2.5">
+              <AjustesDeEncuadre encuadre={ajuste} cambiar={setAjuste} />
+              <div className="flex items-center gap-1.5">
+                <button type="button" disabled={esNormal(ajuste) || !!trabajando} onClick={() => setAjuste(ENCUADRE_NORMAL)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-40 cursor-pointer">
+                  <RotateCcw className="w-3.5 h-3.5" /> Como venía
+                </button>
+                <span className="flex-1" />
+                <button type="button" disabled={!!trabajando} onClick={() => setAjuste(null)} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 ios-touch cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="button" disabled={!!trabajando} onClick={guardarAjuste} className="px-3 py-1.5 rounded-full bg-[var(--primary)] text-white text-[0.75rem] font-bold ios-touch cursor-pointer disabled:opacity-60">
+                  Listo
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* La tira de miniaturas: tocar una la muestra arriba; el + agrega más */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5 snap-x">
             {fotos.map((f, n) => (
               <button
                 key={f.clave}
                 type="button"
-                onClick={() => { setElegida(n); setConfirmando(false); }}
-                aria-label={n === 0 ? 'Portada' : `Foto ${n + 1}`}
+                onClick={() => { setElegida(n); setConfirmando(false); setAjuste(null); }}
+                aria-label={n === 0 ? textos.primera : `Foto ${n + 1}`}
                 aria-pressed={n === i}
                 className={`relative w-14 h-14 shrink-0 snap-start rounded-xl overflow-hidden border-2 transition ios-touch cursor-pointer ${n === i ? 'border-[var(--primary)] scale-[1.03]' : 'border-transparent opacity-80 hover:opacity-100'}`}
               >
                 {rotas.includes(f.clave)
                   ? <span className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-neutral-800 text-slate-400"><Camera className="w-4 h-4" /></span>
-                  : <img src={f.url} alt="" loading="lazy" onError={() => setRotas(r => [...r, f.clave])} className="w-full h-full object-cover" />}
+                  : <FotoEncuadrada src={f.url} alt="" encuadre={encuadreDe(f.clave)} onError={() => setRotas(r => [...r, f.clave])} />}
                 {n === 0 && <Star className="absolute top-0.5 left-0.5 w-3 h-3 text-white drop-shadow fill-white" />}
               </button>
             ))}
             {caben > 0 && (
               <button
                 type="button"
-                disabled={!!trabajando}
+                disabled={!!trabajando || !!ajuste}
                 onClick={() => entrada.current?.click()}
                 aria-label="Agregar fotos"
                 className="w-14 h-14 shrink-0 rounded-xl border-2 border-dashed border-slate-300 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 flex flex-col items-center justify-center ios-touch cursor-pointer hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-50"
@@ -251,7 +322,7 @@ export const FotosDelCatalogo: React.FC<{
           type="button"
           disabled={!!trabajando}
           onClick={() => entrada.current?.click()}
-          className="w-full aspect-[4/3] max-h-48 rounded-2xl border-2 border-dashed border-slate-300 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800/60 flex flex-col items-center justify-center gap-1.5 px-4 text-center ios-touch cursor-pointer hover:border-[var(--primary)] transition disabled:opacity-60"
+          className={`w-full ${aspecto} max-h-48 rounded-2xl border-2 border-dashed border-slate-300 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800/60 flex flex-col items-center justify-center gap-1.5 px-4 text-center ios-touch cursor-pointer hover:border-[var(--primary)] transition disabled:opacity-60`}
         >
           {trabajando ? (
             <Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" />
@@ -261,7 +332,7 @@ export const FotosDelCatalogo: React.FC<{
             </span>
           )}
           <span className="text-[0.8125rem] font-bold text-slate-800 dark:text-white">
-            {trabajando ? (subidas && subidas.de > 1 ? `Subiendo ${subidas.van} de ${subidas.de}…` : 'Preparando la foto…') : `Agrega fotos del ${que}`}
+            {trabajando ? (subidas && subidas.de > 1 ? `Subiendo ${subidas.van} de ${subidas.de}…` : 'Preparando la foto…') : textos.vacia}
           </span>
           <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 max-w-[17rem]">
             Hasta {MAXIMO_FOTOS}, como un carrusel. Tómalas con luz natural y un fondo limpio.

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Minus,
@@ -11,6 +11,7 @@ import type {
 import { estiloVitrina } from './temaVitrina';
 import { IOSModal } from '../ui/IOSModal';
 import MapaSede from './MapaSede';
+import { FotoEncuadrada, type Encuadre } from '../catalogo/FotoEncuadrada';
 
 /**
  * La Vitrina tal como la ve una clienta: los bloques en el orden que eligió la
@@ -35,6 +36,25 @@ const POR_PAGINA = 15;
 const CLAVE_CONTACTO = 'lalan_vitrina_contacto';
 /** Desde este ancho "Tu reserva" va al lado (el mismo corte que @4xl, 56rem) */
 const ANCHO_CON_PANEL = 896;
+
+/** Cómo se acomoda cada foto, por su dirección: lo lee `Foto` sin pasarlo de mano en mano */
+const EncuadresVitrina = createContext<Record<string, Encuadre>>({});
+
+/** Las fotos de la portada (las Vitrinas viejas solo mandan `portada`) */
+const fotosDePortada = (datos: DatosVitrina) => (datos.portadas?.length ? datos.portadas : datos.portada ? [datos.portada] : []);
+
+/**
+ * Los encuadres de la página. Lo viejo: antes la portada solo se movía de
+ * arriba a abajo (`portadaY`); la primera foto lo sigue usando mientras la
+ * dueña no la acomode de nuevo.
+ */
+function encuadresDe(datos: DatosVitrina): Record<string, Encuadre> {
+  const todos = { ...(datos.encuadres ?? {}) };
+  const primera = fotosDePortada(datos)[0];
+  const y = datos.diseno.portadaY ?? 50;
+  if (primera && !todos[primera] && y !== 50) todos[primera] = { x: 50, y, zoom: 100, completa: false };
+  return todos;
+}
 
 interface Props {
   datos: DatosVitrina;
@@ -203,8 +223,10 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
 
   const cuenta = useMemo(() => cuentaDeLaReserva(elegidos, apartados, oferta), [elegidos, apartados, oferta]);
   const cuantos = elegidos.length + apartados.length;
+  const encuadres = useMemo(() => encuadresDe(datos), [datos]);
 
   return (
+    <EncuadresVitrina.Provider value={encuadres}>
     <div ref={raiz} style={estiloVitrina(diseno)} className={`@container ${previa ? 'min-h-full' : 'min-h-dvh'} bg-[var(--v-fondo)] text-[var(--v-texto)] antialiased`}>
       {hecha ? (
         <Exito hecha={hecha} salon={datos.salon.nombre} otra={reiniciar} />
@@ -349,6 +371,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
         )}
       </AnimatePresence>
     </div>
+    </EncuadresVitrina.Provider>
   );
 }
 
@@ -366,33 +389,66 @@ function Encabezado({ datos }: { datos: DatosVitrina }) {
   );
 }
 
+/** Qué tan alta es la portada: con el texto encima es lo mínimo, sola es justo eso */
+const ALTO_PORTADA = {
+  baja: { con: 'min-h-[180px] @2xl:min-h-[230px]', sola: 'h-[180px] @2xl:h-[230px]' },
+  media: { con: 'min-h-[230px] @2xl:min-h-[300px]', sola: 'h-[230px] @2xl:h-[300px]' },
+  alta: { con: 'min-h-[320px] @2xl:min-h-[440px]', sola: 'h-[320px] @2xl:h-[440px]' },
+} as const;
+
+/**
+ * La portada: una foto o varias que se deslizan como en Instagram. El nombre,
+ * el horario y la sede van encima de la foto (como siempre) o aparte, arriba o
+ * abajo, para la dueña que quiere la foto limpia.
+ */
 function Portada({ datos }: { datos: DatosVitrina }) {
-  const foto = urlDeFoto(datos.portada);
-  const abierto = !datos.sede.hoy.startsWith('Hoy está cerrado');
-  return (
-    <section className="relative overflow-hidden rounded-[28px] bg-[var(--v-p)]">
-      {foto ? (
-        <img src={foto} alt="" className="absolute inset-0 size-full object-cover" style={{ objectPosition: `50% ${datos.diseno.portadaY ?? 50}%` }} />
-      ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_10%_0%,var(--v-a),transparent_60%),radial-gradient(90%_90%_at_100%_100%,var(--v-t),transparent_55%)] opacity-80" />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
-      <div className="relative flex min-h-[230px] flex-col justify-end p-5 text-white @2xl:min-h-[300px] @2xl:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">{datos.salon.nombre}</p>
-        <h1 className="mt-1 text-3xl font-bold leading-tight tracking-tight @2xl:text-4xl">{datos.diseno.titulo || datos.sede.nombre}</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 backdrop-blur">
-            <span className={`size-2 rounded-full ${abierto ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-            {datos.sede.hoy}
-          </span>
-          {datos.diseno.titulo && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 backdrop-blur">
-              <MapPin className="size-3.5" /> {datos.sede.nombre}
-            </span>
-          )}
+  const fotos = fotosDePortada(datos);
+  const texto = datos.diseno.portadaTexto ?? 'sobre';
+  const alto = ALTO_PORTADA[datos.diseno.portadaAlto ?? 'media'] ?? ALTO_PORTADA.media;
+  const sobre = texto === 'sobre';
+  const fondo = fotos.length ? (
+    <Carrusel fotos={fotos} alt={datos.diseno.titulo || datos.sede.nombre} puntosArriba={sobre} />
+  ) : (
+    <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_10%_0%,var(--v-a),transparent_60%),radial-gradient(90%_90%_at_100%_100%,var(--v-t),transparent_55%)] opacity-80" />
+  );
+
+  if (sobre) {
+    return (
+      <section className="relative overflow-hidden rounded-[28px] bg-[var(--v-p)]">
+        <div className="absolute inset-0">{fondo}</div>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+        {/* Sin clics: el dedo pasa a la foto y la desliza */}
+        <div className={`pointer-events-none relative flex ${alto.con} flex-col justify-end p-5 text-white @2xl:p-8`}>
+          <TextoDePortada datos={datos} sobreLaFoto />
         </div>
+      </section>
+    );
+  }
+  const foto = <div className={`relative overflow-hidden rounded-[28px] bg-[var(--v-p)] ${alto.sola}`}>{fondo}</div>;
+  const textos = <div className="px-1"><TextoDePortada datos={datos} /></div>;
+  return <section className="space-y-4">{texto === 'arriba' ? <>{textos}{foto}</> : <>{foto}{textos}</>}</section>;
+}
+
+/** El nombre, el título y cómo está hoy: en blanco sobre la foto, o con los colores de la página */
+function TextoDePortada({ datos, sobreLaFoto = false }: { datos: DatosVitrina; sobreLaFoto?: boolean }) {
+  const abierto = !datos.sede.hoy.startsWith('Hoy está cerrado');
+  const chip = `inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${sobreLaFoto ? 'bg-white/15 backdrop-blur' : 'bg-[var(--v-tinte)]'}`;
+  return (
+    <>
+      <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${sobreLaFoto ? 'text-white/80' : 'text-[var(--v-suave)]'}`}>{datos.salon.nombre}</p>
+      <h1 className="mt-1 text-3xl font-bold leading-tight tracking-tight @2xl:text-4xl">{datos.diseno.titulo || datos.sede.nombre}</h1>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <span className={chip}>
+          <span className={`size-2 rounded-full ${abierto ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+          {datos.sede.hoy}
+        </span>
+        {datos.diseno.titulo && (
+          <span className={chip}>
+            <MapPin className="size-3.5" /> {datos.sede.nombre}
+          </span>
+        )}
       </div>
-    </section>
+    </>
   );
 }
 
@@ -421,7 +477,7 @@ const fotosDe = (x: { foto: string | null; fotos?: string[] }) => (x.fotos?.leng
  * librerías) y los puntos dicen en cuál va. Con mouse, además, flechas a los
  * lados y se puede agarrar la foto y arrastrarla. Con una sola foto, la foto.
  */
-function Carrusel({ fotos, alt, inicio = 0 }: { fotos: string[]; alt: string; inicio?: number }) {
+function Carrusel({ fotos, alt, inicio = 0, puntosArriba = false }: { fotos: string[]; alt: string; inicio?: number; puntosArriba?: boolean }) {
   const caja = useRef<HTMLDivElement>(null);
   const [actual, setActual] = useState(inicio);
   const conMouse = useConMouse();
@@ -502,7 +558,7 @@ function Carrusel({ fotos, alt, inicio = 0 }: { fotos: string[]; alt: string; in
           <ChevronRight className="size-4" />
         </button>
       )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1" aria-hidden>
+      <div className={`pointer-events-none absolute inset-x-0 flex justify-center gap-1 ${puntosArriba ? 'top-3' : 'bottom-2'}`} aria-hidden>
         {fotos.map((f, i) => (
           <span key={f} className={`h-1.5 rounded-full bg-white shadow transition-all duration-300 ${i === actual ? 'w-4 opacity-100' : 'w-1.5 opacity-60'}`} />
         ))}
@@ -581,8 +637,9 @@ function MasFotos({ cuantas }: { cuantas: number }) {
 
 function Foto({ src, alt }: { src: string | null; alt: string }) {
   const url = urlDeFoto(src);
+  const encuadre = useContext(EncuadresVitrina)[src ?? ''];
   return url ? (
-    <img src={url} alt={alt} loading="lazy" className="size-full object-cover" />
+    <span className="relative block size-full"><FotoEncuadrada src={url} alt={alt} encuadre={encuadre} /></span>
   ) : (
     <div className="grid size-full place-items-center bg-[var(--v-tinte)] text-[var(--v-p)]"><Sparkles className="size-7 opacity-70" /></div>
   );
