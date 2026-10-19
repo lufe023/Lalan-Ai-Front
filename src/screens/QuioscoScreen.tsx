@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowBigUp, Check, ChevronLeft, Clock, Coffee, Delete, Heart, Loader2, Pencil, Plus, Printer, RotateCcw, Sparkles, X } from 'lucide-react';
 import QRCode from 'qrcode';
-import { ErrorPublico } from '../services/api';
+import { ErrorPublico, urlDeFoto } from '../services/api';
 import { Busqueda, InicioQuiosco, ResultadoLlegada, quioscoApi, tokenQuiosco, urlAprobarQuiosco } from '../services/quiosco';
 import { recordarPantalla } from '../utils/pantallaRecordada';
 
@@ -892,7 +892,7 @@ const OtraOpcion: React.FC<{ texto: string; onAgregar: (valor: string) => void }
 const Foto: React.FC<{ src: string | null; nombre: string }> = ({ src, nombre }) => {
   const [rota, setRota] = useState(false);
   return src && !rota
-    ? <img src={src} alt="" onError={() => setRota(true)} className="w-20 h-20 rounded-full object-cover" />
+    ? <img src={urlDeFoto(src)} alt="" onError={() => setRota(true)} className="w-20 h-20 rounded-full object-cover" />
     : <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-neutral-800 flex items-center justify-center text-3xl font-bold text-slate-500">{nombre.slice(0, 1)}</div>;
 };
 

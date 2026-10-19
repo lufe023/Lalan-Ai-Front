@@ -120,6 +120,8 @@ export interface SalonStaff {
   /** La especialidad */
   role: string;
   avatar?: string | null;
+  /** Su foto (catalogo/fotos/:id), la que sale en la Vitrina y el quiosco */
+  fotoId?: string | null;
   phone?: string | null;
   active: boolean;
   zoneId?: string | null;

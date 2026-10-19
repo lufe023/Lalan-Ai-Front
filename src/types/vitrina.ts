@@ -106,6 +106,8 @@ export interface EspecialistaVitrina {
   especialidad: string;
   /** null = atiende de todo */
   categorias: string[] | null;
+  /** Su foto (catalogo/fotos/:id); null = sus iniciales */
+  foto?: string | null;
 }
 
 export interface DiaVitrina {
