@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
 import type {
-  DatosVitrina, EspecialistaVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina, TipoBloqueVitrina,
+  DatosVitrina, EspecialistaVitrina, EstadoDiaVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina, TipoBloqueVitrina,
 } from '../../types/vitrina';
 import { estiloVitrina } from './temaVitrina';
 import { IOSModal } from '../ui/IOSModal';
@@ -1485,26 +1485,50 @@ function PanelReserva({
     return () => { window.removeEventListener('keydown', tecla); document.body.style.overflow = antes; };
   }, [abierta, completa, cerrar, previa]);
 
+  // Cómo sale cada día para lo que eligió (y con quién), según el servidor:
+  // solo los días con horas libres, y en gris el que quien lo hace suele venir
+  // pero anotó que no viene. Mientras llega (o en la vista previa), el horario.
+  const [estadosDias, setEstadosDias] = useState<{ clave: string; estados: Record<string, EstadoDiaVitrina> } | null>(null);
+  const claveDias = `${ids}|${especialistas}`;
+  useEffect(() => {
+    if (previa || !slug || !ids) return;
+    let vale = true;
+    const q = new URLSearchParams({ servicios: ids });
+    if (especialistas.replace(/,/g, '')) q.set('especialistas', especialistas);
+    publicRequest<{ dias: { fecha: string; estado: EstadoDiaVitrina }[] }>(`/vitrina/publica/${encodeURIComponent(slug)}/dias?${q}`)
+      .then((r) => { if (vale) setEstadosDias({ clave: claveDias, estados: Object.fromEntries(r.dias.map((d) => [d.fecha, d.estado])) }); })
+      // Sin la lista, la tira sigue con el horario y las horas se piden día por día
+      .catch(() => { if (vale) setEstadosDias(null); });
+    return () => { vale = false; };
+  }, [previa, slug, ids, especialistas, claveDias]);
+  const estados = estadosDias?.clave === claveDias ? estadosDias.estados : null;
+
   // Con quien eligió: los días que ella no viene salen cerrados (la sede puede abrir)
   const semanasElegidas = useMemo(() => [...new Set(Object.values(conQuien))]
     .map((id) => datos.especialistas.find((e) => e.id === id)?.semana)
     .filter((x): x is NonNullable<typeof x> => !!x), [conQuien, datos.especialistas]);
   const dias = useMemo(() => {
     const n = Math.max(0, Math.min(sede.diasParaReservar, DIAS_EN_LA_TIRA));
-    return Array.from({ length: n + 1 }, (_, i) => {
+    const todos = Array.from({ length: n + 1 }, (_, i) => {
       const f = sumarDias(sede.hoyFecha, i);
       const dia = diaDeSemana(f);
       const abierto = (sede.semana.find((d) => d.dia === dia)?.abierto ?? true)
         && semanasElegidas.every((sem) => sem.find((d) => d.dia === dia)?.abierto ?? true);
       return { fecha: f, abierto };
     });
-  }, [sede.diasParaReservar, sede.hoyFecha, sede.semana, semanasElegidas]);
-  // Si el día elegido quedó cerrado (eligió a alguien que ese día no viene), al primero que sí
+    if (!estados) return todos;
+    return todos
+      .filter((d) => estados[d.fecha] === 'libre' || estados[d.fecha] === 'ausente')
+      .map((d) => ({ fecha: d.fecha, abierto: estados[d.fecha] === 'libre' }));
+  }, [sede.diasParaReservar, sede.hoyFecha, sede.semana, semanasElegidas, estados]);
+  const sinDias = !!estados && !dias.some((d) => d.abierto);
+  // Si el día elegido no está o quedó cerrado, al primero que tiene horas
   useEffect(() => {
-    if (dias.find((d) => d.fecha === fecha)?.abierto !== false || !semanasElegidas.length) return;
+    if (!estados && !semanasElegidas.length) return;
+    if (dias.find((d) => d.fecha === fecha)?.abierto) return;
     const primero = dias.find((d) => d.abierto);
     if (primero) setFecha(primero.fecha);
-  }, [dias, fecha, semanasElegidas.length]);
+  }, [dias, fecha, estados, semanasElegidas.length]);
 
   // Las horas libres de verdad: las mismas que ofrece Lalán en los chats.
   // Al cambiar de día o de servicios se vuelve a elegir la hora; al cambiar
@@ -1649,23 +1673,28 @@ function PanelReserva({
         return (
           <div className="space-y-5">
             <FilaArrastrable className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-              {dias.map((d, i) => {
+              {dias.map((d) => {
                 const activo = fecha === d.fecha;
                 const fechaD = new Date(`${d.fecha}T12:00:00Z`);
                 return (
                   <button
                     key={d.fecha} type="button" disabled={!d.abierto} onClick={() => setFecha(d.fecha)} aria-pressed={activo}
-                    aria-label={fmtFechaLarga.format(fechaD) + (d.abierto ? '' : ', cerrado')}
+                    aria-label={fmtFechaLarga.format(fechaD) + (d.abierto ? '' : estados ? ', no disponible' : ', cerrado')}
                     className={`flex w-16 shrink-0 flex-col items-center rounded-2xl py-2.5 text-center transition disabled:opacity-35 ${activo ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
                   >
-                    <span className="text-[11px] capitalize opacity-80">{i === 0 ? 'Hoy' : fmtDiaCorto.format(fechaD).replace('.', '')}</span>
+                    <span className="text-[11px] capitalize opacity-80">{d.fecha === sede.hoyFecha ? 'Hoy' : fmtDiaCorto.format(fechaD).replace('.', '')}</span>
                     <span className="text-xl font-bold leading-tight">{fechaD.getUTCDate()}</span>
                     <span className="text-[10px] capitalize opacity-70">{fmtMes.format(fechaD).replace('.', '')}</span>
                   </button>
                 );
               })}
             </FilaArrastrable>
-            {previa ? (
+            {sinDias ? (
+              <p className="py-2 text-sm text-[var(--v-suave)]">
+                No quedan horas libres en los próximos {Math.max(0, Math.min(sede.diasParaReservar, DIAS_EN_LA_TIRA)) + 1} días{conAlguien ? ' con quien elegiste' : ''}.
+                {conAlguien ? ' Prueba con «Quien esté libre».' : ' Vuelve a mirar en unos días.'}
+              </p>
+            ) : previa ? (
               <p className="rounded-2xl bg-[var(--v-tinte)] p-3 text-sm">En la vista previa no se ven las horas libres. Tus clientas sí las verán.</p>
             ) : estado.cargando ? (
               <div className="grid grid-cols-3 gap-2 @2xl:grid-cols-4" aria-label="Buscando horas libres">
