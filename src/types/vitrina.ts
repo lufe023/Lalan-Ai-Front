@@ -112,6 +112,13 @@ export interface EspecialistaVitrina {
   semana?: DiaVitrina[];
 }
 
+/**
+ * Cómo sale un día en la tira de la reserva (`/dias`): libre (tiene horas),
+ * lleno (no le quedan; no se muestra), ausente (quien lo hace suele venir
+ * ese día pero anotó que no viene; sale en gris) o no-trabaja (no se muestra).
+ */
+export type EstadoDiaVitrina = 'libre' | 'lleno' | 'ausente' | 'no-trabaja';
+
 export interface DiaVitrina {
   dia: number;
   abierto: boolean;
