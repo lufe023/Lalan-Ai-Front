@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Maximize, Move, ZoomIn } from 'lucide-react';
+import { Maximize, Move, Play, ZoomIn } from 'lucide-react';
 
 /**
  * Cómo se acomoda una foto en su recuadro, como al poner una foto de perfil:
@@ -36,6 +36,11 @@ export function estiloEncuadre(e?: Encuadre | null): React.CSSProperties {
  * Una foto que llena su caja con su encuadre. Va dentro de una caja con
  * tamaño (y `relative`); recorta lo que se sale. Completa, detrás va la
  * misma foto difuminada para que no queden franjas vacías.
+ *
+ * Si es un video (`video`), `src` es su primer cuadro: sin `reproducir` se ve
+ * ese cuadro con un ▶ encima; con «controles» se reproduce con los botones
+ * del navegador. Un video que todavía no se subió no tiene cuadro: `src` es el
+ * video mismo y se muestra su primer cuadro desde el video.
  */
 export const FotoEncuadrada: React.FC<{
   src: string;
@@ -44,12 +49,37 @@ export const FotoEncuadrada: React.FC<{
   className?: string;
   loading?: 'lazy' | 'eager';
   onError?: () => void;
-}> = ({ src, alt, encuadre, className = '', loading = 'lazy', onError }) => (
-  <span className={`absolute inset-0 block overflow-hidden ${className}`}>
-    {encuadre?.completa && (
-      <img src={src} alt="" aria-hidden loading={loading} draggable={false} className="absolute inset-0 size-full scale-110 object-cover opacity-70 blur-xl pointer-events-none" />
-    )}
-    <img src={src} alt={alt} loading={loading} draggable={false} onError={onError} className="absolute inset-0 size-full pointer-events-none" style={estiloEncuadre(encuadre)} />
+  /** La dirección del video, si lo es */
+  video?: string | null;
+  reproducir?: 'controles' | false;
+}> = ({ src, alt, encuadre, className = '', loading = 'lazy', onError, video, reproducir = false }) => {
+  const sinCuadro = !!video && src === video;
+  return (
+    <span className={`absolute inset-0 block overflow-hidden ${className}`}>
+      {encuadre?.completa && !sinCuadro && (
+        <img src={src} alt="" aria-hidden loading={loading} draggable={false} className="absolute inset-0 size-full scale-110 object-cover opacity-70 blur-xl pointer-events-none" />
+      )}
+      {video && (reproducir || sinCuadro) ? (
+        <video
+          // Sin cuadro, «#t=0.1» hace que Safari pinte el primer cuadro
+          src={reproducir ? video : `${video}#t=0.1`} poster={sinCuadro ? undefined : src} aria-label={alt}
+          controls={reproducir === 'controles'} playsInline muted={!reproducir} preload="metadata" onError={onError}
+          className={`absolute inset-0 size-full ${reproducir ? '' : 'pointer-events-none'}`} style={estiloEncuadre(encuadre)}
+        />
+      ) : (
+        <img src={src} alt={alt} loading={loading} draggable={false} onError={onError} className="absolute inset-0 size-full pointer-events-none" style={estiloEncuadre(encuadre)} />
+      )}
+      {video && !reproducir && <MarcaDeVideo />}
+    </span>
+  );
+};
+
+/** El ▶ sobre la miniatura de un video */
+export const MarcaDeVideo: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <span className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`} aria-hidden>
+    <span className="flex items-center justify-center size-7 max-w-[45%] max-h-[45%] rounded-full bg-black/55 text-white backdrop-blur-sm">
+      <Play className="size-3.5 fill-white translate-x-px" />
+    </span>
   </span>
 );
 

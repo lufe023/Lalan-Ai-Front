@@ -3,10 +3,16 @@ import { Camera, ChevronLeft, ChevronRight, Crop, ImagePlus, Loader2, MapPin, Pl
 import { motion } from 'motion/react';
 import { urlDeFoto } from '../../services/api';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
-import { AjustesDeEncuadre, CAJA_ARRASTRABLE, ENCUADRE_NORMAL, EtiquetaArrastrar, FotoEncuadrada, esNormal, useArrastrarEncuadre, type Encuadre } from './FotoEncuadrada';
+import { AjustesDeEncuadre, CAJA_ARRASTRABLE, ENCUADRE_NORMAL, EtiquetaArrastrar, FotoEncuadrada, MarcaDeVideo, esNormal, useArrastrarEncuadre, type Encuadre } from './FotoEncuadrada';
 
 /** La dirección de la foto de un producto o servicio (la sirve la API, pública) */
 export const urlFotoCatalogo = (fotoId?: string | null) => (fotoId ? urlDeFoto(`catalogo/fotos/${fotoId}`) : undefined);
+/** El video de esa «foto», si lo es (la foto es su primer cuadro) */
+export const urlVideoCatalogo = (fotoId: string) => urlDeFoto(`catalogo/fotos/${fotoId}/video`)!;
+
+/** Lo más pesado que se deja subir (lo mismo que acepta el servidor). Se guarda el primer minuto */
+export const MAXIMO_MB_VIDEO = 100;
+const TIPOS_VIDEO = 'video/mp4,video/quicktime,video/webm,video/3gpp,video/x-m4v';
 
 /**
  * La miniatura de un producto o servicio en la lista: su foto o, si no tiene,
@@ -23,13 +29,16 @@ export const MiniaturaCatalogo: React.FC<{
   pideFoto?: boolean;
   /** Cómo la acomodó la dueña */
   encuadre?: Encuadre | null;
-}> = ({ fotoId, nombre, icono, color = '#e11d48', className = 'w-10 h-10', pideFoto = true, encuadre }) => {
+  /** La portada es un video: lleva el ▶ sobre su primer cuadro */
+  esVideo?: boolean;
+}> = ({ fotoId, nombre, icono, color = '#e11d48', className = 'w-10 h-10', pideFoto = true, encuadre, esVideo = false }) => {
   const [rota, setRota] = useState(false);
   const url = urlFotoCatalogo(fotoId);
   if (url && !rota) {
     return (
       <span className={`${className} relative block rounded-2xl overflow-hidden shrink-0 border border-slate-200 dark:border-neutral-700`}>
         <FotoEncuadrada src={url} alt={nombre} encuadre={encuadre} onError={() => setRota(true)} />
+        {esVideo && <MarcaDeVideo />}
       </span>
     );
   }
@@ -46,12 +55,18 @@ export const MiniaturaCatalogo: React.FC<{
 /** Hasta cuántas fotos lleva cada producto o servicio (lo mismo que acepta el servidor) */
 export const MAXIMO_FOTOS = 10;
 
-/** Una foto del carrusel: su id en el servidor (o una clave local si todavía no se subió) y su dirección */
-export interface FotoDeGaleria { clave: string; url: string }
+/**
+ * Una foto del carrusel: su id en el servidor (o una clave local si todavía no
+ * se subió) y su dirección. Un video lleva `video` (su dirección); si todavía
+ * no se subió, también el archivo y `url` es el video mismo.
+ */
+export interface FotoDeGaleria { clave: string; url: string; video?: string; archivo?: File }
 
-/** Las fotos guardadas de un artículo, en orden: la portada y luego las demás */
-export const fotosGuardadas = (x?: { fotoId?: string | null; masFotos?: string[] } | null): FotoDeGaleria[] =>
-  [x?.fotoId, ...(x?.masFotos ?? [])].filter((id): id is string => !!id).map(id => ({ clave: id, url: urlFotoCatalogo(id)! }));
+/** Las fotos guardadas de un artículo, en orden: la portada y luego las demás. `videos`: cuáles son videos */
+export const fotosGuardadas = (x?: { fotoId?: string | null; masFotos?: string[] } | null, videos?: Record<string, number>): FotoDeGaleria[] =>
+  [x?.fotoId, ...(x?.masFotos ?? [])].filter((id): id is string => !!id).map(id => ({
+    clave: id, url: urlFotoCatalogo(id)!, ...(videos?.[id] != null ? { video: urlVideoCatalogo(id) } : {}),
+  }));
 
 /** Los textos que cambian si son las fotos de la portada de la Vitrina */
 const TEXTOS = {
@@ -71,6 +86,9 @@ const TEXTOS = {
  * Si el artículo todavía no existe, quien lo usa guarda las fotos y las sube
  * al crearlo.
  *
+ * Con `onAgregarVideo` también acepta videos (hasta MAXIMO_MB_VIDEO; el
+ * servidor guarda el primer minuto). Cuentan como una foto más del carrusel.
+ *
  * Con `onEncuadre`, cada foto guardada se puede acomodar («Ajustar»): zoom,
  * llenar o completa, y de lado a lado y de arriba a abajo. La vista grande usa
  * el mismo recuadro (`aspecto`) que tendrá la foto donde sale.
@@ -83,6 +101,8 @@ export const FotosDelCatalogo: React.FC<{
   /** Dónde valen las fotos (con varias sedes). Se muestra como etiqueta */
   sede?: string | null;
   onAgregar: (dataUrl: string) => Promise<void> | void;
+  /** Sube un video al carrusel. Sin esto solo acepta fotos */
+  onAgregarVideo?: (archivo: File) => Promise<void> | void;
   onQuitar: (clave: string) => Promise<void> | void;
   onOrdenar: (claves: string[]) => Promise<void> | void;
   /** El recuadro de la vista grande (clase de Tailwind) */
@@ -91,13 +111,13 @@ export const FotosDelCatalogo: React.FC<{
   encuadres?: Record<string, Encuadre>;
   /** Guarda cómo se acomoda una foto ya subida. Sin esto no sale «Ajustar» */
   onEncuadre?: (clave: string, encuadre: Encuadre) => Promise<void> | void;
-}> = ({ fotos, nombre, que, sede, onAgregar, onQuitar, onOrdenar, aspecto = 'aspect-[4/3]', encuadres, onEncuadre }) => {
+}> = ({ fotos, nombre, que, sede, onAgregar, onAgregarVideo, onQuitar, onOrdenar, aspecto = 'aspect-[4/3]', encuadres, onEncuadre }) => {
   const entrada = useRef<HTMLInputElement>(null);
   const [trabajando, setTrabajando] = useState<'' | 'subiendo' | 'quitando' | 'ordenando' | 'ajustando'>('');
   /** Mientras acomoda una foto: cómo va quedando (se guarda al tocar «Listo») */
   const [ajuste, setAjuste] = useState<Encuadre | null>(null);
   const textos = TEXTOS[que];
-  const [subidas, setSubidas] = useState<{ van: number; de: number } | null>(null);
+  const [subidas, setSubidas] = useState<{ van: number; de: number; video: boolean } | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [error, setError] = useState('');
   const [rotas, setRotas] = useState<string[]>([]);
@@ -131,8 +151,14 @@ export const FotosDelCatalogo: React.FC<{
     setTrabajando('subiendo');
     try {
       for (const [n, f] of archivos.entries()) {
-        setSubidas({ van: n + 1, de: archivos.length });
-        await onAgregar(await fotoParaCatalogo(f));
+        const esVideo = f.type.startsWith('video/');
+        setSubidas({ van: n + 1, de: archivos.length, video: esVideo });
+        if (esVideo && onAgregarVideo) {
+          if (f.size > MAXIMO_MB_VIDEO * 1024 * 1024) throw new Error(`Ese video pesa más de ${MAXIMO_MB_VIDEO} MB. Recórtalo o grábalo más corto.`);
+          await onAgregarVideo(f);
+        } else {
+          await onAgregar(await fotoParaCatalogo(f));
+        }
       }
       setElegida(fotos.length + archivos.length - 1);
       if ((lista?.length ?? 0) > archivos.length) setError(`Solo caben ${MAXIMO_FOTOS} fotos: subí las primeras ${archivos.length}.`);
@@ -189,7 +215,7 @@ export const FotosDelCatalogo: React.FC<{
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-          {textos.titulo} <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(hasta {MAXIMO_FOTOS}, {textos.detalle})</span>
+          {onAgregarVideo ? 'Fotos y videos' : textos.titulo} <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(hasta {MAXIMO_FOTOS}, {textos.detalle})</span>
         </label>
         {etiqueta}
       </div>
@@ -198,7 +224,7 @@ export const FotosDelCatalogo: React.FC<{
         ref={entrada}
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/webp,image/*"
+        accept={`image/jpeg,image/png,image/webp,image/*${onAgregarVideo ? `,${TIPOS_VIDEO},video/*` : ''}`}
         className="hidden"
         onChange={e => elegir(e.target.files)}
       />
@@ -210,7 +236,8 @@ export const FotosDelCatalogo: React.FC<{
               <div className="w-full h-full flex items-center justify-center text-slate-400"><Camera className="w-6 h-6" /></div>
             ) : (
               <motion.div key={actual.clave} initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }} className="absolute inset-0">
-                <FotoEncuadrada src={actual.url} alt={nombre || (que === 'portada' ? 'Foto de portada' : `Foto del ${que}`)} encuadre={ajuste ?? encuadreDe(actual.clave)} loading="eager" onError={() => setRotas(r => [...r, actual.clave])} />
+                <FotoEncuadrada src={actual.url} alt={nombre || (que === 'portada' ? 'Foto de portada' : `${actual.video ? 'Video' : 'Foto'} del ${que}`)} encuadre={ajuste ?? encuadreDe(actual.clave)} loading="eager" onError={() => setRotas(r => [...r, actual.clave])}
+                  video={actual.video} reproducir={!ajuste && !trabajando && !confirmando ? 'controles' : false} />
               </motion.div>
             )}
             <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/55 text-white text-[0.6875rem] font-semibold pointer-events-none">
@@ -220,11 +247,12 @@ export const FotosDelCatalogo: React.FC<{
             {trabajando && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[0.8125rem] font-semibold gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {trabajando === 'subiendo' ? (subidas && subidas.de > 1 ? `Subiendo ${subidas.van} de ${subidas.de}…` : 'Subiendo foto…') : trabajando === 'quitando' ? 'Quitando foto…' : trabajando === 'ajustando' ? 'Guardando…' : 'Ordenando…'}
+                {trabajando === 'subiendo' ? textoSubiendo(subidas, 'Subiendo foto…') : trabajando === 'quitando' ? 'Quitando foto…' : trabajando === 'ajustando' ? 'Guardando…' : 'Ordenando…'}
               </div>
             )}
             {!trabajando && !confirmando && !ajuste && (
-              <div className="absolute bottom-2 inset-x-2 flex flex-wrap justify-end gap-1.5">
+              // En un video, abajo van los botones del reproductor: los nuestros suben
+              <div className={`absolute inset-x-2 flex flex-wrap justify-end gap-1.5 ${actual.video ? 'top-2 pl-20' : 'bottom-2'}`}>
                 {sePuedeAjustar && !rotas.includes(actual.clave) && (
                   <button type="button" onClick={() => setAjuste(encuadreDe(actual.clave) ?? ENCUADRE_NORMAL)} className={`${boton} text-slate-800 dark:text-neutral-100 hover:text-[var(--primary)]`}>
                     <Crop className="w-3.5 h-3.5" /> Ajustar
@@ -253,7 +281,7 @@ export const FotosDelCatalogo: React.FC<{
             {confirmando && !trabajando && (
               <div className="absolute inset-x-2 bottom-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 shadow-md space-y-2">
                 <p className="text-[0.75rem] text-slate-700 dark:text-neutral-200">
-                  {que === 'portada' ? '¿Quitar esta foto de la portada?' : <>¿Quitar esta foto de <b>{nombre || `este ${que}`}</b>?</>}{' '}
+                  {que === 'portada' ? '¿Quitar esta foto de la portada?' : <>¿Quitar {actual.video ? 'este video' : 'esta foto'} de <b>{nombre || `este ${que}`}</b>?</>}{' '}
                   {fotos.length === 1 ? textos.sinFotos : i === 0 ? `La siguiente pasa a ser la ${textos.primera.toLowerCase()}.` : ''}
                 </p>
                 <div className="flex gap-1.5 justify-end">
@@ -293,13 +321,13 @@ export const FotosDelCatalogo: React.FC<{
                 key={f.clave}
                 type="button"
                 onClick={() => { setElegida(n); setConfirmando(false); setAjuste(null); }}
-                aria-label={n === 0 ? textos.primera : `Foto ${n + 1}`}
+                aria-label={`${n === 0 ? textos.primera : `${f.video ? 'Video' : 'Foto'} ${n + 1}`}`}
                 aria-pressed={n === i}
                 className={`relative w-14 h-14 shrink-0 snap-start rounded-xl overflow-hidden border-2 transition ios-touch cursor-pointer ${n === i ? 'border-[var(--primary)] scale-[1.03]' : 'border-transparent opacity-80 hover:opacity-100'}`}
               >
                 {rotas.includes(f.clave)
                   ? <span className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-neutral-800 text-slate-400"><Camera className="w-4 h-4" /></span>
-                  : <FotoEncuadrada src={f.url} alt="" encuadre={encuadreDe(f.clave)} onError={() => setRotas(r => [...r, f.clave])} />}
+                  : <FotoEncuadrada src={f.url} alt="" encuadre={encuadreDe(f.clave)} video={f.video} onError={() => setRotas(r => [...r, f.clave])} />}
                 {n === 0 && <Star className="absolute top-0.5 left-0.5 w-3 h-3 text-white drop-shadow fill-white" />}
               </button>
             ))}
@@ -308,7 +336,7 @@ export const FotosDelCatalogo: React.FC<{
                 type="button"
                 disabled={!!trabajando || !!ajuste}
                 onClick={() => entrada.current?.click()}
-                aria-label="Agregar fotos"
+                aria-label={onAgregarVideo ? 'Agregar fotos o videos' : 'Agregar fotos'}
                 className="w-14 h-14 shrink-0 rounded-xl border-2 border-dashed border-slate-300 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 flex flex-col items-center justify-center ios-touch cursor-pointer hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
@@ -332,10 +360,12 @@ export const FotosDelCatalogo: React.FC<{
             </span>
           )}
           <span className="text-[0.8125rem] font-bold text-slate-800 dark:text-white">
-            {trabajando ? (subidas && subidas.de > 1 ? `Subiendo ${subidas.van} de ${subidas.de}…` : 'Preparando la foto…') : textos.vacia}
+            {trabajando ? textoSubiendo(subidas, 'Preparando la foto…') : textos.vacia}
           </span>
           <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 max-w-[17rem]">
-            Hasta {MAXIMO_FOTOS}, como un carrusel. Tómalas con luz natural y un fondo limpio.
+            {onAgregarVideo
+              ? <>Hasta {MAXIMO_FOTOS} fotos o videos, como un carrusel. Un video muestra tu trabajo: se guarda hasta 1 minuto.</>
+              : <>Hasta {MAXIMO_FOTOS}, como un carrusel. Tómalas con luz natural y un fondo limpio.</>}
           </span>
         </button>
       )}
@@ -344,6 +374,13 @@ export const FotosDelCatalogo: React.FC<{
     </div>
   );
 };
+
+/** Qué se está subiendo. Un video tarda más: el servidor lo prepara para que se vea en cualquier teléfono */
+function textoSubiendo(subidas: { van: number; de: number; video: boolean } | null, solo: string) {
+  if (!subidas) return solo;
+  const que = subidas.video ? 'Subiendo video, puede tardar un poco' : 'Subiendo';
+  return subidas.de > 1 ? `${que} (${subidas.van} de ${subidas.de})…` : subidas.video ? `${que}…` : solo;
+}
 
 /** Arriba de la lista: cuántos todavía no tienen foto para la Vitrina */
 export const AvisoSinFoto: React.FC<{ cuantos: number; que: 'servicio' | 'producto' }> = ({ cuantos, que }) => {
