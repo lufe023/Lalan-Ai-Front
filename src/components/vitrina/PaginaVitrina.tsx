@@ -616,6 +616,67 @@ function useConMouse() {
   return si;
 }
 
+/**
+ * Una fila que se desliza de lado (días, categorías, ofertas, equipo). Con el
+ * dedo ya se desliza; con mouse no, salvo con la rueda del medio: aquí se
+ * agarra y se arrastra. Un arrastre no cuenta como clic en lo que soltó.
+ */
+function FilaArrastrable({ className = '', children }: { className?: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const conMouse = useConMouse();
+  const arrastre = useRef<{ x: number; desde: number; id: number; movido: boolean } | null>(null);
+  const acabaDeArrastrar = useRef(false);
+  const [agarrando, setAgarrando] = useState(false);
+  const soltar = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    const a = arrastre.current;
+    arrastre.current = null;
+    if (!el || !a?.movido) return;
+    acabaDeArrastrar.current = true;
+    setAgarrando(false);
+    el.releasePointerCapture?.(e.pointerId);
+    // El imán (si lo tiene) vuelve cuando terminó de moverse
+    window.setTimeout(() => { el.style.scrollSnapType = ''; }, 300);
+  };
+  if (!conMouse) return <div ref={ref} className={className}>{children}</div>;
+  return (
+    <div
+      ref={ref}
+      onPointerDown={(e) => {
+        acabaDeArrastrar.current = false;
+        if (e.pointerType !== 'mouse' || e.button !== 0 || !ref.current) return;
+        arrastre.current = { x: e.clientX, desde: ref.current.scrollLeft, id: e.pointerId, movido: false };
+      }}
+      onPointerMove={(e) => {
+        const el = ref.current;
+        const a = arrastre.current;
+        if (!el || !a) return;
+        const dx = e.clientX - a.x;
+        // Unos píxeles de margen: si no, un clic con la mano temblorosa no llega al botón
+        if (!a.movido && Math.abs(dx) > 5) {
+          a.movido = true;
+          el.setPointerCapture?.(a.id);
+          el.style.scrollSnapType = 'none';
+          setAgarrando(true);
+        }
+        if (a.movido) el.scrollLeft = a.desde - dx;
+      }}
+      onPointerUp={soltar}
+      onPointerCancel={soltar}
+      onClickCapture={(e) => {
+        if (!acabaDeArrastrar.current) return;
+        acabaDeArrastrar.current = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDragStart={(e) => e.preventDefault()}
+      className={`${className} ${agarrando ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 /** Cuántas fotos se abren en abanico; si hay más, una tarjeta gris detrás dice cuántas */
 const FOTOS_EN_ABANICO = 4;
 
@@ -852,7 +913,7 @@ function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }:
         <span className="text-xs text-[var(--v-suave)]">Toca para agregar a tu reserva</span>
       </div>
       {categorias.length > 1 && (
-        <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        <FilaArrastrable className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
           {[[null, 'Todo'] as const, ...categorias].map(([id, nombre]) => (
             <button
               key={id ?? 'todo'} type="button" onClick={() => { setCat(id); paginas.reiniciar(); }} aria-pressed={cat === id}
@@ -861,7 +922,7 @@ function Servicios({ servicios, destacados, elegidos, alternar, dinero, abrir }:
               {nombre}
             </button>
           ))}
-        </div>
+        </FilaArrastrable>
       )}
       {!servicios.length ? (
         <p className={`${TARJETA} p-5 text-sm text-[var(--v-suave)]`}>Pronto verás aquí los servicios de esta sede.</p>
@@ -925,7 +986,7 @@ function Ofertas({ ofertas, elegida, elegir, dinero }: {
   return (
     <section aria-labelledby="v-ofertas">
       <h2 id="v-ofertas" className={`${TITULO_BLOQUE} mb-3`}>Ofertas</h2>
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+      <FilaArrastrable className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {ofertas.map((o) => {
           const dentro = elegida === o.id;
           return (
@@ -949,7 +1010,7 @@ function Ofertas({ ofertas, elegida, elegir, dinero }: {
             </article>
           );
         })}
-      </div>
+      </FilaArrastrable>
     </section>
   );
 }
@@ -1013,7 +1074,7 @@ function Especialistas({ lista, abrir }: { lista: EspecialistaVitrina[]; abrir: 
         <h2 id="v-equipo" className={TITULO_BLOQUE}>Quién te atiende</h2>
         <span className="text-xs text-[var(--v-suave)]">Toca para ver lo que hace</span>
       </div>
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+      <FilaArrastrable className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {lista.map((e) => (
           <button
             key={e.id} type="button" onClick={() => abrir(e)} aria-label={`Ver a ${e.nombre}`}
@@ -1024,7 +1085,7 @@ function Especialistas({ lista, abrir }: { lista: EspecialistaVitrina[]; abrir: 
             {e.especialidad && <p className="truncate text-xs text-[var(--v-suave)]">{e.especialidad}</p>}
           </button>
         ))}
-      </div>
+      </FilaArrastrable>
     </section>
   );
 }
@@ -1587,7 +1648,7 @@ function PanelReserva({
       case paso.clave === 'cuando':
         return (
           <div className="space-y-5">
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+            <FilaArrastrable className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
               {dias.map((d, i) => {
                 const activo = fecha === d.fecha;
                 const fechaD = new Date(`${d.fecha}T12:00:00Z`);
@@ -1603,7 +1664,7 @@ function PanelReserva({
                   </button>
                 );
               })}
-            </div>
+            </FilaArrastrable>
             {previa ? (
               <p className="rounded-2xl bg-[var(--v-tinte)] p-3 text-sm">En la vista previa no se ven las horas libres. Tus clientas sí las verán.</p>
             ) : estado.cargando ? (
