@@ -28,7 +28,7 @@ import {
 import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
 import { SedeDelStock, useSedeDelStock } from '../components/inventario/SedeDelStock';
 import { RecibirFactura } from '../components/inventario/RecibirFactura';
-import { useApp, ServiceIngredient } from '../context/AppContext';
+import { useApp, ServiceIngredient, type CambioDeGaleria } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { LineaDeReceta, ModoPrecioAsistente, PriceTier, ProductCategory, SalonProduct, SalonService, ServiceCategory } from '../types';
 
@@ -63,16 +63,22 @@ import { SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../c
  * Sube, en orden, las fotos que se eligieron antes de crear el artículo.
  * Devuelve el motivo si alguna falló (las que ya subieron se quedan).
  */
-async function subirFotos(fotos: FotoDeGaleria[], subir: (dataUrl: string) => Promise<unknown>): Promise<string | null> {
+async function subirFotos(fotos: FotoDeGaleria[], subir: (cambio: CambioDeGaleria) => Promise<unknown>): Promise<string | null> {
   for (const f of fotos) {
-    try { await subir(f.url); } catch (e: any) { return e?.message ?? 'Una foto no se pudo subir.'; }
+    try { await subir(f.archivo ? { video: f.archivo } : { agregar: f.url }); } catch (e: any) { return e?.message ?? `Un${f.archivo ? ' video' : 'a foto'} no se pudo subir.`; }
   }
   return null;
 }
 
+/** Un video elegido antes de crear el artículo: se ve desde el teléfono y se sube al crearlo */
+const videoPendiente = (archivo: File, n: number): FotoDeGaleria => {
+  const url = URL.createObjectURL(archivo);
+  return { clave: `nueva-${Date.now()}-${n}`, url, video: url, archivo };
+};
+
 export const CatalogScreen: React.FC = () => {
   // Cómo acomodó la dueña cada foto: igual en la lista, en el formulario y en la Vitrina
-  const { encuadres, guardar: guardarEncuadre } = useEncuadres();
+  const { encuadres, guardar: guardarEncuadre, videos, cargarVideos } = useEncuadres();
   const {
     services,
     addService,
@@ -509,7 +515,8 @@ export const CatalogScreen: React.FC = () => {
         });
         if (servicioPorSede) await preciosServicioEnSedes(creado.id, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
         // El servicio ya quedó creado: si una foto falla, se avisa y se puede poner después
-        const fallo = await subirFotos(fotosNuevoServicio, (f) => galeriaServicio(creado.id, { agregar: f }));
+        const fallo = await subirFotos(fotosNuevoServicio, (c) => galeriaServicio(creado.id, c));
+        if (fotosNuevoServicio.some(f => f.archivo)) void cargarVideos();
         if (fallo) showToast('El servicio se creó con fotos de menos', `${fallo} Ponlas desde Editar.`, 'warning');
         showToast('Servicio creado', serviceForm.name, 'success');
       }
@@ -563,7 +570,8 @@ export const CatalogScreen: React.FC = () => {
       } else {
         id = (await addProduct(productPayload, sedeDelStockInicial.sede)).id;
         const nuevo = id;
-        const fallo = await subirFotos(fotosNuevoProducto, (f) => galeriaProducto(nuevo, { agregar: f }));
+        const fallo = await subirFotos(fotosNuevoProducto, (c) => galeriaProducto(nuevo, c));
+        if (fotosNuevoProducto.some(f => f.archivo)) void cargarVideos();
         if (fallo) showToast('El producto se creó con fotos de menos', `${fallo} Ponlas desde Editar.`, 'warning');
       }
       // La receta va aparte: necesita que el producto ya exista
@@ -701,6 +709,7 @@ export const CatalogScreen: React.FC = () => {
                       <MiniaturaCatalogo
                         fotoId={service.fotoId}
                         encuadre={service.fotoId ? encuadres[service.fotoId] : null}
+                        esVideo={!!service.fotoId && videos[service.fotoId] != null}
                         nombre={service.name}
                         icono={iconoCategoria('service', service.category)}
                         color={service.color || '#e11d48'}
@@ -889,6 +898,7 @@ export const CatalogScreen: React.FC = () => {
                       <MiniaturaCatalogo
                         fotoId={product.fotoId}
                         encuadre={product.fotoId ? encuadres[product.fotoId] : null}
+                        esVideo={!!product.fotoId && videos[product.fotoId] != null}
                         nombre={product.name}
                         icono={iconoCategoria('product', product.category)}
                         className="w-12 h-12"
@@ -1301,12 +1311,18 @@ export const CatalogScreen: React.FC = () => {
               <FotosDelCatalogo
                 que="servicio"
                 nombre={serviceForm.name}
-                fotos={editingServiceId ? fotosGuardadas(servicioEnEdicion) : fotosNuevoServicio}
+                fotos={editingServiceId ? fotosGuardadas(servicioEnEdicion, videos) : fotosNuevoServicio}
                 sede={sedeDeLaFotoDelServicio}
                 onAgregar={async (foto) => {
                   if (!editingServiceId) { setFotosNuevoServicio(l => [...l, { clave: `nueva-${Date.now()}-${l.length}`, url: foto }]); return; }
                   // Dentro de una sede, un servicio de la cadena se separa en su copia: se sigue editando la copia
                   const listo = await galeriaServicio(editingServiceId, { agregar: foto });
+                  if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
+                }}
+                onAgregarVideo={async (archivo) => {
+                  if (!editingServiceId) { setFotosNuevoServicio(l => [...l, videoPendiente(archivo, l.length)]); return; }
+                  const listo = await galeriaServicio(editingServiceId, { video: archivo });
+                  await cargarVideos();
                   if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
                 }}
                 onQuitar={async (clave) => {
@@ -1536,11 +1552,16 @@ export const CatalogScreen: React.FC = () => {
               <FotosDelCatalogo
                 que="producto"
                 nombre={productForm.name}
-                fotos={editingProductId ? fotosGuardadas(products.find(p => p.id === editingProductId)) : fotosNuevoProducto}
+                fotos={editingProductId ? fotosGuardadas(products.find(p => p.id === editingProductId), videos) : fotosNuevoProducto}
                 sede={variasSedes ? 'Todas las sedes' : null}
                 onAgregar={async (foto) => {
                   if (!editingProductId) { setFotosNuevoProducto(l => [...l, { clave: `nueva-${Date.now()}-${l.length}`, url: foto }]); return; }
                   await galeriaProducto(editingProductId, { agregar: foto });
+                }}
+                onAgregarVideo={async (archivo) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => [...l, videoPendiente(archivo, l.length)]); return; }
+                  await galeriaProducto(editingProductId, { video: archivo });
+                  await cargarVideos();
                 }}
                 onQuitar={async (clave) => {
                   if (!editingProductId) { setFotosNuevoProducto(l => l.filter(f => f.clave !== clave)); return; }

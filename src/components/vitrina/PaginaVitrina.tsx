@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useLayoutEffect, useMemo, 
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Minus,
-  MessageCircle, Music, Navigation, Phone, Plus, ShoppingBag, Sparkles, Star, Store, Tag, User, X,
+  MessageCircle, Music, Navigation, Phone, Plus, ShoppingBag, Sparkles, Star, Store, Tag, User, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
 import type {
@@ -11,7 +11,7 @@ import type {
 import { estiloVitrina } from './temaVitrina';
 import { IOSModal } from '../ui/IOSModal';
 import MapaSede from './MapaSede';
-import { FotoEncuadrada, type Encuadre } from '../catalogo/FotoEncuadrada';
+import { FotoEncuadrada, estiloEncuadre, type Encuadre } from '../catalogo/FotoEncuadrada';
 
 /**
  * La Vitrina tal como la ve una clienta: los bloques en el orden que eligió la
@@ -39,6 +39,8 @@ const ANCHO_CON_PANEL = 896;
 
 /** Cómo se acomoda cada foto, por su dirección: lo lee `Foto` sin pasarlo de mano en mano */
 const EncuadresVitrina = createContext<Record<string, Encuadre>>({});
+/** Cuáles fotos son videos (dirección → segundos): la foto es su primer cuadro y el video va en «<dirección>/video» */
+const VideosVitrina = createContext<Record<string, number>>({});
 
 /** Las fotos de la portada (las Vitrinas viejas solo mandan `portada`) */
 const fotosDePortada = (datos: DatosVitrina) => (datos.portadas?.length ? datos.portadas : datos.portada ? [datos.portada] : []);
@@ -224,9 +226,11 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const cuenta = useMemo(() => cuentaDeLaReserva(elegidos, apartados, oferta), [elegidos, apartados, oferta]);
   const cuantos = elegidos.length + apartados.length;
   const encuadres = useMemo(() => encuadresDe(datos), [datos]);
+  const videos = useMemo(() => datos.videos ?? {}, [datos]);
 
   return (
     <EncuadresVitrina.Provider value={encuadres}>
+    <VideosVitrina.Provider value={videos}>
     <div ref={raiz} style={estiloVitrina(diseno)} className={`@container ${previa ? 'min-h-full' : 'min-h-dvh'} bg-[var(--v-fondo)] text-[var(--v-texto)] antialiased`}>
       {hecha ? (
         <Exito hecha={hecha} salon={datos.salon.nombre} otra={reiniciar} />
@@ -371,6 +375,7 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
         )}
       </AnimatePresence>
     </div>
+    </VideosVitrina.Provider>
     </EncuadresVitrina.Provider>
   );
 }
@@ -488,7 +493,7 @@ function Carrusel({ fotos, alt, inicio = 0, puntosArriba = false }: { fotos: str
     const el = caja.current;
     if (el && inicio) el.scrollLeft = inicio * el.clientWidth;
   }, [inicio]);
-  if (fotos.length <= 1) return <Foto src={fotos[0] ?? null} alt={alt} />;
+  if (fotos.length <= 1) return <Foto src={fotos[0] ?? null} alt={alt} reproducir />;
   const alDeslizar = () => {
     const el = caja.current;
     if (el) setActual(Math.round(el.scrollLeft / Math.max(el.clientWidth, 1)));
@@ -544,7 +549,7 @@ function Carrusel({ fotos, alt, inicio = 0, puntosArriba = false }: { fotos: str
       >
         {fotos.map((f, i) => (
           <div key={f} className="size-full shrink-0 snap-center">
-            <Foto src={f} alt={i === 0 ? alt : `${alt} (${i + 1})`} />
+            <Foto src={f} alt={i === 0 ? alt : `${alt} (${i + 1})`} reproducir />
           </div>
         ))}
       </div>
@@ -635,13 +640,55 @@ function MasFotos({ cuantas }: { cuantas: number }) {
   );
 }
 
-function Foto({ src, alt }: { src: string | null; alt: string }) {
+/**
+ * Una foto del catálogo. Si es un video: en una miniatura, su primer cuadro
+ * con un ▶; con `reproducir` (el carrusel), el video.
+ */
+function Foto({ src, alt, reproducir = false }: { src: string | null; alt: string; reproducir?: boolean }) {
   const url = urlDeFoto(src);
   const encuadre = useContext(EncuadresVitrina)[src ?? ''];
+  const esVideo = useContext(VideosVitrina)[src ?? ''] != null;
+  if (url && esVideo && reproducir) return <VideoVitrina cuadro={url} video={`${url}/video`} alt={alt} encuadre={encuadre} />;
   return url ? (
-    <span className="relative block size-full"><FotoEncuadrada src={url} alt={alt} encuadre={encuadre} /></span>
+    <span className="relative block size-full"><FotoEncuadrada src={url} alt={alt} encuadre={encuadre} video={esVideo ? `${url}/video` : null} /></span>
   ) : (
     <div className="grid size-full place-items-center bg-[var(--v-tinte)] text-[var(--v-p)]"><Sparkles className="size-7 opacity-70" /></div>
+  );
+}
+
+/**
+ * Un video del carrusel, como en Instagram: se reproduce sin sonido y en
+ * bucle mientras está a la vista (si no, se pausa y no gasta datos). El botón
+ * de la bocina le pone sonido. Tocarlo lo pausa o lo sigue.
+ */
+function VideoVitrina({ cuadro, video, alt, encuadre }: { cuadro: string; video: string; alt: string; encuadre?: Encuadre }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [conSonido, setConSonido] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const vigia = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && e.intersectionRatio >= 0.6) void el.play().catch(() => undefined);
+      else el.pause();
+    }, { threshold: [0, 0.6] });
+    vigia.observe(el);
+    return () => vigia.disconnect();
+  }, []);
+  return (
+    <span className="relative block size-full overflow-hidden">
+      <video
+        ref={ref} src={video} poster={cuadro} aria-label={alt} muted={!conSonido} loop playsInline preload="none"
+        onClick={(e) => { const el = e.currentTarget; if (el.paused) void el.play().catch(() => undefined); else el.pause(); }}
+        className="absolute inset-0 size-full" style={estiloEncuadre(encuadre)}
+      />
+      <button
+        type="button" onClick={(e) => { e.stopPropagation(); setConSonido((v) => !v); }}
+        aria-label={conSonido ? 'Quitar el sonido' : 'Poner sonido'}
+        className="absolute bottom-2 left-2 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/55 text-white backdrop-blur transition active:scale-95"
+      >
+        {conSonido ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+      </button>
+    </span>
   );
 }
 

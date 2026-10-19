@@ -6,7 +6,7 @@ import {
 } from '../types';
 import { INITIAL_SYSTEM_LOGS, INITIAL_SETTINGS } from '../data/mockData';
 import { loungeAudio } from '../utils/loungeAudio';
-import { api, urlDeFoto } from '../services/api';
+import { api, subirArchivo, urlDeFoto } from '../services/api';
 import { alRecibir, alConectar } from '../services/socket';
 import { conSedeLocal, sedeLocal } from '../services/sedeLocal';
 import { PeticionCancion, componerCola, indicesDePeticiones } from '../utils/peticiones';
@@ -727,10 +727,15 @@ function mapApiService(s: any): SalonService {
   };
 }
 /** Un cambio en el carrusel de fotos de un servicio o producto */
-export type CambioDeGaleria = { agregar: string } | { quitar: string } | { orden: string[] };
+export type CambioDeGaleria = { agregar: string } | { video: File } | { quitar: string } | { orden: string[] };
 
 function cambiarGaleria(que: 'services' | 'products', id: string, cambio: CambioDeGaleria) {
   if ('agregar' in cambio) return api.post<any>(`/${que}/${id}/fotos`, { imagen: cambio.agregar });
+  if ('video' in cambio) {
+    const formulario = new FormData();
+    formulario.append('archivo', cambio.video, cambio.video.name);
+    return subirArchivo<any>(`/${que}/${id}/videos`, formulario);
+  }
   if ('quitar' in cambio) return api.delete<any>(`/${que}/${id}/fotos/${cambio.quitar}`);
   return api.put<any>(`/${que}/${id}/fotos/orden`, { ids: cambio.orden });
 }

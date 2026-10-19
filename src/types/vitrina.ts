@@ -141,6 +141,8 @@ export interface DatosVitrina {
   portadas?: string[];
   /** Cómo se acomoda cada foto (portada, servicios, productos), por su dirección */
   encuadres?: Record<string, Encuadre>;
+  /** Las fotos de servicios y productos que son videos: su dirección → segundos. El video va en «<dirección>/video» */
+  videos?: Record<string, number>;
   servicios: ServicioVitrina[];
   productos: ProductoVitrina[];
   ofertas: OfertaVitrina[];
