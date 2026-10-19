@@ -874,7 +874,11 @@ function Especialistas({ lista }: { lista: EspecialistaVitrina[] }) {
       <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {lista.map((e) => (
           <div key={e.id} className={`${TARJETA} w-36 shrink-0 p-4 text-center`}>
-            <span className="mx-auto grid size-14 place-items-center rounded-full bg-[var(--v-tinte)] text-lg font-bold text-[var(--v-p)]">{iniciales(e.nombre)}</span>
+            {e.foto ? (
+              <span className="mx-auto block size-14 overflow-hidden rounded-full bg-[var(--v-tinte)]"><Foto src={e.foto} alt={e.nombre} /></span>
+            ) : (
+              <span className="mx-auto grid size-14 place-items-center rounded-full bg-[var(--v-tinte)] text-lg font-bold text-[var(--v-p)]">{iniciales(e.nombre)}</span>
+            )}
             <p className="mt-2 truncate text-sm font-semibold">{e.nombre}</p>
             {e.especialidad && <p className="truncate text-xs text-[var(--v-suave)]">{e.especialidad}</p>}
           </div>

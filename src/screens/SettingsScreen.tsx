@@ -62,6 +62,8 @@ import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPe
 import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
+import { AvatarEspecialista, FotoEspecialista } from '../components/ajustes/FotoEspecialista';
+import { useEncuadres } from '../hooks/useEncuadres';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
@@ -100,6 +102,9 @@ export const SettingsScreen: React.FC = () => {
   const { ponerPaleta, sedes: sedesDelSalon, varias: variasSedes, actual: sedeActual } = useSedeActiva();
   // La fila de especialista con sus sedes abiertas (con varias sedes)
   const [sedesAbiertas, setSedesAbiertas] = useState<string | null>(null);
+  /** De quién está abierta la foto (debajo de su fila) */
+  const [fotoDe, setFotoDe] = useState<string | null>(null);
+  const { encuadres, guardar: guardarEncuadre } = useEncuadres();
 
   const {
     settings,
@@ -856,7 +861,8 @@ export const SettingsScreen: React.FC = () => {
             </h2>
           </div>
           <p className="text-[0.75rem] text-slate-400 leading-relaxed">
-            Cada una con su especialidad y su zona. La zona es la que decide a
+            Cada una con su foto, su especialidad y su zona. Toca la carita para
+            subir su foto: es la que sale en tu Vitrina. La zona es la que decide a
             qué cola entra un turno cuando no se elige a mano. Con el reloj
             pones su horario (si no es el del salón) y los días que no viene.
             Con el calendario dices si recibe citas: bartender, recepción o caja
@@ -873,6 +879,16 @@ export const SettingsScreen: React.FC = () => {
                     : 'bg-slate-50/50 dark:bg-neutral-800/20 border-dashed border-slate-200 dark:border-neutral-800 opacity-60'
                 }`}
               >
+                <button
+                  type="button"
+                  onClick={() => setFotoDe(fotoDe === e.id ? null : e.id)}
+                  aria-label={e.fotoId ? `Foto de ${e.name}` : `Subir la foto de ${e.name}`}
+                  aria-expanded={fotoDe === e.id}
+                  title={e.fotoId ? 'Cambiar o acomodar su foto' : 'Subir su foto para la Vitrina'}
+                  className={`shrink-0 rounded-full transition cursor-pointer ${fotoDe === e.id ? 'ring-2 ring-[var(--primary)] ring-offset-1 ring-offset-white dark:ring-offset-neutral-900' : 'hover:opacity-80'}`}
+                >
+                  <AvatarEspecialista fotoId={e.fotoId} nombre={e.name} encuadre={e.fotoId ? encuadres[e.fotoId] : null} />
+                </button>
                 <input
                   key={`n-${e.id}-${e.name}`}
                   defaultValue={e.name}
@@ -953,6 +969,17 @@ export const SettingsScreen: React.FC = () => {
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {/* Su foto: la de la Vitrina y el quiosco */}
+              {fotoDe === e.id && (
+                <div className="ml-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700">
+                  <FotoEspecialista
+                    persona={e}
+                    encuadre={e.fotoId ? encuadres[e.fotoId] : null}
+                    onEncuadre={guardarEncuadre}
+                    onCambio={loadEspecialistas}
+                  />
+                </div>
+              )}
               {/* En qué sedes trabaja: la primera que se marca es la suya */}
               {variasSedes && sedesAbiertas === e.id && (
                 <div className="ml-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 space-y-2">
