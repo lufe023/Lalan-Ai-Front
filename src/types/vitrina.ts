@@ -108,6 +108,8 @@ export interface EspecialistaVitrina {
   categorias: string[] | null;
   /** Su foto (catalogo/fotos/:id); null = sus iniciales */
   foto?: string | null;
+  /** Los días y horas en que atiende (su horario dentro del de la sede). Falta = el de la sede */
+  semana?: DiaVitrina[];
 }
 
 export interface DiaVitrina {
