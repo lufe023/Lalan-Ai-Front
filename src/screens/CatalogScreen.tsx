@@ -24,6 +24,7 @@ import {
   HelpCircle,
   X,
   Eye,
+  MapPin,
 } from 'lucide-react';
 import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
 import { SedeDelStock, useSedeDelStock } from '../components/inventario/SedeDelStock';
@@ -57,7 +58,8 @@ import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
 import { usePlan } from '../context/PlanContext';
 import { useEncuadres } from '../hooks/useEncuadres';
-import { SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
+import { COLOR_ASISTENTE, InterruptorDeCatalogo, SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
+import { BotonDeTarjeta, OpcionesDeTarjeta, PrecioDeTarjeta, TarjetaCatalogo, opcionesDe } from '../components/catalogo/TarjetaCatalogo';
 
 /**
  * Sube, en orden, las fotos que se eligieron antes de crear el artículo.
@@ -697,15 +699,17 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              serviciosEnLista.map(({ principal: service, copias }, i) => (
-                <Aparecer
-                  key={service.id}
-                  indice={i}
-                  className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3"
-                >
-                  {/* Service Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+              {serviciosEnLista.map(({ principal: service, copias }, i) => {
+                const tiers = opcionesDe(service.priceTiers, 'Precio Base', service.price);
+                const desde = Math.min(...tiers.map(t => t.price));
+                return (
+                  <TarjetaCatalogo
+                    key={service.id}
+                    indice={i}
+                    nombre={service.name}
+                    onEditar={() => handleOpenEditService(service)}
+                    foto={
                       <MiniaturaCatalogo
                         fotoId={service.fotoId}
                         encuadre={service.fotoId ? encuadres[service.fotoId] : null}
@@ -713,141 +717,71 @@ export const CatalogScreen: React.FC = () => {
                         nombre={service.name}
                         icono={iconoCategoria('service', service.category)}
                         color={service.color || '#e11d48'}
+                        className="w-16 h-16"
                       />
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                          {service.name}
-                        </h4>
-                        <EtiquetaSede locationId={service.locationId} />
-                        <div className="flex items-center gap-2 text-[0.6875rem] text-slate-400 mt-0.5">
-                          <span className="font-semibold text-slate-600 dark:text-neutral-400">
-                            {service.categoryName}
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {service.durationMinutes} min
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenEditService(service)}
-                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] ios-touch cursor-pointer"
-                        title="Editar Servicio y Tabla de Precios"
-                      >
+                    }
+                    acciones={<>
+                      <BotonDeTarjeta titulo="Editar servicio y precios" onClick={() => handleOpenEditService(service)}>
                         <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          const soloAqui = variasSedes && sedeActual && !service.locationId;
-                          if (confirm(soloAqui
-                            ? `¿Quitar "${service.name}" de ${sedeActual.name}? Las demás sedes lo siguen ofreciendo.`
-                            : `¿Eliminar "${service.name}" del catálogo?`)) {
-                            deleteService(service.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-400 hover:text-rose-500 ios-touch cursor-pointer"
-                        title="Eliminar Servicio"
-                      >
+                      </BotonDeTarjeta>
+                      <BotonDeTarjeta titulo="Eliminar servicio" peligro onClick={() => {
+                        const soloAqui = variasSedes && sedeActual && !service.locationId;
+                        if (confirm(soloAqui
+                          ? `¿Quitar "${service.name}" de ${sedeActual.name}? Las demás sedes lo siguen ofreciendo.`
+                          : `¿Eliminar "${service.name}" del catálogo?`)) {
+                          deleteService(service.id);
+                        }
+                      }}>
                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {service.description && (
-                    <p className="text-[0.75rem] text-slate-600 dark:text-neutral-400 leading-relaxed">
-                      {service.description}
-                    </p>
-                  )}
-
-                  {/* PRICE TABLE / TABLA DE PRECIOS */}
-                  {enTodasSedes ? (
-                    <ServicioEnSedes principal={service} copias={copias} sedes={sedesDelSalon}
-                      precio={(n, m) => enSuMoneda(n, m)} onEditar={handleOpenEditService} />
-                  ) : (
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 space-y-1.5">
-                    <div className="flex items-center justify-between text-[0.6875rem] uppercase font-bold text-slate-400 px-1">
-                      <span className="flex items-center gap-1">
-                        <Tag className="w-3 h-3 text-[var(--primary)]" />
-                        Tabla de Precios & Opciones ({service.priceTiers?.length || 1})
-                      </span>
-                      <span>Tarifa</span>
-                    </div>
-                    {service.aiPrecio && service.aiPrecio !== 'exacto' && (
-                      <div className="px-1 text-[0.6875rem] text-purple-600 dark:text-purple-300 flex items-center gap-1">
-                        <Bot className="w-3 h-3" /> {service.aiPrecio === 'desde' ? 'La asistente dice «desde» el precio más bajo' : 'La asistente no dice el precio: lo confirma el salón'}
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      {((() => { const v = (service.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)); return v.length > 0 ? v : [{ id: '1', name: 'Precio Base', price: service.price, isDefault: true }]; })()).map(tier => (
-                        <div
-                          key={tier.id}
-                          className="flex items-center justify-between p-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 text-xs"
-                        >
-                          <div className="min-w-0 pr-2">
-                            <span className="font-bold text-slate-800 dark:text-slate-100 text-[0.75rem] block truncate">
-                              {tier.name}
-                              {tier.isDefault && (
-                                <span className="ml-1.5 text-[0.6875rem] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-neutral-700 text-slate-700 dark:text-neutral-300">
-                                  Base
-                                </span>
-                              )}
-                              {!tier.isDefault && tier.aiOfrece === false && (
-                                <span className="ml-1.5 text-[0.6875rem] font-bold px-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500" title="La asistente no la ofrece">
-                                  Solo salón
-                                </span>
-                              )}
-                            </span>
-                            {tier.description && (
-                              <span className="text-[0.6875rem] text-slate-400 block truncate">
-                                {tier.description}
-                              </span>
-                            )}
-                          </div>
-                          <span className="font-black text-slate-900 dark:text-white text-xs shrink-0 text-right">
-                            {enSuMoneda(tier.price, service.currencyCode)}
-                            {esExtranjera(service.currencyCode) && (
-                              <span className="block text-[0.6875rem] font-semibold text-slate-400">≈ {dinero(tier.price, service.currencyCode)}</span>
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  )}
-
-                  {/* AI Availability Toggle */}
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-neutral-800/60 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Bot
-                        className={`w-4 h-4 ${
-                          service.aiAvailable ? 'text-purple-500' : 'text-slate-400'
-                        }`}
+                      </BotonDeTarjeta>
+                    </>}
+                    etiquetas={<EtiquetaSede locationId={service.locationId} />}
+                    datos={<>
+                      <span className="font-semibold text-slate-600 dark:text-neutral-300">{service.categoryName}</span>
+                      <span aria-hidden>·</span>
+                      <span className="inline-flex items-center gap-0.5"><Clock className="w-3 h-3" />{service.durationMinutes} min</span>
+                      {service.aiPrecio && service.aiPrecio !== 'exacto' && (
+                        <span className="inline-flex items-center gap-0.5 text-purple-600 dark:text-purple-300" title={service.aiPrecio === 'desde' ? 'La asistente dice «desde» el precio más bajo' : 'La asistente no dice el precio: lo confirma el salón'}>
+                          <Bot className="w-3 h-3" /> {service.aiPrecio === 'desde' ? 'dice «desde»' : 'no dice el precio'}
+                        </span>
+                      )}
+                    </>}
+                    precio={
+                      <PrecioDeTarjeta
+                        desde={tiers.length > 1}
+                        precio={enSuMoneda(desde, service.currencyCode)}
+                        aproximado={esExtranjera(service.currencyCode) ? dinero(desde, service.currencyCode) : null}
+                        nota={enTodasSedes
+                          ? (copias.length ? `precio del salón · ${copias.length === 1 ? '1 sede con su precio' : `${copias.length} sedes con su precio`}` : 'igual en todas las sedes')
+                          : tiers.length > 1 ? `${tiers.length} opciones` : null}
                       />
-                      <span className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-300">
-                        {service.aiAvailable ? 'Bot IA ofrece este servicio' : 'Pausado en Bot IA'}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => toggleServiceAi(service.id, !service.aiAvailable)}
-                      className={`px-3 py-1 rounded-full text-[0.6875rem] font-extrabold transition ios-touch cursor-pointer ${
-                        service.aiAvailable
-                          ? 'bg-purple-500 text-white shadow-xs'
-                          : 'bg-slate-200 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400'
-                      }`}
-                    >
-                      {service.aiAvailable ? '✓ Activo' : 'Inactivo'}
-                    </button>
-                  </div>
-                  <SaleEnVitrina activo={service.enVitrina !== false} cambiar={(v) => updateService(service.id, { enVitrina: v })} />
-                  <CopiarASede desde={service.locationId} onCopiar={(sedes) => copiarServicio(service.id, sedes)} />
-                </Aparecer>
-              ))
+                    }
+                    detalle={enTodasSedes
+                      ? { titulo: 'Precio en cada sede', contenido: <ServicioEnSedes principal={service} copias={copias} sedes={sedesDelSalon} precio={(n, m) => enSuMoneda(n, m)} onEditar={handleOpenEditService} /> }
+                      : tiers.length > 1
+                        ? { titulo: `Ver las ${tiers.length} opciones`, contenido: (
+                          <OpcionesDeTarjeta
+                            opciones={tiers.map(t => ({
+                              id: t.id, nombre: t.name, detalle: t.description,
+                              marca: t.isDefault ? 'Base' : t.aiOfrece === false ? 'Solo salón' : null,
+                              precio: enSuMoneda(t.price, service.currencyCode),
+                            }))}
+                          />
+                        ) }
+                        : null}
+                    interruptores={<>
+                      <InterruptorDeCatalogo
+                        icono={<Bot className="w-3.5 h-3.5" />} titulo="Asistente" si="Lo ofrece" no="Pausado"
+                        activo={!!service.aiAvailable} color={COLOR_ASISTENTE}
+                        cambiar={(v) => toggleServiceAi(service.id, v)}
+                      />
+                      <SaleEnVitrina activo={service.enVitrina !== false} cambiar={(v) => updateService(service.id, { enVitrina: v })} />
+                    </>}
+                    pie={<CopiarASede desde={service.locationId} onCopiar={(sedes) => copiarServicio(service.id, sedes)} />}
+                  />
+                );
+              })}
+              </div>
             )}
           </div>
         )}
@@ -886,193 +820,120 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              filteredProducts.map((product, i) => (
-                <Aparecer
-                  key={product.id}
-                  indice={i}
-                  className="p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3"
-                >
-                  {/* Product Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+              {filteredProducts.map((product, i) => {
+                const tiers = opcionesDe(product.priceTiers, 'Precio PVP', product.basePrice);
+                const desde = Math.min(...tiers.map(t => t.price));
+                const bajo = product.minStock != null && product.stock <= product.minStock;
+                const margen = product.costPrice != null && product.basePrice > 0 ? (product.basePrice - product.costPrice) / product.basePrice : null;
+                return (
+                  <TarjetaCatalogo
+                    key={product.id}
+                    indice={i}
+                    nombre={product.name}
+                    onEditar={() => handleOpenEditProduct(product)}
+                    foto={
                       <MiniaturaCatalogo
                         fotoId={product.fotoId}
                         encuadre={product.fotoId ? encuadres[product.fotoId] : null}
                         esVideo={!!product.fotoId && videos[product.fotoId] != null}
                         nombre={product.name}
                         icono={iconoCategoria('product', product.category)}
-                        className="w-12 h-12"
+                        className="w-16 h-16"
                         pideFoto={!product.supplyOnly}
                       />
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                          {product.name}
-                        </h4>
-                        <div className="flex items-center gap-2 text-[0.6875rem] text-slate-400 mt-0.5">
-                          <span className="font-semibold text-slate-600 dark:text-neutral-400">
-                            {product.categoryName}
-                          </span>
-                          <span>•</span>
-                          {product.preparedToOrder ? (
-                            <span className="font-medium text-amber-600 dark:text-amber-400" title="Se prepara al momento: su inventario son sus insumos">
-                              🧑‍🍳 Preparado{product.porcionesPosibles != null ? ` · alcanza para ${product.porcionesPosibles}` : ' · sin receta'}
-                            </span>
-                          ) : (
-                          <span className={`font-medium ${
-                            product.minStock != null && product.stock <= product.minStock
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-emerald-600 dark:text-emerald-400'
-                          }`}>
-                            Stock: {product.stock} {product.unit ?? 'unid.'}
-                            {product.unit === 'unit' && product.unitQty != null && (
-                              <span className="text-slate-400 dark:text-neutral-500 ml-1">· {product.unitQty} {product.unitQtyUnit ?? 'ml'} c/u</span>
-                            )}
-                            {product.minStock != null && product.stock <= product.minStock && (
-                              <span className="ml-1 text-amber-500">⚠️</span>
-                            )}
-                            {variasSedes && !sedeActual && (product.stockPorSede?.length ?? 0) > 0 && (
-                              <span className="text-slate-400 dark:text-neutral-500 ml-1">
-                                ({product.stockPorSede!.map(x => `${x.nombre} ${x.stock}`).join(' · ')}{(product.stockSinSede ?? 0) > 0 ? ` · sin sede ${product.stockSinSede}` : ''})
-                              </span>
-                            )}
-                          </span>
-                          )}
-                          {product.supplyOnly && <span className="font-medium text-sky-600 dark:text-sky-400">🧺 Insumo</span>}
-                          <span>•</span>
-                          <span className="text-[0.6875rem] text-slate-400">SKU: {product.sku}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
+                    }
+                    acciones={<>
                       {!product.preparedToOrder && (
-                        <button
-                          onClick={() => setRecibiendo({ id: product.id, name: product.name, unit: product.unit, costPrice: (product as any).costPrice ?? null })}
-                          className="p-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] ios-touch cursor-pointer"
-                          title="Recibir mercancía (con fecha de vencimiento)"
-                        >
+                        <BotonDeTarjeta titulo="Recibir mercancía (con fecha de vencimiento)" onClick={() => setRecibiendo({ id: product.id, name: product.name, unit: product.unit, costPrice: (product as any).costPrice ?? null })}>
                           <PackagePlus className="w-3.5 h-3.5" />
-                        </button>
+                        </BotonDeTarjeta>
                       )}
-                      <button
-                        onClick={() => handleOpenEditProduct(product)}
-                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] ios-touch cursor-pointer"
-                        title="Editar Producto y Tabla de Precios"
-                      >
+                      <BotonDeTarjeta titulo="Editar producto y precios" onClick={() => handleOpenEditProduct(product)}>
                         <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar "${product.name}" del catálogo?`)) {
-                            deleteProduct(product.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-400 hover:text-rose-500 ios-touch cursor-pointer"
-                        title="Eliminar Producto"
-                      >
+                      </BotonDeTarjeta>
+                      <BotonDeTarjeta titulo="Eliminar producto" peligro onClick={() => {
+                        if (confirm(`¿Eliminar "${product.name}" del catálogo?`)) {
+                          deleteProduct(product.id);
+                        }
+                      }}>
                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {product.description && (
-                    <p className="text-[0.75rem] text-slate-600 dark:text-neutral-400 leading-relaxed">
-                      {product.description}
-                    </p>
-                  )}
-
-                  {/* PRODUCT PRICE TABLE / TABLA DE PRECIOS */}
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/60 dark:border-neutral-700/60 space-y-1.5">
-                    <div className="flex items-center justify-between text-[0.6875rem] uppercase font-bold text-slate-400 px-1">
-                      <span className="flex items-center gap-1">
-                        <ShoppingBag className="w-3 h-3 text-[var(--primary)]" />
-                        Tabla de Precios de Venta ({product.priceTiers?.length || 1})
-                        {variasSedes && sedeActual && product.precioPropio && (
-                          <span className="normal-case font-semibold text-[var(--primary)]">· precio de {sedeActual.name}</span>
-                        )}
-                        {variasSedes && !sedeActual && (product.preciosPorSede?.length ?? 0) > 0 && (
-                          <span className="normal-case font-semibold text-amber-600 dark:text-amber-400" title={product.preciosPorSede!.map(x => `${x.nombre}: ${enSuMoneda(x.basePrice, x.currencyCode)}`).join('\n')}>
-                            · {product.preciosPorSede!.length === 1 ? `${product.preciosPorSede![0].nombre} tiene su precio` : `${product.preciosPorSede!.length} sedes con su precio`}
-                          </span>
-                        )}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {product.costPrice != null && product.basePrice > 0 && (
-                          <span className={`text-[0.6875rem] font-extrabold px-1.5 py-0.5 rounded-full ${
-                            ((product.basePrice - product.costPrice) / product.basePrice) >= 0.35
-                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
-                              : ((product.basePrice - product.costPrice) / product.basePrice) >= 0.15
-                              ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                      </BotonDeTarjeta>
+                    </>}
+                    etiquetas={<>
+                      {variasSedes && sedeActual && product.precioPropio && (
+                        <span className="inline-flex items-center gap-1 px-1.5 rounded-full bg-[var(--primary)]/10 text-[0.6875rem] font-semibold text-[var(--primary)]">
+                          <MapPin className="w-3 h-3" /> precio de {sedeActual.name}
+                        </span>
+                      )}
+                      {variasSedes && !sedeActual && (product.preciosPorSede?.length ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-[0.6875rem] font-semibold text-amber-700 dark:text-amber-300" title={product.preciosPorSede!.map(x => `${x.nombre}: ${enSuMoneda(x.basePrice, x.currencyCode)}`).join('\n')}>
+                          <MapPin className="w-3 h-3" /> {product.preciosPorSede!.length === 1 ? `${product.preciosPorSede![0].nombre} tiene su precio` : `${product.preciosPorSede!.length} sedes con su precio`}
+                        </span>
+                      )}
+                    </>}
+                    datos={<>
+                      <span className="font-semibold text-slate-600 dark:text-neutral-300">{product.categoryName}</span>
+                      <span aria-hidden>·</span>
+                      {product.preparedToOrder ? (
+                        <span className="font-medium text-amber-600 dark:text-amber-400" title="Se prepara al momento: su inventario son sus insumos">
+                          🧑‍🍳 Preparado{product.porcionesPosibles != null ? ` · alcanza para ${product.porcionesPosibles}` : ' · sin receta'}
+                        </span>
+                      ) : (
+                        <span className={`font-medium ${bajo ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {bajo && '⚠️ '}Quedan {product.stock} {!product.unit || product.unit === 'unit' ? 'unid.' : product.unit}
+                          {product.unit === 'unit' && product.unitQty != null && (
+                            <span className="text-slate-400 dark:text-neutral-500"> · {product.unitQty} {product.unitQtyUnit ?? 'ml'} c/u</span>
+                          )}
+                        </span>
+                      )}
+                      {product.supplyOnly && <span className="font-medium text-sky-600 dark:text-sky-400">🧺 Insumo</span>}
+                      {variasSedes && !sedeActual && !product.preparedToOrder && (product.stockPorSede?.length ?? 0) > 0 && (
+                        <span className="basis-full text-slate-400 dark:text-neutral-500">
+                          {product.stockPorSede!.map(x => `${x.nombre} ${x.stock}`).join(' · ')}{(product.stockSinSede ?? 0) > 0 ? ` · sin sede ${product.stockSinSede}` : ''}
+                        </span>
+                      )}
+                    </>}
+                    precio={
+                      <PrecioDeTarjeta
+                        desde={tiers.length > 1}
+                        precio={enSuMoneda(desde, product.currencyCode)}
+                        aproximado={esExtranjera(product.currencyCode) ? dinero(desde, product.currencyCode) : null}
+                        nota={tiers.length > 1 ? `${tiers.length} precios` : null}
+                        extra={margen != null && (
+                          <span className={`text-[0.625rem] font-extrabold px-1.5 py-0.5 rounded-full ${
+                            margen >= 0.35 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
+                              : margen >= 0.15 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
                               : 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400'
-                          }`}>
-                            {Math.round(((product.basePrice - product.costPrice) / product.basePrice) * 100)}% margen
+                          }`} title="Lo que le ganas sobre el costo">
+                            {Math.round(margen * 100)}% margen
                           </span>
                         )}
-                        <span>Precio</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      {((() => { const v = (product.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)); return v.length > 0 ? v : [{ id: '1', name: 'Precio PVP', price: product.basePrice, isDefault: true }]; })()).map(tier => (
-                        <div
-                          key={tier.id}
-                          className="flex items-center justify-between p-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 text-xs"
-                        >
-                          <div className="min-w-0 pr-2">
-                            <span className="font-bold text-slate-800 dark:text-slate-100 text-[0.75rem] block truncate">
-                              {tier.name}
-                              {tier.isDefault && (
-                                <span className="ml-1.5 text-[0.6875rem] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-neutral-700 text-slate-700 dark:text-neutral-300">
-                                  PVP
-                                </span>
-                              )}
-                            </span>
-                            {tier.description && (
-                              <span className="text-[0.6875rem] text-slate-400 block truncate">
-                                {tier.description}
-                              </span>
-                            )}
-                          </div>
-                          <span className="font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0 text-right">
-                            {enSuMoneda(tier.price, product.currencyCode)}
-                            {esExtranjera(product.currencyCode) && (
-                              <span className="block text-[0.6875rem] font-semibold text-slate-400">≈ {dinero(tier.price, product.currencyCode)}</span>
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* AI Recommendation Toggle */}
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-neutral-800/60 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Bot
-                        className={`w-4 h-4 ${
-                          product.aiAvailable ? 'text-purple-500' : 'text-slate-400'
-                        }`}
                       />
-                      <span className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-300">
-                        {product.aiAvailable ? 'Bot IA recomienda este producto' : 'Pausado en Bot IA'}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => toggleProductAi(product.id, !product.aiAvailable)}
-                      className={`px-3 py-1 rounded-full text-[0.6875rem] font-extrabold transition ios-touch cursor-pointer ${
-                        product.aiAvailable
-                          ? 'bg-purple-500 text-white shadow-xs'
-                          : 'bg-slate-200 dark:bg-neutral-800 text-slate-600 dark:text-neutral-400'
-                      }`}
-                    >
-                      {product.aiAvailable ? '✓ Activo' : 'Inactivo'}
-                    </button>
-                  </div>
-                  {!product.supplyOnly && (
-                    <SaleEnVitrina activo={product.enVitrina !== false} cambiar={(v) => updateProduct(product.id, { enVitrina: v })} />
-                  )}
-                </Aparecer>
-              ))
+                    }
+                    detalle={tiers.length > 1 ? { titulo: `Ver los ${tiers.length} precios`, contenido: (
+                      <OpcionesDeTarjeta
+                        opciones={tiers.map(t => ({
+                          id: t.id, nombre: t.name, detalle: t.description,
+                          marca: t.isDefault ? 'PVP' : null,
+                          precio: enSuMoneda(t.price, product.currencyCode),
+                        }))}
+                      />
+                    ) } : null}
+                    interruptores={<>
+                      <InterruptorDeCatalogo
+                        icono={<Bot className="w-3.5 h-3.5" />} titulo="Asistente" si="Lo ofrece" no="Pausado"
+                        activo={!!product.aiAvailable} color={COLOR_ASISTENTE}
+                        cambiar={(v) => toggleProductAi(product.id, v)}
+                      />
+                      {!product.supplyOnly && (
+                        <SaleEnVitrina activo={product.enVitrina !== false} cambiar={(v) => updateProduct(product.id, { enVitrina: v })} />
+                      )}
+                    </>}
+                  />
+                );
+              })}
+              </div>
             )}
           </div>
         )}
@@ -1311,6 +1172,7 @@ export const CatalogScreen: React.FC = () => {
               <FotosDelCatalogo
                 que="servicio"
                 nombre={serviceForm.name}
+                previa="w-28 sm:w-32 aspect-[4/5]"
                 fotos={editingServiceId ? fotosGuardadas(servicioEnEdicion, videos) : fotosNuevoServicio}
                 sede={sedeDeLaFotoDelServicio}
                 onAgregar={async (foto) => {
@@ -1552,6 +1414,7 @@ export const CatalogScreen: React.FC = () => {
               <FotosDelCatalogo
                 que="producto"
                 nombre={productForm.name}
+                previa="w-32 sm:w-36 aspect-square"
                 fotos={editingProductId ? fotosGuardadas(products.find(p => p.id === editingProductId), videos) : fotosNuevoProducto}
                 sede={variasSedes ? 'Todas las sedes' : null}
                 onAgregar={async (foto) => {

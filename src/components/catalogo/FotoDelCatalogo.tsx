@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { Camera, ChevronLeft, ChevronRight, Crop, ImagePlus, Loader2, MapPin, Plus, RotateCcw, Star, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Camera, ChevronLeft, ChevronRight, Crop, ImagePlus, Loader2, MapPin, Maximize2, Plus, RotateCcw, Star, Trash2, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import { urlDeFoto } from '../../services/api';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
 import { AjustesDeEncuadre, CAJA_ARRASTRABLE, ENCUADRE_NORMAL, EtiquetaArrastrar, FotoEncuadrada, MarcaDeVideo, esNormal, useArrastrarEncuadre, type Encuadre } from './FotoEncuadrada';
@@ -93,6 +94,10 @@ const TEXTOS = {
  * Con `onEncuadre`, cada foto guardada se puede acomodar («Ajustar»): zoom,
  * llenar o completa, y de lado a lado y de arriba a abajo. La vista grande usa
  * el mismo recuadro (`aspecto`) que tendrá la foto donde sale.
+ *
+ * Con `previa`, la foto elegida se ve chica, del tamaño de su tarjeta en la
+ * Vitrina, con las miniaturas y los botones al lado. Tocarla la abre en
+ * pantalla completa.
  */
 export const FotosDelCatalogo: React.FC<{
   fotos: FotoDeGaleria[];
@@ -114,7 +119,9 @@ export const FotosDelCatalogo: React.FC<{
   encuadres?: Record<string, Encuadre>;
   /** Guarda cómo se acomoda una foto ya subida. Sin esto no sale «Ajustar» */
   onEncuadre?: (clave: string, encuadre: Encuadre) => Promise<void> | void;
-}> = ({ fotos, nombre, que, maximo = MAXIMO_FOTOS, sede, onAgregar, onAgregarVideo, onQuitar, onOrdenar, aspecto = 'aspect-[4/3]', encuadres, onEncuadre }) => {
+  /** El tamaño de la vista chica (clases de Tailwind: ancho y recuadro), como sale en la tarjeta de la Vitrina */
+  previa?: string;
+}> = ({ fotos, nombre, que, maximo = MAXIMO_FOTOS, sede, onAgregar, onAgregarVideo, onQuitar, onOrdenar, aspecto = 'aspect-[4/3]', encuadres, onEncuadre, previa }) => {
   const entrada = useRef<HTMLInputElement>(null);
   const [trabajando, setTrabajando] = useState<'' | 'subiendo' | 'quitando' | 'ordenando' | 'ajustando'>('');
   /** Mientras acomoda una foto: cómo va quedando (se guarda al tocar «Listo») */
@@ -125,6 +132,7 @@ export const FotosDelCatalogo: React.FC<{
   const [error, setError] = useState('');
   const [rotas, setRotas] = useState<string[]>([]);
   const [elegida, setElegida] = useState(0);
+  const [enGrande, setEnGrande] = useState(false);
   const caben = maximo - fotos.length;
   const i = Math.min(elegida, Math.max(fotos.length - 1, 0));
   const actual = fotos[i];
@@ -212,7 +220,137 @@ export const FotosDelCatalogo: React.FC<{
     </span>
   ) : null;
 
-  const boton = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 dark:bg-neutral-900/95 text-[0.75rem] font-semibold shadow-sm ios-touch cursor-pointer disabled:opacity-40';
+  // Botones chicos y ordenados, debajo de la foto (no encima: la tapaban)
+  const boton = 'inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-[0.6875rem] font-semibold text-slate-600 dark:text-neutral-300 ios-touch cursor-pointer transition hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-40 disabled:pointer-events-none';
+  const botonIcono = 'inline-flex items-center justify-center size-7 rounded-full border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-slate-600 dark:text-neutral-300 ios-touch cursor-pointer transition hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-40 disabled:pointer-events-none';
+  // Con `previa`, la foto se ve chica, del tamaño que tendrá en la tarjeta: el video no se reproduce ahí, se abre en grande
+  const reproducirAqui = !previa && !ajuste && !trabajando && !confirmando;
+
+  const vista = actual && (
+    <div {...arrastre} className={`relative rounded-2xl overflow-hidden border bg-slate-100 dark:bg-neutral-800 ${previa ?? aspecto} ${previa ? 'shrink-0' : ''} ${ajuste ? `border-[var(--primary)] ${CAJA_ARRASTRABLE}` : 'border-slate-200 dark:border-neutral-700'}`}>
+      {rotas.includes(actual.clave) ? (
+        <div className="w-full h-full flex items-center justify-center text-slate-400"><Camera className="w-6 h-6" /></div>
+      ) : (
+        <motion.div key={actual.clave} initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }} className="absolute inset-0">
+          <FotoEncuadrada src={actual.url} alt={nombre || (que === 'portada' ? 'Foto de portada' : `${actual.video ? 'Video' : 'Foto'} del ${que}`)} encuadre={ajuste ?? encuadreDe(actual.clave)} loading="eager" onError={() => setRotas(r => [...r, actual.clave])}
+            video={actual.video} reproducir={reproducirAqui ? 'controles' : false} />
+        </motion.div>
+      )}
+      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full bg-black/55 text-white text-[0.625rem] font-semibold pointer-events-none">
+        {i === 0 ? textos.primera : `${i + 1} de ${fotos.length}`}
+      </span>
+      {ajuste && <EtiquetaArrastrar />}
+      {!ajuste && !trabajando && !rotas.includes(actual.clave) && !(actual.video && reproducirAqui) && (
+        <button type="button" onClick={() => setEnGrande(true)} aria-label="Ver en pantalla completa" title="Ver en pantalla completa"
+          className="absolute inset-0 flex items-end justify-end p-1.5 cursor-zoom-in group">
+          <span className="grid place-items-center size-7 rounded-full bg-black/55 text-white backdrop-blur-sm transition group-hover:bg-black/75">
+            <Maximize2 className="w-3.5 h-3.5" />
+          </span>
+        </button>
+      )}
+      {trabajando && (
+        <div className="absolute inset-0 bg-black/45 flex flex-col items-center justify-center text-white text-[0.6875rem] font-semibold gap-1 px-2 text-center">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          {trabajando === 'subiendo' ? textoSubiendo(subidas, 'Subiendo foto…') : trabajando === 'quitando' ? 'Quitando…' : trabajando === 'ajustando' ? 'Guardando…' : 'Ordenando…'}
+        </div>
+      )}
+    </div>
+  );
+
+  // La tira de miniaturas: se acomoda en filas (sin barra de desplazamiento). Tocar una la muestra; el + agrega más
+  const miniaturas = (
+    <div className="flex flex-wrap gap-1.5 content-start">
+      {fotos.map((f, n) => (
+        <button
+          key={f.clave}
+          type="button"
+          onClick={() => { setElegida(n); setConfirmando(false); setAjuste(null); }}
+          aria-label={`${n === 0 ? textos.primera : `${f.video ? 'Video' : 'Foto'} ${n + 1}`}`}
+          aria-pressed={n === i}
+          className={`relative size-12 shrink-0 rounded-xl overflow-hidden border-2 transition ios-touch cursor-pointer ${n === i ? 'border-[var(--primary)]' : 'border-transparent opacity-75 hover:opacity-100'}`}
+        >
+          {rotas.includes(f.clave)
+            ? <span className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-neutral-800 text-slate-400"><Camera className="w-4 h-4" /></span>
+            : <FotoEncuadrada src={f.url} alt="" encuadre={encuadreDe(f.clave)} video={f.video} onError={() => setRotas(r => [...r, f.clave])} />}
+          {n === 0 && <Star className="absolute top-0.5 left-0.5 w-3 h-3 text-white drop-shadow fill-white" />}
+        </button>
+      ))}
+      {caben > 0 && (
+        <button
+          type="button"
+          disabled={!!trabajando || !!ajuste}
+          onClick={() => entrada.current?.click()}
+          aria-label={onAgregarVideo ? 'Agregar fotos o videos' : 'Agregar fotos'}
+          className="size-12 shrink-0 rounded-xl border-2 border-dashed border-slate-300 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 flex flex-col items-center justify-center ios-touch cursor-pointer hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-50"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="text-[0.5625rem] font-semibold">{fotos.length}/{maximo}</span>
+        </button>
+      )}
+    </div>
+  );
+
+  // Lo que se hace con la foto elegida, o la pregunta antes de quitarla
+  const acciones = actual && !ajuste && (confirmando && !trabajando ? (
+    <div className="p-2.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 space-y-2">
+      <p className="text-[0.75rem] text-slate-700 dark:text-neutral-200">
+        {que === 'portada' ? '¿Quitar esta foto de la portada?' : <>¿Quitar {actual.video ? 'este video' : 'esta foto'} de <b>{nombre || `este ${que}`}</b>?</>}{' '}
+        {fotos.length === 1 ? textos.sinFotos : i === 0 ? `La siguiente pasa a ser la ${textos.primera.toLowerCase()}.` : ''}
+      </p>
+      <div className="flex gap-1.5 justify-end">
+        <button type="button" onClick={() => setConfirmando(false)} className="px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 ios-touch cursor-pointer">
+          No, dejarla
+        </button>
+        <button type="button" onClick={quitar} className="px-3 py-1.5 rounded-full bg-rose-500 text-white text-[0.75rem] font-bold ios-touch cursor-pointer">
+          Sí, quitar
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {sePuedeAjustar && !rotas.includes(actual.clave) && (
+        <button type="button" disabled={!!trabajando} onClick={() => setAjuste(encuadreDe(actual.clave) ?? ENCUADRE_NORMAL)} className={boton}>
+          <Crop className="w-3.5 h-3.5" /> Ajustar
+        </button>
+      )}
+      {fotos.length > 1 && (
+        <span className="inline-flex items-center gap-1">
+          <button type="button" aria-label="Mover antes" title="Mover antes" disabled={i === 0 || !!trabajando} onClick={() => mover(i - 1)} className={botonIcono}>
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+          <button type="button" aria-label="Mover después" title="Mover después" disabled={i === fotos.length - 1 || !!trabajando} onClick={() => mover(i + 1)} className={botonIcono}>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </span>
+      )}
+      {fotos.length > 1 && i > 0 && (
+        <button type="button" disabled={!!trabajando} onClick={() => mover(0)} className={boton}>
+          <Star className="w-3.5 h-3.5" /> Hacer {textos.primera.toLowerCase()}
+        </button>
+      )}
+      <button type="button" disabled={!!trabajando} onClick={() => setConfirmando(true)} className={`${boton} hover:!border-rose-400 hover:!text-rose-500`}>
+        <Trash2 className="w-3.5 h-3.5" /> Quitar
+      </button>
+    </div>
+  ));
+
+  const panelAjuste = ajuste && (
+    <div className="p-3 rounded-2xl border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 space-y-2.5">
+      <AjustesDeEncuadre encuadre={ajuste} cambiar={setAjuste} />
+      <div className="flex items-center gap-1.5">
+        <button type="button" disabled={esNormal(ajuste) || !!trabajando} onClick={() => setAjuste(ENCUADRE_NORMAL)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-40 cursor-pointer">
+          <RotateCcw className="w-3.5 h-3.5" /> Como venía
+        </button>
+        <span className="flex-1" />
+        <button type="button" disabled={!!trabajando} onClick={() => setAjuste(null)} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 ios-touch cursor-pointer">
+          Cancelar
+        </button>
+        <button type="button" disabled={!!trabajando} onClick={guardarAjuste} className="px-3 py-1.5 rounded-full bg-[var(--primary)] text-white text-[0.75rem] font-bold ios-touch cursor-pointer disabled:opacity-60">
+          Listo
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-1.5">
@@ -233,127 +371,34 @@ export const FotosDelCatalogo: React.FC<{
       />
 
       {actual ? (
-        <>
-          <div {...arrastre} className={`relative rounded-2xl overflow-hidden border bg-slate-100 dark:bg-neutral-800 ${aspecto} ${ajuste ? `border-[var(--primary)] ${CAJA_ARRASTRABLE}` : 'border-slate-200 dark:border-neutral-700'}`}>
-            {rotas.includes(actual.clave) ? (
-              <div className="w-full h-full flex items-center justify-center text-slate-400"><Camera className="w-6 h-6" /></div>
-            ) : (
-              <motion.div key={actual.clave} initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25 }} className="absolute inset-0">
-                <FotoEncuadrada src={actual.url} alt={nombre || (que === 'portada' ? 'Foto de portada' : `${actual.video ? 'Video' : 'Foto'} del ${que}`)} encuadre={ajuste ?? encuadreDe(actual.clave)} loading="eager" onError={() => setRotas(r => [...r, actual.clave])}
-                  video={actual.video} reproducir={!ajuste && !trabajando && !confirmando ? 'controles' : false} />
-              </motion.div>
-            )}
-            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/55 text-white text-[0.6875rem] font-semibold pointer-events-none">
-              {i === 0 ? textos.primera : `${i + 1} de ${fotos.length}`}
-            </span>
-            {ajuste && <EtiquetaArrastrar />}
-            {trabajando && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[0.8125rem] font-semibold gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {trabajando === 'subiendo' ? textoSubiendo(subidas, 'Subiendo foto…') : trabajando === 'quitando' ? 'Quitando foto…' : trabajando === 'ajustando' ? 'Guardando…' : 'Ordenando…'}
+        previa ? (
+          <div className="space-y-2">
+            <div className="flex gap-3 items-start">
+              <div className="space-y-1">
+                {vista}
+                <p className="text-[0.625rem] text-center text-slate-400 dark:text-neutral-500 leading-tight">Así se ve en<br />tu Vitrina</p>
               </div>
-            )}
-            {!trabajando && !confirmando && !ajuste && (
-              // En un video, abajo van los botones del reproductor: los nuestros suben
-              <div className={`absolute inset-x-2 flex flex-wrap justify-end gap-1.5 ${actual.video ? 'top-2 pl-20' : 'bottom-2'}`}>
-                {sePuedeAjustar && !rotas.includes(actual.clave) && (
-                  <button type="button" onClick={() => setAjuste(encuadreDe(actual.clave) ?? ENCUADRE_NORMAL)} className={`${boton} text-slate-800 dark:text-neutral-100 hover:text-[var(--primary)]`}>
-                    <Crop className="w-3.5 h-3.5" /> Ajustar
-                  </button>
-                )}
-                {fotos.length > 1 && (
-                  <>
-                    <button type="button" aria-label="Mover a la izquierda" disabled={i === 0} onClick={() => mover(i - 1)} className={`${boton} text-slate-800 dark:text-neutral-100`}>
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
-                    <button type="button" aria-label="Mover a la derecha" disabled={i === fotos.length - 1} onClick={() => mover(i + 1)} className={`${boton} text-slate-800 dark:text-neutral-100`}>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                    {i > 0 && (
-                      <button type="button" onClick={() => mover(0)} className={`${boton} text-slate-800 dark:text-neutral-100 hover:text-[var(--primary)]`}>
-                        <Star className="w-3.5 h-3.5" /> {textos.primera}
-                      </button>
-                    )}
-                  </>
-                )}
-                <button type="button" onClick={() => setConfirmando(true)} className={`${boton} text-slate-600 dark:text-neutral-300 hover:text-rose-500`}>
-                  <Trash2 className="w-3.5 h-3.5" /> Quitar
-                </button>
-              </div>
-            )}
-            {confirmando && !trabajando && (
-              <div className="absolute inset-x-2 bottom-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 shadow-md space-y-2">
-                <p className="text-[0.75rem] text-slate-700 dark:text-neutral-200">
-                  {que === 'portada' ? '¿Quitar esta foto de la portada?' : <>¿Quitar {actual.video ? 'este video' : 'esta foto'} de <b>{nombre || `este ${que}`}</b>?</>}{' '}
-                  {fotos.length === 1 ? textos.sinFotos : i === 0 ? `La siguiente pasa a ser la ${textos.primera.toLowerCase()}.` : ''}
-                </p>
-                <div className="flex gap-1.5 justify-end">
-                  <button type="button" onClick={() => setConfirmando(false)} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 ios-touch cursor-pointer">
-                    No, dejarla
-                  </button>
-                  <button type="button" onClick={quitar} className="px-3 py-1.5 rounded-full bg-rose-500 text-white text-[0.75rem] font-bold ios-touch cursor-pointer">
-                    Sí, quitar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {ajuste && (
-            <div className="p-3 rounded-2xl border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 space-y-2.5">
-              <AjustesDeEncuadre encuadre={ajuste} cambiar={setAjuste} />
-              <div className="flex items-center gap-1.5">
-                <button type="button" disabled={esNormal(ajuste) || !!trabajando} onClick={() => setAjuste(ENCUADRE_NORMAL)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[0.75rem] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-40 cursor-pointer">
-                  <RotateCcw className="w-3.5 h-3.5" /> Como venía
-                </button>
-                <span className="flex-1" />
-                <button type="button" disabled={!!trabajando} onClick={() => setAjuste(null)} className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-neutral-800 text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200 ios-touch cursor-pointer">
-                  Cancelar
-                </button>
-                <button type="button" disabled={!!trabajando} onClick={guardarAjuste} className="px-3 py-1.5 rounded-full bg-[var(--primary)] text-white text-[0.75rem] font-bold ios-touch cursor-pointer disabled:opacity-60">
-                  Listo
-                </button>
+              <div className="flex-1 min-w-0 space-y-2">
+                {miniaturas}
+                {acciones}
               </div>
             </div>
-          )}
-
-          {/* La tira de miniaturas: tocar una la muestra arriba; el + agrega más */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5 snap-x">
-            {fotos.map((f, n) => (
-              <button
-                key={f.clave}
-                type="button"
-                onClick={() => { setElegida(n); setConfirmando(false); setAjuste(null); }}
-                aria-label={`${n === 0 ? textos.primera : `${f.video ? 'Video' : 'Foto'} ${n + 1}`}`}
-                aria-pressed={n === i}
-                className={`relative w-14 h-14 shrink-0 snap-start rounded-xl overflow-hidden border-2 transition ios-touch cursor-pointer ${n === i ? 'border-[var(--primary)] scale-[1.03]' : 'border-transparent opacity-80 hover:opacity-100'}`}
-              >
-                {rotas.includes(f.clave)
-                  ? <span className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-neutral-800 text-slate-400"><Camera className="w-4 h-4" /></span>
-                  : <FotoEncuadrada src={f.url} alt="" encuadre={encuadreDe(f.clave)} video={f.video} onError={() => setRotas(r => [...r, f.clave])} />}
-                {n === 0 && <Star className="absolute top-0.5 left-0.5 w-3 h-3 text-white drop-shadow fill-white" />}
-              </button>
-            ))}
-            {caben > 0 && (
-              <button
-                type="button"
-                disabled={!!trabajando || !!ajuste}
-                onClick={() => entrada.current?.click()}
-                aria-label={onAgregarVideo ? 'Agregar fotos o videos' : 'Agregar fotos'}
-                className="w-14 h-14 shrink-0 rounded-xl border-2 border-dashed border-slate-300 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 flex flex-col items-center justify-center ios-touch cursor-pointer hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-50"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="text-[0.5625rem] font-semibold">{fotos.length}/{maximo}</span>
-              </button>
-            )}
+            {panelAjuste}
           </div>
-        </>
+        ) : (
+          <div className="space-y-2">
+            {vista}
+            {acciones}
+            {panelAjuste}
+            {miniaturas}
+          </div>
+        )
       ) : (
         <button
           type="button"
           disabled={!!trabajando}
           onClick={() => entrada.current?.click()}
-          className={`w-full ${aspecto} max-h-48 rounded-2xl border-2 border-dashed border-slate-300 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800/60 flex flex-col items-center justify-center gap-1.5 px-4 text-center ios-touch cursor-pointer hover:border-[var(--primary)] transition disabled:opacity-60`}
+          className={`w-full ${previa ? 'h-32' : `${aspecto} max-h-48`} rounded-2xl border-2 border-dashed border-slate-300 dark:border-neutral-700 bg-slate-50 dark:bg-neutral-800/60 flex flex-col items-center justify-center gap-1.5 px-4 text-center ios-touch cursor-pointer hover:border-[var(--primary)] transition disabled:opacity-60`}
         >
           {trabajando ? (
             <Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" />
@@ -374,7 +419,81 @@ export const FotosDelCatalogo: React.FC<{
       )}
 
       {error && <p className="text-[0.6875rem] text-rose-600 dark:text-rose-400">{error}</p>}
+
+      <VisorEnGrande abierto={enGrande && fotos.length > 0} fotos={fotos} inicio={i} nombre={nombre} onCerrar={() => setEnGrande(false)} onVer={setElegida} />
     </div>
+  );
+};
+
+/**
+ * Las fotos a pantalla completa, como las ve la clienta al tocarlas. Flechas
+ * (o las teclas) para pasar de una a otra; Escape o tocar fuera la cierra. Se
+ * ve entera, sin recortar; un video se reproduce con sus botones.
+ */
+const VisorEnGrande: React.FC<{
+  abierto: boolean;
+  fotos: FotoDeGaleria[];
+  inicio: number;
+  nombre: string;
+  onCerrar: () => void;
+  /** Avisa cuál quedó a la vista, para que al cerrar siga elegida */
+  onVer: (n: number) => void;
+}> = ({ abierto, fotos, inicio, nombre, onCerrar, onVer }) => {
+  const [n, setN] = useState(inicio);
+  useEffect(() => { if (abierto) setN(inicio); }, [abierto, inicio]);
+  const ir = (k: number) => {
+    if (k < 0 || k >= fotos.length) return;
+    setN(k);
+    onVer(k);
+  };
+  useEffect(() => {
+    if (!abierto) return;
+    const tecla = (e: KeyboardEvent) => {
+      // Escape cierra solo el visor, no la hoja del formulario
+      if (e.key === 'Escape') { e.stopPropagation(); onCerrar(); }
+      else if (e.key === 'ArrowRight') ir(n + 1);
+      else if (e.key === 'ArrowLeft') ir(n - 1);
+    };
+    window.addEventListener('keydown', tecla, true);
+    return () => window.removeEventListener('keydown', tecla, true);
+  });
+  const actual = fotos[Math.min(n, fotos.length - 1)];
+  const flecha = 'absolute top-1/2 -translate-y-1/2 grid place-items-center size-10 rounded-full bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/25 cursor-pointer disabled:opacity-0';
+
+  return createPortal(
+    <AnimatePresence>
+      {abierto && actual && (
+        <motion.div key="visor-fotos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          role="dialog" aria-modal="true" aria-label={`Fotos de ${nombre || 'este artículo'}`}
+          className="fixed inset-0 z-[500] flex items-center justify-center bg-black/90 p-4" onClick={onCerrar}>
+          <motion.div key={actual.clave} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }}
+            onClick={(e) => e.stopPropagation()} className="relative w-full h-full max-w-4xl max-h-[85dvh]">
+            {actual.video ? (
+              <video src={actual.video} poster={actual.url !== actual.video ? actual.url : undefined} controls autoPlay playsInline className="absolute inset-0 size-full object-contain" />
+            ) : (
+              <img src={actual.url} alt={nombre} draggable={false} className="absolute inset-0 size-full object-contain" />
+            )}
+          </motion.div>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="absolute top-3 right-3 grid place-items-center size-10 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+          {fotos.length > 1 && (
+            <>
+              <button type="button" aria-label="Foto anterior" disabled={n === 0} onClick={(e) => { e.stopPropagation(); ir(n - 1); }} className={`${flecha} left-3`}>
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button type="button" aria-label="Foto siguiente" disabled={n === fotos.length - 1} onClick={(e) => { e.stopPropagation(); ir(n + 1); }} className={`${flecha} right-3`}>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <span className="absolute bottom-4 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-white/15 text-white text-[0.75rem] font-semibold">
+                {n + 1} de {fotos.length}
+              </span>
+            </>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 };
 
