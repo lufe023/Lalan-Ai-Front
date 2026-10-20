@@ -7,7 +7,7 @@
 import type { Encuadre } from '../components/catalogo/FotoEncuadrada';
 
 export type TipoBloqueVitrina =
-  | 'portada' | 'mensaje' | 'servicios' | 'ofertas' | 'productos' | 'especialistas' | 'horario' | 'ubicacion' | 'chat';
+  | 'portada' | 'mensaje' | 'servicios' | 'ofertas' | 'productos' | 'especialistas' | 'testimonios' | 'horario' | 'ubicacion' | 'chat';
 
 export interface BloqueVitrina {
   tipo: TipoBloqueVitrina;
@@ -35,7 +35,17 @@ export interface DisenoVitrina {
   orden?: { servicios: string[]; productos: string[] };
   /** Lo que la dueña recomienda: sale primero y con su etiqueta */
   destacados?: string[];
+  /** El título del bloque de testimonios («Mis mimados»). Null = «Lo que dicen mis clientes» */
+  testimoniosTitulo?: string | null;
+  /** Una línea debajo del título («Ellas ya lo vivieron») */
+  testimoniosSubtitulo?: string | null;
 }
+
+export const TITULO_TESTIMONIOS = 'Lo que dicen mis clientes';
+export const MAXIMO_TITULO_TESTIMONIOS = 40;
+export const MAXIMO_SUBTITULO_TESTIMONIOS = 80;
+export const MAXIMO_TEXTO_TESTIMONIO = 400;
+export const MAXIMO_FOTOS_TESTIMONIO = 4;
 
 export type TextoPortada = 'sobre' | 'arriba' | 'abajo';
 export type AltoPortada = 'baja' | 'media' | 'alta';
@@ -48,6 +58,7 @@ export const INFO_BLOQUE_VITRINA: Record<TipoBloqueVitrina, { nombre: string; ay
   ofertas: { nombre: 'Ofertas', ayuda: 'Las ofertas activas de la sede' },
   productos: { nombre: 'Productos', ayuda: 'Lo que hay en existencia en esta sede' },
   especialistas: { nombre: 'Especialistas', ayuda: 'Quién atiende y qué hace' },
+  testimonios: { nombre: 'Lo que dicen mis clientes', ayuda: 'Testimonios con fotos y videos. Sale cuando agregues el primero' },
   horario: { nombre: 'Horario', ayuda: 'Los días y horas de la sede' },
   ubicacion: { nombre: 'Ubicación', ayuda: 'El mapa, la dirección y las otras sedes' },
   chat: { nombre: 'Escríbenos', ayuda: 'WhatsApp, Instagram y Messenger para chatear con Lalán' },
@@ -119,6 +130,73 @@ export interface EspecialistaVitrina {
  */
 export type EstadoDiaVitrina = 'libre' | 'lleno' | 'ausente' | 'no-trabaja';
 
+/** Lo que dijo una clienta, como sale en la Vitrina */
+export interface TestimonioVitrina {
+  id: string;
+  nombre: string;
+  texto: string | null;
+  /** Sus fotos y videos (catalogo/fotos/:id), hasta 4 */
+  fotos: string[];
+  /** Dos fotos: la primera es el antes y la segunda el después */
+  antesDespues: boolean;
+  /** El servicio que se hizo, si se reserva en esta sede */
+  servicio: { id: string; nombre: string } | null;
+  /** "2026-08-14" */
+  fecha: string;
+  destacado: boolean;
+}
+
+/** Una foto o video de un testimonio en el editor */
+export interface FotoDeTestimonio {
+  id: string;
+  ruta: string;
+  /** Segundos si es un video; null si es una foto */
+  video: number | null;
+  encuadre?: Encuadre | null;
+}
+
+/** Un testimonio como lo ve la dueña en Ajustes → Vitrina */
+export interface TestimonioAjustes {
+  id: string;
+  nombre: string;
+  texto: string | null;
+  fotos: FotoDeTestimonio[];
+  antesDespues: boolean;
+  servicio: { id: string; nombre: string | null } | null;
+  clienta: { id: string; nombre: string | null } | null;
+  permiso: boolean;
+  fecha: string;
+  visible: boolean;
+  destacado: boolean;
+  todasLasSedes: boolean;
+  /** La sede donde se hizo */
+  sede: { id: string; nombre: string | null };
+  /** false = es de otra sede y quien la ve está atada a la suya */
+  editable: boolean;
+}
+
+export interface ListaTestimonios {
+  sede: { id: string; nombre: string };
+  /** Hoy en la zona de la sede ("2026-10-20") */
+  hoy: string;
+  testimonios: TestimonioAjustes[];
+}
+
+/** Lo que se manda al crear o cambiar uno */
+export interface TestimonioDto {
+  nombre?: string;
+  texto?: string | null;
+  fotoIds?: string[];
+  antesDespues?: boolean;
+  servicioId?: string | null;
+  clienteId?: string | null;
+  permiso?: boolean;
+  fecha?: string | null;
+  visible?: boolean;
+  destacado?: boolean;
+  todasLasSedes?: boolean;
+}
+
 export interface DiaVitrina {
   dia: number;
   abierto: boolean;
@@ -156,6 +234,8 @@ export interface DatosVitrina {
   productos: ProductoVitrina[];
   ofertas: OfertaVitrina[];
   especialistas: EspecialistaVitrina[];
+  /** Lo que dicen sus clientas (vacío = el bloque no sale) */
+  testimonios?: TestimonioVitrina[];
   /** Su dirección corta sin dominio ("lalanspa" o "lalanspa/piantini"); null si el salón no eligió nombre */
   direccionCorta?: string | null;
   /** Las preguntas del Lounge al reservar (vacío si el salón no tiene hospitalidad) */

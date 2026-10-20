@@ -16,6 +16,7 @@ import type { Encuadre } from '../catalogo/FotoEncuadrada';
 import { useEncuadres } from '../../hooks/useEncuadres';
 import PaginaVitrina from '../vitrina/PaginaVitrina';
 import { OrdenCatalogo, RedesSede, UbicacionSede } from './VitrinaOrdenYMapa';
+import { TestimoniosVitrina } from './VitrinaTestimonios';
 import { paletaVitrina } from '../vitrina/temaVitrina';
 import { INFO_BLOQUE_VITRINA, type ConfigVitrina, type DatosVitrina, type DisenoVitrina, type NombreCortoDisponible, type TextoPortada } from '../../types/vitrina';
 
@@ -65,6 +66,11 @@ export const AjustesVitrina: React.FC = () => {
     }
   }, [q]);
   useEffect(() => { setCfg(null); setPrevia(null); void cargar(); }, [cargar]);
+
+  // Lo que se guarda al momento (testimonios): la vista previa se vuelve a pedir sin tocar el diseño que se edita
+  const recargarPrevia = useCallback(async () => {
+    try { setPrevia(await api.get<DatosVitrina>(`/vitrina/vista-previa${q}`)); } catch { /* se queda la de antes */ }
+  }, [q]);
 
   const sucio = !!cfg && !!borrador && JSON.stringify(cfg.diseno) !== JSON.stringify(borrador);
   const cambiar = (c: Partial<DisenoVitrina>) => setBorrador((b) => (b ? { ...b, ...c } : b));
@@ -227,6 +233,12 @@ export const AjustesVitrina: React.FC = () => {
           </div>
 
           <OrdenCatalogo datos={previa} borrador={borrador} sede={cfg.sede.nombre} cambiar={cambiar} />
+
+          <TestimoniosVitrina
+            q={q} sede={cfg.sede.nombre} borrador={borrador} cambiar={cambiar} servicios={previa?.servicios ?? []}
+            encuadres={encuadres} guardarEncuadre={async (id, e) => { await guardarEncuadre(id, e); void recargarPrevia(); }}
+            alCambiar={() => void recargarPrevia()}
+          />
 
           <UbicacionSede cfg={cfg} q={q} direccion={previa?.sede.direccion ?? null} recargar={(c) => setCfg((v) => (v ? { ...c, diseno: v.diseno } : c))} />
 

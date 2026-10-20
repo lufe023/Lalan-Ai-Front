@@ -73,6 +73,7 @@ const TEXTOS = {
   servicio: { titulo: 'Fotos', detalle: 'la primera es la portada en la Vitrina', primera: 'Portada', vacia: 'Agrega fotos del servicio', sinFotos: 'En la Vitrina se verá sin foto.' },
   producto: { titulo: 'Fotos', detalle: 'la primera es la portada en la Vitrina', primera: 'Portada', vacia: 'Agrega fotos del producto', sinFotos: 'En la Vitrina se verá sin foto.' },
   portada: { titulo: 'Fotos de portada', detalle: 'con varias, se deslizan como en Instagram', primera: 'Primera', vacia: 'Agrega la foto de portada', sinFotos: 'La Vitrina usará los colores de la paleta.' },
+  testimonio: { titulo: 'Fotos', detalle: 'la primera sale en la tarjeta', primera: 'Primera', vacia: 'Agrega fotos o un video de su resultado', sinFotos: 'Saldrá solo con el texto.' },
 };
 
 /**
@@ -96,8 +97,10 @@ const TEXTOS = {
 export const FotosDelCatalogo: React.FC<{
   fotos: FotoDeGaleria[];
   nombre: string;
-  /** "servicio", "producto" o la "portada" de la Vitrina: para los textos */
-  que: 'servicio' | 'producto' | 'portada';
+  /** "servicio", "producto", la "portada" de la Vitrina o un "testimonio": para los textos */
+  que: 'servicio' | 'producto' | 'portada' | 'testimonio';
+  /** Cuántas caben (falta = MAXIMO_FOTOS) */
+  maximo?: number;
   /** Dónde valen las fotos (con varias sedes). Se muestra como etiqueta */
   sede?: string | null;
   onAgregar: (dataUrl: string) => Promise<void> | void;
@@ -111,7 +114,7 @@ export const FotosDelCatalogo: React.FC<{
   encuadres?: Record<string, Encuadre>;
   /** Guarda cómo se acomoda una foto ya subida. Sin esto no sale «Ajustar» */
   onEncuadre?: (clave: string, encuadre: Encuadre) => Promise<void> | void;
-}> = ({ fotos, nombre, que, sede, onAgregar, onAgregarVideo, onQuitar, onOrdenar, aspecto = 'aspect-[4/3]', encuadres, onEncuadre }) => {
+}> = ({ fotos, nombre, que, maximo = MAXIMO_FOTOS, sede, onAgregar, onAgregarVideo, onQuitar, onOrdenar, aspecto = 'aspect-[4/3]', encuadres, onEncuadre }) => {
   const entrada = useRef<HTMLInputElement>(null);
   const [trabajando, setTrabajando] = useState<'' | 'subiendo' | 'quitando' | 'ordenando' | 'ajustando'>('');
   /** Mientras acomoda una foto: cómo va quedando (se guarda al tocar «Listo») */
@@ -122,7 +125,7 @@ export const FotosDelCatalogo: React.FC<{
   const [error, setError] = useState('');
   const [rotas, setRotas] = useState<string[]>([]);
   const [elegida, setElegida] = useState(0);
-  const caben = MAXIMO_FOTOS - fotos.length;
+  const caben = maximo - fotos.length;
   const i = Math.min(elegida, Math.max(fotos.length - 1, 0));
   const actual = fotos[i];
   // Una foto que todavía no se subió no tiene dónde guardar su encuadre
@@ -161,7 +164,7 @@ export const FotosDelCatalogo: React.FC<{
         }
       }
       setElegida(fotos.length + archivos.length - 1);
-      if ((lista?.length ?? 0) > archivos.length) setError(`Solo caben ${MAXIMO_FOTOS} fotos: subí las primeras ${archivos.length}.`);
+      if ((lista?.length ?? 0) > archivos.length) setError(`Solo caben ${maximo} fotos: subí las primeras ${archivos.length}.`);
     } catch (e: any) {
       setError(e?.message || 'No se pudo subir la foto. Intenta de nuevo.');
     } finally {
@@ -215,7 +218,7 @@ export const FotosDelCatalogo: React.FC<{
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-          {onAgregarVideo ? 'Fotos y videos' : textos.titulo} <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(hasta {MAXIMO_FOTOS}, {textos.detalle})</span>
+          {onAgregarVideo ? 'Fotos y videos' : textos.titulo} <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(hasta {maximo}, {textos.detalle})</span>
         </label>
         {etiqueta}
       </div>
@@ -340,7 +343,7 @@ export const FotosDelCatalogo: React.FC<{
                 className="w-14 h-14 shrink-0 rounded-xl border-2 border-dashed border-slate-300 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 flex flex-col items-center justify-center ios-touch cursor-pointer hover:border-[var(--primary)] hover:text-[var(--primary)] transition disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
-                <span className="text-[0.5625rem] font-semibold">{fotos.length}/{MAXIMO_FOTOS}</span>
+                <span className="text-[0.5625rem] font-semibold">{fotos.length}/{maximo}</span>
               </button>
             )}
           </div>
@@ -364,8 +367,8 @@ export const FotosDelCatalogo: React.FC<{
           </span>
           <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 max-w-[17rem]">
             {onAgregarVideo
-              ? <>Hasta {MAXIMO_FOTOS} fotos o videos, como un carrusel. Un video muestra tu trabajo: se guarda hasta 1 minuto.</>
-              : <>Hasta {MAXIMO_FOTOS}, como un carrusel. Tómalas con luz natural y un fondo limpio.</>}
+              ? <>Hasta {maximo} fotos o videos, como un carrusel. Un video muestra tu trabajo: se guarda hasta 1 minuto.</>
+              : <>Hasta {maximo}, como un carrusel. Tómalas con luz natural y un fondo limpio.</>}
           </span>
         </button>
       )}

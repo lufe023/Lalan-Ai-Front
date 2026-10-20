@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Minus,
+  AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Maximize2, Minus,
   MessageCircle, Music, Navigation, Phone, Plus, ShoppingBag, Sparkles, Star, Store, Tag, User, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
 import type {
-  DatosVitrina, EspecialistaVitrina, EstadoDiaVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina, TipoBloqueVitrina,
+  DatosVitrina, EspecialistaVitrina, EstadoDiaVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina,
+  TestimonioVitrina, TipoBloqueVitrina,
 } from '../../types/vitrina';
+import { TITULO_TESTIMONIOS } from '../../types/vitrina';
 import { estiloVitrina } from './temaVitrina';
 import { IOSModal } from '../ui/IOSModal';
 import MapaSede from './MapaSede';
@@ -140,6 +142,8 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const [conQuien, setConQuien] = useState<Record<string, string>>({});
   /** La especialista que está mirando: sus servicios y reservar con ella */
   const [persona, setPersona] = useState<EspecialistaVitrina | null>(null);
+  /** El testimonio abierto en grande: sus fotos y todo lo que dijo */
+  const [testimonio, setTestimonio] = useState<TestimonioVitrina | null>(null);
   // La reserva a pantalla completa. Desde el panel de al lado ya vio lo que eligió: empieza en lo que sigue
   const [abierta, setAbierta] = useState<false | 'lista' | 'siguiente'>(false);
   const [hecha, setHecha] = useState<ReservaHecha | null>(null);
@@ -209,6 +213,12 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // El servicio de un testimonio: su ficha, con fotos, precio y «Agregar a tu reserva»
+  const verServicioDeTestimonio = (id: string) => {
+    const item = datos.servicios.find((x) => x.id === id);
+    if (item) { setTestimonio(null); setFicha({ tipo: 'servicio', item }); }
+  };
+
   const bloques = diseno.bloques.filter((b) => b.visible);
   const conPortada = bloques.some((b) => b.tipo === 'portada');
 
@@ -220,6 +230,13 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
       case 'ofertas': return datos.ofertas.length ? <Ofertas key={tipo} ofertas={datos.ofertas} elegida={ofertaId} elegir={elegirOferta} dinero={dinero} /> : null;
       case 'productos': return productos.length ? <Productos key={tipo} productos={productos} destacados={destacados} elegidos={productoIds} alternar={alternarProducto} dinero={dinero} abrir={(item) => setFicha({ tipo: 'producto', item })} /> : null;
       case 'especialistas': return datos.especialistas.length ? <Especialistas key={tipo} lista={datos.especialistas} abrir={setPersona} /> : null;
+      case 'testimonios': return datos.testimonios?.length ? (
+        <Testimonios
+          key={tipo} lista={datos.testimonios} hoy={sede.hoyFecha}
+          titulo={diseno.testimoniosTitulo || TITULO_TESTIMONIOS} subtitulo={diseno.testimoniosSubtitulo ?? null}
+          abrir={setTestimonio} verServicio={verServicioDeTestimonio}
+        />
+      ) : null;
       case 'horario': return <Horario key={tipo} semana={sede.semana} hoy={sede.hoyFecha} />;
       case 'ubicacion': return <Ubicacion key={tipo} datos={datos} />;
       case 'chat': return <Chat key={tipo} datos={datos} />;
@@ -389,6 +406,41 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
               setAbierta('siguiente');
             }}
           />
+        )}
+      </IOSModal>
+
+      {/* Un testimonio en grande: sus fotos y todo lo que dijo */}
+      <IOSModal
+        isOpen={!!testimonio} onClose={() => setTestimonio(null)} title={testimonio?.nombre ?? ''}
+        subtitle={testimonio ? haceCuanto(testimonio.fecha, sede.hoyFecha) : undefined} id="vitrina-testimonio"
+        fijo fixedHeight={false} height="92%"
+        apariencia={{
+          hoja: 'bg-[var(--v-fondo)] border-[var(--v-borde)] text-[var(--v-texto)]',
+          titulo: 'text-[var(--v-texto)]', subtitulo: 'text-[var(--v-suave)]', borde: 'border-[var(--v-borde)]',
+          cerrar: 'bg-[var(--v-tinte)] text-[var(--v-suave)]', asa: 'bg-[var(--v-borde)]',
+        }}
+      >
+        {testimonio && (
+          <div className="mx-auto max-w-md space-y-4">
+            {!!testimonio.fotos.length && (
+              <div className="mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
+                {testimonio.antesDespues
+                  ? <AntesDespues antes={testimonio.fotos[0]} despues={testimonio.fotos[1]} alt={`Resultado de ${testimonio.nombre}`} />
+                  : <Carrusel fotos={testimonio.fotos} alt={`Fotos de ${testimonio.nombre}`} />}
+              </div>
+            )}
+            {testimonio.texto && (
+              <blockquote className="relative whitespace-pre-line pl-7 text-[15px] leading-relaxed">
+                <span aria-hidden className="absolute -top-2 left-0 font-serif text-4xl leading-none text-[var(--v-p)]">“</span>
+                {testimonio.texto}
+              </blockquote>
+            )}
+            {testimonio.servicio && (
+              <button type="button" onClick={() => verServicioDeTestimonio(testimonio.servicio!.id)} className={`${BOTON_P} w-full py-3.5 text-[15px]`}>
+                <Sparkles className="size-4" /> Quiero {testimonio.servicio.nombre}
+              </button>
+            )}
+          </div>
         )}
       </IOSModal>
 
@@ -621,8 +673,14 @@ function useConMouse() {
  * dedo ya se desliza; con mouse no, salvo con la rueda del medio: aquí se
  * agarra y se arrastra. Un arrastre no cuenta como clic en lo que soltó.
  */
-function FilaArrastrable({ className = '', children }: { className?: string; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
+function FilaArrastrable({ className = '', children, caja, onScroll }: {
+  className?: string; children: React.ReactNode;
+  /** Para quien necesita moverla o saber dónde va (flechas, puntitos) */
+  caja?: React.RefObject<HTMLDivElement | null>;
+  onScroll?: () => void;
+}) {
+  const propia = useRef<HTMLDivElement>(null);
+  const ref = caja ?? propia;
   const conMouse = useConMouse();
   const arrastre = useRef<{ x: number; desde: number; id: number; movido: boolean } | null>(null);
   const acabaDeArrastrar = useRef(false);
@@ -638,10 +696,11 @@ function FilaArrastrable({ className = '', children }: { className?: string; chi
     // El imán (si lo tiene) vuelve cuando terminó de moverse
     window.setTimeout(() => { el.style.scrollSnapType = ''; }, 300);
   };
-  if (!conMouse) return <div ref={ref} className={className}>{children}</div>;
+  if (!conMouse) return <div ref={ref} onScroll={onScroll} className={className}>{children}</div>;
   return (
     <div
       ref={ref}
+      onScroll={onScroll}
       onPointerDown={(e) => {
         acabaDeArrastrar.current = false;
         if (e.pointerType !== 'mouse' || e.button !== 0 || !ref.current) return;
@@ -1087,6 +1146,160 @@ function Especialistas({ lista, abrir }: { lista: EspecialistaVitrina[]; abrir: 
         ))}
       </FilaArrastrable>
     </section>
+  );
+}
+
+/** «hace 2 meses», desde el día que lo dijo hasta hoy (en la zona de la sede) */
+export function haceCuanto(fecha: string, hoy: string) {
+  const dias = Math.round((Date.parse(`${hoy}T12:00:00Z`) - Date.parse(`${fecha}T12:00:00Z`)) / 86_400_000);
+  if (!Number.isFinite(dias) || dias <= 0) return 'Hoy';
+  if (dias === 1) return 'Ayer';
+  if (dias < 7) return `Hace ${dias} días`;
+  if (dias < 30) { const n = Math.floor(dias / 7); return n === 1 ? 'Hace una semana' : `Hace ${n} semanas`; }
+  if (dias < 365) { const n = Math.floor(dias / 30); return n === 1 ? 'Hace un mes' : `Hace ${n} meses`; }
+  const n = Math.floor(dias / 365);
+  return n === 1 ? 'Hace un año' : `Hace ${n} años`;
+}
+
+/**
+ * «Lo que dicen mis clientes». En la computadora, de tres en tres con flechas;
+ * en el teléfono, una tarjeta casi a lo ancho que deja asomar la siguiente,
+ * con puntitos abajo. Los videos corren sin sonido: la bocina se toca.
+ */
+function Testimonios({ lista, titulo, subtitulo, hoy, abrir, verServicio }: {
+  lista: TestimonioVitrina[]; titulo: string; subtitulo: string | null; hoy: string;
+  abrir: (t: TestimonioVitrina) => void; verServicio: (id: string) => void;
+}) {
+  const caja = useRef<HTMLDivElement>(null);
+  const conMouse = useConMouse();
+  const [vista, setVista] = useState({ inicio: true, fin: lista.length <= 1, actual: 0 });
+  const medir = () => {
+    const el = caja.current;
+    if (!el) return;
+    const tarjeta = el.firstElementChild as HTMLElement | null;
+    const paso = (tarjeta?.offsetWidth ?? el.clientWidth) + 12;
+    setVista({
+      inicio: el.scrollLeft < 4,
+      fin: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4,
+      actual: Math.min(lista.length - 1, Math.round(el.scrollLeft / Math.max(paso, 1))),
+    });
+  };
+  useLayoutEffect(medir, [lista.length]);
+  const pasar = (d: -1 | 1) => caja.current?.scrollBy({ left: d * caja.current.clientWidth, behavior: 'smooth' });
+  const FLECHA = 'grid size-9 cursor-pointer place-items-center rounded-full border border-[var(--v-borde)] bg-[var(--v-sup)] transition hover:bg-[var(--v-tinte)] active:scale-95 disabled:cursor-default disabled:opacity-35';
+  return (
+    <section aria-labelledby="v-testimonios">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="v-testimonios" className={TITULO_BLOQUE}>{titulo}</h2>
+          {subtitulo && <p className="mt-0.5 text-sm text-[var(--v-suave)]">{subtitulo}</p>}
+        </div>
+        {conMouse && lista.length > 1 && !(vista.inicio && vista.fin) && (
+          <div className="flex shrink-0 gap-1.5">
+            <button type="button" onClick={() => pasar(-1)} disabled={vista.inicio} aria-label="Testimonios anteriores" className={FLECHA}><ChevronLeft className="size-4" /></button>
+            <button type="button" onClick={() => pasar(1)} disabled={vista.fin} aria-label="Más testimonios" className={FLECHA}><ChevronRight className="size-4" /></button>
+          </div>
+        )}
+      </div>
+      <FilaArrastrable caja={caja} onScroll={medir} className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {lista.map((t) => (
+          <TarjetaTestimonio key={t.id} t={t} hoy={hoy} abrir={() => abrir(t)} verServicio={verServicio} />
+        ))}
+      </FilaArrastrable>
+      {!conMouse && lista.length > 1 && (
+        <div className="mt-3 flex justify-center gap-1.5" aria-hidden>
+          {lista.map((t, i) => (
+            <span key={t.id} className={`h-1.5 rounded-full transition-all duration-300 ${i === vista.actual ? 'w-4 bg-[var(--v-p)]' : 'w-1.5 bg-[var(--v-borde)]'}`} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Una tarjeta: arriba sus fotos (o el antes y después), abajo lo que dijo, quién y cuándo */
+function TarjetaTestimonio({ t, hoy, abrir, verServicio }: {
+  t: TestimonioVitrina; hoy: string; abrir: () => void; verServicio: (id: string) => void;
+}) {
+  const texto = useRef<HTMLParagraphElement>(null);
+  const [largo, setLargo] = useState(false);
+  useLayoutEffect(() => {
+    const el = texto.current;
+    if (el) setLargo(el.scrollHeight > el.clientHeight + 1);
+  }, [t.texto]);
+  const conFotos = t.fotos.length > 0;
+  return (
+    <article
+      className={`flex w-[85%] shrink-0 snap-start flex-col overflow-hidden @2xl:w-[calc((100%-1.5rem)/3)] ${conFotos ? TARJETA : 'rounded-3xl border border-[var(--v-borde)] bg-[var(--v-tinte)]'}`}
+    >
+      {conFotos && (
+        <div className="relative aspect-[4/3] bg-[var(--v-tinte)]">
+          {t.antesDespues
+            ? <AntesDespues antes={t.fotos[0]} despues={t.fotos[1]} alt={`Resultado de ${t.nombre}`} />
+            : <Carrusel fotos={t.fotos} alt={`Fotos de ${t.nombre}`} />}
+          <button
+            type="button" onClick={abrir} aria-label={`Ver en grande lo de ${t.nombre}`}
+            className="absolute right-2 top-2 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/55 text-white backdrop-blur transition hover:bg-black/70 active:scale-95"
+          >
+            <Maximize2 className="size-3.5" />
+          </button>
+        </div>
+      )}
+      <div className={`flex flex-1 flex-col p-4 ${conFotos ? '' : 'pt-5'}`}>
+        {t.texto && (
+          <div className="relative pl-7">
+            <span aria-hidden className={`absolute left-0 font-serif leading-none text-[var(--v-p)] ${conFotos ? '-top-1 text-4xl' : '-top-2 text-5xl'}`}>“</span>
+            <p ref={texto} className={`whitespace-pre-line leading-relaxed line-clamp-5 ${conFotos ? 'text-sm' : 'text-[15px]'}`}>{t.texto}</p>
+            {largo && (
+              <button type="button" onClick={abrir} className="mt-1 cursor-pointer text-xs font-semibold text-[var(--v-p)] hover:underline">Leer más</button>
+            )}
+          </div>
+        )}
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3">
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold">{t.nombre}</span>
+            <span className="block text-xs text-[var(--v-suave)]">{haceCuanto(t.fecha, hoy)}</span>
+          </span>
+          {t.servicio && (
+            <button
+              type="button" onClick={() => verServicio(t.servicio!.id)} aria-label={`Ver ${t.servicio.nombre}`}
+              className="inline-flex max-w-full cursor-pointer items-center gap-1 truncate rounded-full bg-[var(--v-sup)] px-2.5 py-1 text-xs font-medium text-[var(--v-p)] ring-1 ring-[var(--v-borde)] transition hover:bg-[var(--v-tinte)] active:scale-95"
+            >
+              <Sparkles className="size-3 shrink-0" /><span className="truncate">{t.servicio.nombre}</span>
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * El antes y el después en la misma foto: una barra que se arrastra para
+ * comparar. Es un control deslizante encima de todo, así sirve con el dedo,
+ * con el mouse y con el teclado.
+ */
+function AntesDespues({ antes, despues, alt }: { antes: string; despues: string; alt: string }) {
+  const [corte, setCorte] = useState(50);
+  return (
+    <div className="relative size-full select-none overflow-hidden">
+      <div className="absolute inset-0"><Foto src={despues} alt={`${alt}: después`} /></div>
+      <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - corte}% 0 0)` }}><Foto src={antes} alt={`${alt}: antes`} /></div>
+      <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">Antes</span>
+      <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">Después</span>
+      <div className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_8px_rgba(0,0,0,0.45)]" style={{ left: `${corte}%` }}>
+        <span className="absolute left-1/2 top-1/2 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-neutral-800 shadow-md">
+          <span className="flex"><ChevronLeft className="-mr-1 size-4" /><ChevronRight className="-ml-1 size-4" /></span>
+        </span>
+      </div>
+      <input
+        type="range" min={0} max={100} value={corte} onChange={(e) => setCorte(Number(e.target.value))}
+        aria-label="Comparar el antes y el después"
+        className="absolute inset-0 size-full cursor-ew-resize opacity-0"
+        // Que arrastrar la barra no mueva también la fila de tarjetas
+        onPointerDown={(e) => e.stopPropagation()}
+      />
+    </div>
   );
 }
 
