@@ -22,6 +22,7 @@ import { LoungePlayerScreen } from './screens/LoungePlayerScreen';
 import { CajaScreen } from './screens/CajaScreen';
 import { SalaScreen } from './screens/SalaScreen';
 import { CitasReportScreen } from './screens/CitasReportScreen';
+import { ConversionesReportScreen } from './screens/ConversionesReportScreen';
 import { PriceListsScreen } from './screens/PriceListsScreen';
 import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
@@ -103,6 +104,7 @@ const MainAppContent: React.FC = () => {
       case 'caja':      return <CajaScreen      key="caja"      />;
       case 'sala':      return <SalaScreen      key="sala"      />;
       case 'citas-report': return <CitasReportScreen key="citas-report" />;
+      case 'conversiones-report': return <ConversionesReportScreen key="conversiones-report" />;
       case 'price-lists': return <PriceListsScreen key="price-lists" />;
       case 'ganancias':   return <GananciasScreen   key="ganancias"   />;
       case 'plataforma':  return <PlataformaScreen  key="plataforma"  />;

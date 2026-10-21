@@ -14,7 +14,7 @@ export const PANTALLAS: { id: string; nombre: string }[] = [
   { id: 'dashboard', nombre: 'Métricas' }, { id: 'calendar', nombre: 'Agenda' }, { id: 'sala', nombre: 'Sala' }, { id: 'clients', nombre: 'Clientas' },
   { id: 'lounge', nombre: 'Lounge' }, { id: 'caja', nombre: 'Caja' }, { id: 'chats', nombre: 'Chats' }, { id: 'catalog', nombre: 'Catálogo' },
   { id: 'settings', nombre: 'Ajustes' }, { id: 'price-lists', nombre: 'Precios' }, { id: 'ganancias', nombre: 'Ganancias' },
-  { id: 'citas-report', nombre: 'Informe de citas' }, { id: 'bots', nombre: 'Lalan (bots)' },
+  { id: 'citas-report', nombre: 'Informe de citas' }, { id: 'conversiones-report', nombre: 'Informe de conversiones' }, { id: 'bots', nombre: 'Lalan (bots)' },
 ];
 const nombre = (id: string) => (id === 'menu' ? 'Menú' : PANTALLAS.find((p) => p.id === id)?.nombre ?? id);
 const ANCHO: Record<Dispositivo, number> = { pc: 1280, tableta: 820, movil: 390 };

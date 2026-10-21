@@ -32,6 +32,8 @@ export interface CascadingRibbonCalendarProps<T extends CalendarEventBase = Cale
   events?: T[];
   initialDate?: Date;
   initialGranularity?: CalendarGranularity;
+  /** Enseña cuántas citas hay en cada año, mes o semana (apagado en informes que no cuentan citas) */
+  conConteo?: boolean;
   onSelectDate?: (date: Date, dateStr: string) => void;
   onGranularityChange?: (granularity: CalendarGranularity) => void;
   onRangeChange?: (info: {
@@ -57,6 +59,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
   events = [],
   initialDate,
   initialGranularity = 'days',
+  conConteo = true,
   onSelectDate,
   onGranularityChange,
   onRangeChange,
@@ -367,7 +370,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
               >
                 <span className="text-[0.6875rem] uppercase font-semibold opacity-80">{yr === today.getFullYear() ? 'ACTUAL' : 'AÑO'}</span>
                 <span className="text-sm font-extrabold mt-0.5">{yr}</span>
-                <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
+                {conConteo && <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>}
                 <span className="text-[0.6875rem] opacity-60 mt-0.5 flex items-center gap-0.5">Ver Meses <ArrowRight className="w-2 h-2" /></span>
               </button>
             );
@@ -387,7 +390,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
               >
                 <span className="text-[0.6875rem] uppercase font-semibold opacity-80">{currentYear}</span>
                 <span className="text-sm font-extrabold mt-0.5">{mo.shortName}</span>
-                <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
+                {conConteo && <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>}
                 <span className="text-[0.6875rem] opacity-60 mt-0.5 flex items-center gap-0.5">Semanas <ArrowRight className="w-2 h-2" /></span>
               </button>
             );
@@ -407,7 +410,7 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
               >
                 <span className="text-[0.6875rem] uppercase font-semibold opacity-80">{wk.label}</span>
                 <span className="text-xs font-extrabold mt-0.5 whitespace-nowrap">{wk.rangeLabel}</span>
-                <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>
+                {conConteo && <span className={`text-[0.6875rem] px-1.5 rounded-full font-bold mt-1 ${isSel ? BADGE_ACT : BADGE_IDL}`}>{count} citas</span>}
                 <span className="text-[0.6875rem] opacity-60 mt-0.5 flex items-center gap-0.5">Ver Días <ArrowRight className="w-2 h-2" /></span>
               </button>
             );

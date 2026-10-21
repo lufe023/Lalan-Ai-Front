@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { NumeroAnimado, RESORTE } from '../components/ui/movimiento';
-import { ArrowRight, BarChart3, CalendarCheck2, Gauge, Loader2, PackageSearch, Receipt, Wallet } from 'lucide-react';
+import { ArrowRight, BarChart3, CalendarCheck2, Gauge, Loader2, MessagesSquare, PackageSearch, Receipt, Wallet } from 'lucide-react';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
 import type { ScreenName } from '../context/AppContext';
@@ -17,6 +17,7 @@ const ACCESOS: { pantalla: ScreenName; titulo: string; texto: string; icono: Rea
   { pantalla: 'dashboard', titulo: 'Métricas', texto: 'Citas, clientas atendidas, dinero del periodo y lo que hizo Lalan.', icono: Gauge },
   { pantalla: 'ganancias', titulo: 'Ganancias', texto: 'Lo que entró, lo que costó cada servicio y lo que te quedó de verdad.', icono: Wallet, modulo: 'informes' },
   { pantalla: 'citas-report', titulo: 'Informe de citas', texto: 'Por día, hora, servicio y especialista; quién agenda y quién no llega.', icono: CalendarCheck2, modulo: 'informes' },
+  { pantalla: 'conversiones-report', titulo: 'Informe de conversiones', texto: 'Qué chats terminan en cita o compra, cuáles solo preguntan y cuántos mensajes cuesta cada cita.', icono: MessagesSquare, modulo: 'informes' },
   { pantalla: 'caja', titulo: 'Caja y cierres', texto: 'Turnos de caja, cobros y cierres del día.', icono: Receipt, modulo: 'caja' },
 ];
 
