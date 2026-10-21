@@ -93,7 +93,7 @@ export interface LoungeEvent {
 }
 
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'sala' | 'plataforma' | 'informes';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'conversiones-report' | 'sala' | 'plataforma' | 'informes';
 
 // ═══════════════════════════════════════════════════════════════════
 //  SALA Y TURNOS
