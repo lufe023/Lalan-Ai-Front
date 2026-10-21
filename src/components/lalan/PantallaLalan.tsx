@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
 import { useAuth } from '../../context/AuthContext';
 import { useEscucha } from '../../hooks/useEscucha';
+import { useVistaVisible } from '../../hooks/useVistaVisible';
 import { AjustesLalan, ajustesLalan, cargarAjustesLalan, msDePausa, NOMBRE_PAUSA, VOCES_AURA, type Pausa } from '../../utils/ajustesLalan';
 import { FondoVivo } from '../ui/FondoVivo';
 import { PAPEL_TAPIZ_SALON } from './papelTapiz';
@@ -216,6 +217,11 @@ export const PantallaLalan: React.FC = () => {
   }, [abierta, escribiendo, grande]);
 
   const bajar = () => requestAnimationFrame(() => lista.current?.scrollTo({ top: lista.current.scrollHeight, behavior: 'smooth' }));
+
+  // Con el teclado abierto la pantalla se ajusta a lo que se ve y baja al último mensaje
+  const vista = useVistaVisible(abierta);
+  const conTeclado = !!vista?.teclado;
+  useEffect(() => { if (conTeclado) bajar(); }, [conTeclado, vista?.alto]);
 
   /** Lalan dice su último mensaje (si no está callada) */
   const decir = useCallback(async (t: string) => {
@@ -450,7 +456,10 @@ export const PantallaLalan: React.FC = () => {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           className={`fixed inset-0 z-[300] flex flex-col backdrop-blur-2xl text-slate-900 dark:text-neutral-100 ${fondoQuiosco ? 'bg-[#fbf7f8] dark:bg-[#0c0a0b]' : 'bg-slate-50/90 dark:bg-neutral-950/92'}`}
-          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
+          style={vista && conTeclado
+            // Encima del teclado: el teclado ya tapa la raya de abajo del iPhone
+            ? { top: vista.arriba, height: vista.alto, bottom: 'auto', paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: 4 }
+            : { paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
         >
           {/* El del quiosco: manchas de color que se mueven despacio */}
           {fondoQuiosco && <FondoVivo />}
@@ -690,8 +699,10 @@ export const PantallaLalan: React.FC = () => {
             </div>
             ) : (
             <div className="relative flex-1 min-h-0">
-            {/* La conversación: corre por detrás de la esfera (abajo es transparente) */}
-            <div ref={lista} className="absolute inset-0 overflow-y-auto px-5 pt-4 space-y-5" style={{ paddingBottom: altoAbajo + 8 }} aria-live="polite">
+            {/* La conversación: corre por detrás de la esfera (abajo es transparente).
+                Escribiendo termina encima del campo, para que la cajita no tape el texto */}
+            <div ref={lista} className="absolute inset-0 overflow-y-auto px-5 pt-4 space-y-5" aria-live="polite"
+              style={escribiendo ? { bottom: altoAbajo, paddingBottom: 8 } : { paddingBottom: altoAbajo + 8 }}>
               {cargando && !mensajes.length && (
                 <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
               )}
@@ -720,7 +731,7 @@ export const PantallaLalan: React.FC = () => {
             </div>
 
             {/* Abajo: la esfera, flotando sobre la conversación */}
-            <div ref={abajo} className={`absolute inset-x-0 bottom-0 px-5 pt-10 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto bg-gradient-to-t to-transparent ${fondoQuiosco
+            <div ref={abajo} className={`absolute inset-x-0 bottom-0 px-5 ${escribiendo ? 'pt-1' : 'pt-10'} flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto bg-gradient-to-t to-transparent ${fondoQuiosco
               // Sobre los colores, un velo suave: uno sólido se veía como un bloque tapando las manchas
               ? 'from-white/35 via-white/10 dark:from-black/35 dark:via-black/10'
               : 'from-slate-50/75 via-slate-50/25 dark:from-neutral-950/75 dark:via-neutral-950/25'}`}>
