@@ -15,6 +15,7 @@ import {
   User,
   MapPin,
   ChevronDown,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -22,6 +23,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { UserRole } from '../../types';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 import { ListaSedes, useNombreSede } from './ListaSedes';
+import { abrirBuscador } from './BuscadorOpciones';
 
 interface IOSHeaderProps {
   title: string;
@@ -108,6 +110,18 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {rightAction}
+
+          {/* Buscar una opción: en el teléfono no hay Ctrl+K (en la computadora va en el menú) */}
+          <button
+            type="button"
+            onClick={abrirBuscador}
+            data-medir="Abrir buscador"
+            className="lg:hidden w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-neutral-800/80 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] transition ios-touch cursor-pointer shadow-2xs"
+            title="Buscar opción"
+            aria-label="Buscar opción"
+          >
+            <Search className="w-4 h-4" />
+          </button>
 
           {/* Dark / Light toggle */}
           <button

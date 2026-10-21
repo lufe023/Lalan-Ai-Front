@@ -50,6 +50,7 @@ import { useUsoApp } from './hooks/useUsoApp';
 import { CalorApp } from './components/plataforma/CalorApp';
 import { GrabadorRuta } from './components/guias/GrabadorRuta';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
+import { BuscadorOpciones } from './components/ui/BuscadorOpciones';
 import { PWAInstallBanner } from './components/ui/PWAInstallBanner';
 import { PWAUpdateNotification } from './components/ui/PWAUpdateNotification';
 import type { ScreenName } from './context/AppContext';
@@ -184,6 +185,8 @@ const MainAppContent: React.FC = () => {
             {/* Escaneó el QR de un quiosco: aprobarlo desde aquí */}
             <AprobarQuiosco />
             <PantallaLalan />
+            {/* Ctrl+K: buscar una opción por su nombre y llegar sin recorrer el menú */}
+            <BuscadorOpciones />
             {/* "Llévame": la guía paso a paso que dejó Lalan */}
             <GuiaEnCurso />
             {/* La Bienvenida: configurar el salón paso a paso (se abre sola la primera vez) */}

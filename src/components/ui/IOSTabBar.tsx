@@ -16,8 +16,10 @@ import {
   Armchair,
   Globe2,
   BarChart3,
+  Search,
   X,
 } from 'lucide-react';
+import { abrirBuscador, ATAJO_BUSCADOR } from './BuscadorOpciones';
 import { LogoLalan } from './LogoLalan';
 import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
 import { EsferaLalan } from '../lalan/EsferaLalan';
@@ -369,6 +371,13 @@ export const IOSTabBar: React.FC = () => {
               </span>
             </button>
           )}
+          {/* El buscador de opciones: lo mismo que Ctrl+K, para quien no sabe el atajo */}
+          <button type="button" onClick={abrirBuscador} data-medir="Abrir buscador"
+            className="mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800/70 hover:bg-slate-200/70 dark:hover:bg-neutral-800 text-slate-500 dark:text-neutral-400 text-left cursor-pointer ios-touch">
+            <Search className="w-4 h-4 shrink-0" />
+            <span className="flex-1 text-[0.8125rem]">Buscar opción…</span>
+            <kbd className="px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-[0.6875rem] font-semibold">{ATAJO_BUSCADOR}</kbd>
+          </button>
         </div>
 
         {/* Nav items */}
