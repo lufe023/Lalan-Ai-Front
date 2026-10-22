@@ -131,6 +131,8 @@ export interface NegocioDetalle {
   efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites; mensajesExtra?: number; paquetes?: PaqueteExtra[] };
   /** Lo que gastó en IA este mes (exacto, de OpenRouter) */
   gastoIa?: { totalUsd: number; totalPesos: number; porFuentePesos: Record<string, number> } | null;
+  /** La versión vigente de los términos y la última que aceptó su administración */
+  terminos?: { vigente: string; aceptados: { version: string; en: string; por: string } | null };
   uso: Uso;
   sedes: { id: string; name: string; address: string | null; phone: string | null }[];
   usuarios: { id: string; name: string; email: string | null; usuario?: string | null; telefono?: string | null; correoConfirmadoEn?: string | null; role: string; active: boolean; debeCambiarClave: boolean }[];

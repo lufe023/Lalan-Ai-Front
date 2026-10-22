@@ -35,6 +35,7 @@ import { QuioscoScreen } from './screens/QuioscoScreen';
 import { AprobarQuiosco } from './components/ajustes/AprobarQuiosco';
 import { PlataformaScreen } from './screens/PlataformaScreen';
 import { CambiarClaveScreen } from './screens/CambiarClaveScreen';
+import { AceptarTerminosScreen } from './screens/AceptarTerminosScreen';
 import { ConfirmarCorreoScreen, confirmacionOmitida } from './screens/ConfirmarCorreoScreen';
 import { PlanProvider } from './context/PlanContext';
 import { SedeActivaProvider } from './context/SedeActivaContext';
@@ -164,6 +165,8 @@ const MainAppContent: React.FC = () => {
         ) : isAuthenticated && (currentUser?.confirmarCorreo === 'obligatoria'
             || (currentUser?.confirmarCorreo === 'opcional' && !confirmacionOmitida(currentUser.id))) ? (
           <ConfirmarCorreoScreen />
+        ) : isAuthenticated && currentUser?.aceptarTerminos ? (
+          <AceptarTerminosScreen version={currentUser.aceptarTerminos} />
         ) : !isAuthenticated ? (
           <motion.div
             key="login-view"

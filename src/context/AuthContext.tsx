@@ -27,6 +27,8 @@ interface AuthContextType {
   claveCambiada: () => void;
   /** Confirmó su correo (o lo dejó para después, si no era obligatorio) */
   correoListo: (correo?: string | null) => void;
+  /** Aceptó los términos: se quita la pantalla de aceptarlos */
+  terminosAceptados: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,6 +39,7 @@ interface ApiUser {
   debeCambiarClave?: boolean;
   usuario?: string | null; telefono?: string | null;
   confirmarCorreo?: ConfirmacionCorreo | null;
+  aceptarTerminos?: string | null;
   soporte?: { negocio: string };
 }
 
@@ -53,6 +56,7 @@ function buildProfile(u: ApiUser): UserProfile {
     correo: u.email ?? null,
     usuario: u.usuario ?? null,
     confirmarCorreo: u.confirmarCorreo ?? null,
+    aceptarTerminos: u.aceptarTerminos ?? null,
     soporte: u.soporte,
     permissions: PERMISSIONS[u.role] ?? PERMISSIONS.assistant,
   };
@@ -149,13 +153,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser((u) => (u ? { ...u, confirmarCorreo: null, ...(correo !== undefined ? { correo } : {}) } : u));
   }, []);
 
+  const terminosAceptados = useCallback(() => {
+    setCurrentUser((u) => (u ? { ...u, aceptarTerminos: null } : u));
+  }, []);
+
   const hasPermission = useCallback((permission: keyof UserProfile['permissions']): boolean => {
     if (!currentUser) return false;
     return !!currentUser.permissions[permission];
   }, [currentUser]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, claveCambiada, correoListo }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, claveCambiada, correoListo, terminosAceptados }}>
       {children}
     </AuthContext.Provider>
   );

@@ -21,6 +21,8 @@ export interface UserProfile {
   usuario?: string | null;
   /** Si tiene que confirmar su correo al entrar */
   confirmarCorreo?: ConfirmacionCorreo | null;
+  /** Versión de los términos que la administración del salón tiene que aceptar al entrar (null = nada) */
+  aceptarTerminos?: string | null;
   permissions: {
     canViewMetrics: boolean;
     canManageBots: boolean;
