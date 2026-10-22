@@ -83,8 +83,29 @@ export type AlAgotarse = 'persona' | 'menu';
 /** La promoción en curso (por ejemplo 2 meses gratis en el plan más alto) */
 export interface PromocionVista { hasta: string; planDespues: { id: string; nombre: string } | null }
 
+/** Las respuestas del mes, por partes. limites.mensajesMes es la suma */
+export interface CupoDelMes {
+  /** Lo que trae el plan en un mes */
+  plan: number;
+  /** Lo que pasó del mes pasado */
+  acumulado: number;
+  /** Lo que adelantó el mes pasado y se descuenta este mes */
+  deuda: number;
+  /** Lo que adelantó este mes del siguiente */
+  adelanto: number;
+  /** Paquetes comprados este mes */
+  extra: number;
+  /** Cuántas puede adelantar ahora (0 = no puede) */
+  puedeAdelantar: number;
+  adelantoMaximo: number;
+  acumula: boolean;
+  /** Respuestas adelantadas que quedaron por cobrar al cambiar de plan */
+  porCobrar: number;
+}
+
 export interface MiPlan {
   plan: { id: string; clave: string; nombre: string } | null;
+  cupo?: CupoDelMes | null;
   alAgotarse?: AlAgotarse;
   promocion?: PromocionVista | null;
   modulos: ClaveModulo[];
@@ -112,6 +133,10 @@ export interface PlanLalan {
   alAgotarse?: AlAgotarse;
   /** Si sale en la página pública */
   enLanding?: boolean;
+  /** Cuántas respuestas del mes siguiente puede adelantar la dueña (null = no puede) */
+  adelantoMaximo?: number | null;
+  /** Si lo que no usa pasa al mes siguiente */
+  acumulaSobrante?: boolean;
   negocios: number;
 }
 
@@ -127,6 +152,7 @@ export interface NegocioResumen {
   plan: { id: string; nombre: string } | null;
   excepciones: number;
   promoHasta?: string | null;
+  porCobrar?: number;
   duena: { name: string; email: string; debeCambiarClave: boolean } | null;
   uso: Uso;
   limites: Limites;
@@ -145,8 +171,10 @@ export interface NegocioDetalle {
   promoHasta?: string | null;
   /** A qué plan baja al terminar la promoción (null = al Plan Gratis) */
   planDespuesId?: string | null;
+  /** Respuestas adelantadas que quedaron por cobrar al cambiar de plan */
+  porCobrar?: number;
   limitesPropios: Limites;
-  efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites; mensajesExtra?: number; paquetes?: PaqueteExtra[] };
+  efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites; mensajesExtra?: number; paquetes?: PaqueteExtra[]; cupo?: CupoDelMes | null };
   /** Lo que gastó en IA este mes (exacto, de OpenRouter) */
   gastoIa?: { totalUsd: number; totalPesos: number; porFuentePesos: Record<string, number> } | null;
   uso: Uso;

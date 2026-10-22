@@ -3,6 +3,7 @@ import { MessageCircleWarning, X } from 'lucide-react';
 import { usePlan } from '../../context/PlanContext';
 import { useAuth } from '../../context/AuthContext';
 import { NIVEL_MENSAJES } from '../../types/plataforma';
+import { AdelantarRespuestas } from '../ajustes/AdelantarRespuestas';
 
 const TELEFONO_LALAN = '8092299444';
 const CLAVE_CERRADO = 'lalan_aviso_mensajes_cerrado';
@@ -27,6 +28,7 @@ export const AvisoMensajes: React.FC = () => {
   const agotado = nivel === NIVEL_MENSAJES.agotado;
   // El Plan Gratis no pasa los chats al equipo: Lalan sigue con un menú sin IA
   const conMenu = miPlan.alAgotarse === 'menu';
+  const puedeAdelantar = (miPlan.cupo?.puedeAdelantar ?? 0) > 0;
   const { mensajesMes: usados } = miPlan.uso;
   const tope = miPlan.limites.mensajesMes ?? 0;
   const cerrar = () => {
@@ -65,6 +67,12 @@ export const AvisoMensajes: React.FC = () => {
             Subir de plan
           </a>
         </p>
+        {puedeAdelantar && (
+          <>
+            <p className="opacity-90 mt-1">O adelanta respuestas del mes que viene: se descuentan del próximo mes y no se cobran aparte.</p>
+            <AdelantarRespuestas compacto />
+          </>
+        )}
       </div>
       <button type="button" onClick={cerrar} aria-label="Cerrar aviso" className="p-1 -m-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer">
         <X className="w-4 h-4" />

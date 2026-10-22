@@ -3,6 +3,7 @@ import { BadgeCheck, CheckCircle2, Gift, Lock } from 'lucide-react';
 import { api } from '../../services/api';
 import { usePlan } from '../../context/PlanContext';
 import { UsoDelPlan } from '../plataforma/UsoDelPlan';
+import { AdelantarRespuestas } from './AdelantarRespuestas';
 import type { CatalogoModulos } from '../../types/plataforma';
 
 const WHATSAPP_LALAN = '18092299444';
@@ -36,7 +37,10 @@ export const TuPlan: React.FC = () => {
           </p>
         </div>
       )}
-      <UsoDelPlan uso={miPlan.uso} limites={miPlan.limites} />
+      <UsoDelPlan uso={miPlan.uso} limites={miPlan.limites} cupo={miPlan.cupo} />
+      <AdelantarRespuestas />
+      {miPlan.cupo?.acumula && <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Lo que no uses este mes pasa al siguiente (solo un mes, hasta {miPlan.cupo.plan.toLocaleString('es-DO')}).</p>}
+      {!!miPlan.cupo?.porCobrar && <p className="text-[0.75rem] text-orange-600">Tienes {miPlan.cupo.porCobrar.toLocaleString('es-DO')} respuestas adelantadas por pagar de tu plan anterior.</p>}
       {miPlan.alAgotarse === 'menu' && (
         <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Si se acaban las respuestas del mes, Lalan atiende a tus clientas con un menú (servicios, horario, pedir cita o hablar con el salón) y te pasa los chats que piden una persona.</p>
       )}

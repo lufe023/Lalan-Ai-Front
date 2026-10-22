@@ -253,7 +253,14 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           </select>)}
           <PromocionCliente d={d} planes={planes} soloSoporte={soloSoporte} onGuardar={guardar} />
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 pt-2">Uso</div>
-          <UsoDelPlan uso={d.uso} limites={d.efectivo.limites} />
+          <UsoDelPlan uso={d.uso} limites={d.efectivo.limites} cupo={d.efectivo.cupo} />
+          {!!d.porCobrar && (
+            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900 text-[0.75rem] text-orange-800 dark:text-orange-200">
+              <span><b>Por cobrar: {d.porCobrar.toLocaleString('es-DO')} respuestas adelantadas</b> que no devolvió al cambiar de plan.</span>
+              {!soloSoporte && <button type="button" onClick={() => { if (window.confirm(`¿Ya le cobraste las ${d.porCobrar!.toLocaleString('es-DO')} respuestas adelantadas a ${d.nombre}? Se borran de por cobrar.`)) void guardar({ adelantoCobrado: true }); }}
+                className="px-2.5 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-orange-300 font-bold cursor-pointer">Marcar cobrado</button>}
+            </div>
+          )}
           {d.gastoIa && (
             <p className="text-[0.75rem] text-slate-500">
               <b className="text-slate-700 dark:text-neutral-200">Gastó en IA este mes: {d.gastoIa.totalPesos.toLocaleString('es-DO')} pesos</b> (US$ {d.gastoIa.totalUsd.toFixed(2)})
@@ -399,6 +406,7 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
             </div>
             <div className="flex flex-wrap gap-1.5 mt-2.5 mb-2.5">
               <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-[var(--primary)]/10 text-[var(--primary)]">{n.plan?.nombre ?? 'Sin plan'}</span>
+              {!!n.porCobrar && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-orange-100 text-orange-700">{n.porCobrar} respuestas por cobrar</span>}
               {n.promoHasta && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-emerald-100 text-emerald-700">Promoción hasta {fecha(n.promoHasta)}</span>}
               {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
               {!n.activo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-rose-100 text-rose-700">Suspendido</span>}

@@ -13,7 +13,7 @@ type Borrador = Omit<PlanLalan, 'id' | 'clave' | 'negocios'> & { id?: string };
 const nuevo = (): Borrador => ({
   nombre: '', descripcion: '', precioMensual: 0, moneda: 'DOP', orden: 9, activo: true, modulos: [],
   limites: { mensajesMes: 400, sedes: 1, usuarios: 2, especialistas: 3, preguntasDia: 10 },
-  paquetes: [], alAgotarse: 'persona', enLanding: true,
+  paquetes: [], alAgotarse: 'persona', enLanding: true, adelantoMaximo: null, acumulaSobrante: false,
 });
 
 const AL_AGOTARSE: { id: AlAgotarse; nombre: string; descripcion: string }[] = [
@@ -71,6 +71,7 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
     const cuerpo = {
       nombre: b.nombre, descripcion: b.descripcion || undefined, precioMensual: Number(b.precioMensual), moneda: b.moneda, orden: b.orden, activo: b.activo, modulos: b.modulos, limites: b.limites, paquetes,
       alAgotarse: b.alAgotarse ?? 'persona', enLanding: b.enLanding ?? true,
+      adelantoMaximo: b.adelantoMaximo || null, acumulaSobrante: !!b.acumulaSobrante,
     };
     try {
       if (b.id) await api.patch(`/plataforma/planes/${b.id}`, cuerpo); else await api.post('/plataforma/planes', cuerpo);
@@ -136,6 +137,22 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
               </button>
             );
           })}
+        </div>
+      </div>
+      <div>
+        <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 mb-1">Adelantar y acumular</div>
+        <p className="text-[0.6875rem] text-slate-400 mb-2">El mes corta el día 1. La dueña elige cuántas adelanta (hasta este tope) y se le descuentan del mes siguiente; no puede volver a adelantar mientras devuelve. Si cambia de plan con respuestas adelantadas, se le cobran.</p>
+        <div className="grid sm:grid-cols-2 gap-2 items-end">
+          <label className="block space-y-1">
+            <span className="text-[0.75rem] font-semibold text-slate-500">Puede adelantar del mes siguiente hasta</span>
+            <input type="number" min={0} value={b.adelantoMaximo ?? ''} placeholder="No puede adelantar"
+              onChange={(e) => setB((x) => ({ ...x, adelantoMaximo: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))) }))}
+              className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] tabular-nums" />
+          </label>
+          <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300 pb-2">
+            <input type="checkbox" checked={!!b.acumulaSobrante} onChange={(e) => setB((x) => ({ ...x, acumulaSobrante: e.target.checked }))} className="accent-[var(--primary)]" />
+            Lo que no usa pasa al mes siguiente (solo un mes, hasta lo que trae el plan)
+          </label>
         </div>
       </div>
       <div>
