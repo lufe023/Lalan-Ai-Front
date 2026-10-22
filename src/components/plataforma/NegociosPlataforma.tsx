@@ -318,6 +318,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
               {Object.keys(d.gastoIa.porFuentePesos).length > 0 && ` · ${Object.entries(d.gastoIa.porFuentePesos).map(([f, v]) => `${({ chat: 'chats', pantalla: 'pantalla', planes: 'planes', informes: 'informes', senales: 'señales', fotos: 'fotos', voz: 'voz' } as Record<string, string>)[f] ?? f} ${v}`).join(' · ')}`}
             </p>
           )}
+          {d.terminos && <TerminosAceptados {...d.terminos} />}
           {!!d.efectivo.mensajesExtra && <p className="text-[0.75rem] text-emerald-600">Este mes tiene {d.efectivo.mensajesExtra.toLocaleString('es-DO')} respuestas extra de paquetes (ya sumadas).</p>}
           {!soloSoporte && !!d.efectivo.paquetes?.length && (
             <div className="flex flex-wrap gap-1.5 pt-1">
@@ -470,3 +471,12 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
     </div>
   );
 };
+
+/** Si su administración aceptó los términos vigentes: quién y cuándo */
+function TerminosAceptados({ vigente, aceptados }: NonNullable<NegocioDetalle['terminos']>) {
+  if (!aceptados) return <p className="text-[0.75rem] text-amber-600">Todavía no ha aceptado los términos. Se le piden al entrar.</p>;
+  const cuando = new Date(aceptados.en).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
+  return aceptados.version === vigente
+    ? <p className="text-[0.75rem] text-slate-500">Aceptó los términos el {cuando} ({aceptados.por}).</p>
+    : <p className="text-[0.75rem] text-amber-600">Aceptó una versión anterior de los términos el {cuando}. La nueva se le pide al entrar.</p>;
+}
