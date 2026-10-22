@@ -77,8 +77,16 @@ export type Limites = Record<Recurso, number | null> & {
 export interface PaqueteExtra { respuestas: number; precio: number }
 export type Uso = Record<Recurso, number>;
 
+/** Qué hace Lalan cuando se acaban los mensajes del mes: pasar el chat a una persona o atender con un menú sin IA */
+export type AlAgotarse = 'persona' | 'menu';
+
+/** La promoción en curso (por ejemplo 2 meses gratis en el plan más alto) */
+export interface PromocionVista { hasta: string; planDespues: { id: string; nombre: string } | null }
+
 export interface MiPlan {
   plan: { id: string; clave: string; nombre: string } | null;
+  alAgotarse?: AlAgotarse;
+  promocion?: PromocionVista | null;
   modulos: ClaveModulo[];
   limites: Limites;
   uso: Uso;
@@ -101,8 +109,14 @@ export interface PlanLalan {
   modulos: ClaveModulo[];
   limites: Limites;
   paquetes?: PaqueteExtra[];
+  alAgotarse?: AlAgotarse;
+  /** Si sale en la página pública */
+  enLanding?: boolean;
   negocios: number;
 }
+
+/** Lo que viene marcado al crear un salón con promoción */
+export interface PromocionInicial { meses: number; mesesMaximo: number; planAlto: { id: string; nombre: string } | null; planDespues: { id: string; nombre: string } | null }
 
 export interface NegocioResumen {
   id: string;
@@ -112,6 +126,7 @@ export interface NegocioResumen {
   creadoEn: string;
   plan: { id: string; nombre: string } | null;
   excepciones: number;
+  promoHasta?: string | null;
   duena: { name: string; email: string; debeCambiarClave: boolean } | null;
   uso: Uso;
   limites: Limites;
@@ -127,6 +142,9 @@ export interface NegocioDetalle {
   plan: { id: string; nombre: string } | null;
   modulosExtra: ClaveModulo[];
   modulosQuitados: ClaveModulo[];
+  promoHasta?: string | null;
+  /** A qué plan baja al terminar la promoción (null = al Plan Gratis) */
+  planDespuesId?: string | null;
   limitesPropios: Limites;
   efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites; mensajesExtra?: number; paquetes?: PaqueteExtra[] };
   /** Lo que gastó en IA este mes (exacto, de OpenRouter) */

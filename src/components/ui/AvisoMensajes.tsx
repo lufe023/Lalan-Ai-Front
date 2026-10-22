@@ -25,6 +25,8 @@ export const AvisoMensajes: React.FC = () => {
   if (!nivel || nivel === NIVEL_MENSAJES.normal || cerrado === nivel) return null;
 
   const agotado = nivel === NIVEL_MENSAJES.agotado;
+  // El Plan Gratis no pasa los chats al equipo: Lalan sigue con un menú sin IA
+  const conMenu = miPlan.alAgotarse === 'menu';
   const { mensajesMes: usados } = miPlan.uso;
   const tope = miPlan.limites.mensajesMes ?? 0;
   const cerrar = () => {
@@ -47,8 +49,12 @@ export const AvisoMensajes: React.FC = () => {
           {agotado ? 'Lalan usó los mensajes de tu plan este mes' : `Lalan ya usó ${usados} de sus ${tope} mensajes del mes`}
         </p>
         <p className="opacity-90">
-          {agotado
+          {agotado && conMenu
+            ? 'Lalan atiende a tus clientas con un menú (servicios, horario, pedir cita o hablar con el salón) y te pasa los chats que piden una persona. El día 1 vuelve a conversar con sus palabras.'
+            : agotado
             ? 'Los chats nuevos pasan a tu equipo con una nota para que ninguna clienta se quede sin respuesta. El día 1 Lalan vuelve a atender sola.'
+            : conMenu
+            ? 'Si llega al tope, Lalan atenderá con un menú en vez de conversar.'
             : 'Si llega al tope, los chats nuevos pasarán a tu equipo con una nota.'}{' '}
           <a
             href={`https://wa.me/1${TELEFONO_LALAN}?text=${encodeURIComponent('Hola, quiero subir de plan en Lalan AI')}`}

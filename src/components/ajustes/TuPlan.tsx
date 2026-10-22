@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BadgeCheck, CheckCircle2, Lock } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, Gift, Lock } from 'lucide-react';
 import { api } from '../../services/api';
 import { usePlan } from '../../context/PlanContext';
 import { UsoDelPlan } from '../plataforma/UsoDelPlan';
@@ -27,7 +27,19 @@ export const TuPlan: React.FC = () => {
         </div>
         <a href={`https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(pedir)}`} target="_blank" rel="noopener" className="text-[0.75rem] font-bold text-[var(--primary)] hover:underline shrink-0">Mejorar mi plan</a>
       </div>
+      {miPlan.promocion && (
+        <div className="p-3 rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/30 flex items-start gap-2 text-[0.75rem] text-slate-700 dark:text-neutral-200">
+          <Gift className="w-4 h-4 text-[var(--primary)] shrink-0 mt-px" />
+          <p>
+            Tienes el <b>{miPlan.plan?.nombre ?? 'plan completo'}</b> de promoción hasta el <b>{new Date(miPlan.promocion.hasta).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</b>.
+            {' '}Ese día pasas solo al <b>{miPlan.promocion.planDespues?.nombre ?? 'Plan Gratis'}</b>: Lalan sigue en tu WhatsApp con menos respuestas al mes, y lo que ese plan no incluye se apaga sin borrar nada. Si quieres seguir con todo, toca «Mejorar mi plan».
+          </p>
+        </div>
+      )}
       <UsoDelPlan uso={miPlan.uso} limites={miPlan.limites} />
+      {miPlan.alAgotarse === 'menu' && (
+        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Si se acaban las respuestas del mes, Lalan atiende a tus clientas con un menú (servicios, horario, pedir cita o hablar con el salón) y te pasa los chats que piden una persona.</p>
+      )}
       {!!miPlan.mensajesExtra && <p className="text-[0.75rem] text-emerald-600">Este mes tienes {miPlan.mensajesExtra.toLocaleString('es-DO')} respuestas extra de un paquete (ya están sumadas).</p>}
       {!!miPlan.paquetes?.length && (
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-2">
