@@ -13,7 +13,7 @@ type Borrador = Omit<PlanLalan, 'id' | 'clave' | 'negocios'> & { id?: string };
 const nuevo = (): Borrador => ({
   nombre: '', descripcion: '', precioMensual: 0, moneda: 'DOP', orden: 9, activo: true, modulos: [],
   limites: { mensajesMes: 400, sedes: 1, usuarios: 2, especialistas: 3, preguntasDia: 10 },
-  paquetes: [], alAgotarse: 'persona', enLanding: true, adelantoMaximo: null, acumulaSobrante: false,
+  paquetes: [], alAgotarse: 'persona', enLanding: true, adelantoMaximo: null, acumulaSobrante: false, precioAdelanto: null,
 });
 
 const AL_AGOTARSE: { id: AlAgotarse; nombre: string; descripcion: string }[] = [
@@ -62,6 +62,9 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState('');
   useEffect(() => setB(plan), [plan]);
+  // Sin precio propio, la respuesta adelantada se cobra a lo que cuesta en el paquete más chico
+  const chico = [...(b.paquetes ?? [])].filter((p) => p.respuestas > 0 && p.precio > 0).sort((x, y) => x.respuestas - y.respuestas)[0];
+  const precioDelPaquete = chico ? Math.round((chico.precio / chico.respuestas) * 100) / 100 : null;
   const alternar = (m: ClaveModulo) => setB((x) => ({ ...x, modulos: x.modulos.includes(m) ? x.modulos.filter((y) => y !== m) : [...x.modulos, m] }));
   const limite = (r: Recurso, v: number | null) => setB((x) => ({ ...x, limites: { ...x.limites, [r]: v } as Limites }));
 
@@ -71,7 +74,7 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
     const cuerpo = {
       nombre: b.nombre, descripcion: b.descripcion || undefined, precioMensual: Number(b.precioMensual), moneda: b.moneda, orden: b.orden, activo: b.activo, modulos: b.modulos, limites: b.limites, paquetes,
       alAgotarse: b.alAgotarse ?? 'persona', enLanding: b.enLanding ?? true,
-      adelantoMaximo: b.adelantoMaximo || null, acumulaSobrante: !!b.acumulaSobrante,
+      adelantoMaximo: b.adelantoMaximo || null, acumulaSobrante: !!b.acumulaSobrante, precioAdelanto: b.precioAdelanto ?? null,
     };
     try {
       if (b.id) await api.patch(`/plataforma/planes/${b.id}`, cuerpo); else await api.post('/plataforma/planes', cuerpo);
@@ -147,6 +150,12 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
             <span className="text-[0.75rem] font-semibold text-slate-500">Puede adelantar del mes siguiente hasta</span>
             <input type="number" min={0} value={b.adelantoMaximo ?? ''} placeholder="No puede adelantar"
               onChange={(e) => setB((x) => ({ ...x, adelantoMaximo: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))) }))}
+              className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] tabular-nums" />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[0.75rem] font-semibold text-slate-500">Precio por respuesta adelantada (si se le cobra)</span>
+            <input type="number" min={0} step="0.01" value={b.precioAdelanto ?? ''} placeholder={precioDelPaquete ? `${precioDelPaquete} (el del paquete más chico)` : 'El del paquete más chico'}
+              onChange={(e) => setB((x) => ({ ...x, precioAdelanto: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) }))}
               className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] tabular-nums" />
           </label>
           <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300 pb-2">

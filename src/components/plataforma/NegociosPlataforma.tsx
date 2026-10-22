@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift } from 'lucide-react';
+import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
 import { api } from '../../services/api';
 import { ClaveParaCompartir } from './ClaveParaCompartir';
 import { UsoDelPlan } from './UsoDelPlan';
 import {
-  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type PlanLalan, type PromocionInicial, type Recurso,
+  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type PlanLalan, type PromocionInicial, type Recurso, type VistaCambioDePlan,
 } from '../../types/plataforma';
 import { CanalesCliente } from './CanalesCliente';
 import { EditorCanales } from './EditorCanales';
@@ -179,6 +179,40 @@ const PromocionCliente: React.FC<{ d: NegocioDetalle; planes: PlanLalan[]; soloS
   );
 };
 
+/** Hasta cuándo pagó el salón: con más de 5 días de atraso baja solo al Plan Gratis y pierde lo acumulado */
+const PagoCliente: React.FC<{ d: NegocioDetalle; soloSoporte?: boolean; onGuardar: (c: Record<string, unknown>) => Promise<void> }> = ({ d, soloSoporte, onGuardar }) => {
+  const [dia, setDia] = useState(d.pagadoHasta ? diaDe(d.pagadoHasta) : '');
+  useEffect(() => setDia(d.pagadoHasta ? diaDe(d.pagadoHasta) : ''), [d.pagadoHasta]);
+  const vencido = !!d.pagadoHasta && new Date(d.pagadoHasta).getTime() < Date.now();
+  const unMesMas = () => {
+    const base = d.pagadoHasta && !vencido ? new Date(d.pagadoHasta) : new Date();
+    base.setMonth(base.getMonth() + 1);
+    void onGuardar({ pagadoHasta: finDelDia(base.toISOString().slice(0, 10)) });
+  };
+  if (soloSoporte && !d.pagadoHasta) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[0.75rem] text-slate-500">
+      <Wallet className="w-3.5 h-3.5" />
+      {d.pagadoHasta
+        ? <span className={vencido ? 'font-bold text-rose-600' : ''}>{vencido ? 'Pago vencido desde el' : 'Pagado hasta el'} {fecha(d.pagadoHasta)}.{vencido && ' A los 5 días baja solo al Plan Gratis.'}</span>
+        : <span>Sin fecha de pago: no baja por atraso.</span>}
+      {!soloSoporte && (
+        <>
+          <input type="date" value={dia} onChange={(e) => setDia(e.target.value)} aria-label="Pagado hasta" className={`${campo} w-auto py-1.5`} />
+          {dia && dia !== (d.pagadoHasta ? diaDe(d.pagadoHasta) : '') && (
+            <button type="button" onClick={() => void onGuardar({ pagadoHasta: finDelDia(dia) })} className="px-2.5 py-1.5 rounded-lg bg-[var(--primary)] text-white font-bold cursor-pointer">Guardar fecha</button>
+          )}
+          <button type="button" onClick={unMesMas} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 font-bold cursor-pointer">Pagó un mes</button>
+          {d.pagadoHasta && (
+            <button type="button" onClick={() => { if (window.confirm(`¿Quitar la fecha de pago de ${d.nombre}? Ya no bajará al Plan Gratis por atraso.`)) void onGuardar({ pagadoHasta: null }); }}
+              className="px-2.5 py-1.5 rounded-lg text-slate-500 font-semibold cursor-pointer">Quitar fecha</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoModulos; onCerrar: () => void; onCambio: () => void; soloSoporte?: boolean }> = ({ id, planes, catalogo, onCerrar, onCambio, soloSoporte }) => {
   const [d, setD] = useState<NegocioDetalle | null>(null);
   const [notas, setNotas] = useState('');
@@ -195,6 +229,22 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
   const guardar = async (cambio: Record<string, unknown>) => {
     setError('');
     try { setD(await api.patch<NegocioDetalle>(`/plataforma/negocios/${id}`, cambio)); onCambio(); } catch (e) { setError((e as Error).message); }
+  };
+  /* Antes de cambiar de plan: en qué sedes deja de contestar Lalan, qué adelanto se cobra y qué pierde */
+  const cambiarPlan = async (planId: string) => {
+    if (!d || planId === d.plan?.id) return;
+    setError('');
+    try {
+      const v = await api.get<VistaCambioDePlan>(`/plataforma/negocios/${id}/cambio-plan?planId=${encodeURIComponent(planId)}`);
+      const avisos = [
+        v.sedesSinLalan.length ? `Lalán deja de contestar en ${v.sedesSinLalan.join(', ')}: esos chats pasan a una persona.` : '',
+        v.adelanto.respuestas ? `Se le cobran ${v.adelanto.respuestas.toLocaleString('es-DO')} respuestas adelantadas (${v.adelanto.monto.toLocaleString('es-DO')} ${v.adelanto.moneda}).` : '',
+        v.modulosQuePierde.length ? `Pierde: ${v.modulosQuePierde.join(', ')}.` : '',
+        'Este mes tiene la cuota completa del plan nuevo, pero lo que sobre no pasa al mes siguiente.',
+      ].filter(Boolean);
+      if (!window.confirm(`¿Pasar ${d.nombre} a ${v.plan.nombre}?\n\n${avisos.join('\n\n')}`)) return;
+      await guardar({ planId });
+    } catch (e) { setError((e as Error).message); }
   };
   const nuevaClave = async (u: NegocioDetalle['usuarios'][number]) => {
     if (!window.confirm(`¿Generar una clave temporal nueva para ${u.name}? Se le cerrará la sesión.`)) return;
@@ -248,15 +298,16 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         <div className="space-y-2">
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Plan</div>
           {soloSoporte ? <div className={campo}>{d.plan?.nombre ?? 'Sin plan'}</div> : (
-          <select value={d.plan?.id ?? ''} onChange={(e) => void guardar({ planId: e.target.value })} className={campo}>
+          <select value={d.plan?.id ?? ''} onChange={(e) => void cambiarPlan(e.target.value)} className={campo}>
             {planes.map((p) => <option key={p.id} value={p.id}>{p.nombre}{p.activo ? '' : ' (retirado)'}</option>)}
           </select>)}
           <PromocionCliente d={d} planes={planes} soloSoporte={soloSoporte} onGuardar={guardar} />
+          <PagoCliente d={d} soloSoporte={soloSoporte} onGuardar={guardar} />
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 pt-2">Uso</div>
           <UsoDelPlan uso={d.uso} limites={d.efectivo.limites} cupo={d.efectivo.cupo} />
           {!!d.porCobrar && (
             <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900 text-[0.75rem] text-orange-800 dark:text-orange-200">
-              <span><b>Por cobrar: {d.porCobrar.toLocaleString('es-DO')} respuestas adelantadas</b> que no devolvió al cambiar de plan.</span>
+              <span><b>Por cobrar: {d.porCobrar.toLocaleString('es-DO')} respuestas adelantadas{d.porCobrarMonto ? ` (${d.porCobrarMonto.toLocaleString('es-DO')} pesos)` : ''}</b> que no devolvió al cambiar de plan.</span>
               {!soloSoporte && <button type="button" onClick={() => { if (window.confirm(`¿Ya le cobraste las ${d.porCobrar!.toLocaleString('es-DO')} respuestas adelantadas a ${d.nombre}? Se borran de por cobrar.`)) void guardar({ adelantoCobrado: true }); }}
                 className="px-2.5 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-orange-300 font-bold cursor-pointer">Marcar cobrado</button>}
             </div>

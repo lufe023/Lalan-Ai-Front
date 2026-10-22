@@ -101,6 +101,10 @@ export interface CupoDelMes {
   acumula: boolean;
   /** Respuestas adelantadas que quedaron por cobrar al cambiar de plan */
   porCobrar: number;
+  /** Cuánto suman, en la moneda del plan */
+  porCobrarMonto?: number;
+  /** Precio de cada respuesta adelantada */
+  precioAdelanto?: number;
 }
 
 export interface MiPlan {
@@ -137,7 +141,19 @@ export interface PlanLalan {
   adelantoMaximo?: number | null;
   /** Si lo que no usa pasa al mes siguiente */
   acumulaSobrante?: boolean;
+  /** Precio de cada respuesta adelantada (null = el del paquete más chico) */
+  precioAdelanto?: number | null;
   negocios: number;
+}
+
+/** Lo que pasa si cambia de plan, para avisarlo antes de confirmar */
+export interface VistaCambioDePlan {
+  plan: { id: string; nombre: string };
+  /** Sedes donde Lalan deja de contestar (pasan los chats a una persona) */
+  sedesSinLalan: string[];
+  /** Respuestas adelantadas que se le cobran */
+  adelanto: { respuestas: number; monto: number; moneda: string };
+  modulosQuePierde: string[];
 }
 
 /** Lo que viene marcado al crear un salón con promoción */
@@ -153,6 +169,8 @@ export interface NegocioResumen {
   excepciones: number;
   promoHasta?: string | null;
   porCobrar?: number;
+  porCobrarMonto?: number;
+  pagadoHasta?: string | null;
   duena: { name: string; email: string; debeCambiarClave: boolean } | null;
   uso: Uso;
   limites: Limites;
@@ -173,6 +191,9 @@ export interface NegocioDetalle {
   planDespuesId?: string | null;
   /** Respuestas adelantadas que quedaron por cobrar al cambiar de plan */
   porCobrar?: number;
+  porCobrarMonto?: number;
+  /** Hasta cuándo está pagado; con más de 5 días de atraso baja al Plan Gratis (null = no se revisa) */
+  pagadoHasta?: string | null;
   limitesPropios: Limites;
   efectivo: { plan: MiPlan['plan']; modulos: ClaveModulo[]; limites: Limites; mensajesExtra?: number; paquetes?: PaqueteExtra[]; cupo?: CupoDelMes | null };
   /** Lo que gastó en IA este mes (exacto, de OpenRouter) */

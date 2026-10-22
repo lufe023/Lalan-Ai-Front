@@ -40,7 +40,7 @@ export const TuPlan: React.FC = () => {
       <UsoDelPlan uso={miPlan.uso} limites={miPlan.limites} cupo={miPlan.cupo} />
       <AdelantarRespuestas />
       {miPlan.cupo?.acumula && <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Lo que no uses este mes pasa al siguiente (solo un mes, hasta {miPlan.cupo.plan.toLocaleString('es-DO')}).</p>}
-      {!!miPlan.cupo?.porCobrar && <p className="text-[0.75rem] text-orange-600">Tienes {miPlan.cupo.porCobrar.toLocaleString('es-DO')} respuestas adelantadas por pagar de tu plan anterior.</p>}
+      {!!miPlan.cupo?.porCobrar && <p className="text-[0.75rem] text-orange-600">Tienes {miPlan.cupo.porCobrar.toLocaleString('es-DO')} respuestas adelantadas por pagar de tu plan anterior{miPlan.cupo.porCobrarMonto ? ` (${miPlan.cupo.porCobrarMonto.toLocaleString('es-DO')} pesos)` : ''}.</p>}
       {miPlan.alAgotarse === 'menu' && (
         <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Si se acaban las respuestas del mes, Lalan atiende a tus clientas con un menú (servicios, horario, pedir cita o hablar con el salón) y te pasa los chats que piden una persona.</p>
       )}
