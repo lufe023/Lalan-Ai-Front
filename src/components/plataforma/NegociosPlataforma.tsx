@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy } from 'lucide-react';
+import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
 import { api } from '../../services/api';
 import { ClaveParaCompartir } from './ClaveParaCompartir';
 import { UsoDelPlan } from './UsoDelPlan';
 import {
-  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type PlanLalan, type Recurso,
+  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type PlanLalan, type PromocionInicial, type Recurso, type VistaCambioDePlan,
 } from '../../types/plataforma';
 import { CanalesCliente } from './CanalesCliente';
 import { EditorCanales } from './EditorCanales';
@@ -20,6 +20,10 @@ interface ClaveNueva { nombre: string; email?: string | null; entraCon?: string[
 const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 const tarjeta = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]';
 const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' });
+/** "2026-12-22" de una fecha ISO, para un <input type="date"> */
+const diaDe = (iso: string) => iso.slice(0, 10);
+/** Fin del día elegido en hora dominicana: la promoción vale todo ese día */
+const finDelDia = (dia: string) => new Date(`${dia}T23:59:00-04:00`).toISOString();
 
 const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio | null; onCreado: (c: ClaveNueva, id: string) => void; onCancelar: () => void }> = ({ planes, prellenado, onCreado, onCancelar }) => {
   const activos = planes.filter((p) => p.activo);
@@ -30,12 +34,23 @@ const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio |
   });
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  // La promoción viene marcada: los meses gratis en el plan más alto y luego baja sola al Plan Gratis
+  const [promoInicial, setPromoInicial] = useState<PromocionInicial | null>(null);
+  const [promo, setPromo] = useState({ activa: true, meses: 2, planDespuesId: '' });
+  useEffect(() => {
+    api.get<PromocionInicial>('/plataforma/planes/promocion').then((p) => {
+      setPromoInicial(p);
+      setPromo((x) => ({ ...x, meses: p.meses, planDespuesId: p.planDespues?.id ?? '' }));
+      if (p.planAlto) setF((x) => ({ ...x, planId: p.planAlto!.id }));
+    }).catch(() => setPromo((x) => ({ ...x, activa: false })));
+  }, []);
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setOcupado(true);
     try {
       const r = await api.post<{ negocioId: string; email: string; claveTemporal: string; telefono: string | null; entraCon?: string[] }>('/plataforma/negocios', {
         salon: f.salon, sede: f.sede || undefined, direccion: f.direccion || undefined, planId: f.planId,
         duena: { nombre: f.nombre, email: f.email, telefono: f.telefono || undefined }, aplicacionId: prellenado?.aplicacionId,
+        ...(promo.activa && promo.meses > 0 ? { mesesPromo: promo.meses, planDespuesId: promo.planDespuesId || undefined } : {}),
       });
       onCreado({ nombre: f.nombre, email: r.email, entraCon: r.entraCon, clave: r.claveTemporal, telefono: r.telefono, salon: f.salon }, r.negocioId);
     } catch (err) { setError((err as Error).message); } finally { setOcupado(false); }
@@ -55,6 +70,34 @@ const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio |
           {activos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
         </select>
       </div>
+      {promoInicial && (
+        <div className={`p-3 rounded-xl border space-y-2 ${promo.activa ? 'border-[var(--primary)]/40 bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700'}`}>
+          <label className="flex items-center gap-2 text-[0.8125rem] font-semibold">
+            <input type="checkbox" checked={promo.activa} onChange={(e) => {
+              const activa = e.target.checked;
+              setPromo({ ...promo, activa });
+              if (activa && promoInicial.planAlto) setF({ ...f, planId: promoInicial.planAlto.id });
+            }} className="accent-[var(--primary)]" />
+            <Gift className="w-4 h-4 text-[var(--primary)]" /> Empieza con promoción
+          </label>
+          {promo.activa && (
+            <div className="grid sm:grid-cols-[110px_1fr] gap-2 items-center">
+              <label className="flex items-center gap-1.5 text-[0.8125rem]">
+                <input type="number" min={1} max={promoInicial.mesesMaximo} value={promo.meses}
+                  onChange={(e) => setPromo({ ...promo, meses: Math.min(promoInicial.mesesMaximo, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+                  aria-label="Meses de promoción" className={`${campo} w-16`} /> meses
+              </label>
+              <label className="flex items-center gap-1.5 text-[0.8125rem]">
+                <span className="shrink-0 text-slate-500">y después baja solo a</span>
+                <select value={promo.planDespuesId} onChange={(e) => setPromo({ ...promo, planDespuesId: e.target.value })} className={campo}>
+                  {planes.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+              </label>
+              <p className="sm:col-span-2 text-[0.6875rem] text-slate-500">Los meses son en el plan que elegiste arriba. A la dueña se le avisa por correo 7 días antes y el día que baja. No se borra nada de su salón.</p>
+            </div>
+          )}
+        </div>
+      )}
       <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">La dueña (entra como administración)</div>
       <div className="grid sm:grid-cols-3 gap-2">
         <input required minLength={2} placeholder="Nombre" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} className={campo} />
@@ -95,6 +138,81 @@ const Excepciones: React.FC<{ d: NegocioDetalle; catalogo: CatalogoModulos; plan
   </div>
 );
 
+/** La promoción del cliente: hasta cuándo y a qué plan baja; se puede alargar, quitar o terminar ya */
+const PromocionCliente: React.FC<{ d: NegocioDetalle; planes: PlanLalan[]; soloSoporte?: boolean; onGuardar: (c: Record<string, unknown>) => Promise<void> }> = ({ d, planes, soloSoporte, onGuardar }) => {
+  const [dia, setDia] = useState(d.promoHasta ? diaDe(d.promoHasta) : '');
+  useEffect(() => setDia(d.promoHasta ? diaDe(d.promoHasta) : ''), [d.promoHasta]);
+  const gratis = planes.find((p) => p.clave === 'gratis');
+  const despues = planes.find((p) => p.id === d.planDespuesId) ?? gratis;
+  if (!d.promoHasta) {
+    if (soloSoporte) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-[0.75rem] text-slate-500">
+        <Gift className="w-3.5 h-3.5" /> Sin promoción.
+        <input type="date" value={dia} onChange={(e) => setDia(e.target.value)} aria-label="Promoción hasta" className={`${campo} w-auto py-1.5`} />
+        <button type="button" disabled={!dia} onClick={() => void onGuardar({ promoHasta: finDelDia(dia) })}
+          className="px-2.5 py-1.5 rounded-lg bg-[var(--primary)] text-white font-bold disabled:opacity-40 cursor-pointer">Dar promoción hasta ese día</button>
+      </div>
+    );
+  }
+  return (
+    <div className="p-3 rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/5 space-y-2 text-[0.8125rem]">
+      <p className="flex items-center gap-1.5"><Gift className="w-4 h-4 text-[var(--primary)]" />
+        <span>Promoción en <b>{d.plan?.nombre ?? 'su plan'}</b> hasta el <b>{fecha(d.promoHasta)}</b>; luego baja sola a <b>{despues?.nombre ?? 'Plan Gratis'}</b>.</span></p>
+      {!soloSoporte && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="date" value={dia} onChange={(e) => setDia(e.target.value)} aria-label="Promoción hasta" className={`${campo} w-auto py-1.5`} />
+          {dia && dia !== diaDe(d.promoHasta) && (
+            <button type="button" onClick={() => void onGuardar({ promoHasta: finDelDia(dia) })} className="px-2.5 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-bold cursor-pointer">Cambiar fecha</button>
+          )}
+          <select value={d.planDespuesId ?? ''} onChange={(e) => void onGuardar({ planDespuesId: e.target.value || null })} aria-label="Plan al terminar" className={`${campo} w-auto py-1.5`}>
+            <option value="">Luego: {gratis?.nombre ?? 'Plan Gratis'}</option>
+            {planes.filter((p) => p.id !== gratis?.id).map((p) => <option key={p.id} value={p.id}>Luego: {p.nombre}</option>)}
+          </select>
+          <button type="button" onClick={() => { if (window.confirm(`¿Terminar la promoción de ${d.nombre} ahora? Baja ya a ${despues?.nombre ?? 'Plan Gratis'} y se le avisa a la dueña por correo.`)) void onGuardar({ promoHasta: new Date().toISOString() }); }}
+            className="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-[0.75rem] font-bold cursor-pointer">Terminar ahora</button>
+          <button type="button" onClick={() => { if (window.confirm(`¿Quitar la promoción? ${d.nombre} se queda en ${d.plan?.nombre ?? 'su plan'} y ya no baja sola.`)) void onGuardar({ promoHasta: null }); }}
+            className="px-2.5 py-1.5 rounded-lg text-slate-500 text-[0.75rem] font-semibold cursor-pointer">Quitar promoción</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** Hasta cuándo pagó el salón: con más de 5 días de atraso baja solo al Plan Gratis y pierde lo acumulado */
+const PagoCliente: React.FC<{ d: NegocioDetalle; soloSoporte?: boolean; onGuardar: (c: Record<string, unknown>) => Promise<void> }> = ({ d, soloSoporte, onGuardar }) => {
+  const [dia, setDia] = useState(d.pagadoHasta ? diaDe(d.pagadoHasta) : '');
+  useEffect(() => setDia(d.pagadoHasta ? diaDe(d.pagadoHasta) : ''), [d.pagadoHasta]);
+  const vencido = !!d.pagadoHasta && new Date(d.pagadoHasta).getTime() < Date.now();
+  const unMesMas = () => {
+    const base = d.pagadoHasta && !vencido ? new Date(d.pagadoHasta) : new Date();
+    base.setMonth(base.getMonth() + 1);
+    void onGuardar({ pagadoHasta: finDelDia(base.toISOString().slice(0, 10)) });
+  };
+  if (soloSoporte && !d.pagadoHasta) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-[0.75rem] text-slate-500">
+      <Wallet className="w-3.5 h-3.5" />
+      {d.pagadoHasta
+        ? <span className={vencido ? 'font-bold text-rose-600' : ''}>{vencido ? 'Pago vencido desde el' : 'Pagado hasta el'} {fecha(d.pagadoHasta)}.{vencido && ' A los 5 días baja solo al Plan Gratis.'}</span>
+        : <span>Sin fecha de pago: no baja por atraso.</span>}
+      {!soloSoporte && (
+        <>
+          <input type="date" value={dia} onChange={(e) => setDia(e.target.value)} aria-label="Pagado hasta" className={`${campo} w-auto py-1.5`} />
+          {dia && dia !== (d.pagadoHasta ? diaDe(d.pagadoHasta) : '') && (
+            <button type="button" onClick={() => void onGuardar({ pagadoHasta: finDelDia(dia) })} className="px-2.5 py-1.5 rounded-lg bg-[var(--primary)] text-white font-bold cursor-pointer">Guardar fecha</button>
+          )}
+          <button type="button" onClick={unMesMas} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 font-bold cursor-pointer">Pagó un mes</button>
+          {d.pagadoHasta && (
+            <button type="button" onClick={() => { if (window.confirm(`¿Quitar la fecha de pago de ${d.nombre}? Ya no bajará al Plan Gratis por atraso.`)) void onGuardar({ pagadoHasta: null }); }}
+              className="px-2.5 py-1.5 rounded-lg text-slate-500 font-semibold cursor-pointer">Quitar fecha</button>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoModulos; onCerrar: () => void; onCambio: () => void; soloSoporte?: boolean }> = ({ id, planes, catalogo, onCerrar, onCambio, soloSoporte }) => {
   const [d, setD] = useState<NegocioDetalle | null>(null);
   const [notas, setNotas] = useState('');
@@ -111,6 +229,22 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
   const guardar = async (cambio: Record<string, unknown>) => {
     setError('');
     try { setD(await api.patch<NegocioDetalle>(`/plataforma/negocios/${id}`, cambio)); onCambio(); } catch (e) { setError((e as Error).message); }
+  };
+  /* Antes de cambiar de plan: en qué sedes deja de contestar Lalan, qué adelanto se cobra y qué pierde */
+  const cambiarPlan = async (planId: string) => {
+    if (!d || planId === d.plan?.id) return;
+    setError('');
+    try {
+      const v = await api.get<VistaCambioDePlan>(`/plataforma/negocios/${id}/cambio-plan?planId=${encodeURIComponent(planId)}`);
+      const avisos = [
+        v.sedesSinLalan.length ? `Lalán deja de contestar en ${v.sedesSinLalan.join(', ')}: esos chats pasan a una persona.` : '',
+        v.adelanto.respuestas ? `Se le cobran ${v.adelanto.respuestas.toLocaleString('es-DO')} respuestas adelantadas (${v.adelanto.monto.toLocaleString('es-DO')} ${v.adelanto.moneda}).` : '',
+        v.modulosQuePierde.length ? `Pierde: ${v.modulosQuePierde.join(', ')}.` : '',
+        'Este mes tiene la cuota completa del plan nuevo, pero lo que sobre no pasa al mes siguiente.',
+      ].filter(Boolean);
+      if (!window.confirm(`¿Pasar ${d.nombre} a ${v.plan.nombre}?\n\n${avisos.join('\n\n')}`)) return;
+      await guardar({ planId });
+    } catch (e) { setError((e as Error).message); }
   };
   const nuevaClave = async (u: NegocioDetalle['usuarios'][number]) => {
     if (!window.confirm(`¿Generar una clave temporal nueva para ${u.name}? Se le cerrará la sesión.`)) return;
@@ -164,11 +298,20 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         <div className="space-y-2">
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Plan</div>
           {soloSoporte ? <div className={campo}>{d.plan?.nombre ?? 'Sin plan'}</div> : (
-          <select value={d.plan?.id ?? ''} onChange={(e) => void guardar({ planId: e.target.value })} className={campo}>
+          <select value={d.plan?.id ?? ''} onChange={(e) => void cambiarPlan(e.target.value)} className={campo}>
             {planes.map((p) => <option key={p.id} value={p.id}>{p.nombre}{p.activo ? '' : ' (retirado)'}</option>)}
           </select>)}
+          <PromocionCliente d={d} planes={planes} soloSoporte={soloSoporte} onGuardar={guardar} />
+          <PagoCliente d={d} soloSoporte={soloSoporte} onGuardar={guardar} />
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 pt-2">Uso</div>
-          <UsoDelPlan uso={d.uso} limites={d.efectivo.limites} />
+          <UsoDelPlan uso={d.uso} limites={d.efectivo.limites} cupo={d.efectivo.cupo} />
+          {!!d.porCobrar && (
+            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900 text-[0.75rem] text-orange-800 dark:text-orange-200">
+              <span><b>Por cobrar: {d.porCobrar.toLocaleString('es-DO')} respuestas adelantadas{d.porCobrarMonto ? ` (${d.porCobrarMonto.toLocaleString('es-DO')} pesos)` : ''}</b> que no devolvió al cambiar de plan.</span>
+              {!soloSoporte && <button type="button" onClick={() => { if (window.confirm(`¿Ya le cobraste las ${d.porCobrar!.toLocaleString('es-DO')} respuestas adelantadas a ${d.nombre}? Se borran de por cobrar.`)) void guardar({ adelantoCobrado: true }); }}
+                className="px-2.5 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-orange-300 font-bold cursor-pointer">Marcar cobrado</button>}
+            </div>
+          )}
           {d.gastoIa && (
             <p className="text-[0.75rem] text-slate-500">
               <b className="text-slate-700 dark:text-neutral-200">Gastó en IA este mes: {d.gastoIa.totalPesos.toLocaleString('es-DO')} pesos</b> (US$ {d.gastoIa.totalUsd.toFixed(2)})
@@ -314,6 +457,8 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
             </div>
             <div className="flex flex-wrap gap-1.5 mt-2.5 mb-2.5">
               <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-[var(--primary)]/10 text-[var(--primary)]">{n.plan?.nombre ?? 'Sin plan'}</span>
+              {!!n.porCobrar && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-orange-100 text-orange-700">{n.porCobrar} respuestas por cobrar</span>}
+              {n.promoHasta && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-emerald-100 text-emerald-700">Promoción hasta {fecha(n.promoHasta)}</span>}
               {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
               {!n.activo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-rose-100 text-rose-700">Suspendido</span>}
               {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}

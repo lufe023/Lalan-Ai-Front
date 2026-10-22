@@ -3,6 +3,7 @@ import { MessageCircleWarning, X } from 'lucide-react';
 import { usePlan } from '../../context/PlanContext';
 import { useAuth } from '../../context/AuthContext';
 import { NIVEL_MENSAJES } from '../../types/plataforma';
+import { AdelantarRespuestas } from '../ajustes/AdelantarRespuestas';
 
 const TELEFONO_LALAN = '8092299444';
 const CLAVE_CERRADO = 'lalan_aviso_mensajes_cerrado';
@@ -25,6 +26,9 @@ export const AvisoMensajes: React.FC = () => {
   if (!nivel || nivel === NIVEL_MENSAJES.normal || cerrado === nivel) return null;
 
   const agotado = nivel === NIVEL_MENSAJES.agotado;
+  // El Plan Gratis no pasa los chats al equipo: Lalan sigue con un menú sin IA
+  const conMenu = miPlan.alAgotarse === 'menu';
+  const puedeAdelantar = (miPlan.cupo?.puedeAdelantar ?? 0) > 0;
   const { mensajesMes: usados } = miPlan.uso;
   const tope = miPlan.limites.mensajesMes ?? 0;
   const cerrar = () => {
@@ -47,8 +51,12 @@ export const AvisoMensajes: React.FC = () => {
           {agotado ? 'Lalan usó los mensajes de tu plan este mes' : `Lalan ya usó ${usados} de sus ${tope} mensajes del mes`}
         </p>
         <p className="opacity-90">
-          {agotado
+          {agotado && conMenu
+            ? 'Lalan atiende a tus clientas con un menú (servicios, horario, pedir cita o hablar con el salón) y te pasa los chats que piden una persona. El día 1 vuelve a conversar con sus palabras.'
+            : agotado
             ? 'Los chats nuevos pasan a tu equipo con una nota para que ninguna clienta se quede sin respuesta. El día 1 Lalan vuelve a atender sola.'
+            : conMenu
+            ? 'Si llega al tope, Lalan atenderá con un menú en vez de conversar.'
             : 'Si llega al tope, los chats nuevos pasarán a tu equipo con una nota.'}{' '}
           <a
             href={`https://wa.me/1${TELEFONO_LALAN}?text=${encodeURIComponent('Hola, quiero subir de plan en Lalan AI')}`}
@@ -59,6 +67,12 @@ export const AvisoMensajes: React.FC = () => {
             Subir de plan
           </a>
         </p>
+        {puedeAdelantar && (
+          <>
+            <p className="opacity-90 mt-1">O adelanta respuestas del mes que viene: se descuentan del próximo mes y no se cobran aparte.</p>
+            <AdelantarRespuestas compacto />
+          </>
+        )}
       </div>
       <button type="button" onClick={cerrar} aria-label="Cerrar aviso" className="p-1 -m-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer">
         <X className="w-4 h-4" />

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Loader2, Plus, Save, Infinity as SinLimite } from 'lucide-react';
 import { api } from '../../services/api';
-import { NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type PaqueteExtra, type PlanLalan, type Recurso } from '../../types/plataforma';
+import { NOMBRE_RECURSO, RECURSOS, type AlAgotarse, type CatalogoModulos, type ClaveModulo, type Limites, type PaqueteExtra, type PlanLalan, type Recurso } from '../../types/plataforma';
 import { CostoRealIa } from './CostoRealIa';
 
 const GRUPOS: { id: string; nombre: string }[] = [
@@ -13,8 +13,13 @@ type Borrador = Omit<PlanLalan, 'id' | 'clave' | 'negocios'> & { id?: string };
 const nuevo = (): Borrador => ({
   nombre: '', descripcion: '', precioMensual: 0, moneda: 'DOP', orden: 9, activo: true, modulos: [],
   limites: { mensajesMes: 400, sedes: 1, usuarios: 2, especialistas: 3, preguntasDia: 10 },
-  paquetes: [],
+  paquetes: [], alAgotarse: 'persona', enLanding: true, adelantoMaximo: null, acumulaSobrante: false, precioAdelanto: null,
 });
+
+const AL_AGOTARSE: { id: AlAgotarse; nombre: string; descripcion: string }[] = [
+  { id: 'persona', nombre: 'Pasa a una persona', descripcion: 'Cada chat nuevo pasa al equipo del salón con una nota. Puede pedir un paquete extra.' },
+  { id: 'menu', nombre: 'Menú sin IA', descripcion: 'Lalan contesta con un menú: servicios, horario, pedir cita o hablar con el salón. No gasta IA.' },
+];
 
 /** Los paquetes de respuestas extra del plan (de menor a mayor) */
 const Paquetes: React.FC<{ lista: PaqueteExtra[]; onChange: (l: PaqueteExtra[]) => void }> = ({ lista, onChange }) => {
@@ -57,13 +62,20 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState('');
   useEffect(() => setB(plan), [plan]);
+  // Sin precio propio, la respuesta adelantada se cobra a lo que cuesta en el paquete más chico
+  const chico = [...(b.paquetes ?? [])].filter((p) => p.respuestas > 0 && p.precio > 0).sort((x, y) => x.respuestas - y.respuestas)[0];
+  const precioDelPaquete = chico ? Math.round((chico.precio / chico.respuestas) * 100) / 100 : null;
   const alternar = (m: ClaveModulo) => setB((x) => ({ ...x, modulos: x.modulos.includes(m) ? x.modulos.filter((y) => y !== m) : [...x.modulos, m] }));
   const limite = (r: Recurso, v: number | null) => setB((x) => ({ ...x, limites: { ...x.limites, [r]: v } as Limites }));
 
   const guardar = async () => {
     setGuardando(true); setAviso('');
     const paquetes = (b.paquetes ?? []).filter((p) => p.respuestas > 0 && p.precio > 0);
-    const cuerpo = { nombre: b.nombre, descripcion: b.descripcion || undefined, precioMensual: Number(b.precioMensual), moneda: b.moneda, orden: b.orden, activo: b.activo, modulos: b.modulos, limites: b.limites, paquetes };
+    const cuerpo = {
+      nombre: b.nombre, descripcion: b.descripcion || undefined, precioMensual: Number(b.precioMensual), moneda: b.moneda, orden: b.orden, activo: b.activo, modulos: b.modulos, limites: b.limites, paquetes,
+      alAgotarse: b.alAgotarse ?? 'persona', enLanding: b.enLanding ?? true,
+      adelantoMaximo: b.adelantoMaximo || null, acumulaSobrante: !!b.acumulaSobrante, precioAdelanto: b.precioAdelanto ?? null,
+    };
     try {
       if (b.id) await api.patch(`/plataforma/planes/${b.id}`, cuerpo); else await api.post('/plataforma/planes', cuerpo);
       setAviso('Guardado. Los salones de este plan ya lo ven así.'); onGuardado();
@@ -116,6 +128,43 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
         <p className="text-[0.6875rem] text-slate-400 mt-1">Las respuestas cuentan solo lo que escribe la IA (los recordatorios no). Los informes de Lalan no cuentan como preguntas.</p>
       </div>
       <div>
+        <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 mb-2">Cuando se acaban las respuestas del mes</div>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {AL_AGOTARSE.map((o) => {
+            const si = (b.alAgotarse ?? 'persona') === o.id;
+            return (
+              <button key={o.id} type="button" onClick={() => setB((x) => ({ ...x, alAgotarse: o.id }))} aria-pressed={si}
+                className={`p-2.5 rounded-xl border text-left flex gap-2 cursor-pointer transition ${si ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700 opacity-70'}`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${si ? 'bg-[var(--primary)] text-white' : 'border border-slate-300 dark:border-neutral-600'}`}>{si && <Check className="w-3.5 h-3.5" />}</span>
+                <span><b className="text-[0.8125rem] text-slate-900 dark:text-white">{o.nombre}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5">{o.descripcion}</span></span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div>
+        <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 mb-1">Adelantar y acumular</div>
+        <p className="text-[0.6875rem] text-slate-400 mb-2">El mes corta el día 1. La dueña elige cuántas adelanta (hasta este tope) y se le descuentan del mes siguiente; no puede volver a adelantar mientras devuelve. Si cambia de plan con respuestas adelantadas, se le cobran.</p>
+        <div className="grid sm:grid-cols-2 gap-2 items-end">
+          <label className="block space-y-1">
+            <span className="text-[0.75rem] font-semibold text-slate-500">Puede adelantar del mes siguiente hasta</span>
+            <input type="number" min={0} value={b.adelantoMaximo ?? ''} placeholder="No puede adelantar"
+              onChange={(e) => setB((x) => ({ ...x, adelantoMaximo: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))) }))}
+              className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] tabular-nums" />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[0.75rem] font-semibold text-slate-500">Precio por respuesta adelantada (si se le cobra)</span>
+            <input type="number" min={0} step="0.01" value={b.precioAdelanto ?? ''} placeholder={precioDelPaquete ? `${precioDelPaquete} (el del paquete más chico)` : 'El del paquete más chico'}
+              onChange={(e) => setB((x) => ({ ...x, precioAdelanto: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) }))}
+              className="w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] tabular-nums" />
+          </label>
+          <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300 pb-2">
+            <input type="checkbox" checked={!!b.acumulaSobrante} onChange={(e) => setB((x) => ({ ...x, acumulaSobrante: e.target.checked }))} className="accent-[var(--primary)]" />
+            Lo que no usa pasa al mes siguiente (solo un mes, hasta lo que trae el plan)
+          </label>
+        </div>
+      </div>
+      <div>
         <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500 mb-1">Paquetes extra</div>
         <p className="text-[0.6875rem] text-slate-400 mb-2">Si se le acaban las respuestas del mes, la dueña puede pedir uno. Valen hasta fin de mes. Respuestas · precio en pesos (ya con todo incluido).</p>
         <Paquetes lista={b.paquetes ?? []} onChange={(l) => setB((x) => ({ ...x, paquetes: l }))} />
@@ -127,6 +176,9 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
         </button>
         <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300">
           <input type="checkbox" checked={b.activo} onChange={(e) => setB({ ...b, activo: e.target.checked })} className="accent-[var(--primary)]" /> Se puede asignar a clientes nuevos
+        </label>
+        <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300" title="Sin precio: la página nunca publica precios">
+          <input type="checkbox" checked={b.enLanding ?? true} onChange={(e) => setB({ ...b, enLanding: e.target.checked })} className="accent-[var(--primary)]" /> Sale en la página pública
         </label>
         {negocios !== undefined && <span className="text-[0.75rem] text-slate-400">{negocios} {negocios === 1 ? 'cliente tiene' : 'clientes tienen'} este plan</span>}
         {aviso && <span className="text-[0.75rem] font-semibold text-[var(--primary)]">{aviso}</span>}
