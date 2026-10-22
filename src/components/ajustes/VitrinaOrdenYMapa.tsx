@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import MapaSede, { type PuntoMapa } from '../vitrina/MapaSede';
 import { ordenarParaVitrina } from '../vitrina/PaginaVitrina';
 import type { ConfigVitrina, DatosVitrina, DisenoVitrina } from '../../types/vitrina';
+import { useConfirmar } from '../ui/ModalConfirmar';
 
 const TARJETA = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs';
 const TITULO = 'text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white';
@@ -124,6 +125,7 @@ export const UbicacionSede: React.FC<{
   cfg: ConfigVitrina; q: string; direccion: string | null; recargar: (c: ConfigVitrina) => void;
 }> = ({ cfg, q, direccion, recargar }) => {
   const { showToast } = useApp();
+  const { confirmar, modalConfirmar } = useConfirmar();
   const [punto, setPunto] = useState<PuntoMapa | null>(cfg.ubicacion ?? null);
   const [ocupado, setOcupado] = useState<'buscar' | 'aqui' | 'guardar' | null>(null);
   useEffect(() => { setPunto(cfg.ubicacion ?? null); }, [cfg.ubicacion, cfg.sede.id]);
@@ -162,13 +164,19 @@ export const UbicacionSede: React.FC<{
     finally { setOcupado(null); }
   };
 
-  const quitar = () => {
-    if (!window.confirm('¿Quitar el pin del mapa? La Vitrina mostrará solo la dirección.')) return;
+  const quitar = async () => {
+    if (!(await confirmar({
+      titulo: '¿Quitar el pin del mapa?',
+      mensaje: 'La Vitrina mostrará solo la dirección.',
+      textoConfirmar: 'Sí, quitar',
+      tono: 'peligro',
+    }))) return;
     void guardar(null);
   };
 
   return (
     <div data-guia="vitrina-mapa" className={`${TARJETA} space-y-3`}>
+      {modalConfirmar}
       <div className="flex items-center justify-between gap-2"><h2 className={TITULO}>Ubicación en el mapa</h2><Etiqueta sede={cfg.sede.nombre} /></div>
       <p className={AYUDA}>Toca donde está la puerta o arrastra el pin. Así el mapa de la Vitrina, Google Maps y Waze llevan justo al local.</p>
       <MapaSede punto={punto} cambiar={setPunto} alto={260} color="var(--primary)" etiqueta={`Mapa de ${cfg.sede.nombre}`} />

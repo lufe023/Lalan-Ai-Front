@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePlan } from '../../context/PlanContext';
 import { ClaveParaCompartir } from '../plataforma/ClaveParaCompartir';
 import type { UsuarioSalon } from '../../types/plataforma';
+import { useConfirmar } from '../ui/ModalConfirmar';
 
 const ROLES: { id: UsuarioSalon['role']; label: string; ayuda: string }[] = [
   { id: 'assistant', label: 'Asistente', ayuda: 'Agenda, chats, clientas, sala y caja. No cambia la configuración.' },
@@ -29,6 +30,7 @@ const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 bor
 export const UsuariosSalon: React.FC = () => {
   const { currentUser } = useAuth();
   const { miPlan, recargarPlan } = usePlan();
+  const { confirmar, modalConfirmar } = useConfirmar();
   const [lista, setLista] = useState<UsuarioSalon[] | null>(null);
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [creando, setCreando] = useState(false);
@@ -92,7 +94,12 @@ export const UsuariosSalon: React.FC = () => {
   };
 
   const nuevaClave = async (u: UsuarioSalon) => {
-    if (!window.confirm(`¿Darle una clave temporal nueva a ${u.name}? Se le cerrará la sesión y tendrá que entrar con la nueva.`)) return;
+    if (!(await confirmar({
+      titulo: `¿Clave temporal nueva para ${u.name}?`,
+      mensaje: 'Se le cerrará la sesión y tendrá que entrar con la nueva.',
+      textoConfirmar: 'Sí, darle otra',
+      icono: <KeyRound className="w-7 h-7" aria-hidden="true" />,
+    }))) return;
     try {
       const r = await api.post<{ claveTemporal: string; entraCon: string[] }>(`/users/${u.id}/clave-temporal`, {});
       setClave({ nombre: u.name, entraCon: r.entraCon, clave: r.claveTemporal, telefono: u.telefono });
@@ -106,6 +113,7 @@ export const UsuariosSalon: React.FC = () => {
 
   return (
     <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
+      {modalConfirmar}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><Users className="w-4 h-4" /></div>
