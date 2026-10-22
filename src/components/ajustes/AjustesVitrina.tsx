@@ -18,6 +18,7 @@ import PaginaVitrina from '../vitrina/PaginaVitrina';
 import { OrdenCatalogo, RedesSede, UbicacionSede } from './VitrinaOrdenYMapa';
 import { TestimoniosVitrina } from './VitrinaTestimonios';
 import { paletaVitrina } from '../vitrina/temaVitrina';
+import { useConfirmar } from '../ui/ModalConfirmar';
 import { INFO_BLOQUE_VITRINA, type ConfigVitrina, type DatosVitrina, type DisenoVitrina, type NombreCortoDisponible, type TextoPortada } from '../../types/vitrina';
 
 /**
@@ -44,6 +45,7 @@ const ANCHO_PC = 1120;
 
 export const AjustesVitrina: React.FC = () => {
   const { showToast } = useApp();
+  const { confirmar, modalConfirmar } = useConfirmar();
   const sedes = useSedes();
   const [sedeElegida, setSedeElegida] = useState('');
   const sede = sedeElegida || sedes[0]?.id || '';
@@ -91,7 +93,11 @@ export const AjustesVitrina: React.FC = () => {
 
   const publicar = async (activa: boolean) => {
     if (!cfg) return;
-    if (activa && sucio && !window.confirm('Tienes cambios sin guardar en el diseño. ¿Publicar la Vitrina como está guardada?')) return;
+    if (activa && sucio && !(await confirmar({
+      titulo: '¿Publicar sin tus cambios?',
+      mensaje: 'Tienes cambios sin guardar en el diseño. La Vitrina se publica como está guardada.',
+      textoConfirmar: 'Publicar así',
+    }))) return;
     setCfg({ ...cfg, activa });
     try {
       const c = await api.patch<ConfigVitrina>(`/vitrina${q}`, { activa });
@@ -141,6 +147,7 @@ export const AjustesVitrina: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {modalConfirmar}
       <Publicacion cfg={cfg} q={q} selector={selector} publicar={publicar} recargar={setCfg} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:items-start">
@@ -373,6 +380,7 @@ const Publicacion: React.FC<{
   cfg: ConfigVitrina; q: string; selector: React.ReactNode; publicar: (v: boolean) => void; recargar: (c: ConfigVitrina) => void;
 }> = ({ cfg, q, selector, publicar, recargar }) => {
   const { showToast } = useApp();
+  const { confirmar, modalConfirmar } = useConfirmar();
   // La corta si el salón ya eligió nombre; si no, la larga de siempre
   const url = cfg.direccionCorta ? urlCortaDeVitrina(cfg.direccionCorta) : cfg.slug ? urlDeVitrina(cfg.slug) : null;
   const [qr, setQr] = useState<string | null>(null);
@@ -393,7 +401,12 @@ const Publicacion: React.FC<{
   };
 
   const cambiarSlug = async () => {
-    if (cfg.slug && !window.confirm('Si cambias la dirección, el enlace y el QR que ya compartiste dejan de abrir. ¿Cambiarla?')) return;
+    if (cfg.slug && !(await confirmar({
+      titulo: '¿Cambiar la dirección?',
+      mensaje: 'El enlace y el QR que ya compartiste dejan de abrir.',
+      textoConfirmar: 'Sí, cambiarla',
+      tono: 'peligro',
+    }))) return;
     try {
       const c = await api.patch<ConfigVitrina>(`/vitrina${q}`, { slug });
       recargar({ ...c, diseno: cfg.diseno });
@@ -404,6 +417,7 @@ const Publicacion: React.FC<{
 
   return (
     <div className={`${TARJETA} space-y-3`}>
+      {modalConfirmar}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5"><Globe className="w-4 h-4 text-[var(--primary)]" /><h2 className={TITULO}>Vitrina</h2></div>
         {selector}
@@ -459,6 +473,7 @@ const limpiarNombre = (v: string) => v.trim().replace(/^@+/, '').toLowerCase().r
  */
 const DireccionCorta: React.FC<{ cfg: ConfigVitrina; q: string; recargar: (c: ConfigVitrina) => void }> = ({ cfg, q, recargar }) => {
   const { showToast } = useApp();
+  const { confirmar, modalConfirmar } = useConfirmar();
   const variasSedes = useSedes({ todasLasDelSalon: true }).length > 1;
   const atada = !!sedePropia();
   const [nombre, setNombre] = useState(cfg.nombreCorto ?? '');
@@ -487,7 +502,11 @@ const DireccionCorta: React.FC<{ cfg: ConfigVitrina; q: string; recargar: (c: Co
   };
 
   const guardarNombre = async () => {
-    if (cfg.nombreCorto && !window.confirm(`La dirección de antes (/${cfg.nombreCorto}) seguirá llevando aquí unos días y luego quedará libre para otro salón. ¿Cambiarla por /${nombre}?`)) return;
+    if (cfg.nombreCorto && !(await confirmar({
+      titulo: `¿Cambiarla por /${nombre}?`,
+      mensaje: <>La dirección de antes (<b>/{cfg.nombreCorto}</b>) seguirá llevando aquí unos días y luego quedará libre para otro salón.</>,
+      textoConfirmar: 'Sí, cambiarla',
+    }))) return;
     setOcupado(true);
     try {
       await api.put(`/vitrina/nombre-corto`, { nombre });
@@ -514,6 +533,7 @@ const DireccionCorta: React.FC<{ cfg: ConfigVitrina; q: string; recargar: (c: Co
 
   return (
     <div data-guia="vitrina-direccion" className="pt-3 border-t border-slate-100 dark:border-neutral-800 space-y-3">
+      {modalConfirmar}
       <div>
         <span className="block text-[0.8125rem] font-semibold text-slate-800 dark:text-neutral-100">Dirección corta</span>
         <span className={`block ${AYUDA}`}>
