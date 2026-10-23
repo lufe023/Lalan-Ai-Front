@@ -724,6 +724,14 @@
     color: var(--tinta);
   }
   .historia canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Portada fija mientras llega el 3D; se va con un fundido cuando la historia ya pinta */
+  .historia .h-portada { position: absolute; inset: 0; z-index: 1; transition: opacity .5s; }
+  .historia .h-portada img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .historia.h-lista .h-portada { opacity: 0; visibility: hidden; transition: opacity .5s, visibility 0s .5s; }
+  .historia.h-cargando .h-controles button { cursor: progress; }
+  @media (prefers-reduced-motion: reduce) { .historia .h-portada { transition: none; } }
+  /* Antes de cargar aún no sabe si es vertical: en el teléfono los botones van abajo, como en la historia */
+  @media (max-width: 700px) { .historia:not(.h-apaisado) .h-controles { top: auto; bottom: 2.5%; } }
   .historia .h-lineas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
   .h-lineas line { stroke: var(--tinta); stroke-width: 1.5; stroke-dasharray: 3 3; }
   .h-lineas circle { fill: var(--rosa); stroke: var(--papel); stroke-width: 2; }

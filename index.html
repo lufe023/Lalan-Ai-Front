@@ -262,6 +262,11 @@
       <p>Carmen agenda de noche, el salón sabe lo que cuesta atenderla y lo descuenta del inventario, ella disfruta su música y su copa, y la dueña, desde la playa, ve lo que de verdad le quedó. Toca el 🔇 para escucharla con sonido.</p>
     </div>
       <div class="historia" id="historia-escena" role="img" aria-label="Animación: Carmen agenda un manicure premium con una nota de voz, se arma la receta con la medida y el costo de cada insumo y se descuenta del inventario, en el salón suenan sus canciones y la pizarra llama los turnos, y la dueña, desde la playa, ve la ganancia real de todas sus sedes.">
+        <!-- Mientras carga el 3D (o si la persona pidió menos movimiento) se ve esta portada -->
+        <picture class="h-portada" aria-hidden="true">
+          <source media="(max-width: 700px)" srcset="/landing/capturas/historia-movil.webp" width="540" height="900">
+          <img src="/landing/capturas/historia.webp" alt="" width="1600" height="900" loading="lazy" decoding="async">
+        </picture>
         <canvas class="h-lienzo" aria-hidden="true"></canvas>
         <svg class="h-lineas" aria-hidden="true"></svg>
         <div class="h-capa" aria-hidden="true">
@@ -693,8 +698,6 @@
 </footer>
 
 
-  <!-- Three.js (r128) para la historia en 3D: va antes del módulo, que lo usa como global -->
-  <script src="/landing/three.min.js"></script>
   <script type="module" src="/src/landing/main.ts"></script>
   <script>
     if ('serviceWorker' in navigator) {
