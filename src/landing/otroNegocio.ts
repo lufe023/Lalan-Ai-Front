@@ -24,9 +24,29 @@ function telefonoValido(t: string): boolean {
   return d.length >= 10 && d.length <= 15;
 }
 
+/**
+ * El formulario va cerrado: la página es para salones. Se abre con su botón,
+ * con el enlace del pie, si alguien llega con #otro-negocio o cuando la Lalan
+ * de la página lo prepara.
+ */
+export function abrirOtroNegocio(): void {
+  const caja = document.getElementById('otro-caja');
+  const abrir = document.getElementById('otro-abrir');
+  if (!caja || !caja.hidden) return;
+  caja.hidden = false;
+  abrir?.setAttribute('aria-expanded', 'true');
+  if (abrir) abrir.hidden = true;
+}
+
 export async function iniciarOtroNegocio(): Promise<void> {
   const form = $<HTMLFormElement>('form-otro');
   if (!form) return;
+  document.getElementById('otro-abrir')?.addEventListener('click', () => {
+    abrirOtroNegocio();
+    document.getElementById('o-tipo')?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+  });
+  document.getElementById('enlace-otro')?.addEventListener('click', abrirOtroNegocio);
+  if (location.hash === '#otro-negocio') abrirOtroNegocio();
   const aviso = $<HTMLParagraphElement>('o-aviso');
   const boton = $<HTMLButtonElement>('o-enviar');
   try {

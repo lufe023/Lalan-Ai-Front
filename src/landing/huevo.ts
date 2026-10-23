@@ -1,7 +1,8 @@
 /**
  * Huevo de pascua: el origen del nombre, que no está a la vista.
  * Se descubre escribiendo «lalan» en el teclado o tocando las cinco letras
- * de la sección «Lo que significa Lalan», en orden, sin pausa.
+ * de «Live Assistant for Logistics, Appointments & Networking» en el pie,
+ * en orden, sin pausa.
  * El texto va codificado para que no salga en buscadores ni a simple vista
  * en el código de la página.
  */
@@ -68,7 +69,7 @@ export function iniciarHuevo() {
   let siguiente = 0;
   let ultimoToque = 0;
   lista.addEventListener('click', e => {
-    const fila = (e.target as HTMLElement).closest('li');
+    const fila = (e.target as HTMLElement).closest('b');
     if (!fila) return;
     const ahora = Date.now();
     if (ahora - ultimoToque > PAUSA_MAXIMA_MS) siguiente = 0;

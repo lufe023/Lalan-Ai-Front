@@ -4,7 +4,6 @@
  * comparte bien), más la medición anónima, el piloto y el mapa de calor.
  */
 import './pagina.js';
-import './historia.js';
 import { leerToken } from './api';
 import { iniciarMedicion } from './medicion';
 import { iniciarPiloto } from './piloto';
@@ -13,6 +12,7 @@ import { iniciarHuevo } from './huevo';
 import { iniciarOtroNegocio } from './otroNegocio';
 import { iniciarAsistente } from './asistente';
 import { iniciarPlanes } from './planes';
+import { iniciarHistoria } from './historiaPerezosa';
 
 // Quien ya tiene sesión en este aparato ve "Ir a mi salón" en vez de "Entrar"
 if (leerToken()) {
@@ -27,3 +27,4 @@ iniciarHuevo();
 void iniciarOtroNegocio();
 iniciarAsistente();
 void iniciarPlanes();
+iniciarHistoria();
