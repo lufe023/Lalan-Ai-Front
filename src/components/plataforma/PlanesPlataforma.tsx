@@ -3,6 +3,7 @@ import { Check, Loader2, Plus, Save, Infinity as SinLimite } from 'lucide-react'
 import { api } from '../../services/api';
 import { NOMBRE_RECURSO, RECURSOS, type AlAgotarse, type CatalogoModulos, type ClaveModulo, type Limites, type PaqueteExtra, type PlanLalan, type Recurso } from '../../types/plataforma';
 import { CostoRealIa } from './CostoRealIa';
+import { PaginaYOfertas } from './OfertasPlanes';
 
 const GRUPOS: { id: string; nombre: string }[] = [
   { id: 'atencion', nombre: 'Atención' }, { id: 'salon', nombre: 'El salón' }, { id: 'dinero', nombre: 'Dinero' }, { id: 'experiencia', nombre: 'Experiencia' },
@@ -209,6 +210,7 @@ export const PlanesPlataforma: React.FC = () => {
   return (
     <div className="space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <CostoRealIa planes={planes} />
+      <PaginaYOfertas planes={planes} onGuardado={() => void cargar()} />
       <div className="flex flex-wrap gap-2">
         {planes.map((p) => (
           <button key={p.id} type="button" onClick={() => setElegido(p.id)}

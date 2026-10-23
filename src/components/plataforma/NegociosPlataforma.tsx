@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import { ClaveParaCompartir } from './ClaveParaCompartir';
 import { UsoDelPlan } from './UsoDelPlan';
 import {
-  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type PlanLalan, type PromocionInicial, type Recurso, type VistaCambioDePlan,
+  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type OfertaPlan, type PlanLalan, type PromocionInicial, type Recurso, type VistaCambioDePlan,
 } from '../../types/plataforma';
 import { CanalesCliente } from './CanalesCliente';
 import { EditorCanales } from './EditorCanales';
@@ -37,12 +37,29 @@ const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio |
   // La promoción viene marcada: los meses gratis en el plan más alto y luego baja sola al Plan Gratis
   const [promoInicial, setPromoInicial] = useState<PromocionInicial | null>(null);
   const [promo, setPromo] = useState({ activa: true, meses: 2, planDespuesId: '' });
+  // Las ofertas activas de Plataforma → Planes: elegir una llena el plan de prueba, los meses y a cuál pasa
+  const [ofertas, setOfertas] = useState<OfertaPlan[]>([]);
+  const [ofertaId, setOfertaId] = useState('');
+  const aplicarOferta = (o: OfertaPlan | undefined) => {
+    setOfertaId(o?.id ?? '');
+    if (!o) return;
+    setF((x) => ({ ...x, planId: o.planPruebaId }));
+    setPromo({ activa: true, meses: o.meses, planDespuesId: o.planDespuesId ?? o.planId });
+  };
   useEffect(() => {
-    api.get<PromocionInicial>('/plataforma/planes/promocion').then((p) => {
+    Promise.all([
+      api.get<PromocionInicial>('/plataforma/planes/promocion'),
+      api.get<OfertaPlan[]>('/plataforma/planes/ofertas').then((l) => l.filter((o) => o.activa)).catch(() => [] as OfertaPlan[]),
+    ]).then(([p, activas]) => {
       setPromoInicial(p);
+      setOfertas(activas);
       setPromo((x) => ({ ...x, meses: p.meses, planDespuesId: p.planDespues?.id ?? '' }));
       if (p.planAlto) setF((x) => ({ ...x, planId: p.planAlto!.id }));
+      // Si pidió la prueba desde la página con un plan que tiene oferta, viene elegida
+      const delPedido = activas.find((o) => planes.find((pl) => pl.id === o.planId)?.clave === prellenado?.planClave);
+      if (delPedido) aplicarOferta(delPedido);
     }).catch(() => setPromo((x) => ({ ...x, activa: false })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setOcupado(true);
@@ -66,10 +83,23 @@ const FormNuevo: React.FC<{ planes: PlanLalan[]; prellenado: PrellenadoNegocio |
         <input required minLength={2} placeholder="Nombre del salón" value={f.salon} onChange={(e) => setF({ ...f, salon: e.target.value })} className={campo} />
         <input placeholder="Nombre de la sede (si no, el del salón)" value={f.sede} onChange={(e) => setF({ ...f, sede: e.target.value })} className={campo} />
         <input placeholder="Dirección o ciudad" value={f.direccion} onChange={(e) => setF({ ...f, direccion: e.target.value })} className={campo} />
-        <select required value={f.planId} onChange={(e) => setF({ ...f, planId: e.target.value })} className={campo}>
+        <select required value={f.planId} onChange={(e) => { setF({ ...f, planId: e.target.value }); setOfertaId(''); }} className={campo}>
           {activos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
         </select>
       </div>
+      {ofertas.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Oferta</div>
+          <div className="flex flex-wrap gap-1.5">
+            {ofertas.map((o) => (
+              <button key={o.id} type="button" onClick={() => aplicarOferta(ofertaId === o.id ? undefined : o)} aria-pressed={ofertaId === o.id}
+                className={`px-3 py-1.5 rounded-full border text-[0.75rem] font-semibold cursor-pointer ${ofertaId === o.id ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300'}`}>
+                {o.nombre}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {promoInicial && (
         <div className={`p-3 rounded-xl border space-y-2 ${promo.activa ? 'border-[var(--primary)]/40 bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700'}`}>
           <label className="flex items-center gap-2 text-[0.8125rem] font-semibold">
