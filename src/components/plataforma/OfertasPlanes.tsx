@@ -43,7 +43,7 @@ const OrdenEnPagina: React.FC<{ planes: PlanLalan[]; onGuardado: () => void }> =
     <div className={tarjeta}>
       <div>
         <div className={titulo}>Cómo salen en la página</div>
-        <p className="text-[0.6875rem] text-slate-400 mt-0.5">Muévelos con las flechas y toca la estrella del que quieres recomendar (uno solo). Sin precios: la página nunca los publica.</p>
+        <p className="text-[0.6875rem] text-slate-400 mt-0.5">Muévelos con las flechas y toca la estrella del que quieres recomendar (uno solo). El precio sale solo en los planes con «Mostrar precio en la página».</p>
       </div>
       <ol className="space-y-1.5">
         {lista.map((p, i) => {
