@@ -17,6 +17,7 @@ const CLAVE_VOZ = 'lalan_asistente_voz';
 const CLAVE_CALLADA = 'lalan_asistente_callada';
 const CLAVE_SEGUIR = 'lalan_asistente_seguir_escuchando';
 const CLAVE_PAUSA = 'lalan_asistente_pausa';
+const CLAVE_INTERRUMPIR = 'lalan_asistente_interrumpir';
 const IDIOMAS = ['es-mx', 'es-us', 'es-do', 'es-419', 'es-es'];
 /** Chrome corta las frases largas a los ~15 s: se dice frase por frase */
 const LARGO_TROZO = 180;
@@ -64,6 +65,13 @@ export function seguirEscuchando(): boolean | null {
 }
 export function guardarSeguirEscuchando(si: boolean) {
   try { localStorage.setItem(CLAVE_SEGUIR, si ? '1' : '0'); } catch { /* noop */ }
+}
+/** Interrumpirla hablándole: lo que eligió este aparato, o null si nunca eligió (vale lo global) */
+export function interrumpirGuardado(): boolean | null {
+  try { const v = localStorage.getItem(CLAVE_INTERRUMPIR); return v === null ? null : v !== '0'; } catch { return null; }
+}
+export function guardarInterrumpir(si: boolean) {
+  try { localStorage.setItem(CLAVE_INTERRUMPIR, si ? '1' : '0'); } catch { /* noop */ }
 }
 /** La pausa que eligió este aparato, o null si nunca eligió (vale la global) */
 export function pausaGuardada(): Pausa | null {
@@ -228,14 +236,47 @@ export function ritmoDeHabla(t: number, palabra: number) {
   return Math.max(0, Math.min(1, silabas * (0.65 + 0.35 * empujon)));
 }
 
+// ── Pausarla sin cortarla (cuando le hablan encima) ───────────────
+
+/** Le hablaron encima: Lalan espera a ver si de verdad le dijeron algo */
+let pausada = false;
+let alSeguir: (() => void) | null = null;
+
+/** Si está pausada, espera a que siga (o a que la callen) */
+function hastaQueSiga(): Promise<void> {
+  if (!pausada) return Promise.resolve();
+  return new Promise((ok) => { alSeguir = ok; });
+}
+
+/** Lalan se pausa: la voz natural se queda donde iba; la del aparato repite la frase al seguir */
+export function pausarLalan() {
+  if (pausada) return;
+  pausada = true;
+  try { if (reproductor && !reproductor.paused) reproductor.pause(); } catch { /* noop */ }
+  try { if (window.speechSynthesis?.speaking) window.speechSynthesis.cancel(); } catch { /* noop */ }
+}
+
+/** No le dijeron nada: sigue donde iba */
+export function seguirLalan() {
+  if (!pausada) return;
+  pausada = false;
+  const a = reproductor;
+  if (a && a.src && a.paused && !a.ended && a.currentTime > 0) void a.play().catch(() => undefined);
+  const f = alSeguir;
+  alSeguir = null;
+  f?.();
+}
+
 /** Toca un mp3 y espera a que termine (o a que la corten) */
-function tocar(blob: Blob, mio: number, alHablar?: () => void): Promise<void> {
+async function tocar(blob: Blob, mio: number, alHablar?: () => void): Promise<void> {
+  await hastaQueSiga();
+  if (mio !== turno) return;
   return new Promise((listo) => {
     const a = elReproductor();
     const url = URL.createObjectURL(blob);
     void calcularEnvolvente(blob, url);
     // La esfera late mientras habla (el audio no avisa palabra por palabra)
-    const latido = window.setInterval(() => { if (mio === turno) alHablar?.(); }, 190);
+    const latido = window.setInterval(() => { if (mio === turno && !pausada) alHablar?.(); }, 190);
     const fin = () => {
       window.clearInterval(latido); a.onended = null; a.onerror = null; a.onpause = null; URL.revokeObjectURL(url);
       if (envolvente?.url === url) envolvente = null;
@@ -322,14 +363,18 @@ function decirConAparato(partes: string[], mio: number, alHablar?: () => void): 
     let i = 0;
     const siguiente = () => {
       if (mio !== turno || i >= partes.length) { listo(); return; }
-      const u = new SpeechSynthesisUtterance(pronunciar(partes[i++], ajustesLalan().pronunciaLalan));
+      if (pausada) { alSeguir = siguiente; return; }
+      const actual = i++;
+      // Si la pausan a media frase, al seguir la repite entera (esta voz no se puede pausar en todos los teléfonos)
+      const fin = () => { if (mio === turno && pausada) { i = actual; alSeguir = siguiente; return; } siguiente(); };
+      const u = new SpeechSynthesisUtterance(pronunciar(partes[actual], ajustesLalan().pronunciaLalan));
       if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = 'es-MX';
       u.rate = ajustesLalan().velocidadVoz;
       u.pitch = ajustesLalan().tonoVoz;
       u.onboundary = () => { ultimaPalabra = performance.now(); alHablar?.(); };
       u.onstart = () => { ultimaPalabra = performance.now(); };
-      u.onend = siguiente;
-      u.onerror = siguiente;
+      u.onend = fin;
+      u.onerror = fin;
       try { window.speechSynthesis.speak(u); } catch { listo(); }
     };
     siguiente();
@@ -339,6 +384,11 @@ function decirConAparato(partes: string[], mio: number, alHablar?: () => void): 
 /** Cortar a Lalan al instante (la dueña tocó la esfera o se fue) */
 export function callarLalan() {
   turno++;
+  // Lo que esperaba a que siguiera termina ya (con el turno nuevo, no dice nada)
+  pausada = false;
+  const f = alSeguir;
+  alSeguir = null;
+  f?.();
   pedidos?.abort();
   pedidos = null;
   try { reproductor?.pause(); } catch { /* noop */ }

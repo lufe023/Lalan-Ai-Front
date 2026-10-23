@@ -6,16 +6,24 @@
  *
  * La conversación vive en sessionStorage (sobrevive a recargar la pestaña).
  *
- * La voz es a pedido: un "Escúchala" en cada respuesta. Cómo suena lo elige
- * el super admin en Plataforma → Lalan: apagada, la del navegador (gratis) o
- * la del servidor (MeloTTS / Aura-2, con topes: solo las respuestas que el
- * servidor marca). Si la persona la usa una vez, las siguientes respuestas
- * suenan solas hasta que la apague en la cabecera.
+ * La voz: un "Escúchala" en cada respuesta. Cómo suena lo elige el super
+ * admin en Plataforma → Lalan: apagada, la del navegador (gratis) o la del
+ * servidor (MeloTTS / Aura-2, con topes: solo las respuestas que el servidor
+ * marca). Si la persona la usa una vez, las siguientes respuestas suenan
+ * solas hasta que la apague en la cabecera.
+ *
+ * También se le puede hablar (el micrófono, si Plataforma lo deja): lo dicho
+ * se pinta al instante, Lalan contesta en voz alta y vuelve a escuchar, como
+ * la Lalan de la app. Mientras habla se le puede hablar encima: se pausa y,
+ * si no le dijeron nada, sigue.
  */
 import { API, MODO_CALOR } from './api';
 import { registrar, visitaActual } from './medicion';
-import { decirConNavegador, hayVozNavegador } from './vozNavegador';
+import { hayVozNavegador } from './vozNavegador';
 import { abrirOtroNegocio } from './otroNegocio';
+import { escucharFrase, hayMicrofono, type Escucha } from './microfono';
+import { crearVoz, type ConfigVoz as VozDeLaPagina } from './vozLanding';
+import { SOLO_ASENTIR, vigilarInterrupcion, type Interrupcion } from '../utils/interrupcion';
 
 type Rol = 'persona' | 'lalan';
 interface Mensaje { rol: Rol; texto: string; voz?: boolean }
@@ -35,7 +43,18 @@ const ESPERA_LECTURA_MOVIL_MS = 3200;
 const SALUDO = '¡Holiii! 💕 Soy Lalan. Pregúntame lo que quieras: cómo te atiendo el WhatsApp del salón, la prueba gratis, todo. Cuéntame, ¿tienes tu propio salón? ✨';
 const SUGERENCIAS = ['¿Qué haces por mi salón?', '¿Cuánto cuesta?', '¿Cómo es la prueba gratis?', 'No tengo salón, tengo otro negocio'];
 
-interface ConfigVoz { activa?: boolean; motor: 'apagada' | 'navegador' | 'nube'; voces: string[]; velocidad: number; pronuncia?: string }
+interface ConfigVoz extends VozDeLaPagina {
+  activa?: boolean;
+  /** El micrófono y cómo se interrumpe a Lalan hablando (Plataforma → Lalan) */
+  escucha?: boolean; interrumpir?: boolean; vozParaPausarMs?: number; retomarTrasMs?: number; sensibilidadInterrupcion?: number;
+}
+/** Silencio que da la frase por terminada cuando le hablan */
+const ESPERA_FRASE_MS = 1600;
+/** Sin decir nada: al tocar el micrófono / cuando se abre solo después de que Lalan habla */
+const SIN_VOZ_MS = 9000;
+const SIN_VOZ_SOLA_MS = 7000;
+const MAXIMO_FRASE_MS = 45_000;
+const ICONO_MIC = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z" fill="currentColor"/></svg>';
 
 interface Estado { id: string; mensajes: Mensaje[]; invitado: boolean; hablando?: boolean }
 
@@ -80,8 +99,13 @@ export function iniciarAsistente(): void {
       </header>
       <div class="asis-mensajes" aria-live="polite"></div>
       <div class="asis-sugerencias"></div>
+      <div class="asis-oyendo-barra" role="status" hidden>
+        <span><i></i> Te escucho…</span>
+        <button type="button" class="asis-dejar">Dejar de escucharme</button>
+      </div>
       <form class="asis-form">
         <input class="asis-entrada" type="text" maxlength="600" autocomplete="off" placeholder="Escríbeme aquí…" aria-label="Tu pregunta">
+        <button type="button" class="asis-mic" aria-label="Háblale a Lalan" title="Háblale" hidden>${ICONO_MIC}</button>
         <button type="submit" class="asis-enviar" aria-label="Enviar"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 11.5 21 3l-8.5 18-2-7.5z" fill="currentColor"/></svg></button>
       </form>
       <p class="asis-nota">¿Prefieres hablar con alguien del equipo? <a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">WhatsApp</a></p>
@@ -99,57 +123,182 @@ export function iniciarAsistente(): void {
   const punto = $<HTMLElement>('.asis-punto');
   let ocupado = false;
   const modoVoz = $<HTMLButtonElement>('.asis-voz-modo');
-  let audio: HTMLAudioElement | null = null;
+  const mic = $<HTMLButtonElement>('.asis-mic');
+  const barraOyendo = $<HTMLDivElement>('.asis-oyendo-barra');
   let sonando: HTMLButtonElement | null = null;
   let voz: ConfigVoz = { motor: 'apagada', voces: [], velocidad: 1 };
   let vozCargada: Promise<void> | null = null;
   /** El mensaje de cada burbuja (para ponerle el botón cuando llegue la configuración) */
   const deBurbuja = new WeakMap<HTMLElement, Mensaje>();
   const llevaVoz = (m: Mensaje) => m.rol === 'lalan' && (voz.motor === 'navegador' ? hayVozNavegador() : voz.motor === 'nube' && !!m.voz);
+  const hablante = crearVoz(() => estado.id);
+  /** Cada vez que Lalan empieza a decir algo: lo de una vez anterior ya no decide nada */
+  let turnoDecir = 0;
+  /** La charla va por voz: Lalan contesta hablando y vuelve a escuchar */
+  let porVoz = false;
+  let escucha: Escucha | null = null;
+  let abriendoMic = false;
+  let oido: Interrupcion | null = null;
+  let ctx: AudioContext | null = null;
+  /** El contexto de audio se crea en un toque (el iPhone no deja de otra forma) */
+  const contexto = (): AudioContext | null => {
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return null;
+      if (!ctx || ctx.state === 'closed') ctx = new Ctx();
+      void ctx.resume().catch(() => undefined);
+      return ctx;
+    } catch { return null; }
+  };
 
   const pintarModoVoz = () => { modoVoz.hidden = !estado.hablando || voz.motor === 'apagada'; };
-  const callar = () => {
-    audio?.pause(); audio = null;
-    if (hayVozNavegador()) speechSynthesis.cancel();
-    sonando?.classList.remove('asis-sonando'); sonando = null;
+  const pintarMic = () => { mic.hidden = !voz.escucha || !hayMicrofono(); };
+  const ponerEscuchando = (si: boolean) => {
+    raiz.classList.toggle('asis-oyendo', si);
+    barraOyendo.hidden = !si;
+    mic.setAttribute('aria-label', si ? 'Ya terminé' : 'Háblale a Lalan');
+    mic.title = si ? 'Ya terminé' : 'Háblale';
+    if (!si) mic.style.removeProperty('--nivel');
   };
-  /** Celeste dice la respuesta; si no queda voz, el botón se va y se sigue leyendo */
+  const soltarOido = () => { oido?.soltar(); oido = null; };
+  const callar = () => {
+    turnoDecir++;
+    soltarOido();
+    hablante.callar();
+    sonando?.classList.remove('asis-sonando', 'asis-cargando'); sonando = null;
+  };
+  /** Un aviso corto de Lalan (no se guarda en la conversación) */
+  const aviso = (texto: string) => { burbuja({ rol: 'lalan', texto }); };
+
+  /**
+   * Mientras Lalan habla (y la charla va por voz) el micrófono queda atento:
+   * si le hablan encima se pausa; si no le dijeron nada, sigue.
+   */
+  const armarOido = (mio: number) => {
+    soltarOido();
+    const c = ctx;
+    if (!porVoz || voz.interrumpir === false || !c || panel.hidden) return;
+    void vigilarInterrupcion({
+      ajustes: { vozParaPausarMs: voz.vozParaPausarMs ?? 300, retomarTrasMs: voz.retomarTrasMs ?? 1200, sensibilidad: voz.sensibilidadInterrupcion ?? 3, esperaMs: ESPERA_FRASE_MS },
+      contexto: c,
+      suena: hablante.suena,
+      pausar: () => { hablante.pausar(); ponerEscuchando(true); },
+      seguir: () => { hablante.seguir(); ponerEscuchando(false); },
+      tomarTurno: () => undefined,
+      alTerminar: (audio) => { oido = null; ponerEscuchando(false); void preguntarConVoz(audio, true); },
+      alNivel: (v) => mic.style.setProperty('--nivel', v.toFixed(2)),
+    }).then((o) => {
+      if (o && mio !== turnoDecir) { o.soltar(); return; }
+      oido = o;
+    });
+  };
+
+  /** Lalan dice la respuesta frase por frase; si no queda voz, el botón se va y se sigue leyendo */
   const decir = async (m: Mensaje, boton: HTMLButtonElement) => {
     if (sonando === boton) { callar(); return; }
     callar();
-    sonando = boton; boton.classList.add('asis-sonando', 'asis-cargando');
+    const mio = ++turnoDecir;
+    sonando = boton; boton.classList.add('asis-sonando');
+    if (voz.motor === 'nube') boton.classList.add('asis-cargando');
+    // "Cargando" hasta que de verdad suena
+    const suena = window.setInterval(() => { if (hablante.suena()) { boton.classList.remove('asis-cargando'); window.clearInterval(suena); } }, 120);
+    if (!estado.hablando) { estado.hablando = true; guardar(estado); pintarModoVoz(); }
+    registrar({ tipo: 'clic', seccion: 'asistente', detalle: voz.motor === 'navegador' ? 'voz_navegador' : 'voz' });
+    armarOido(mio);
     try {
-      if (voz.motor === 'navegador') {
-        boton.classList.remove('asis-cargando');
-        const terminada = decirConNavegador(m.texto, voz.voces, voz.velocidad, voz.pronuncia);
-        if (!estado.hablando) { estado.hablando = true; guardar(estado); pintarModoVoz(); }
-        registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'voz_navegador' });
-        await terminada;
-        if (sonando === boton) callar();
-        return;
-      }
-      const r = await fetch(`${API}/public/landing/voz`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversacionId: estado.id, texto: m.texto }),
-      });
-      if (!r.ok) throw new Error(String(r.status));
-      const url = URL.createObjectURL(await r.blob());
-      if (sonando !== boton) { URL.revokeObjectURL(url); return; }
-      audio = new Audio(url);
-      audio.playbackRate = voz.velocidad;
-      audio.addEventListener('ended', () => { URL.revokeObjectURL(url); if (sonando === boton) callar(); });
-      await audio.play();
-      if (!estado.hablando) { estado.hablando = true; guardar(estado); pintarModoVoz(); }
-      registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'voz' });
+      await hablante.decir(m.texto, voz);
     } catch {
-      if (sonando === boton) callar();
+      if (mio !== turnoDecir) return;
+      callar();
       // Sin voz (tope o fallo): se apaga para esta respuesta y la conversación sigue por escrito
       m.voz = false; guardar(estado); boton.remove();
+      return;
     } finally {
+      window.clearInterval(suena);
       boton.classList.remove('asis-cargando');
     }
+    // Ya dijo otra cosa, o le tomaron la palabra: esto ya no decide nada
+    if (mio !== turnoDecir || oido?.enTurno()) return;
+    soltarOido();
+    if (sonando === boton) { boton.classList.remove('asis-sonando'); sonando = null; }
+    // Le venía hablando: ahora le toca a ella (como en la app)
+    if (porVoz && !panel.hidden) void escuchar(true);
   };
-  modoVoz.addEventListener('click', () => { estado.hablando = false; guardar(estado); callar(); pintarModoVoz(); });
+
+  /** Abre el micrófono. `sola` = lo abre la página después de que Lalan habla (si no dice nada, se cierra sin quejarse) */
+  const escuchar = async (sola = false) => {
+    if (escucha || abriendoMic || ocupado) return;
+    callar();
+    const c = contexto();
+    if (!c) { aviso('Este navegador no me deja oírte. Escríbeme aquí 💕'); return; }
+    porVoz = true;
+    abriendoMic = true;
+    ponerEscuchando(true);
+    escucha = await escucharFrase({
+      contexto: c, esperaMs: ESPERA_FRASE_MS, sinVozMs: sola ? SIN_VOZ_SOLA_MS : SIN_VOZ_MS, maximoMs: MAXIMO_FRASE_MS,
+      alNivel: (v) => mic.style.setProperty('--nivel', v.toFixed(2)),
+      alTerminar: (audio) => {
+        escucha = null;
+        ponerEscuchando(false);
+        if (audio) void preguntarConVoz(audio);
+        else if (!sola) aviso('No te escuché 🙈 Toca el micrófono y háblame, o escríbeme aquí.');
+      },
+      alFallar: (motivo) => { porVoz = false; ponerEscuchando(false); aviso(motivo); },
+    });
+    abriendoMic = false;
+    registrar({ tipo: 'clic', seccion: 'asistente', detalle: sola ? 'escucha_sola' : 'microfono' });
+  };
+
+  /** Soltar el micrófono sin cerrar la ventanita: no se vuelve a abrir solo hasta que toque el micrófono */
+  const dejarDeEscuchar = () => {
+    porVoz = false;
+    const e = escucha; escucha = null;
+    e?.terminar(false);
+    if (oido) callar();
+    ponerEscuchando(false);
+  };
+
+  /**
+   * Lo que dijo: su burbuja sale de una vez (con puntitos mientras se pasa a
+   * texto) y luego se pregunta como si lo hubiera escrito. `interrumpio`: lo
+   * dijo encima de Lalan, que sigue en pausa; si no era nada, ella sigue.
+   */
+  const preguntarConVoz = async (audio: Blob, interrumpio = false) => {
+    const pendiente = document.createElement('div');
+    pendiente.className = 'asis-b asis-persona asis-entra asis-pasando';
+    pendiente.innerHTML = '<span class="asis-puntos" aria-label="Pasando tu voz a texto"><i></i><i></i><i></i></span>';
+    lista.appendChild(pendiente); lista.scrollTop = lista.scrollHeight;
+    const f = new FormData();
+    const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
+    f.append('audio', audio, `pregunta.${ext}`);
+    try {
+      const r = await fetch(`${API}/public/landing/escuchar`, { method: 'POST', body: f });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.message || 'No pude oírte bien ahora. Escríbeme 💕');
+      const texto = String(d.texto ?? '').trim();
+      if (interrumpio && (!texto || SOLO_ASENTIR.test(texto))) {
+        pendiente.remove();
+        hablante.seguir();
+        armarOido(turnoDecir);
+        return;
+      }
+      if (interrumpio) callar();
+      if (!texto) { pendiente.remove(); aviso('No te escuché bien 🙈 Toca el micrófono y háblame otra vez, o escríbeme.'); return; }
+      void preguntar(texto, pendiente);
+    } catch (e) {
+      pendiente.remove();
+      if (interrumpio) callar();
+      aviso(r429((e as Error).message) ? 'Ay, ve más despacito que me mareas 😅 Dame un segundito.' : (e as Error).message || 'No pude oírte bien ahora. Escríbeme 💕');
+    }
+  };
+  modoVoz.addEventListener('click', () => { estado.hablando = false; porVoz = false; guardar(estado); callar(); pintarModoVoz(); });
+  mic.addEventListener('click', () => {
+    // Escuchando: tocarlo es "ya terminé"
+    if (escucha) { escucha.terminar(true); return; }
+    hablante.despertar(voz);
+    void escuchar();
+  });
+  $<HTMLButtonElement>('.asis-dejar').addEventListener('click', dejarDeEscuchar);
 
   const burbuja = (m: Mensaje, animar = true) => {
     const b = document.createElement('div');
@@ -180,9 +329,17 @@ export function iniciarAsistente(): void {
       .then((c: ConfigVoz | null) => {
         // Apagada desde Plataforma: ni el botón se muestra
         if (c?.activa === false) { callar(); raiz.remove(); return; }
-        if (c && ['apagada', 'navegador', 'nube'].includes(c.motor)) voz = { motor: c.motor, voces: c.voces ?? [], velocidad: Number(c.velocidad) || 1, pronuncia: c.pronuncia };
+        if (c && ['apagada', 'navegador', 'nube'].includes(c.motor)) {
+          voz = {
+            motor: c.motor, voces: c.voces ?? [], velocidad: Number(c.velocidad) || 1, pronuncia: c.pronuncia,
+            escucha: c.escucha === true, interrumpir: c.interrumpir !== false,
+            vozParaPausarMs: Number(c.vozParaPausarMs) || undefined, retomarTrasMs: Number(c.retomarTrasMs) || undefined,
+            sensibilidadInterrupcion: Number(c.sensibilidadInterrupcion) || undefined,
+          };
+        }
         if (voz.motor === 'apagada' && estado.hablando) { estado.hablando = false; guardar(estado); }
         pintarModoVoz();
+        pintarMic();
         lista.querySelectorAll<HTMLElement>('.asis-b').forEach((b) => { const m = deBurbuja.get(b); if (m) ponerBoton(b, m); });
       })
       .catch(() => undefined);
@@ -212,7 +369,7 @@ export function iniciarAsistente(): void {
     if (window.matchMedia('(pointer: fine)').matches) entrada.focus();
     registrar({ tipo: 'clic', seccion: 'asistente', detalle: 'abrir' });
   };
-  const cerrar = () => { callar(); panel.hidden = true; raiz.classList.remove('asis-abierta'); lanzar.setAttribute('aria-expanded', 'false'); };
+  const cerrar = () => { dejarDeEscuchar(); callar(); panel.hidden = true; raiz.classList.remove('asis-abierta'); lanzar.setAttribute('aria-expanded', 'false'); };
 
   lanzar.addEventListener('click', () => (panel.hidden ? abrir() : cerrar()));
   $<HTMLButtonElement>('.asis-cerrar').addEventListener('click', cerrar);
@@ -265,12 +422,18 @@ export function iniciarAsistente(): void {
     dejarVer();
   };
 
-  async function preguntar(texto: string) {
+  /** `pintada`: su burbuja ya está en pantalla (lo dijo con la voz) */
+  async function preguntar(texto: string, pintada?: HTMLElement) {
     texto = texto.trim();
-    if (!texto || ocupado) return;
-    ocupado = true; entrada.value = ''; sugerencias.innerHTML = '';
+    if (!texto || ocupado) { pintada?.remove(); return; }
+    // Escrito: la charla deja de ir por voz (no se abre el micrófono solo)
+    if (!pintada) { porVoz = false; dejarDeEscuchar(); callar(); }
+    ocupado = true; sugerencias.innerHTML = '';
+    if (!pintada) entrada.value = '';
     const m: Mensaje = { rol: 'persona', texto };
-    estado.mensajes.push(m); guardar(estado); burbuja(m);
+    estado.mensajes.push(m); guardar(estado);
+    if (pintada) { pintada.classList.remove('asis-pasando'); pintada.innerHTML = formatear(texto); deBurbuja.set(pintada, m); }
+    else burbuja(m);
     const escribiendo = document.createElement('div');
     escribiendo.className = 'asis-b asis-lalan asis-escribiendo'; escribiendo.innerHTML = '<i></i><i></i><i></i>';
     lista.appendChild(escribiendo); lista.scrollTop = lista.scrollHeight;
@@ -285,8 +448,8 @@ export function iniciarAsistente(): void {
       const resp: Mensaje = { rol: 'lalan', texto: String(d.texto || ''), ...(d.voz ? { voz: true } : {}) };
       estado.mensajes.push(resp); guardar(estado);
       const oir = burbuja(resp);
-      // Ya pidió oírla antes: la respuesta nueva suena sola
-      if (oir && estado.hablando) void decir(resp, oir);
+      // Le habló con la voz, o ya pidió oírla antes: la respuesta suena sola
+      if (oir && (porVoz || estado.hablando)) void decir(resp, oir);
       // Primero se lee la respuesta, luego se mueve la página (en el teléfono la ventanita tapa todo: más tiempo para leer)
       const espera = window.matchMedia('(max-width: 640px)').matches ? ESPERA_LECTURA_MOVIL_MS : ESPERA_LECTURA_MS;
       (d.acciones as Accion[] | undefined)?.forEach((a, i) => setTimeout(() => ejecutar(a), espera + i * 300));
@@ -301,7 +464,12 @@ export function iniciarAsistente(): void {
   }
   const r429 = (m: string) => /too many|demasiad/i.test(m);
 
-  form.addEventListener('submit', (e) => { e.preventDefault(); void preguntar(entrada.value); });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    // Escuchando y sin nada escrito: enviar es "ya terminé"
+    if (escucha && !entrada.value.trim()) { escucha.terminar(true); return; }
+    void preguntar(entrada.value);
+  });
   // Se pregunta de una vez si está encendida y cómo habla (si Plataforma la apagó, el botón desaparece)
   void cargarVoz();
 }

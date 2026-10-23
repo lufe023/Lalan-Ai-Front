@@ -9,6 +9,8 @@ export interface AjustesLalan {
   pausaCortaMs: number; pausaNormalMs: number; pausaLargaMs: number; pausaPorDefecto: 'corta' | 'normal' | 'larga';
   habloPocoMs: number; extraSiHabloPocoMs: number; sinVozMs: number; sinVozSolaMs: number; maximoSegundos: number; sensibilidad: number; ignorarFondo: number;
   seguirEscuchando: boolean; tonoAlEscuchar: boolean;
+  /** Hablarle encima: Lalan se pausa y, si no le dijeron nada, sigue */
+  interrumpirConVoz: boolean; vozParaPausarMs: number; retomarTrasMs: number; sensibilidadInterrupcion: number;
   motorVoz: 'aparato' | 'melotts' | 'aura2'; vozAura: string;
   vocesPreferidas: string; velocidadVoz: number; tonoVoz: number;
   /** Cómo se dice "Lalan" en voz alta */
@@ -20,9 +22,10 @@ export interface AjustesLalan {
 }
 
 export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
-  pausaCortaMs: 1800, pausaNormalMs: 2800, pausaLargaMs: 4200, pausaPorDefecto: 'normal',
+  pausaCortaMs: 1400, pausaNormalMs: 2200, pausaLargaMs: 3400, pausaPorDefecto: 'normal',
   habloPocoMs: 1500, extraSiHabloPocoMs: 800, sinVozMs: 8000, sinVozSolaMs: 8000, maximoSegundos: 90, sensibilidad: 2.5, ignorarFondo: 30,
   seguirEscuchando: true, tonoAlEscuchar: true,
+  interrumpirConVoz: true, vozParaPausarMs: 300, retomarTrasMs: 1200, sensibilidadInterrupcion: 3,
   motorVoz: 'aparato', vozAura: 'celeste',
   vocesPreferidas: 'Paulina, Google español de Estados Unidos, Mónica, Google español', velocidadVoz: 1.02, tonoVoz: 1.05,
   pronunciaLalan: 'Lalán',

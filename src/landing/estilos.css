@@ -977,6 +977,25 @@
 .asis-entrada { flex: 1; min-width: 0; border: 1px solid var(--linea); background: var(--fondo); color: var(--tinta); border-radius: 999px; padding: 10px 14px; font: 500 16px/1.2 var(--sans); }
 .asis-entrada:focus { outline: 2px solid var(--rosa); outline-offset: 0; border-color: transparent; }
 .asis-enviar { width: 42px; height: 42px; flex-shrink: 0; border: 0; border-radius: 50%; background: var(--rosa); color: #fff; display: grid; place-items: center; cursor: pointer; }
+/* El micrófono: se le puede hablar a Lalan. Escuchando, se llena de rosa y late con la voz */
+.asis-mic { width: 42px; height: 42px; flex-shrink: 0; border: 1px solid var(--linea); border-radius: 50%; background: var(--papel); color: var(--rosa); display: grid; place-items: center; cursor: pointer; transition: background .2s, color .2s, box-shadow .12s; }
+.asis-mic[hidden] { display: none; }
+.asis-mic:hover { border-color: var(--rosa); }
+.asis-mic:focus-visible, .asis-dejar:focus-visible { outline: 2px solid var(--rosa); outline-offset: 2px; }
+.asis-oyendo .asis-mic { background: var(--rosa); border-color: var(--rosa); color: #fff; box-shadow: 0 0 0 calc(3px + var(--nivel, 0) * 9px) color-mix(in srgb, var(--rosa) 22%, transparent); }
+.asis-oyendo-barra { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--linea); background: var(--pantalla); font-size: .8rem; color: var(--tinta-2, var(--tinta)); }
+.asis-oyendo-barra[hidden] { display: none; }
+.asis-oyendo-barra span { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.asis-oyendo-barra i { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: var(--rosa); animation: asis-latido 1s ease-in-out infinite; }
+.asis-dejar { flex-shrink: 0; border: 1px solid var(--linea); background: var(--papel); color: var(--tinta); border-radius: 999px; padding: 6px 11px; font: 600 .76rem/1.1 var(--sans); cursor: pointer; }
+.asis-dejar:hover { border-color: var(--rosa); color: var(--rosa); }
+/* Lo que dijo, mientras se pasa a texto */
+.asis-pasando { opacity: .85; }
+.asis-puntos { display: inline-flex; gap: 4px; padding: 3px 0; }
+.asis-puntos i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .5; animation: asis-salta 1s infinite ease-in-out; }
+.asis-puntos i:nth-child(2) { animation-delay: .15s; }
+.asis-puntos i:nth-child(3) { animation-delay: .3s; }
+@media (prefers-reduced-motion: reduce) { .asis-oyendo-barra i, .asis-puntos i { animation: none; } .asis-oyendo .asis-mic { box-shadow: none; } }
 .asis-nota { margin: 0; padding: 0 14px 10px; font-size: .7rem; color: var(--tinta-3); background: var(--papel); }
 .asis-nota a { color: var(--rosa); font-weight: 700; }
 /* El formulario al que la llevó Lalan: un brillo para que lo encuentre */

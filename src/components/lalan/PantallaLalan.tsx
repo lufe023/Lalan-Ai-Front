@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue } from 'motion/react';
-import { Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, Minimize2, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -12,9 +12,10 @@ import { FondoVivo } from '../ui/FondoVivo';
 import { PAPEL_TAPIZ_SALON } from './papelTapiz';
 import {
   alCargarVoces, callarLalan, callarSiempre, contextoDeAudio, decirComoLalan, despertarVoz, estaCallada, guardarPausa, guardarSeguirEscuchando,
-  auraElegida, guardarVoz, hayVoz, lalanHablando, pausaGuardada, prepararAudio, seguirEscuchando, soltarAudio, tonoEscucho, usaVozDeNube,
-  vozDeLalan, vozDeNube, vocesEnEspanol,
+  auraElegida, guardarInterrumpir, guardarVoz, hayVoz, interrumpirGuardado, lalanHablando, pausaGuardada, pausarLalan, prepararAudio, seguirEscuchando,
+  seguirLalan, soltarAudio, tonoEscucho, usaVozDeNube, vozDeLalan, vozDeNube, vocesEnEspanol,
 } from '../../utils/vozLalan';
+import { vigilarInterrupcion, type Interrupcion } from '../../utils/interrupcion';
 import { EsferaLalan, ModoEsfera } from './EsferaLalan';
 import { ElegirEsfera } from './ElegirEsfera';
 import { iniciarGuia } from '../guias/GuiaEnCurso';
@@ -35,8 +36,13 @@ interface Accion {
 interface TutorialTarjeta { tema: string; nombre: string }
 interface DocumentoTarjeta { id: string; titulo: string; sede: string }
 interface GuiaTarjeta { id: string; nombre: string; sedeId: string | null; sede: string | null }
-interface Mensaje { id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null; util?: boolean | null }
-interface Respuesta { mensajes: Mensaje[] }
+interface Mensaje {
+  id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null; util?: boolean | null;
+  /** Se pinta al tocar Enviar, antes de que el servidor conteste (lo hablado sale con puntitos hasta tener su texto) */
+  enviando?: boolean;
+}
+/** `seguir`: le habló encima y no dijo nada que pida respuesta: Lalan sigue donde iba */
+interface Respuesta { mensajes: Mensaje[]; seguir?: boolean }
 
 const EVENTO_ABRIR = 'lalan:abrir';
 
@@ -179,7 +185,12 @@ export const PantallaLalan: React.FC = () => {
   const [seguirAqui, setSeguirAqui] = useState<boolean | null>(seguirEscuchando);
   const [pausaAqui, setPausaAqui] = useState<Pausa | null>(pausaGuardada);
   const seguir = seguirAqui ?? aj.seguirEscuchando;
+  // Interrumpirla hablándole: Plataforma lo apaga para todos; si está encendido, cada aparato puede apagarlo
+  const [interrumpirAqui, setInterrumpirAqui] = useState<boolean | null>(interrumpirGuardado);
+  const interrumpir = aj.interrumpirConVoz && (interrumpirAqui ?? true);
   const pausa: Pausa = pausaAqui ?? aj.pausaPorDefecto;
+  const pausaAhora = useRef(pausa);
+  pausaAhora.current = pausa;
   const [altoAbajo, setAltoAbajo] = useState(240);
   const grande = usePantallaGrande();
   const abajo = useRef<HTMLDivElement>(null);
@@ -190,10 +201,17 @@ export const PantallaLalan: React.FC = () => {
    * escribiendo), cuando Lalan termina de hablar el micrófono se abre solo.
    */
   const conVoz = useRef(true);
-  const vivo = useRef({ abierta: false, modo: 'reposo' as ModoEsfera, seguir: true, escribiendo: false });
+  const vivo = useRef({ abierta: false, modo: 'reposo' as ModoEsfera, seguir: true, escribiendo: false, interrumpir: true });
   // En burbuja la charla sigue: cuenta como abierta para seguir escuchando
-  vivo.current = { abierta: abierta || burbuja, modo, seguir, escribiendo };
+  vivo.current = { abierta: abierta || burbuja, modo, seguir, escribiendo, interrumpir };
   const escucharSola = useRef<() => void>(() => undefined);
+  /** El micrófono atento mientras Lalan habla (para interrumpirla) */
+  const oido = useRef<Interrupcion | null>(null);
+  const [nivelOido, setNivelOido] = useState(0);
+  /** Cada vez que Lalan empieza a decir algo: lo de una vez anterior ya no decide nada */
+  const decires = useRef(0);
+  const preguntarConVozRef = useRef<(audio: Blob, interrumpio?: boolean) => void>(() => undefined);
+  const soltarOido = () => { oido.current?.soltar(); oido.current = null; setNivelOido(0); };
 
   useEffect(() => {
     const abrir = () => { ponerBurbuja(false); setSinLeer(false); setAbierta(true); };
@@ -223,22 +241,55 @@ export const PantallaLalan: React.FC = () => {
   const conTeclado = !!vista?.teclado;
   useEffect(() => { if (conTeclado) bajar(); }, [conTeclado, vista?.alto]);
 
+  /**
+   * Mientras Lalan habla, el micrófono queda atento (si viene hablando, no
+   * escribiendo): si le hablan encima se pausa; si no le dijeron nada, sigue;
+   * si de verdad le dijeron algo, la frase se manda como pregunta.
+   */
+  const armarOido = (mia: number) => {
+    soltarOido();
+    const v = vivo.current;
+    if (!v.interrumpir || !conVoz.current || v.escribiendo || !v.abierta) return;
+    const a = ajustesLalan();
+    void vigilarInterrupcion({
+      ajustes: { vozParaPausarMs: a.vozParaPausarMs, retomarTrasMs: a.retomarTrasMs, sensibilidad: a.sensibilidadInterrupcion, esperaMs: msDePausa(pausaAhora.current, a) },
+      contexto: contextoDeAudio(),
+      suena: lalanHablando,
+      pausar: () => { pausarLalan(); setModo('escuchando'); },
+      seguir: () => { seguirLalan(); setNivelOido(0); setModo('hablando'); },
+      tomarTurno: () => { conVoz.current = true; },
+      alTerminar: (audio) => { oido.current = null; setNivelOido(0); preguntarConVozRef.current(audio, true); },
+      alNivel: setNivelOido,
+    }).then((o) => {
+      // Lalan ya terminó (o la callaron) mientras se abría el micrófono
+      if (o && mia !== decires.current) { o.soltar(); return; }
+      oido.current = o;
+    });
+  };
+
   /** Lalan dice su último mensaje (si no está callada) */
   const decir = useCallback(async (t: string) => {
     // Se mira el silencio de AHORA (no el de cuando se hizo la pregunta): si la
     // pusieron en silencio mientras pensaba, ya no habla
     if (calladaAhora.current || !hayVoz() || !t.trim()) { setModo('reposo'); return; }
+    const mia = ++decires.current;
     setModo('hablando');
+    armarOido(mia);
     await decirComoLalan(t, () => setPulso((p) => p + 1));
+    // Ya empezó a decir otra cosa, o la persona tomó la palabra: esto ya no decide nada
+    if (mia !== decires.current || oido.current?.enTurno()) return;
+    soltarOido();
     // Terminó de hablar sola (no la interrumpieron): le toca a la persona
     const v = vivo.current;
     if (v.modo === 'hablando' && v.abierta && v.seguir && !v.escribiendo && conVoz.current) { escucharSola.current(); return; }
     setModo((m) => (m === 'hablando' ? 'reposo' : m));
   }, []);
 
-  const recibir = useCallback((r: Respuesta, hablar = true) => {
+  /** `pintado`: el mensaje que se pintó al enviar; lo reemplaza el que guardó el servidor */
+  const recibir = useCallback((r: Respuesta, hablar = true, pintado?: string) => {
+    if (pintado) setMensajes((antes) => antes.filter((m) => m.id !== pintado));
     if (!r.mensajes.length) { setModo('reposo'); return; }
-    setMensajes((antes) => juntar(antes, r.mensajes));
+    setMensajes((antes) => juntar(antes.filter((m) => m.id !== pintado), r.mensajes));
     if (enBurbuja && r.mensajes.some((m) => m.deLalan)) setSinLeer(true);
     // Guardó un servicio o un rendimiento (con el botón o diciendo "sí"): el catálogo y el aviso de la Bienvenida se ponen al día
     if (r.mensajes.some((m) => m.accion && (m.accion.tipo === 'servicio' || m.accion.tipo === 'rendimiento') && m.accion.estado === 'hecha')) {
@@ -250,6 +301,15 @@ export const PantallaLalan: React.FC = () => {
     if (hablar && ultimo) void decir(ultimo.texto);
     else setModo('reposo');
   }, [decir, recargarCatalogo]);
+
+  /** Lo que la persona manda sale en pantalla al instante, sin esperar al servidor */
+  const pintar = (texto: string, porVoz: boolean) => {
+    const id = `enviando-${Date.now()}`;
+    setMensajes((ms) => [...ms, { id, deLalan: false, texto, porVoz, creadoEn: new Date().toISOString(), accion: null, enviando: true }]);
+    bajar();
+    return id;
+  };
+  const despintar = (id: string) => setMensajes((ms) => ms.filter((m) => m.id !== id));
 
   const fallo = (e: unknown) => {
     setError((e as Error)?.message || 'Algo falló. Inténtalo otra vez.');
@@ -285,14 +345,7 @@ export const PantallaLalan: React.FC = () => {
     esperaMs: msDePausa(pausa, aj),
     ajustes: ajustesLalan,
     contexto: contextoDeAudio,
-    onFrase: async (audio) => {
-      contarUsoDeVoz();
-      setModo('pensando');
-      const f = new FormData();
-      const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
-      f.append('audio', audio, `pregunta.${ext}`);
-      try { recibir(await subirArchivo<Respuesta>('/asistente/voz', f)); } catch (e) { fallo(e); }
-    },
+    onFrase: (audio) => preguntarConVozRef.current(audio),
     // Si la escucha se abrió sola y no dijo nada, se cierra sin quejarse
     onNada: (sola) => {
       setModo('reposo');
@@ -304,7 +357,41 @@ export const PantallaLalan: React.FC = () => {
     onError: (m) => { setModo('reposo'); setError(m); },
   });
 
+  /**
+   * Lo dicho va al servidor (se pasa a texto allá). Su burbuja sale de una vez
+   * con puntitos. `interrumpio`: lo dijo encima de Lalan, que sigue en pausa:
+   * si no era nada ("ajá", un ruido), ella sigue donde iba.
+   */
+  preguntarConVozRef.current = async (audio: Blob, interrumpio = false) => {
+    contarUsoDeVoz();
+    setModo('pensando');
+    const pintado = pintar('', true);
+    const f = new FormData();
+    const ext = audio.type.includes('webm') ? 'webm' : audio.type.includes('ogg') ? 'ogg' : 'm4a';
+    f.append('audio', audio, `pregunta.${ext}`);
+    if (interrumpio) f.append('interrumpio', '1');
+    try {
+      const r = await subirArchivo<Respuesta>('/asistente/voz', f);
+      if (interrumpio && r.seguir) {
+        despintar(pintado);
+        seguirLalan();
+        setModo('hablando');
+        armarOido(decires.current);
+        return;
+      }
+      // Lo que decía antes ya no sigue
+      if (interrumpio) { decires.current++; callarLalan(); }
+      recibir(r, true, pintado);
+    } catch (e) {
+      despintar(pintado);
+      if (interrumpio) { decires.current++; callarLalan(); }
+      fallo(e);
+    }
+  };
+
   useEffect(() => { if (escucha.estado === 'escuchando') setModo('escuchando'); }, [escucha.estado]);
+  /** La esfera se mueve con quien habla: con la escucha de siempre o hablándole encima a Lalan */
+  const nivelEsfera = escucha.estado === 'escuchando' ? escucha.nivel : nivelOido;
   hayRuido.current = escucha.ruidoso;
 
   escucharSola.current = () => {
@@ -340,6 +427,9 @@ export const PantallaLalan: React.FC = () => {
     setError('');
     if (modo === 'pensando') return;
     if (escucha.estado === 'escuchando') { escucha.terminar(true); return; }
+    // Tocar mientras se le habla encima: se deja de vigilar y se escucha como siempre
+    soltarOido();
+    decires.current++;
     // Primero se calla del todo y después se abre el micrófono: en el iPhone,
     // si la voz sigue activa al abrirlo, la grabación puede salir muda
     const hablaba = lalanHablando();
@@ -361,13 +451,33 @@ export const PantallaLalan: React.FC = () => {
   const enviar = async (escrito: string) => {
     const t = escrito.trim();
     if (!t || modo === 'pensando') return;
+    soltarOido();
+    decires.current++;
     callarLalan();
     if (!callada) despertarVoz();
     conVoz.current = false;
     setTexto('');
     setError('');
     setModo('pensando');
-    try { recibir(await api.post<Respuesta>('/asistente/mensaje', { texto: t })); } catch (err) { fallo(err); }
+    const pintado = pintar(t, false);
+    try { recibir(await api.post<Respuesta>('/asistente/mensaje', { texto: t }), true, pintado); }
+    catch (err) {
+      // No se perdió lo escrito: vuelve al cuadro para mandarlo otra vez
+      despintar(pintado);
+      setTexto((ahora) => ahora || t);
+      fallo(err);
+    }
+  };
+
+  /**
+   * Dejar de escuchar sin cerrar a Lalan ni quitar el permiso: suelta el
+   * micrófono y no se vuelve a abrir solo hasta que toque la esfera otra vez.
+   */
+  const dejarDeEscuchar = () => {
+    conVoz.current = false;
+    escucha.terminar(false);
+    if (oido.current) { soltarOido(); decires.current++; callarLalan(); }
+    setModo('reposo');
   };
 
   const resolver = async (a: Accion, confirmar: boolean) => {
@@ -404,6 +514,8 @@ export const PantallaLalan: React.FC = () => {
     sesionViva.current = false;
     sesion.current++;
     setSinLeer(false);
+    soltarOido();
+    decires.current++;
     callarLalan();
     escucha.terminar(false);
     setMenu(false);
@@ -432,7 +544,7 @@ export const PantallaLalan: React.FC = () => {
     setCallada(nueva);
     callarSiempre(nueva);
     // Silenciar NO apaga el micrófono: solo que Lalan no hable. Si está escuchando, sigue escuchando
-    if (nueva) { callarLalan(); setModo((m) => (m === 'hablando' ? 'reposo' : m)); }
+    if (nueva) { soltarOido(); decires.current++; callarLalan(); setModo((m) => (m === 'hablando' ? 'reposo' : m)); }
     else despertarVoz();
   };
 
@@ -446,7 +558,7 @@ export const PantallaLalan: React.FC = () => {
 
   return (
     <>
-    <BurbujaLalan visible={!abierta && (burbuja || (!grande && !activeConversationId && !esferaGuardada))} viva={burbuja} modo={modo} nivel={escucha.nivel} pulso={pulso} cierre={escucha.cierre}
+    <BurbujaLalan visible={!abierta && (burbuja || (!grande && !activeConversationId && !esferaGuardada))} viva={burbuja} modo={modo} nivel={nivelEsfera} pulso={pulso} cierre={escucha.cierre}
       sinLeer={sinLeer} onAbrir={abrirLalan} onCerrar={() => { if (burbuja) cerrar(); else setEsferaGuardada(true); }} />
     <AnimatePresence>
       {abierta && (
@@ -518,6 +630,17 @@ export const PantallaLalan: React.FC = () => {
                         </span>
                       </button>
                     )}
+                    {/* Hablarle encima: Lalan se pausa y, si no le dijeron nada, sigue (Plataforma lo puede apagar para todos) */}
+                    {!callada && aj.interrumpirConVoz && (
+                      <button type="button" onClick={() => { const n = !interrumpir; setInterrumpirAqui(n); guardarInterrumpir(n); if (!n) soltarOido(); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                        <MessageSquareText className={`w-4 h-4 ${interrumpir ? 'text-[var(--primary)]' : 'text-slate-500'}`} />
+                        <span className="flex-1">Interrumpirla hablándole</span>
+                        <span className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${interrumpir ? 'bg-[var(--primary)]' : 'bg-slate-300 dark:bg-neutral-700'}`} aria-hidden="true">
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${interrumpir ? 'left-[18px]' : 'left-0.5'}`} />
+                        </span>
+                      </button>
+                    )}
                     <ElegirEsfera />
                     <div className="px-3 pt-2 pb-1">
                       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cuánto espero cuando te callas</div>
@@ -580,7 +703,7 @@ export const PantallaLalan: React.FC = () => {
               <aside className={`${VIDRIO} flex flex-col items-center justify-center gap-6 p-8 text-center`}>
                 <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
                   className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
-                  <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={Math.max(Math.round(aj.tamanoEsfera * 1.6), 240)} />
+                  <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={Math.max(Math.round(aj.tamanoEsfera * 1.6), 240)} />
                   {modo === 'escuchando' && escucha.cierre > 0 && (
                     <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
                       <circle cx="50" cy="50" r="40" fill="none" stroke="var(--primary)" strokeOpacity="0.9" strokeWidth="2.5" strokeLinecap="round"
@@ -599,6 +722,9 @@ export const PantallaLalan: React.FC = () => {
                       : callada ? 'Te respondo solo por escrito.' : 'O escríbeme en el panel de la derecha.'}
                   </p>
                 </div>
+                <AnimatePresence>
+                  {modo === 'escuchando' && <BotonDejarDeEscuchar key="dejar" onClick={dejarDeEscuchar} />}
+                </AnimatePresence>
                 <AnimatePresence>
                   {error && (
                     <motion.p key={error} role="alert" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
@@ -661,9 +787,9 @@ export const PantallaLalan: React.FC = () => {
                       </div>
                     ) : (
                       <div key={m.id} className="flex justify-end">
-                        <div className="max-w-[75%] px-5 py-3 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug shadow-md shadow-[var(--primary)]/20">
+                        <div className={`max-w-[75%] px-5 py-3 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug shadow-md shadow-[var(--primary)]/20 transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
                           {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
-                          {m.texto}
+                          {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
                         </div>
                       </div>
                     )
@@ -721,9 +847,9 @@ export const PantallaLalan: React.FC = () => {
                   </div>
                 ) : (
                   <div key={m.id} className="flex justify-end">
-                    <div className="max-w-[85%] px-4 py-2.5 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug">
+                    <div className={`max-w-[85%] px-4 py-2.5 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
                       {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
-                      {m.texto}
+                      {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
                     </div>
                   </div>
                 )
@@ -746,7 +872,7 @@ export const PantallaLalan: React.FC = () => {
               {escribiendo ? (
                 <form onSubmit={enviarTexto} className="w-full flex items-center gap-2 py-2">
                   <button type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" className="shrink-0 cursor-pointer">
-                    <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={48} />
+                    <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={48} />
                   </button>
                   <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…" autoFocus
                     className="flex-1 min-w-0 px-4 py-3 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-[0.9375rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
@@ -777,7 +903,7 @@ export const PantallaLalan: React.FC = () => {
                     </AnimatePresence>
                     <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
                       className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
-                      <EsferaLalan modo={modo} nivel={escucha.nivel} pulso={pulso} tamano={aj.tamanoEsfera} />
+                      <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={aj.tamanoEsfera} />
                       {/* Se llena cuando la persona se calla: se ve venir el envío y se puede seguir hablando */}
                       {modo === 'escuchando' && escucha.cierre > 0 && (
                         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
@@ -792,6 +918,9 @@ export const PantallaLalan: React.FC = () => {
                       <Keyboard className="w-5 h-5" />
                     </button>
                   </div>
+                  <AnimatePresence>
+                    {modo === 'escuchando' && <BotonDejarDeEscuchar key="dejar" onClick={dejarDeEscuchar} />}
+                  </AnimatePresence>
                 </>
               )}
             </div>
@@ -805,6 +934,25 @@ export const PantallaLalan: React.FC = () => {
     </>
   );
 };
+
+/** Su frase hablada, mientras el servidor la pasa a texto */
+const PasandoATexto: React.FC = () => (
+  <span className="inline-flex gap-1 align-middle" aria-label="Pasando tu voz a texto">
+    {[0, 1, 2].map((i) => (
+      <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-white/90"
+        animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }} />
+    ))}
+  </span>
+);
+
+/** Mientras escucha, siempre a la vista: soltar el micrófono sin cerrar a Lalan */
+const BotonDejarDeEscuchar: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <motion.button type="button" onClick={onClick}
+    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.25 }}
+    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border border-slate-200/80 dark:border-white/10 shadow-sm hover:bg-white dark:hover:bg-neutral-800 cursor-pointer">
+    <MicOff className="w-4 h-4" /> Dejar de escucharme
+  </motion.button>
+);
 
 interface Uso {
   preguntas: { usadas: number; tope: number };
