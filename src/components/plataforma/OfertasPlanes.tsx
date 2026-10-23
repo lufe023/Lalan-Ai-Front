@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import type { OfertaPlan, PlanLalan } from '../../types/plataforma';
 import { IOSToggle } from '../ui/IOSToggle';
 import { useConfirmar } from '../ui/ModalConfirmar';
-import { botonOferta, detalleOferta } from '../../landing/textoOferta';
+import { botonOferta, detalleOferta, partesOferta } from '../../landing/textoOferta';
 
 const tarjeta = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]';
 const campo = 'w-full px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem]';
@@ -135,7 +135,11 @@ const EditorOferta: React.FC<{ oferta: Borrador; planes: PlanLalan[]; onGuardada
       </label>
       <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60 space-y-1">
         <div className="text-[0.6875rem] font-semibold text-slate-400">Así sale en la tarjeta del {nombre(b.planId)}</div>
-        <div className="px-3 py-2 rounded-full bg-[var(--primary)] text-white text-[0.8125rem] font-bold text-center">{botonOferta(muestra)}</div>
+        <div className="mx-auto max-w-[260px] px-3 py-2 rounded-[22px] bg-[var(--primary)] text-white text-center leading-tight flex flex-col" aria-label={botonOferta(muestra)}>
+          <span className="text-[0.75rem] font-semibold opacity-90">{partesOferta(muestra).arriba}</span>
+          <span className="text-[1.25rem] font-bold font-serif">{partesOferta(muestra).grande}</span>
+          <span className="text-[0.6875rem] font-semibold opacity-80">{partesOferta(muestra).abajo}</span>
+        </div>
         <div className="text-[0.6875rem] text-slate-500 text-center">{detalleOferta(muestra)}</div>
       </div>
       {error && <p className="text-[0.8125rem] font-semibold text-rose-600" role="alert">{error}</p>}

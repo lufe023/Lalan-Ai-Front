@@ -12,7 +12,7 @@
  * columnas en la PC; en el teléfono se pasan de lado, uno a la vez.
  */
 import { API } from './api';
-import { botonOferta, detalleOferta, type OfertaTexto } from './textoOferta';
+import { botonOferta, detalleOferta, partesOferta, type OfertaTexto } from './textoOferta';
 
 interface PlanPublico {
   clave: string;
@@ -48,6 +48,12 @@ function topes(l: PlanPublico['limites']): string {
   ].map((t) => `<li>${t}</li>`).join('');
 }
 
+/** «Pruébalo» / «2 meses gratis» (grande) / «con Plan Lounge» (pequeño) */
+function botonEnTresLineas(o: OfertaTexto): string {
+  const t = partesOferta(o);
+  return `<span class="arriba">${escapar(t.arriba)}</span><span class="grande">${escapar(t.grande)}</span><span class="abajo">${escapar(t.abajo)}</span>`;
+}
+
 function tarjeta(p: PlanPublico, destacado: boolean): string {
   const items = p.anterior
     ? [`<li class="base">Todo lo del ${escapar(p.anterior)}</li>`, ...p.suma.map((m) => `<li class="nuevo" title="${escapar(m.descripcion)}">${escapar(m.nombre)}</li>`)]
@@ -59,7 +65,7 @@ function tarjeta(p: PlanPublico, destacado: boolean): string {
     <h3>${escapar(p.nombre)}</h3>
     <ul class="trae">${items.join('')}</ul>
     <ul class="topes" aria-label="Topes del ${escapar(p.nombre)}">${topes(p.limites)}</ul>
-    <a class="boton${destacado ? '' : ' claro'}" href="#piloto" data-plan="${escapar(p.clave)}">${escapar(o ? botonOferta(o) : `Quiero el ${p.nombre}`)}</a>
+    <a class="boton${destacado ? '' : ' claro'}${o ? ' oferta' : ''}" href="#piloto" data-plan="${escapar(p.clave)}"${o ? ` aria-label="${escapar(botonOferta(o))}"` : ''}>${o ? botonEnTresLineas(o) : escapar(`Quiero el ${p.nombre}`)}</a>
     ${o ? `<p class="letra-chica">${escapar(detalleOferta(o))}</p>` : ''}
   </article>`;
 }

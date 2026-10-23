@@ -562,7 +562,13 @@
   .plan .topes li { line-height: 1.35; }
   .plan .topes b { color: var(--tinta); font-size: .86rem; font-variant-numeric: tabular-nums; }
   .plan .nota { font-size: .8rem; color: var(--tinta-3); border-top: 1px solid var(--linea); padding-top: 12px; flex: 1; }
-  .plan .boton { justify-content: center; text-align: center; padding-inline: 14px; min-height: 3.4em; text-wrap: balance; }
+  .plan .boton { justify-content: center; text-align: center; padding-inline: 14px; min-height: 4.6rem; text-wrap: balance; }
+  /* El botón de la oferta en tres líneas centradas: Pruébalo / 2 meses gratis / con Plan Lounge */
+  .plan .boton.oferta { flex-direction: column; gap: 0; padding-block: 10px 11px; border-radius: 22px; line-height: 1.15; }
+  .plan .boton.oferta .arriba { font-size: .82rem; font-weight: 600; opacity: .9; }
+  .plan .boton.oferta .grande { font-family: var(--serif); font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+  .plan .boton.oferta .abajo { font-size: .74rem; font-weight: 600; opacity: .8; }
+  .plan .boton.claro.oferta .grande { color: var(--rosa); }
   .plan .letra-chica { margin-top: -6px; font-size: .74rem; color: var(--tinta-3); text-align: center; }
   .puntos-planes { display: none; }
   .oferta-elegida { font-size: .8rem; color: var(--rosa-hondo); font-weight: 600; margin-top: -4px; }
