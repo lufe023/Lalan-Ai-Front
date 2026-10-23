@@ -137,6 +137,8 @@ export interface PlanLalan {
   alAgotarse?: AlAgotarse;
   /** Si sale en la página pública */
   enLanding?: boolean;
+  /** El que la página resalta como recomendado (uno solo) */
+  destacado?: boolean;
   /** Cuántas respuestas del mes siguiente puede adelantar la dueña (null = no puede) */
   adelantoMaximo?: number | null;
   /** Si lo que no usa pasa al mes siguiente */
@@ -157,6 +159,18 @@ export interface VistaCambioDePlan {
 }
 
 /** Lo que viene marcado al crear un salón con promoción */
+/** Un combo de oferta: quien elige `planId` prueba gratis `planPruebaId` y luego pasa a `planDespuesId` (null = el mismo) */
+export interface OfertaPlan {
+  id: string;
+  nombre: string;
+  planId: string;
+  planPruebaId: string;
+  meses: number;
+  soloDesdeInicio: boolean;
+  planDespuesId: string | null;
+  activa: boolean;
+}
+
 export interface PromocionInicial { meses: number; mesesMaximo: number; planAlto: { id: string; nombre: string } | null; planDespues: { id: string; nombre: string } | null }
 
 export interface NegocioResumen {
