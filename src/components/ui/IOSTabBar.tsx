@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
@@ -18,8 +19,11 @@ import {
   BarChart3,
   Search,
   X,
+  LayoutGrid,
 } from 'lucide-react';
 import { abrirBuscador, ATAJO_BUSCADOR } from './BuscadorOpciones';
+import { IOSModal } from './IOSModal';
+import { RESORTE } from './movimiento';
 import { LogoLalan } from './LogoLalan';
 import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
 import { EsferaLalan } from '../lalan/EsferaLalan';
@@ -41,6 +45,15 @@ const MODULO_DE_PESTANA: Partial<Record<ScreenName, ClaveModulo>> = {
   caja: 'caja',
   'price-lists': 'listas_precios',
 };
+
+/**
+ * Las que van fijas en la barra del teléfono, en este orden: lo que se toca
+ * veinte veces al día. Todo lo demás vive en el cajón «Más». Si el plan no
+ * trae alguna (un salón sin Sala), su hueco lo ocupa la siguiente del menú,
+ * así la barra no se queda con tres botones y un vacío.
+ */
+const FIJAS_EN_MOVIL: ScreenName[] = ['calendar', 'chats', 'sala', 'caja'];
+const CUANTAS_FIJAS = FIJAS_EN_MOVIL.length;
 
 export const IOSTabBar: React.FC = () => {
   const {
@@ -110,68 +123,22 @@ export const IOSTabBar: React.FC = () => {
   ];
   const tabs = todasLasPestanas.filter((t) => { const m = MODULO_DE_PESTANA[t.id]; return !m || tieneModulo(m); });
 
-  /**
-   * La barra de móvil ahora scrollea en horizontal, así que la pestaña activa
-   * puede quedar fuera de vista al navegar desde otro sitio (un botón de la
-   * pantalla, un badge). La traemos al centro sola: si hay que buscarla
-   * arrastrando, el scroll deja de ser una ayuda y pasa a ser un estorbo.
-   */
-  useEffect(() => {
-    const el = document.getElementById(`tab-btn-${currentScreen}`);
-    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  }, [currentScreen]);
-
-  /**
-   * Que la barra se pueda mover con el ratón, no solo con el dedo.
-   *
-   * En un PC con la ventana estrecha sale la barra de móvil, y ahí el ratón
-   * no tiene forma de llegar a los iconos de la derecha: la rueda desplaza
-   * la PÁGINA en vertical, no la barra en horizontal, y sin dedo no hay
-   * arrastre. Quedaban escondidos la mitad de los botones.
-   *
-   * Dos gestos, los dos sobre el mismo contenedor:
-   *   · la rueda mueve la barra en horizontal;
-   *   · se puede arrastrar con el botón izquierdo.
-   */
-  const barraRef = useRef<HTMLDivElement>(null);
-  const arrastre = useRef({ activo: false, desdeX: 0, desdeScroll: 0, movido: 0 });
-
-  const alRodar = (e: React.WheelEvent) => {
-    const el = barraRef.current;
-    if (!el) return;
-    // Un ratón normal solo manda deltaY; un trackpad manda los dos.
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-    if (!delta) return;
-    const antes = el.scrollLeft;
-    el.scrollLeft += delta;
-    // Solo se traga el evento si de verdad movió algo: en los extremos, que
-    // siga desplazando la página como espera cualquiera.
-    if (el.scrollLeft !== antes) e.preventDefault();
-  };
-
-  const alBajarPuntero = (e: React.PointerEvent) => {
-    // Solo ratón: con el dedo ya funciona el desplazamiento nativo, y
-    // capturarlo aquí lo estropearía.
-    if (e.pointerType !== 'mouse' || !barraRef.current) return;
-    arrastre.current = {
-      activo: true, desdeX: e.clientX,
-      desdeScroll: barraRef.current.scrollLeft, movido: 0,
-    };
-  };
-
-  const alMoverPuntero = (e: React.PointerEvent) => {
-    const el = barraRef.current;
-    if (!arrastre.current.activo || !el) return;
-    const avance = e.clientX - arrastre.current.desdeX;
-    arrastre.current.movido = Math.max(arrastre.current.movido, Math.abs(avance));
-    el.scrollLeft = arrastre.current.desdeScroll - avance;
-  };
-
-  const alSoltarPuntero = () => { arrastre.current.activo = false; };
-
-  /* Arrastrar no debe abrir la pantalla sobre la que se soltó el botón: si
-     el puntero recorrió más de unos píxeles, el clic era un arrastre. */
-  const fueArrastre = () => arrastre.current.movido > 6;
+  /* El teléfono: cuatro fijas y «Más». En la computadora el menú lateral
+     sigue mostrando todas. */
+  const fijas = [
+    ...FIJAS_EN_MOVIL.map((id) => tabs.find((t) => t.id === id)).filter((t): t is typeof tabs[number] => !!t),
+    ...tabs.filter((t) => !FIJAS_EN_MOVIL.includes(t.id)),
+  ].slice(0, CUANTAS_FIJAS);
+  const enElCajon = tabs.filter((t) => !fijas.includes(t));
+  const [cajonAbierto, setCajonAbierto] = useState(false);
+  /* «Más» se marca cuando la pantalla abierta está dentro del cajón, y lleva
+     la suma de lo que espera adentro: si no, un aviso en Plataforma quedaría
+     escondido detrás de una puerta cerrada. */
+  const masActivo = enElCajon.some((t) => t.id === currentScreen);
+  const avisosEnCajon = enElCajon.reduce((n, t) => n + (t.badge ?? 0), 0);
+  const cajonUrgente = enElCajon.some((t) => t.urgente && (t.badge ?? 0) > 0);
+  // Si otra cosa cambia de pantalla (un aviso, Lalan, el buscador), el cajón no se queda abierto encima
+  useEffect(() => { setCajonAbierto(false); }, [currentScreen]);
 
   const ytTrack = ytQueue[ytIndex];
   const ytActive = !!ytTrack;
@@ -466,74 +433,156 @@ export const IOSTabBar: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Tab bar */}
-        <div
+        {/* Tab bar: cinco botones que caben enteros, sin desplazar */}
+        <nav
           id="ios-bottom-tab-bar"
-          ref={barraRef}
-          onWheel={alRodar}
-          onPointerDown={alBajarPuntero}
-          onPointerMove={alMoverPuntero}
-          onPointerUp={alSoltarPuntero}
-          onPointerLeave={alSoltarPuntero}
-          className="w-full pt-1.5 pb-safe-tab glass-nav border-t border-slate-200/70 dark:border-neutral-800/80 overflow-x-auto overflow-y-hidden overscroll-none touch-pan-x hide-scrollbar"
-          style={{ WebkitOverflowScrolling: 'touch' }}
+          aria-label="Menú principal"
+          className="w-full pt-1.5 pb-safe-tab glass-nav border-t border-slate-200/70 dark:border-neutral-800/80"
         >
-          {/* `w-max` es lo que permite el scroll: sin él, flex reparte diez
-              iconos en el ancho del teléfono y quedan del tamaño de una uña.
-              Cada botón tiene ancho fijo y área táctil de 44px de alto. */}
-          <div className="flex items-center justify-between gap-1 w-max min-w-full px-2">
-            {tabs.map(tab => {
+          <div className="flex items-center justify-between gap-1 px-2">
+            {fijas.map(tab => (
+              <BotonBarra
+                key={tab.id}
+                id={`tab-btn-${tab.id}`}
+                medir={`Menú: ${tab.label}`}
+                label={tab.label}
+                icon={tab.icon}
+                activo={currentScreen === tab.id}
+                badge={tab.badge}
+                urgente={tab.urgente}
+                onClick={() => navigateTo(tab.id)}
+              />
+            ))}
+            {enElCajon.length > 0 && (
+              <BotonBarra
+                id="tab-btn-mas"
+                medir="Menú: Más"
+                label="Más"
+                icon={LayoutGrid}
+                activo={masActivo || cajonAbierto}
+                badge={avisosEnCajon > 0 ? avisosEnCajon : undefined}
+                urgente={cajonUrgente}
+                onClick={() => setCajonAbierto(true)}
+                aria-haspopup="dialog"
+                aria-expanded={cajonAbierto}
+              />
+            )}
+          </div>
+        </nav>
+      </div>
+
+      {/* El cajón «Más»: la misma hoja que sube desde abajo en el resto de la
+          app. Va colgada del <body> porque dentro del menú quedaría por debajo
+          de la esfera de Lalan (el menú tiene su propia capa, z-30). */}
+      {createPortal(<div className="lg:hidden">
+        <IOSModal
+          fijo
+          id="cajon-mas"
+          isOpen={cajonAbierto}
+          onClose={() => setCajonAbierto(false)}
+          title="Más opciones"
+          subtitle="Todo lo que no cabe en la barra"
+          fixedHeight={false}
+          height="80%"
+        >
+          <div className="grid grid-cols-3 gap-2.5">
+            {enElCajon.map((tab, i) => {
               const isActive = currentScreen === tab.id;
               const Icon = tab.icon;
               return (
-                <button
+                <motion.button
                   key={tab.id}
+                  type="button"
                   data-medir={`Menú: ${tab.label}`}
                   id={`tab-btn-${tab.id}`}
-                  onClick={() => { if (!fueArrastre()) navigateTo(tab.id); }}
-                  className="relative flex flex-col items-center justify-center shrink-0 w-[72px] min-h-[44px] rounded-xl py-1 group ios-touch cursor-pointer active:bg-slate-100 dark:active:bg-neutral-800/60 transition-colors"
+                  onClick={() => { setCajonAbierto(false); navigateTo(tab.id); }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0, transition: { ...RESORTE, delay: i * 0.03 } }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[84px] px-1 py-3 rounded-2xl border cursor-pointer ios-touch transition-colors ${
+                    isActive
+                      ? 'bg-[var(--primary)]/10 border-[var(--primary)]/40 text-[var(--primary)]'
+                      : 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200/80 dark:border-neutral-800 text-slate-700 dark:text-neutral-200 active:bg-slate-100 dark:active:bg-neutral-800'
+                  }`}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeTabIndicator"
-                      className="absolute -top-1 w-8 h-1 rounded-full bg-[var(--primary)] shadow-[0_0_12px_var(--primary)]"
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                    />
-                  )}
-                  <div className="relative">
-                    <Icon
-                      className={`w-[22px] h-[22px] transition-transform duration-200 ${
-                        isActive
-                          ? 'text-[var(--primary)] scale-110 stroke-[2.4]'
-                          : 'text-slate-500 dark:text-slate-400 stroke-[1.8] group-hover:text-slate-800 dark:group-hover:text-white'
-                      }`}
-                    />
+                  <span className="relative">
+                    <Icon className={`w-6 h-6 ${isActive ? 'stroke-[2.2]' : 'stroke-[1.8]'}`} />
                     {tab.badge !== undefined && tab.badge > 0 && (
-                      <span
-                        className={`absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 shadow-xs tabular-nums ${
-                          tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
-                        }`}
-                      >
+                      <span className={`absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 tabular-nums ${
+                        tab.urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
+                      }`}>
                         {insignia(tab.badge)}
                       </span>
                     )}
-                  </div>
-                  <span
-                    className={`text-[0.6875rem] font-semibold mt-1 tracking-tight transition-colors ${
-                      isActive
-                        ? 'text-[var(--primary)] font-bold'
-                        : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200'
-                    }`}
-                  >
-                    {tab.label}
                   </span>
-                </button>
+                  <span className={`text-[0.8125rem] leading-tight text-center ${isActive ? 'font-bold' : 'font-semibold'}`}>{tab.label}</span>
+                </motion.button>
               );
             })}
           </div>
-        </div>
-      </div>
+        </IOSModal>
+      </div>, document.body)}
 
     </div>
   );
 };
+
+/** Un botón de la barra del teléfono: icono, nombre, insignia y la rayita de la elegida */
+const BotonBarra: React.FC<{
+  id: string;
+  medir: string;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  activo: boolean;
+  badge?: number;
+  urgente?: boolean;
+  onClick: () => void;
+} & Pick<React.ButtonHTMLAttributes<HTMLButtonElement>, 'aria-haspopup' | 'aria-expanded'>> = ({
+  id, medir, label, icon: Icon, activo, badge, urgente, onClick, ...aria
+}) => (
+  <button
+    type="button"
+    data-medir={medir}
+    id={id}
+    onClick={onClick}
+    aria-current={activo && !aria['aria-haspopup'] ? 'page' : undefined}
+    {...aria}
+    className="relative flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] rounded-xl py-1 group ios-touch cursor-pointer active:bg-slate-100 dark:active:bg-neutral-800/60 transition-colors"
+  >
+    {activo && (
+      <motion.div
+        layoutId="activeTabIndicator"
+        className="absolute -top-1 w-8 h-1 rounded-full bg-[var(--primary)] shadow-[0_0_12px_var(--primary)]"
+        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+      />
+    )}
+    <div className="relative">
+      <Icon
+        className={`w-[22px] h-[22px] transition-transform duration-200 ${
+          activo
+            ? 'text-[var(--primary)] scale-110 stroke-[2.4]'
+            : 'text-slate-500 dark:text-slate-400 stroke-[1.8] group-hover:text-slate-800 dark:group-hover:text-white'
+        }`}
+      />
+      {badge !== undefined && badge > 0 && (
+        <span
+          className={`absolute -top-1.5 -right-2 min-w-[15px] h-3.5 px-1 rounded-full text-white text-[0.6875rem] font-extrabold flex items-center justify-center border border-white dark:border-neutral-900 shadow-xs tabular-nums ${
+            urgente ? 'bg-red-500' : 'bg-[var(--primary)]'
+          }`}
+        >
+          {insignia(badge)}
+        </span>
+      )}
+    </div>
+    <span
+      className={`text-[0.6875rem] font-semibold mt-1 tracking-tight truncate max-w-full transition-colors ${
+        activo
+          ? 'text-[var(--primary)] font-bold'
+          : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200'
+      }`}
+    >
+      {label}
+    </span>
+  </button>
+);
