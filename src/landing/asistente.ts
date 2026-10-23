@@ -15,6 +15,7 @@
 import { API, MODO_CALOR } from './api';
 import { registrar, visitaActual } from './medicion';
 import { decirConNavegador, hayVozNavegador } from './vozNavegador';
+import { abrirOtroNegocio } from './otroNegocio';
 
 type Rol = 'persona' | 'lalan';
 interface Mensaje { rol: Rol; texto: string; voz?: boolean }
@@ -238,6 +239,7 @@ export function iniciarAsistente(): void {
 
   const ejecutar = (a: Accion) => {
     if (a.tipo === 'ir') {
+      if (a.seccion === 'otro-negocio') abrirOtroNegocio();
       document.getElementById(a.seccion)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       dejarVer();
       return;
@@ -248,6 +250,7 @@ export function iniciarAsistente(): void {
       llenar('p-nombre', d.nombre); llenar('p-salon', d.negocio); llenar('p-telefono', d.telefono);
       llenar('p-ciudad', d.ciudad); llenar('p-mensaje', d.detalle);
     } else {
+      abrirOtroNegocio();
       llenar('o-telefono', d.telefono); llenar('o-negocio', d.negocio); llenar('o-detalle', d.detalle);
     }
     const seccion = document.getElementById(destino);
