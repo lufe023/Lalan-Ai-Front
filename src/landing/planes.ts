@@ -23,6 +23,8 @@ interface PlanPublico {
   limites: { respuestasMes: number | null; sedes: number | null; usuarios: number | null; especialistas: number | null; preguntasDia?: number | null };
   /** Lo que se puede hacer con las respuestas del mes (falta si el servidor es de antes) */
   respuestas?: { acumula: boolean; adelanto: number; extra: boolean; alAgotarse: 'persona' | 'menu' };
+  /** El precio al mes, solo si Plataforma lo marcó como público */
+  precio?: { monto: number; moneda: string } | null;
   /** El que Plataforma resalta como recomendado */
   destacado?: boolean;
   /** La prueba gratis de este plan; null = sin oferta */
@@ -86,6 +88,20 @@ function botonEnTresLineas(o: OfertaTexto): string {
   return `<span class="arriba">${escapar(t.arriba)}</span><span class="grande">${escapar(t.grande)}</span><span class="abajo">${escapar(t.abajo)}</span>`;
 }
 
+const WHATSAPP_EQUIPO = '18092299444';
+
+/** El precio si Plataforma lo publica; si no, «Precio a tu medida · Escríbenos» a WhatsApp con el plan */
+function precio(p: PlanPublico): string {
+  // Un plan de 0 con el precio público dice «Gratis», no «RD$0»
+  if (p.precio && p.precio.monto <= 0) return '<p class="precio-plan"><b>Gratis</b></p>';
+  if (p.precio) {
+    const simbolo = p.precio.moneda === 'DOP' ? 'RD$' : p.precio.moneda === 'USD' ? 'US$' : `${p.precio.moneda} `;
+    return `<p class="precio-plan"><b>${simbolo}${numero(Math.round(p.precio.monto))}</b> <span>/ mes</span></p>`;
+  }
+  const texto = encodeURIComponent(`Hola, quiero saber el precio del ${p.nombre} de Lalan AI.`);
+  return `<p class="precio-plan consulta">Precio a tu medida · <a href="https://wa.me/${WHATSAPP_EQUIPO}?text=${texto}" target="_blank" rel="noopener">Escríbenos</a></p>`;
+}
+
 function tarjeta(p: PlanPublico, destacado: boolean): string {
   // Cada cosa nueva con su explicación corta (solo el nombre dejaba las tarjetas como vacías).
   // Si el plan suma muchas, van solo los nombres: la lista ya es larga
@@ -99,6 +115,7 @@ function tarjeta(p: PlanPublico, destacado: boolean): string {
     ${destacado ? '<span class="sello-plan">Recomendado</span>' : ''}
     ${p.descripcion ? `<p class="para">${escapar(p.descripcion)}</p>` : ''}
     <h3>${escapar(p.nombre)}</h3>
+    ${precio(p)}
     ${cupo(p)}
     <p class="trae-titulo">Qué trae</p>
     <ul class="trae">${items.join('')}</ul>

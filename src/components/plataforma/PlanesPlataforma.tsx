@@ -3,6 +3,7 @@ import { Check, Loader2, Plus, Save, Infinity as SinLimite } from 'lucide-react'
 import { api } from '../../services/api';
 import { NOMBRE_RECURSO, RECURSOS, type AlAgotarse, type CatalogoModulos, type ClaveModulo, type Limites, type PaqueteExtra, type PlanLalan, type Recurso } from '../../types/plataforma';
 import { CostoRealIa } from './CostoRealIa';
+import { IOSToggle } from '../ui/IOSToggle';
 import { PaginaYOfertas } from './OfertasPlanes';
 
 const GRUPOS: { id: string; nombre: string }[] = [
@@ -14,7 +15,7 @@ type Borrador = Omit<PlanLalan, 'id' | 'clave' | 'negocios'> & { id?: string };
 const nuevo = (): Borrador => ({
   nombre: '', descripcion: '', precioMensual: 0, moneda: 'DOP', orden: 9, activo: true, modulos: [],
   limites: { mensajesMes: 400, sedes: 1, usuarios: 2, especialistas: 3, preguntasDia: 10 },
-  paquetes: [], alAgotarse: 'persona', enLanding: true, adelantoMaximo: null, acumulaSobrante: false, precioAdelanto: null,
+  paquetes: [], alAgotarse: 'persona', enLanding: true, precioPublico: false, adelantoMaximo: null, acumulaSobrante: false, precioAdelanto: null,
 });
 
 const AL_AGOTARSE: { id: AlAgotarse; nombre: string; descripcion: string }[] = [
@@ -74,7 +75,7 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
     const paquetes = (b.paquetes ?? []).filter((p) => p.respuestas > 0 && p.precio > 0);
     const cuerpo = {
       nombre: b.nombre, descripcion: b.descripcion || undefined, precioMensual: Number(b.precioMensual), moneda: b.moneda, orden: b.orden, activo: b.activo, modulos: b.modulos, limites: b.limites, paquetes,
-      alAgotarse: b.alAgotarse ?? 'persona', enLanding: b.enLanding ?? true,
+      alAgotarse: b.alAgotarse ?? 'persona', enLanding: b.enLanding ?? true, precioPublico: !!b.precioPublico,
       adelantoMaximo: b.adelantoMaximo || null, acumulaSobrante: !!b.acumulaSobrante, precioAdelanto: b.precioAdelanto ?? null,
     };
     try {
@@ -178,8 +179,12 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
         <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300">
           <input type="checkbox" checked={b.activo} onChange={(e) => setB({ ...b, activo: e.target.checked })} className="accent-[var(--primary)]" /> Se puede asignar a clientes nuevos
         </label>
-        <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300" title="Sin precio: la página nunca publica precios">
+        <label className="flex items-center gap-1.5 text-[0.8125rem] text-slate-600 dark:text-neutral-300" title="El precio sale solo si prendes «Mostrar precio en la página»">
           <input type="checkbox" checked={b.enLanding ?? true} onChange={(e) => setB({ ...b, enLanding: e.target.checked })} className="accent-[var(--primary)]" /> Sale en la página pública
+        </label>
+        <label className="flex items-center gap-2 text-[0.8125rem] text-slate-600 dark:text-neutral-300">
+          <IOSToggle checked={!!b.precioPublico} onChange={(v) => setB({ ...b, precioPublico: v })} ariaLabel="Mostrar precio en la página" />
+          <span>Mostrar precio en la página<span className="block text-[0.6875rem] text-slate-400">{b.precioPublico ? `Sale «${b.moneda === 'DOP' ? 'RD$' : 'US$'}${Number(b.precioMensual).toLocaleString('es-DO')} / mes».` : 'Sale «Precio a tu medida · Escríbenos».'}</span></span>
         </label>
         {negocios !== undefined && <span className="text-[0.75rem] text-slate-400">{negocios} {negocios === 1 ? 'cliente tiene' : 'clientes tienen'} este plan</span>}
         {aviso && <span className="text-[0.75rem] font-semibold text-[var(--primary)]">{aviso}</span>}

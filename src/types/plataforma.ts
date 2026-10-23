@@ -137,6 +137,8 @@ export interface PlanLalan {
   alAgotarse?: AlAgotarse;
   /** Si sale en la página pública */
   enLanding?: boolean;
+  /** Si la página muestra el precio de este plan (si no: «Precio a tu medida · Escríbenos») */
+  precioPublico?: boolean;
   /** El que la página resalta como recomendado (uno solo) */
   destacado?: boolean;
   /** Cuántas respuestas del mes siguiente puede adelantar la dueña (null = no puede) */

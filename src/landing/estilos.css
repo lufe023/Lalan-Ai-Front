@@ -621,6 +621,10 @@
   .plan .boton.oferta .grande { font-family: var(--serif); font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
   .plan .boton.oferta .abajo { font-size: .74rem; font-weight: 600; opacity: .8; }
   .plan .boton.claro.oferta .grande { color: var(--tinta); }
+  /* El precio (si Plataforma lo publica) o «Precio a tu medida · Escríbenos» */
+  .plan .precio-plan { margin-top: -6px; font-size: .86rem; color: var(--tinta-2); }
+  .plan .precio-plan b { font-family: var(--serif); font-size: 1.6rem; font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; }
+  .plan .precio-plan.consulta a { color: var(--rosa-hondo); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
   .plan .letra-chica { margin-top: -6px; font-size: .74rem; color: var(--tinta-3); text-align: center; }
   .puntos-planes { display: none; }
   .oferta-elegida { font-size: .8rem; color: var(--tinta-2); font-weight: 600; margin-top: -4px; }
