@@ -938,8 +938,11 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   cancellationNoticeHours: 4, // 4 horas de anticipación para cancelación
   maxAdvanceBookingDays: 30, // 30 días para agendar a futuro
   // Deposit & Bot
-  requireDeposit: true,
+  requireDeposit: false,
   depositPercent: 30,
+  datosDePago: '',
+  linkDePago: '',
+  adelantoPlazoMinutos: 120,
   aiAutoBooking: true,
   aiStrictSlots: true,
   aiTone: 'friendly_luxury',

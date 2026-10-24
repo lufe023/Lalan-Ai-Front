@@ -252,7 +252,16 @@ export interface Appointment {
   /** Moneda del precio de la cita (la de su servicio) */
   currencyCode?: string;
   selectedPriceTierName?: string;
+  /** El adelanto que una persona del salón registró que llegó (nunca un porcentaje supuesto) */
   depositPaid: number;
+  /** Cómo llegó: transferencia, tarjeta, efectivo, link de pago u otro */
+  depositMethod?: MetodoAdelanto | null;
+  depositReference?: string | null;
+  /** esperando = apartada sin adelanto · comprobante = mandó la foto, falta revisarla · pagado · vencido */
+  adelantoEstado?: EstadoAdelanto | null;
+  /** Hasta cuándo se le guarda el espacio sin adelanto */
+  adelantoVenceEn?: string | null;
+  adelantoRegistradoPor?: string | null;
   staffName: string;
   /** La especialista enlazada (si se eligió de la plantilla) */
   staffId?: string | null;
@@ -474,6 +483,12 @@ export interface SalonBusinessSettings {
   // Deposit & AI Booking rules
   requireDeposit: boolean;
   depositPercent: number; // e.g. 30%
+  /** Las cuentas a las que se paga el adelanto en esta sede. Lalan las copia tal cual */
+  datosDePago?: string;
+  /** Un link de pago fijo de la sede (https://…) */
+  linkDePago?: string;
+  /** Cuánto se le guarda la hora a quien no ha pagado el adelanto */
+  adelantoPlazoMinutos?: number;
   aiAutoBooking: boolean;
   /** false = la asistente no da ningún precio por chat (lo confirma el salón) */
   aiDaPrecios?: boolean;
@@ -550,3 +565,6 @@ export interface SystemLog {
   message: string;
   payload?: any;
 }
+
+export type MetodoAdelanto = 'transfer' | 'card' | 'cash' | 'link' | 'other';
+export type EstadoAdelanto = 'esperando' | 'comprobante' | 'pagado' | 'vencido';
