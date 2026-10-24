@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSedeActiva } from '../context/SedeActivaContext';
+import { AjustesAdelanto } from '../components/ajustes/AjustesAdelanto';
 import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
 import { CopiarDeSede } from '../components/ui/CopiarDeSede';
 import { recibeCitas } from '../utils/recibeCitas';
@@ -312,7 +313,6 @@ export const SettingsScreen: React.FC = () => {
     settings.defaultAppointmentDurationMinutes
   );
   const [gracePeriodMinutes, setGracePeriodMinutes] = useState(settings.gracePeriodMinutes);
-  const [depositPercent, setDepositPercent] = useState(settings.depositPercent);
 
   const handleChannelChange = (channelId: CommunicationChannel) => {
     setActiveMessageChannel(channelId);
@@ -337,7 +337,6 @@ export const SettingsScreen: React.FC = () => {
       bufferTimeMinutes,
       defaultAppointmentDurationMinutes,
       gracePeriodMinutes,
-      depositPercent,
     });
   };
 
@@ -649,26 +648,6 @@ export const SettingsScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* 4. Deposit Percentage */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Anticipo para Reservar (%)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={depositPercent}
-                    onChange={e => setDepositPercent(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-bold focus:outline-none"
-                  />
-                  <span className="font-bold text-slate-400 text-sm">%</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           <button
@@ -679,6 +658,9 @@ export const SettingsScreen: React.FC = () => {
             <span>Guardar Parámetros de Negocio</span>
           </button>
         </form>
+
+        {/* El adelanto: cuánto, a dónde se paga y cuánto se guarda la hora */}
+        <AjustesAdelanto />
 
         {/* SECTION 3.4: ZONAS Y ESPECIALISTAS */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">

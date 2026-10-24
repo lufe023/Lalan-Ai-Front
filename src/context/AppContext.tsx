@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  Appointment, AppointmentStatus, AvisoCita, BotChannelConfig, ChatMessage,
+  Appointment, AppointmentStatus, AvisoCita, MetodoAdelanto, BotChannelConfig, ChatMessage,
   Client, CommunicationChannel, Conversation, LoungeTrack, ServiceCategory,
   SalonBusinessSettings, SalonProduct, SalonService, SystemLog, CategoriaCatalogo, TipoCategoria, PapelEnLounge, LineaDeReceta,
 } from '../types';
@@ -345,6 +345,10 @@ interface AppContextType {
    */
   /** Con `avisar`, el servidor le escribe a la clienta desde el número de Lalan y dice cómo le llegó */
   confirmarCita: (id: string, staffId?: string | null, forzar?: boolean, avisar?: boolean) => Promise<{ cita: Appointment; aviso: AvisoCita | null }>;
+  /** Registrar el adelanto que llegó (lo vio en su banco). Si estaba por confirmar, queda confirmada */
+  registrarAdelanto: (id: string, datos: { monto: number; metodo: MetodoAdelanto; referencia?: string; avisar?: boolean }) => Promise<{ cita: Appointment; aviso: AvisoCita | null }>;
+  /** Mandó un comprobante pero el dinero no está: vuelve a quedar apartada y se le pregunta */
+  adelantoNoLlego: (id: string) => Promise<void>;
   /** Pregunta en pantalla y espera la respuesta: el id de la opción, o null si la cierran */
   preguntar: (c: Consulta) => Promise<string | null>;
   consulta: (Consulta & { responder: (id: string | null) => void }) | null;
@@ -824,6 +828,9 @@ function mapApiAppointment(a: any): Appointment {
     durationMinutes: a.durationMinutes, bufferMinutes: a.bufferMinutes,
     price: Number(a.price), currencyCode: a.currencyCode, selectedPriceTierName: a.selectedPriceTierName,
     depositPaid: Number(a.depositPaid ?? 0), staffName: a.staffName,
+    depositMethod: a.depositMethod ?? null, depositReference: a.depositReference ?? null,
+    adelantoEstado: a.adelantoEstado ?? null, adelantoVenceEn: a.adelantoVenceEn ?? null,
+    adelantoRegistradoPor: a.adelantoRegistradoPor ?? null,
     status: a.status, channel: a.channel, notes: a.notes, createdAt: a.createdAt,
     startsAt: a.startsAt, completedAt: a.completedAt ?? undefined,
     arrivedAt: a.arrivedAt ?? undefined, originalStartsAt: a.originalStartsAt ?? undefined,
@@ -1465,6 +1472,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cita = mapApiAppointment(res);
     setAppointments(a => a.map(x => (x.id === id ? { ...x, ...cita } : x)));
     return { cita, aviso: (res?.aviso as AvisoCita | undefined) ?? null };
+  }, []);
+
+  const registrarAdelanto = useCallback(async (id: string, datos: { monto: number; metodo: MetodoAdelanto; referencia?: string; avisar?: boolean }) => {
+    const res = await api.post<any>(`/appointments/${id}/adelanto`, { ...datos, confirmar: true });
+    const cita = mapApiAppointment(res);
+    setAppointments(a => a.map(x => (x.id === id ? { ...x, ...cita } : x)));
+    return { cita, aviso: (res?.aviso as AvisoCita | undefined) ?? null };
+  }, []);
+
+  const adelantoNoLlego = useCallback(async (id: string) => {
+    const res = await api.post<{ venceEn: string }>(`/appointments/${id}/adelanto/no-llego`, {});
+    setAppointments(a => a.map(x => (x.id === id ? { ...x, adelantoEstado: 'esperando', adelantoVenceEn: res?.venceEn ?? null } : x)));
   }, []);
 
   /**
@@ -2945,7 +2964,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, preciosServicioEnSedes, preciosProductoEnSedes,
       ponerFotoServicio, quitarFotoServicio, ponerFotoProducto, quitarFotoProducto, galeriaServicio, galeriaProducto,
       products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
-      appointments, addAppointment, updateAppointmentStatus, confirmarCita, deleteAppointment,
+      appointments, addAppointment, updateAppointmentStatus, confirmarCita, registrarAdelanto, adelantoNoLlego, deleteAppointment,
       preguntar, consulta,
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,

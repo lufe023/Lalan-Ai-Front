@@ -18,6 +18,10 @@ const VIA: Record<NonNullable<AvisoCita['via']>, string> = {
 
 /** De dónde llegó, dicho para quien la confirma */
 function deDonde(a: Appointment, agente: string) {
+  // Apartada esperando el adelanto: confirmar aquí es confirmarla sin él (lo normal es registrarlo arriba)
+  if (a.adelantoEstado === 'esperando' || a.adelantoEstado === 'comprobante') {
+    return 'Está apartada esperando el adelanto. Si la confirmas aquí, queda confirmada sin adelanto.';
+  }
   if (a.channel === 'vitrina') return 'La clienta la reservó sola desde la Vitrina.';
   if (a.bookedByAssistant) return `La agendó ${agente} por el chat y quedó sin confirmar.`;
   return 'Quedó sin confirmar.';

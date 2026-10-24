@@ -34,6 +34,7 @@ import { SelectorHora } from '../components/ui/SelectorHora';
 import { CitasPendientes, citasPendientes } from '../components/agenda/CitasPendientes';
 import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
 import { ConfirmarCita, sinEspecialista } from '../components/agenda/ConfirmarCita';
+import { AdelantoCita } from '../components/agenda/AdelantoCita';
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
@@ -243,8 +244,6 @@ export const CalendarScreen: React.FC = () => {
     if (!newClientName || (fueraDeHorario && !forzar) || agendando) return;
     const selectedSrv = services.find(s => s.id === newServiceId) || services[0];
     const finalPrice = customPrice !== null ? customPrice : (selectedSrv.priceTiers?.[0]?.price ?? selectedSrv.price ?? 0);
-    // El anticipo que dice Ajustes: si no se pide o es 0 %, no hay anticipo
-    const deposit = settings.requireDeposit ? Math.round(finalPrice * ((settings.depositPercent || 0) / 100)) : 0;
     const fullServiceName = selectedTierName ? `${selectedSrv.name} (${selectedTierName})` : selectedSrv.name;
     setErrorAlAgendar(null);
     setAgendando(true);
@@ -266,7 +265,8 @@ export const CalendarScreen: React.FC = () => {
       price: finalPrice,
       // El precio va en la moneda del servicio; el sistema lo convierte al cobrar
       currencyCode: selectedSrv.currencyCode,
-      depositPaid: deposit,
+      // El adelanto no se supone: se registra en la cita cuando de verdad llega
+      depositPaid: 0,
       staffId: newStaff || undefined,
       staffName: (especialistas ?? []).find(e => e.id === newStaff)?.name ?? 'Por asignar',
       // La confirma quien la agenda; el backend la guarda a su nombre
@@ -503,7 +503,8 @@ export const CalendarScreen: React.FC = () => {
           const ocupado = accion !== null;
           const timing = getAppointmentTiming(activeAppointment);
           const total = Number(activeAppointment.price ?? 0);
-          const anticipo = Number(activeAppointment.depositPaid ?? 0);
+          // Solo el adelanto que alguien registró: las citas viejas guardaban el % como si estuviera pagado
+          const anticipo = activeAppointment.adelantoEstado === 'pagado' ? Number(activeAppointment.depositPaid ?? 0) : 0;
           const falta = Math.max(0, total - anticipo);
 
           /**
@@ -604,6 +605,13 @@ export const CalendarScreen: React.FC = () => {
                 </div>
                 <div className="shrink-0">{getStatusBadge(activeAppointment.status, activeAppointment)}</div>
               </div>
+
+              {/* ── El adelanto: apartada, comprobante por revisar o registrado ── */}
+              <AdelantoCita
+                key={`adelanto-${activeAppointment.id}`}
+                cita={activeAppointment}
+                onCambio={(c) => setActiveAppointment((a) => (a && a.id === c.id ? { ...a, ...c } : a))}
+              />
 
               {/* ── Por confirmar: aquí mismo, con quién la atiende si no tiene ── */}
               {(activeAppointment.status === 'pending' || recienConfirmada === activeAppointment.id) && (
@@ -963,12 +971,14 @@ export const CalendarScreen: React.FC = () => {
             <textarea rows={2} placeholder="Ej: Glitter, alergia a acrílico..." value={newNotes} onChange={e => setNewNotes(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none" />
           </div>
-          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between text-[0.75rem]">
-            <span className="text-slate-500 dark:text-neutral-400">Anticipo ({settings.depositPercent || 30}%):</span>
-            <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-              ${Math.round((() => { const srv = services.find(s => s.id === newServiceId); return customPrice !== null ? customPrice : (srv?.priceTiers?.[0]?.price ?? srv?.price ?? 0); })() * ((settings.depositPercent || 30) / 100))}
-            </span>
-          </div>
+          {settings.requireDeposit && (settings.depositPercent || 0) > 0 && (
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-200/60 dark:border-neutral-700/60 flex items-center justify-between gap-2 text-[0.75rem]">
+              <span className="text-slate-500 dark:text-neutral-400">Adelanto que se pide ({settings.depositPercent} %). Regístralo en la cita cuando llegue:</span>
+              <span className="font-extrabold text-slate-800 dark:text-neutral-100 tabular-nums">
+                {dinero(Math.round((() => { const srv = services.find(s => s.id === newServiceId); return customPrice !== null ? customPrice : (srv?.priceTiers?.[0]?.price ?? srv?.price ?? 0); })() * settings.depositPercent) / 100, services.find(s => s.id === newServiceId)?.currencyCode)}
+              </span>
+            </div>
+          )}
           {fueraDeHorario && puedeForzarHorario && (
             <button type="button" disabled={agendando || !newClientName} onClick={e => void handleCreateAppointment(e, true)}
               className="w-full py-2.5 rounded-xl border border-violet-300 dark:border-violet-800 text-violet-700 dark:text-violet-300 text-xs font-bold ios-touch cursor-pointer disabled:opacity-40">

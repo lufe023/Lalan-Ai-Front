@@ -446,8 +446,8 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
       bufferMinutes: 10,
       price: customPrice || srv.price,
       selectedPriceTierName: selectedTierName || undefined,
-      // El anticipo que dice Ajustes (0 si no se pide), no un 30 % fijo
-      depositPaid: settings.requireDeposit ? Math.round((customPrice || srv.price) * (settings.depositPercent || 0) / 100) : 0,
+      // El adelanto no se supone: se registra en la cita cuando de verdad llega
+      depositPaid: 0,
       staffName: newStaff,
       // La confirma quien la agenda; el backend la guarda a su nombre
       status: 'confirmed',
@@ -1157,9 +1157,14 @@ export const CalendarExtendedScreen: React.FC<{ onBackToClassic?: () => void }> 
                 <p className="font-extrabold text-slate-900 dark:text-white mt-0.5 text-sm">
                   {dinero(activeAppointment.price, activeAppointment.currencyCode)}
                 </p>
-                <p className="text-[0.6875rem] text-emerald-600 font-semibold mt-0.5">
-                  Anticipo pagado: {dinero(activeAppointment.depositPaid, activeAppointment.currencyCode)}
-                </p>
+                {/* Solo el adelanto que alguien registró que llegó */}
+                {activeAppointment.adelantoEstado === 'pagado' && activeAppointment.depositPaid > 0 ? (
+                  <p className="text-[0.6875rem] text-emerald-600 font-semibold mt-0.5">
+                    Anticipo pagado: {dinero(activeAppointment.depositPaid, activeAppointment.currencyCode)}
+                  </p>
+                ) : (
+                  <p className="text-[0.6875rem] text-slate-400 font-semibold mt-0.5">Sin adelanto registrado</p>
+                )}
               </div>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700">
