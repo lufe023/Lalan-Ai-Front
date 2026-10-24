@@ -86,7 +86,7 @@ export function iniciarAsistente(): void {
   raiz.className = 'asis';
   raiz.innerHTML = `
     <div class="asis-invita" hidden><button type="button" class="asis-invita-x" aria-label="Cerrar">×</button>
-      <span>Amiga, ¿te cuento cómo llenar tu agenda mientras duermes? 💅</span></div>
+      <span>¿Te cuento cómo llenar tu agenda mientras duermes? 💅</span></div>
     <button type="button" class="asis-lanzar" aria-expanded="false" aria-controls="asis-panel">
       <span class="asis-logo">${LOGO}</span><span class="asis-lanzar-txt">¿Preguntas? Habla con Lalan</span><i class="asis-punto" hidden></i>
     </button>

@@ -177,7 +177,7 @@ const Inicio: React.FC<{ nombre?: string; estado: EstadoBienvenida; onEmpezar: (
       <div className="w-14 h-14 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-7 h-7" /></div>
       <div className="space-y-1.5">
         <h2 className="text-[1.5rem] font-extrabold leading-tight text-slate-900 dark:text-white">
-          {empezado ? `Sigamos${nombre ? `, ${nombre}` : ''}` : `¡Bienvenida${nombre ? `, ${nombre}` : ''}!`}
+          {empezado ? `Sigamos${nombre ? `, ${nombre}` : ''}` : `¡Hola${nombre ? `, ${nombre}` : ''}!`}
         </h2>
         <p className="text-[0.9375rem] leading-snug text-slate-500 dark:text-neutral-400">
           {empezado
