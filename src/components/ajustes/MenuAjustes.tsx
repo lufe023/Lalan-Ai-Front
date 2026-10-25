@@ -56,9 +56,9 @@ export const MenuAjustes: React.FC<{ rol?: UserRole; onAbrir: (s: SeccionAjustes
       const Icono = g.icono;
       return (
         <motion.button key={g.id} type="button" onClick={() => onAbrir(g.id)} data-guia={`ajustes-${g.id}`}
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...RESORTE, delay: i * 0.03 }}
+          initial={false} style={{ animationDelay: `${i * 0.03}s`, ['--entrar-y' as string]: '8px' }}
           whileTap={{ scale: 0.985, backgroundColor: 'rgba(148,163,184,0.12)' }}
-          className="w-full px-3.5 py-3 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-neutral-800/60 ios-touch cursor-pointer">
+          className="entrar-suave w-full px-3.5 py-3 flex items-center gap-3 text-left hover:bg-slate-50 dark:hover:bg-neutral-800/60 ios-touch cursor-pointer">
           <span className={`w-8 h-8 rounded-xl ${g.color} text-white flex items-center justify-center shrink-0`}><Icono className="w-4 h-4" /></span>
           <span className="flex-1 min-w-0">
             <span className="block text-[0.875rem] font-bold text-slate-900 dark:text-white">{g.titulo}</span>

@@ -99,7 +99,7 @@ const ProductosLentos: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
                   {filas.map((f, i) => (
-                    <motion.tr key={f.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ ...RESORTE, delay: Math.min(i, 12) * 0.025 }}>
+                    <motion.tr key={f.id} initial={false} className="entrar-suave" style={{ animationDelay: `${Math.min(i, 12) * 0.025}s`, ['--entrar-y' as string]: '0px', ['--entrar-escala' as string]: 1 }}>
                       <td className="py-2 pr-3"><div className="font-semibold">{f.nombre}</div><div className="text-[0.6875rem] text-slate-400">{f.categoria}{f.insumo ? ' · insumo' : ''}</div></td>
                       <td className="py-2 pr-3"><span className={`px-2 py-0.5 rounded-full text-[0.6875rem] font-bold whitespace-nowrap ${ESTADO[f.estado].clase}`}>{ESTADO[f.estado].texto}</span></td>
                       <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">{f.existencia} {UNIDAD[f.unidad] ?? f.unidad}</td>
@@ -133,9 +133,8 @@ export const InformesScreen: React.FC = () => {
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {accesos.map((a, i) => (
             <motion.button key={a.pantalla} type="button" onClick={() => navigateTo(a.pantalla)} data-medir={`Informes: ${a.titulo}`}
-              initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ ...RESORTE, delay: i * 0.05 }} whileTap={{ scale: 0.97 }} whileHover={{ y: -3 }}
-              className="text-left rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-[var(--primary)] hover:shadow-md transition-[border-color,box-shadow] cursor-pointer flex flex-col gap-2">
+              initial={false} transition={RESORTE} style={{ animationDelay: `${i * 0.05}s`, ['--entrar-y' as string]: '16px' }} whileTap={{ scale: 0.97 }} whileHover={{ y: -3 }}
+              className="entrar-suave text-left rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-[var(--primary)] hover:shadow-md transition-[border-color,box-shadow] cursor-pointer flex flex-col gap-2">
               <span className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><a.icono className="w-5 h-5" /></span>
               <span className="text-sm font-bold">{a.titulo}</span>
               <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex-1">{a.texto}</span>
