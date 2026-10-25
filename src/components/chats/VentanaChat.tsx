@@ -225,7 +225,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
     return (
       <section
         aria-label={`Chat con ${activeConversation.clientName}`}
-        className={`w-[360px] flex flex-col rounded-t-2xl shadow-2xl overflow-hidden border border-b-0 border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark] ${minimizada ? '' : 'h-[min(520px,calc(100vh-96px))]'}`}
+        className={`w-[360px] flex flex-col rounded-t-2xl shadow-2xl overflow-hidden border border-b-0 border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark] ${minimizada ? '' : 'h-[min(820px,calc(100vh-120px))]'}`}
       >
         <div
           className="px-3 py-2 flex items-center gap-2 border-b border-slate-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 shrink-0 cursor-pointer select-none"
