@@ -44,7 +44,7 @@ export const AlergiasEnGrupos: React.FC<{ clienteId: string; texto: string | nul
   }
 
   return (
-    <div className="p-3 rounded-xl border border-amber-500/25 space-y-2">
+    <div id="alergias-clienta" className="p-3 rounded-xl border border-amber-500/25 space-y-2">
       {modalConfirmar}
       <div className="flex items-center gap-1.5 font-bold text-[0.75rem] text-amber-700 dark:text-amber-300">
         <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />

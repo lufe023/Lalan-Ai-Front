@@ -86,6 +86,17 @@ export interface VinculoProducto {
   lleva: ComponenteEnProducto[];
   enRiesgo: { clientas: number; citas: number; avisos: string[] };
 }
+/** Lo que trae el aviso de una cita para actuar ahí mismo: su ficha y cada alergia por su nombre */
+export interface AvisosDeCita {
+  grupos: string[];
+  avisos: AvisoAlergia[];
+  clientId: string | null;
+  alergias: { clave: string; nombre: string; confirmada: boolean }[];
+}
+
+/** La cita pide abrir la ficha de una clienta: Clientas la abre al montarse */
+export const ABRIR_CLIENTA = 'lalan.abrirClienta';
+
 export interface AvisoAlergia {
   productId: string; producto: string; conocido: string | null; nivel: NivelAviso; grupo: string | null; componente: string | null; marcas: string[];
   texto: string; revisado: { por: string; en: string } | null;
@@ -101,6 +112,6 @@ export const saberProductosApi = {
   riesgosDeServicio: (serviceId: string) => api.get<{ productId: string; producto: string; conocido: string; componentes: ComponenteEnProducto[] }[]>(`/saber-productos/servicios/${serviceId}/riesgos`),
   alergias: (clientId: string) => api.get<AlergiasClienta>(`/saber-productos/clientas/${clientId}/alergias`),
   marcarAlergia: (clientId: string, grupo: string, estado: 'confirmada' | 'descartada' | null) => api.put<AlergiasClienta>(`/saber-productos/clientas/${clientId}/alergias`, { grupo, estado }),
-  avisosDeCita: (citaId: string) => api.get<{ grupos: string[]; avisos: AvisoAlergia[] }>(`/saber-productos/citas/${citaId}/avisos`),
+  avisosDeCita: (citaId: string) => api.get<AvisosDeCita>(`/saber-productos/citas/${citaId}/avisos`),
   revisado: (citaId: string, productId: string) => api.post<{ ok: true }>(`/saber-productos/citas/${citaId}/revisado`, { productId }),
 };

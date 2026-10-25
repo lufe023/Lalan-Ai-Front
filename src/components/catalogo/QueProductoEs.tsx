@@ -38,7 +38,9 @@ export const QueProductoEs: React.FC<{
   productId: string | null;
   nombre: string;
   onPendiente?: (v: VinculoPendiente) => void;
-}> = ({ productId, nombre, onPendiente }) => {
+  /** Se guardó el vínculo o la marca (para recargar lo que dependa de eso, como el aviso de la cita) */
+  onVinculado?: () => void;
+}> = ({ productId, nombre, onPendiente, onVinculado }) => {
   const [v, setV] = useState<VinculoProducto | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [q, setQ] = useState('');
@@ -85,7 +87,7 @@ export const QueProductoEs: React.FC<{
       return;
     }
     setGuardando(true);
-    try { setV(await saberProductosApi.vincular(productId, { productoConocidoId })); } finally { setGuardando(false); }
+    try { setV(await saberProductosApi.vincular(productId, { productoConocidoId })); onVinculado?.(); } finally { setGuardando(false); }
   };
 
   const guardarMarca = async (m: string) => {
@@ -93,6 +95,7 @@ export const QueProductoEs: React.FC<{
     if (!productId) { avisar(elegido?.id ?? (v?.sugerido && !descartada ? v.sugerido.id : null), m.trim() || null); return; }
     if ((v?.marca ?? '') === m.trim()) return;
     setV(await saberProductosApi.vincular(productId, { productoConocidoId: v?.actual?.id ?? null, marca: m.trim() || null }));
+    onVinculado?.();
   };
 
   // Lo que hay ahora mismo: confirmado (guardado) o elegido (nuevo)

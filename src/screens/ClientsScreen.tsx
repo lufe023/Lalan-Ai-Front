@@ -46,6 +46,7 @@ import { ChipsFiltro, ItemAnimado, ListaAnimada, NumeroAnimado } from '../compon
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { hora12 } from '../utils/hora';
 import { SedesDeClienta } from '../components/ui/SedesDeClienta';
+import { ABRIR_CLIENTA } from '../services/saberProductos';
 
 /** Cómo le habla Lalan en el chat. Sin saber: neutro */
 const OPCIONES_TRATO: { id: TratoCliente | null; label: string }[] = [
@@ -108,6 +109,17 @@ export const ClientsScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('all');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  // Otra pantalla (el aviso de alergia de una cita) pidió abrir la ficha de una clienta, en sus alergias
+  useEffect(() => {
+    let id: string | null = null;
+    try { id = sessionStorage.getItem(ABRIR_CLIENTA); } catch { /* sin almacenamiento */ }
+    if (!id) return;
+    const c = clients.find((x) => x.id === id);
+    if (!c) return; // aún cargando: se intenta de nuevo cuando lleguen
+    try { sessionStorage.removeItem(ABRIR_CLIENTA); } catch { /* nada */ }
+    setSelectedClient(c);
+    setTimeout(() => document.getElementById('alergias-clienta')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
+  }, [clients]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string }>({});
