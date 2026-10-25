@@ -208,19 +208,22 @@ const MainAppContent: React.FC = () => {
 
               {/* Screen transitions */}
               <div className="flex-1 overflow-hidden flex flex-col relative">
-                {/* Cambiar de pestaña como en el iPhone: la pantalla nueva aparece
-                    encima de la vieja con un fundido corto, sin dejar un instante
-                    la app en blanco (con mode="wait" se iba la vieja, quedaba el
-                    hueco y luego subía la nueva: se veía como un parpadeo).
-                    popLayout saca la vieja del flujo mientras se desvanece */}
+                {/* Cambiar de pestaña: la pantalla nueva sube y se asienta con resorte
+                    ENCIMA de la vieja, que se queda quieta debajo hasta que la nueva
+                    la tapa. Así nunca hay un instante en blanco (con mode="wait" la
+                    vieja se iba primero y quedaba el hueco) ni la vieja se apaga a
+                    medias (se veían las dos pantallas mezcladas). La nueva lleva el
+                    fondo de la app para tapar del todo. popLayout saca la vieja del
+                    flujo; zIndex 0 la deja debajo. */}
                 <AnimatePresence initial={false} mode="popLayout">
                   <motion.div
                     key={currentScreen}
                     data-pantalla={currentScreen}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { duration: 0.16, ease: 'easeOut' } }}
-                    exit={{ opacity: 0, transition: { duration: 0.16, ease: 'easeIn' } }}
-                    className="w-full flex-1 min-h-0 flex flex-col"
+                    initial={{ opacity: 0, y: 14, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 380, damping: 32, mass: 0.8 } }}
+                    exit={{ zIndex: 0, transition: { duration: 0.3, zIndex: { duration: 0 } } }}
+                    style={{ zIndex: 1 }}
+                    className="relative w-full flex-1 min-h-0 flex flex-col bg-[#f8fafc] dark:bg-[#09090b]"
                   >
                     {renderCurrentScreen()}
                   </motion.div>
