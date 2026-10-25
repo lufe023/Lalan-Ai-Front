@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import {
   Calendar as CalendarIcon,
   CalendarDays,
@@ -176,18 +176,20 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
     return map;
   }, [events]);
 
-  // Auto-scroll selected item into center
-  useEffect(() => {
+  // Auto-scroll selected item into center.
+  // Al abrir la Agenda la cinta ya aparece en el día; antes se deslizaba desde
+  // el principio del mes cada vez que se entraba. Después, con suavidad.
+  // ('instant' y no 'auto': la cinta lleva scroll-smooth, y 'auto' lo obedece)
+  const cintaUbicada = useRef(false);
+  useLayoutEffect(() => {
     if (!scrollRibbonRef.current) return;
-    if (granularity === 'days') {
-      const el =
-        (scrollRibbonRef.current.querySelector('[data-selected-day="true"]') as HTMLElement) ||
-        (scrollRibbonRef.current.querySelector('[data-in-active-week="true"]') as HTMLElement);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    } else {
-      const el = scrollRibbonRef.current.querySelector('[data-selected="true"]') as HTMLElement;
-      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
+    const el = granularity === 'days'
+      ? ((scrollRibbonRef.current.querySelector('[data-selected-day="true"]') as HTMLElement) ||
+         (scrollRibbonRef.current.querySelector('[data-in-active-week="true"]') as HTMLElement))
+      : (scrollRibbonRef.current.querySelector('[data-selected="true"]') as HTMLElement);
+    if (!el) return;
+    el.scrollIntoView({ behavior: cintaUbicada.current ? 'smooth' : 'instant', block: 'nearest', inline: 'center' });
+    cintaUbicada.current = true;
   }, [granularity, selectedDateStr, selectedWeekIndex, currentMonthIndex, currentYear]);
 
   const scrollRibbon = (direction: 'left' | 'right') => {

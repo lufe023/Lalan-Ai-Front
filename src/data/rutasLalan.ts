@@ -80,7 +80,7 @@ export function elementoDelPaso(p: PasoGuia): HTMLElement | null {
 
 /** Lo que se desplaza de la pantalla del paso (donde se midió el punto) */
 export function desplazableDe(pantalla: string | undefined): HTMLElement | null {
-  return document.querySelector<HTMLElement>(pantalla ? `[data-pantalla="${pantalla}"] [data-desplazable]` : '[data-pantalla] [data-desplazable]');
+  return document.querySelector<HTMLElement>(pantalla ? `[data-pantalla="${pantalla}"] [data-desplazable]` : '[data-pantalla]:not([data-motion-pop-id]) [data-desplazable]');
 }
 
 /** El punto grabado: dónde queda en la pantalla y cuánto hay que desplazar para verlo */

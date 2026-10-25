@@ -255,10 +255,11 @@ export const SalaScreen: React.FC = () => {
   }, [editando]);
 
   // Hasta que lleguen las zonas no se sabe si faltan: sin esto, el aviso de
-  // "Todavía no hay zonas" se asomaba un instante al abrir la Sala y se iba
+  // "Todavía no hay zonas" se asomaba un instante al abrir la Sala y se iba.
+  // Si el servidor falla tampoco se afirma que no hay
   const [zonasListas, setZonasListas] = useState(zonas.length > 0);
   useEffect(() => {
-    void loadZonas().finally(() => setZonasListas(true));
+    void loadZonas().then(setZonasListas);
     void loadEspecialistas();
   }, [loadZonas, loadEspecialistas]);
 

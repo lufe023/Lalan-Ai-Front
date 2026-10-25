@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { RESORTE } from '../ui/movimiento';
 import {
@@ -224,25 +224,20 @@ export const CascadingRibbonCalendar = <T extends CalendarEventBase>({
     return map;
   }, [events]);
 
-  // Auto-scroll ribbon to active item whenever selection or granularity changes.
-  // Al abrir la Agenda la cinta ya aparece en el día (antes se deslizaba desde
-  // el principio del mes cada vez que se entraba); después, con suavidad.
-  const cintaUbicada = useRef(false);
-  useLayoutEffect(() => {
-    const behavior: ScrollBehavior = cintaUbicada.current ? 'smooth' : 'instant';
-    cintaUbicada.current = true;
+  // Auto-scroll ribbon to active item whenever selection or granularity changes
+  useEffect(() => {
     if (scrollRibbonRef.current) {
       if (granularity === 'days') {
         const selectedDayEl = scrollRibbonRef.current.querySelector('[data-selected-day="true"]') as HTMLElement;
         const weekFirstEl = scrollRibbonRef.current.querySelector('[data-in-active-week="true"]') as HTMLElement;
         const targetEl = selectedDayEl || weekFirstEl;
         if (targetEl) {
-          targetEl.scrollIntoView({ behavior, block: 'nearest', inline: 'center' });
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
       } else {
         const activeEl = scrollRibbonRef.current.querySelector('[data-selected="true"]') as HTMLElement;
         if (activeEl) {
-          activeEl.scrollIntoView({ behavior, block: 'nearest', inline: 'center' });
+          activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
       }
     }
