@@ -254,7 +254,14 @@ export const SalaScreen: React.FC = () => {
     });
   }, [editando]);
 
-  useEffect(() => { void loadZonas(); void loadEspecialistas(); }, [loadZonas, loadEspecialistas]);
+  // Hasta que lleguen las zonas no se sabe si faltan: sin esto, el aviso de
+  // "Todavía no hay zonas" se asomaba un instante al abrir la Sala y se iba.
+  // Si el servidor falla tampoco se afirma que no hay
+  const [zonasListas, setZonasListas] = useState(zonas.length > 0);
+  useEffect(() => {
+    void loadZonas().then(setZonasListas);
+    void loadEspecialistas();
+  }, [loadZonas, loadEspecialistas]);
 
   /**
    * En vivo por socket, con sondeo lento de respaldo.
@@ -588,7 +595,7 @@ export const SalaScreen: React.FC = () => {
           {/* Sin zonas configuradas el sistema funciona, pero los códigos
               salen todos con prefijo T y la pantalla pierde la mitad de la
               gracia. Mejor decirlo una vez que dejarlo pasar. */}
-          {!zonasActivas.length && (
+          {zonasListas && !zonasActivas.length && (
             <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-xs font-bold text-amber-800 dark:text-amber-300">

@@ -438,7 +438,8 @@ interface AppContextType {
   salaCargando: boolean;
   loadSala: () => Promise<void>;
   zonas: SalonZone[];
-  loadZonas: () => Promise<void>;
+  /** true si llegaron; false si el servidor falló (las zonas se quedan vacías) */
+  loadZonas: () => Promise<boolean>;
   guardarZona: (dto: { id?: string; name: string; prefix: string; color?: string | null; sortOrder?: number; active?: boolean; serviceCategories?: ServiceCategory[]; sinServicios?: boolean }) => Promise<boolean>;
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
@@ -2666,8 +2667,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const loadZonas = useCallback(async () => {
-    try { setZonas(await api.get<SalonZone[]>('/salon/zones?todas=true') ?? []); }
-    catch { setZonas([]); }
+    try { setZonas(await api.get<SalonZone[]>('/salon/zones?todas=true') ?? []); return true; }
+    catch { setZonas([]); return false; }
   }, []);
 
   const loadEspecialistas = useCallback(async () => {
