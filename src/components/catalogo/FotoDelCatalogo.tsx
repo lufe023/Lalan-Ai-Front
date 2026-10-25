@@ -430,7 +430,7 @@ export const FotosDelCatalogo: React.FC<{
  * (o las teclas) para pasar de una a otra; Escape o tocar fuera la cierra. Se
  * ve entera, sin recortar; un video se reproduce con sus botones.
  */
-const VisorEnGrande: React.FC<{
+export const VisorEnGrande: React.FC<{
   abierto: boolean;
   fotos: FotoDeGaleria[];
   inicio: number;

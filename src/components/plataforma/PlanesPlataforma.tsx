@@ -126,6 +126,7 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
           {RECURSOS.map((r) => <Tope key={r} r={r} valor={b.limites[r]} onChange={(v) => limite(r, v)} />)}
           <Tope r={'preguntasDia' as Recurso} etiqueta="Preguntas a Lalan por persona al día" valor={b.limites.preguntasDia ?? null} onChange={(v) => setB((x) => ({ ...x, limites: { ...x.limites, preguntasDia: v } }))} />
+          <Tope r={'fotosClientesMB' as Recurso} etiqueta="Espacio de «Cómo quedó» (MB)" valor={b.limites.fotosClientesMB ?? null} onChange={(v) => setB((x) => ({ ...x, limites: { ...x.limites, fotosClientesMB: v } }))} />
         </div>
         <p className="text-[0.6875rem] text-slate-400 mt-1">Las respuestas cuentan solo lo que escribe la IA (los recordatorios no). Los informes de Lalan no cuentan como preguntas.</p>
       </div>
