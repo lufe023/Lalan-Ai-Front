@@ -221,7 +221,11 @@ export interface Client {
   lastVisitDate?: string;
   registeredDate: string;
   priceListId?: string;  // lista de precios asignada (undefined = default)
+  /** Cómo le habla Lalan. Sin valor: neutro (o masculino si el salón es solo barbería) */
+  trato?: TratoCliente | null;
 }
+
+export type TratoCliente = 'femenino' | 'masculino';
 
 /** confirmed = la confirmó una persona del salón; confirmed_by_ai = la asistente */
 export type AppointmentStatus = 'confirmed' | 'confirmed_by_ai' | 'attending' | 'completed' | 'cancelled' | 'pending';
