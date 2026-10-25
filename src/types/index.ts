@@ -487,6 +487,9 @@ export interface SalonBusinessSettings {
   tagline: string;
   phone: string;
   address: string;
+  /** País (ISO: "DO") y ciudad de la sede, para las estadísticas de mercado por zona */
+  pais?: string | null;
+  ciudad?: string | null;
   openingTime: string; // e.g. "09:00"
   closingTime: string; // e.g. "20:00"
   /** Cada día con su horario (cerrar un jueves, media jornada el sábado…) */

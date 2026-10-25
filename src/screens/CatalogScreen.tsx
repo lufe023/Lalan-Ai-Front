@@ -47,6 +47,9 @@ import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
 import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria';
 import { RecetaDelPreparado } from '../components/catalogo/RecetaDelPreparado';
+import { QueProductoEs, type VinculoPendiente } from '../components/catalogo/QueProductoEs';
+import { RiesgosDeReceta } from '../components/catalogo/RiesgosDeReceta';
+import { saberProductosApi } from '../services/saberProductos';
 import { MonedaDelPrecio } from '../components/catalogo/MonedaDelPrecio';
 import { useDinero } from '../hooks/useDinero';
 import { OfertasCatalogo } from '../components/catalogo/OfertasCatalogo';
@@ -134,6 +137,8 @@ export const CatalogScreen: React.FC = () => {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  /** Producto nuevo: qué genérico eligió la dueña (se guarda después de crearlo) */
+  const [vinculoNuevo, setVinculoNuevo] = useState<VinculoPendiente | null>(null);
   // La foto elegida para algo que todavía no existe: se sube al crearlo
   // Las fotos elegidas antes de crear el artículo: se suben al crearlo
   const [fotosNuevoServicio, setFotosNuevoServicio] = useState<FotoDeGaleria[]>([]);
@@ -363,6 +368,7 @@ export const CatalogScreen: React.FC = () => {
 
   const handleOpenAddProduct = () => {
     setEditingProductId(null);
+    setVinculoNuevo(null);
     setProductForm({
       name: '',
       ...primeraCategoria('product'),
@@ -575,6 +581,7 @@ export const CatalogScreen: React.FC = () => {
         const fallo = await subirFotos(fotosNuevoProducto, (c) => galeriaProducto(nuevo, c));
         if (fotosNuevoProducto.some(f => f.archivo)) void cargarVideos();
         if (fallo) showToast('El producto se creó con fotos de menos', `${fallo} Ponlas desde Editar.`, 'warning');
+        if (vinculoNuevo?.productoConocidoId) await saberProductosApi.vincular(nuevo, vinculoNuevo).catch(() => undefined);
       }
       // La receta va aparte: necesita que el producto ya exista
       if (productForm.preparedToOrder && id) {
@@ -1106,6 +1113,11 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
 
+              {editingServiceId && (
+                <RiesgosDeReceta serviceId={editingServiceId} version={ingredients.map(i => i.id ?? i.productId).join(',')}
+                  nombres={Object.fromEntries(ingredients.map(i => [i.productId, i.product?.name ?? '']))} />
+              )}
+
               {/* Save button */}
               <button
                 type="button"
@@ -1475,6 +1487,10 @@ export const CatalogScreen: React.FC = () => {
                 {TIPOS_DE_PRODUCTO.find(t => t.id === tipoDe(productForm))?.ayuda}
               </p>
             </div>
+
+            {!productForm.preparedToOrder && (
+              <QueProductoEs key={editingProductId ?? 'nuevo'} productId={editingProductId} nombre={productForm.name} onPendiente={setVinculoNuevo} />
+            )}
 
             <div>
               <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">

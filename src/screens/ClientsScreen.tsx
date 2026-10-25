@@ -29,6 +29,7 @@ import {
   Contact,
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
+import { AlergiasEnGrupos } from '../components/clientes/AlergiasEnGrupos';
 import { ComoQuedo } from '../components/clientes/ComoQuedo';
 import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
 import { ElegirFotoDeCanal } from '../components/clientes/ElegirFotoDeCanal';
@@ -843,6 +844,9 @@ export const ClientsScreen: React.FC = () => {
                 <p className="text-[0.75rem] leading-relaxed opacity-90">{selectedClient.medicalOrAllergyNotes}</p>
               </div>
             )}
+
+            {/* Las alergias en grupos: con ellas se avisa de los productos de cada servicio */}
+            <AlergiasEnGrupos clienteId={selectedClient.id} texto={selectedClient.medicalOrAllergyNotes} />
 
             {/* Datos que Lalan anotó de sus chats */}
             <LoQueLalanSabe clienteId={selectedClient.id} />

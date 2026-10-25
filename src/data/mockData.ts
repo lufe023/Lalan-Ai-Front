@@ -928,6 +928,8 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   tagline: 'Live Assistant for Logistics, Appointments & Networks',
   phone: '+52 (55) 8900-5252',
   address: 'Av. Paseo de las Palmas 720, Lomas de Chapultepec',
+  pais: null,
+  ciudad: null,
   openingTime: '09:00',
   closingTime: '20:00',
   horarioSemanal: [1, 2, 3, 4, 5, 6, 0].map(dia => ({ dia, abierto: true, tramos: [{ desde: '09:00', hasta: '20:00' }] })),

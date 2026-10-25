@@ -80,6 +80,14 @@ import { enSoporte } from '../services/soporte';
 import { DisenadorRecibo } from '../components/ajustes/DisenadorRecibo';
 
 /** Cómo se ve cada tipo de evento en la actividad reciente */
+/** Los países donde hay salones (o pronto): para las estadísticas de mercado por zona */
+const PAISES_SEDE = ['DO', 'PR', 'US', 'VE', 'CO', 'MX', 'PA', 'CR', 'GT', 'HN', 'SV', 'NI', 'EC', 'PE', 'CL', 'AR', 'UY', 'PY', 'BO', 'CU', 'ES'];
+const nombrePaisSede = (() => {
+  let dn: Intl.DisplayNames | null = null;
+  try { dn = new Intl.DisplayNames(['es'], { type: 'region' }); } catch { dn = null; }
+  return (c: string) => { try { return dn?.of(c) ?? c; } catch { return c; } };
+})();
+
 const ESTILO_ACTIVIDAD: Record<EventoActividad['tipo'], { titulo: string; clase: string }> = {
   entrada: { titulo: 'Escribió', clase: 'bg-sky-500/15 text-sky-700 dark:text-sky-300' },
   respuesta: { titulo: 'Respondió la asistente', clase: 'bg-purple-500/15 text-purple-700 dark:text-purple-300' },
@@ -312,6 +320,8 @@ export const SettingsScreen: React.FC = () => {
   // Business Parameters State
   const [salonName, setSalonName] = useState(settings.salonName);
   const [address, setAddress] = useState(settings.address);
+  const [pais, setPais] = useState(settings.pais ?? '');
+  const [ciudad, setCiudad] = useState(settings.ciudad ?? '');
   const [phone, setPhone] = useState(settings.phone);
   const [bufferTimeMinutes, setBufferTimeMinutes] = useState(settings.bufferTimeMinutes);
   const [defaultAppointmentDurationMinutes, setDefaultAppointmentDurationMinutes] = useState(
@@ -338,6 +348,8 @@ export const SettingsScreen: React.FC = () => {
     updateSettings({
       salonName,
       address,
+      pais: pais || null,
+      ciudad: ciudad.trim() || null,
       phone,
       bufferTimeMinutes,
       defaultAppointmentDurationMinutes,
@@ -544,6 +556,31 @@ export const SettingsScreen: React.FC = () => {
               onChange={e => setAddress(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">País</label>
+              <select
+                value={pais}
+                onChange={e => setPais(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
+              >
+                <option value="">Sin elegir</option>
+                {PAISES_SEDE.map(p => <option key={p} value={p}>{nombrePaisSede(p)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Ciudad</label>
+              <input
+                type="text"
+                value={ciudad}
+                maxLength={80}
+                placeholder="Santo Domingo"
+                onChange={e => setCiudad(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
+              />
+            </div>
           </div>
 
           <div data-guia="horario-salon" className="pt-2 border-t border-slate-200/60 dark:border-neutral-800">
