@@ -496,11 +496,11 @@ export const IOSTabBar: React.FC = () => {
                   data-medir={`Menú: ${tab.label}`}
                   id={`tab-btn-${tab.id}`}
                   onClick={() => { setCajonAbierto(false); navigateTo(tab.id); }}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0, transition: { ...RESORTE, delay: i * 0.03 } }}
+                  initial={false}
                   whileTap={{ scale: 0.95 }}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[84px] px-1 py-3 rounded-2xl border cursor-pointer ios-touch transition-colors ${
+                  style={{ animationDelay: `${0.08 + i * 0.03}s`, ['--entrar-y' as string]: '10px' }}
+                  className={`entrar-suave relative flex flex-col items-center justify-center gap-1.5 min-h-[84px] px-1 py-3 rounded-2xl border cursor-pointer ios-touch transition-colors ${
                     isActive
                       ? 'bg-[var(--primary)]/10 border-[var(--primary)]/40 text-[var(--primary)]'
                       : 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200/80 dark:border-neutral-800 text-slate-700 dark:text-neutral-200 active:bg-slate-100 dark:active:bg-neutral-800'

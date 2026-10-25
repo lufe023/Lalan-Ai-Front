@@ -238,6 +238,18 @@ html, body, #root {
 .entrar-suave {
   animation: lalan-entrar 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
+/* Hojas de abajo: el fondo se oscurece y la hoja sube con CSS. En iPhone,
+   motion pintaba la hoja abierta, la quitaba un cuadro y volvía a animarla. */
+@keyframes lalan-fundir {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lalan-subir-hoja {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.fondo-hoja { animation: lalan-fundir 0.25s ease-out backwards; }
+.subir-hoja { animation: lalan-subir-hoja 0.42s cubic-bezier(0.32, 0.72, 0, 1) backwards; }
 @media (prefers-reduced-motion: reduce) {
-  .entrar-suave { animation: none; }
+  .entrar-suave, .fondo-hoja, .subir-hoja { animation: none; }
 }

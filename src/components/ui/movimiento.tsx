@@ -156,14 +156,14 @@ type PropsAparecer = Omit<React.ComponentProps<typeof motion.div>, 'initial' | '
  * Una tarjeta o sección que sube suave al aparecer en pantalla (también al
  * bajar con el dedo: entra cuando se asoma, una sola vez).
  */
-export const Aparecer = React.forwardRef<HTMLDivElement, PropsAparecer>(({ indice = 0, tocable, ...props }, ref) => (
+export const Aparecer = React.forwardRef<HTMLDivElement, PropsAparecer>(({ indice = 0, tocable, className, style, ...props }, ref) => (
   <motion.div
     ref={ref}
-    initial={{ opacity: 0, y: 16, scale: 0.985 }}
-    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-    viewport={{ once: true, margin: '0px 0px -24px 0px' }}
-    transition={{ ...RESORTE, delay: Math.min(indice, MAXIMO_EN_CASCADA) * PASO_CASCADA_S }}
+    initial={false}
+    transition={RESORTE}
     {...(tocable ? { whileTap: { scale: 0.98 } } : {})}
+    className={`entrar-suave ${className ?? ''}`}
+    style={{ ...style, animationDelay: `${Math.min(indice, MAXIMO_EN_CASCADA) * PASO_CASCADA_S}s`, ['--entrar-y' as string]: '16px' }}
     {...props}
   />
 ));

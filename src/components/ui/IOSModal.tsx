@@ -80,12 +80,13 @@ export const IOSModal: React.FC<IOSModalProps> = ({
         <div id={id} className={`${fijo ? 'fixed' : 'absolute'} inset-0 z-50 flex flex-col justify-end ${isOpen ? '' : 'pointer-events-none'}`}
           inert={!isOpen} aria-hidden={!isOpen}>
           {/* Backdrop */}
+          {/* Sin desenfoque: en iPhone, un fondo con backdrop-filter que cambia de opacidad se pinta negro un cuadro */}
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: isOpen ? 1 : 0 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            className={`${isOpen ? 'fondo-hoja' : ''} absolute inset-0 bg-black/60`}
           />
 
           {/* Bottom Sheet Modal with native drag-to-dismiss */}
@@ -93,7 +94,7 @@ export const IOSModal: React.FC<IOSModalProps> = ({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            initial={{ y: '100%' }}
+            initial={false}
             animate={{ y: isOpen ? 0 : '100%' }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 350 }}
@@ -108,7 +109,7 @@ export const IOSModal: React.FC<IOSModalProps> = ({
                 onClose();
               }
             }}
-            className={`relative w-full ${apariencia?.hoja ?? 'bg-white dark:bg-neutral-900 border-white/20 dark:border-neutral-800'} rounded-t-[28px] shadow-2xl flex flex-col border-t z-10 overflow-hidden`}
+            className={`${isOpen ? 'subir-hoja' : ''} relative w-full ${apariencia?.hoja ?? 'bg-white dark:bg-neutral-900 border-white/20 dark:border-neutral-800'} rounded-t-[28px] shadow-2xl flex flex-col border-t z-10 overflow-hidden`}
             style={{ height: fixedHeight ? height : undefined, maxHeight: fixedHeight ? undefined : height }}
           >
             {/* Grabber Bar & Handle touch area (amplia área táctil para arrastrar hacia abajo) */}
