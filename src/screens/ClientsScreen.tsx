@@ -36,7 +36,7 @@ import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { Client, ClientTag, CommunicationChannel } from '../types';
+import { Client, ClientTag, CommunicationChannel, TratoCliente } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { PageContent } from '../components/ui/PageContent';
@@ -44,6 +44,13 @@ import { ChipsFiltro, ItemAnimado, ListaAnimada, NumeroAnimado } from '../compon
 import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { hora12 } from '../utils/hora';
 import { SedesDeClienta } from '../components/ui/SedesDeClienta';
+
+/** Cómo le habla Lalan en el chat. Sin saber: neutro */
+const OPCIONES_TRATO: { id: TratoCliente | null; label: string }[] = [
+  { id: null, label: 'Sin saber' },
+  { id: 'femenino', label: 'En femenino' },
+  { id: 'masculino', label: 'En masculino' },
+];
 
 export const ClientsScreen: React.FC = () => {
   const { dinero } = useDinero();
@@ -156,6 +163,7 @@ export const ClientsScreen: React.FC = () => {
     tags: ClientTag[];
     beautyNotes: string;
     medicalOrAllergyNotes: string;
+    trato: TratoCliente | null;
   }>({
     name: '',
     phone: '',
@@ -165,6 +173,7 @@ export const ClientsScreen: React.FC = () => {
     tags: ['nuevo'],
     beautyNotes: '',
     medicalOrAllergyNotes: '',
+    trato: null,
   });
 
   // Filter Clients
@@ -232,6 +241,7 @@ export const ClientsScreen: React.FC = () => {
       tags: ['nuevo'],
       beautyNotes: '',
       medicalOrAllergyNotes: '',
+      trato: null,
     });
     setShowAddModal(true);
   };
@@ -247,6 +257,7 @@ export const ClientsScreen: React.FC = () => {
       tags: client.tags,
       beautyNotes: client.beautyNotes || '',
       medicalOrAllergyNotes: client.medicalOrAllergyNotes || '',
+      trato: client.trato ?? null,
     });
     setShowAddModal(true);
   };
@@ -285,6 +296,7 @@ export const ClientsScreen: React.FC = () => {
           tags: formData.tags,
           beautyNotes: formData.beautyNotes.trim(),
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
+          trato: formData.trato,
         });
         setSelectedClient({
           ...selectedClient,
@@ -295,6 +307,7 @@ export const ClientsScreen: React.FC = () => {
           tags: formData.tags,
           beautyNotes: formData.beautyNotes.trim(),
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
+          trato: formData.trato,
         });
       } else {
         const created = await addClient({
@@ -308,6 +321,7 @@ export const ClientsScreen: React.FC = () => {
           tags: formData.tags,
           beautyNotes: formData.beautyNotes.trim(),
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
+          trato: formData.trato,
           totalVisits: 0,
           totalSpent: 0,
         });
@@ -1203,6 +1217,36 @@ export const ClientsScreen: React.FC = () => {
               onChange={e => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition"
             />
+          </div>
+
+          {/* Trato: Lalan no supone que quien escribe es mujer (también hay barberías) */}
+          <div>
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Cómo le habla Lalan
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {OPCIONES_TRATO.map(op => {
+                const isSelected = formData.trato === op.id;
+                return (
+                  <button
+                    key={op.id ?? 'neutro'}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setFormData({ ...formData, trato: op.id })}
+                    className={`px-2 py-1.5 rounded-xl text-[0.75rem] font-bold border transition ios-touch cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--primary)]/10 text-[var(--primary)] border-current ring-1 ring-current'
+                        : 'bg-slate-50 dark:bg-neutral-800/40 text-slate-500 border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
+                    }`}
+                  >
+                    {op.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-[0.6875rem] text-slate-400">
+              Lalan lo anota sola cuando lo deja claro en el chat. Sin saber, habla en neutro.
+            </p>
           </div>
 
           {/* Tags */}

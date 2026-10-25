@@ -34,7 +34,7 @@ export const LoginScreen: React.FC = () => {
     setLoading(true);
     try {
       await login({ identificador: email.trim(), password });
-      showToast('¡Bienvenida/o!', 'Sesión iniciada correctamente.', 'success');
+      showToast('¡Hola!', 'Sesión iniciada correctamente.', 'success');
       // Si este dispositivo aún no tiene configurado el acceso rápido, ofrecemos activarlo
       if (!quickAuth.getRegistration().isRegistered) {
         setShowActivarModal(true);
@@ -53,7 +53,7 @@ export const LoginScreen: React.FC = () => {
     setLoading(true);
     try {
       await loginWithQuickDevice();
-      showToast('¡Bienvenida/o!', 'Acceso rápido autenticado en este dispositivo.', 'success');
+      showToast('¡Hola!', 'Acceso rápido autenticado en este dispositivo.', 'success');
       navigateTo('dashboard');
     } catch (err: any) {
       setError(err?.message ?? 'No se pudo iniciar con acceso rápido. Prueba con tu clave.');

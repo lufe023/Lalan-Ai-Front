@@ -535,7 +535,7 @@ const Inicio: React.FC<{ datos: InicioQuiosco; onEmpezar: () => void; onLargo: (
           {datos.salon}
         </motion.p>
         <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, ...RESORTE }} className="text-6xl sm:text-7xl font-extrabold tracking-tight leading-[1.05]">
-          ¡Bienvenida!
+          ¡Hola!
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="text-2xl text-slate-500 dark:text-neutral-400">
           Anótate aquí y te atendemos enseguida.
