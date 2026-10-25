@@ -58,18 +58,25 @@ type PropsItem = Omit<React.ComponentProps<typeof motion.div>, 'initial' | 'anim
  * primer lugar, se ve subir. Al tocarla se hunde un poco; en la computadora
  * se levanta al pasar el mouse.
  */
-export const ItemAnimado = React.forwardRef<HTMLDivElement, PropsItem>(({ indice = 0, tocable = true, ...props }, ref) => {
+export const ItemAnimado = React.forwardRef<HTMLDivElement, PropsItem>(({ indice = 0, tocable = true, className, style, ...props }, ref) => {
   const primeraVez = useContext(PrimeraVez);
   const retraso = primeraVez ? Math.min(indice, MAXIMO_EN_CASCADA) * PASO_CASCADA_S : 0;
+  /* La entrada (subir y aparecer en cascada) va con una animación CSS, no con
+     motion: en el iPhone la tarjeta se pintaba ya visible y, al arrancar su
+     turno de la cascada, saltaba a transparente y volvía a aparecer (el
+     "parpadeo" de cada tarjeta). La animación CSS pinta el primer cuadro ya
+     transparente, sin depender de cuándo arranca el JavaScript. motion sigue
+     a cargo de reacomodarse, salir y hundirse al tocar. */
   return (
     <motion.div
       ref={ref}
       layout="position"
-      initial={{ opacity: 0, y: primeraVez ? 14 : 6, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1, transition: { ...RESORTE, delay: retraso } }}
+      initial={false}
       exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15 } }}
       {...(tocable ? { whileTap: { scale: 0.975 }, whileHover: { y: -2 } } : {})}
       transition={RESORTE}
+      className={`entrar-suave ${className ?? ''}`}
+      style={{ ...style, animationDelay: `${retraso}s`, ['--entrar-y' as string]: primeraVez ? '14px' : '6px' }}
       {...props}
     />
   );
