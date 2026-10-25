@@ -21,10 +21,12 @@ import { NegociosPlataforma, type PrellenadoNegocio } from '../components/plataf
 import { PlanesPlataforma } from '../components/plataforma/PlanesPlataforma';
 import { UsoAppPanel } from '../components/plataforma/UsoAppPanel';
 import { LoQueLalanSabeHacer } from '../components/plataforma/LoQueLalanSabeHacer';
+import { BaseProductos } from '../components/plataforma/BaseProductos';
+import { MercadoPlataforma } from '../components/plataforma/MercadoPlataforma';
 import type { Dispositivo, ResumenLanding } from '../types/plataforma';
 import { useAuth } from '../context/AuthContext';
 
-type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas' | 'guias' | 'vitrina' | 'lalan';
+type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas' | 'guias' | 'vitrina' | 'lalan' | 'productos' | 'mercado';
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'salud', label: 'Salud' },
   { id: 'negocios', label: 'Clientes' },
@@ -37,6 +39,8 @@ const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'guias', label: 'Guías' },
   { id: 'vitrina', label: 'Vitrina' },
   { id: 'lalan', label: 'Lalan' },
+  { id: 'productos', label: 'Productos' },
+  { id: 'mercado', label: 'Mercado' },
 ];
 
 type Rango = '7' | '30' | '90';
@@ -374,6 +378,8 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'portadas' && <PortadasPlataforma />}
         {pestana === 'guias' && <GuiasPlataforma />}
         {pestana === 'vitrina' && <VitrinaPlataforma />}
+        {pestana === 'productos' && <BaseProductos />}
+        {pestana === 'mercado' && <MercadoPlataforma />}
         {pestana === 'lalan' && (
           <div className="space-y-5">
             <IOSSegmentedControl id="plataforma-lalan" options={[{ id: 'uso', label: 'Cómo la usan' }, { id: 'sabe', label: 'Lo que sabe hacer' }, { id: 'ajustes', label: 'Ajustes de la app' }, { id: 'landing', label: 'Landing (IA y voz)' }]} value={vistaLalan} onChange={(v) => setVistaLalan(v as 'uso' | 'sabe' | 'ajustes' | 'landing')} size="sm" />

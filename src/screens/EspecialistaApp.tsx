@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { miAgendaApi, misChatsApi, type EstadoCita, type FichaClienta, type MiChat, type MiChatResumen, type MiCita, type MiPerfil } from '../services/especialistas';
 import { ChatDeEspecialista } from '../components/especialista/ChatDeEspecialista';
+import { ListaAvisosAlergia } from '../components/agenda/AvisosAlergia';
 import { getChannelBadge, horaDeMensaje } from '../components/chats/VentanaChat';
 
 type Pestana = 'citas' | 'chats' | 'servicios' | 'cuenta';
@@ -383,6 +384,9 @@ const TarjetaCita: React.FC<{
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> <span><b>Alergias o salud:</b> {ficha.alergias}</span>
                     </div>
                   )}
+                  {!!ficha.avisos?.length && (
+                    <ListaAvisosAlergia avisos={ficha.avisos} onRevisar={(productId) => miAgendaApi.revisado(cita.id, productId).then(() => miAgendaApi.clienta(cita.id).then(setFicha))} />
+                  )}
                   {ficha.gustos.length > 0 && (
                     <div className="space-y-1">
                       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><Heart className="w-3 h-3" /> Sus gustos</div>
@@ -412,7 +416,7 @@ const TarjetaCita: React.FC<{
                       ))}
                     </div>
                   )}
-                  {!ficha.alergias && !ficha.gustos.length && !ficha.notas && !cita.notas && !ficha.visitas.length && (
+                  {!ficha.alergias && !ficha.avisos?.length && !ficha.gustos.length && !ficha.notas && !cita.notas && !ficha.visitas.length && (
                     <p className="text-[0.75rem] text-slate-400">No hay más datos de la clienta para ti.</p>
                   )}
                 </div>

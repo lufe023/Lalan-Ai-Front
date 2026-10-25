@@ -35,6 +35,7 @@ import { CitasPendientes, citasPendientes } from '../components/agenda/CitasPend
 import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
 import { ConfirmarCita, sinEspecialista } from '../components/agenda/ConfirmarCita';
 import { AdelantoCita } from '../components/agenda/AdelantoCita';
+import { AvisosAlergiaCita } from '../components/agenda/AvisosAlergia';
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
@@ -612,6 +613,9 @@ export const CalendarScreen: React.FC = () => {
                 cita={activeAppointment}
                 onCambio={(c) => setActiveAppointment((a) => (a && a.id === c.id ? { ...a, ...c } : a))}
               />
+
+              {/* ── Alergias: un producto de su servicio lleva algo que le hace daño ── */}
+              <AvisosAlergiaCita key={`alergia-${activeAppointment.id}`} citaId={activeAppointment.id} />
 
               {/* ── Por confirmar: aquí mismo, con quién la atiende si no tiene ── */}
               {(activeAppointment.status === 'pending' || recienConfirmada === activeAppointment.id) && (
