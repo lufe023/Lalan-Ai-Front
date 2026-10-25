@@ -28,7 +28,6 @@ import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
 import { ReproductorSala } from './screens/ReproductorSala';
 import { PedirCancionScreen } from './screens/PedirCancionScreen';
-import { VisitaDePantalla } from './components/ui/movimiento';
 import VitrinaScreen from './screens/VitrinaScreen';
 import VitrinaCortaScreen from './screens/VitrinaCortaScreen';
 import { direccionCorta } from '../worker/direccion-corta.js';
@@ -223,9 +222,7 @@ const MainAppContent: React.FC = () => {
                     exit={{ opacity: 0, transition: { duration: 0.16, ease: 'easeIn' } }}
                     className="w-full flex-1 min-h-0 flex flex-col"
                   >
-                    <VisitaDePantalla pantalla={currentScreen}>
-                      {renderCurrentScreen()}
-                    </VisitaDePantalla>
+                    {renderCurrentScreen()}
                   </motion.div>
                 </AnimatePresence>
               </div>
