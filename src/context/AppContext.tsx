@@ -920,7 +920,9 @@ const FALLBACK_TRACK: LoungeTrack = {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated: conSesion, currentUser: quienEntro } = useAuth();
+  // La especialista tiene su propia app (Mis citas): no se le carga nada del salón
+  const isAuthenticated = conSesion && quienEntro?.role !== 'especialista';
 
   /* Si iOS recarga la app al volver de otra (lo hace cuando necesita memoria),
      se vuelve a la misma pantalla en vez de empezar de cero */

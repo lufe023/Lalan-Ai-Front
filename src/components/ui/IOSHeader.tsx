@@ -66,6 +66,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
     assistant: 'Asistente',
     support:   'Soporte',
     super_admin: 'Super admin',
+    especialista: 'Especialista',
   };
 
   return (
@@ -111,8 +112,9 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {rightAction}
 
-          {/* Buscar una opción: en el teléfono no hay Ctrl+K (en la computadora va en el menú) */}
-          <button
+          {/* Buscar una opción: en el teléfono no hay Ctrl+K (en la computadora va en el menú).
+              La especialista no tiene menú que buscar */}
+          {currentUser?.role !== 'especialista' && <button
             type="button"
             onClick={abrirBuscador}
             data-medir="Abrir buscador"
@@ -121,7 +123,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
             aria-label="Buscar opción"
           >
             <Search className="w-4 h-4" />
-          </button>
+          </button>}
 
           {/* Dark / Light toggle */}
           <button

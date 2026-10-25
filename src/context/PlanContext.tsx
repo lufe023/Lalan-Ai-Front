@@ -22,8 +22,9 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) void recargarPlan(); else setMiPlan(null);
-  }, [isAuthenticated, recargarPlan]);
+    // La especialista no ve el plan del salón
+    if (isAuthenticated && currentUser?.role !== 'especialista') void recargarPlan(); else setMiPlan(null);
+  }, [isAuthenticated, currentUser?.role, recargarPlan]);
 
   const tieneModulo = useCallback((m: ClaveModulo) => {
     if (currentUser?.role === 'super_admin') return true;
