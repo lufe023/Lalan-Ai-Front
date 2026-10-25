@@ -1,5 +1,6 @@
 /** super_admin: el dueño de la plataforma Lalan (ve la landing y el piloto; puede todo lo de un admin) */
-export type UserRole = 'admin' | 'assistant' | 'support' | 'super_admin';
+/** especialista = una especialista del salón con entrada limitada (Mis citas y lo que la dueña le permita) */
+export type UserRole = 'admin' | 'assistant' | 'support' | 'super_admin' | 'especialista';
 
 /** ¿Tiene que confirmar su correo? obligatoria = dueñas; opcional = equipo */
 export type ConfirmacionCorreo = 'obligatoria' | 'opcional';

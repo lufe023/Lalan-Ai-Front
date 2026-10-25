@@ -10,6 +10,7 @@ const PERMISSIONS: Record<UserRole, UserProfile['permissions']> = {
   assistant: { canViewMetrics: false, canManageBots: false, canEditConfig: false, canManageCalendar: true, canManageChats: true, canAccessSystemLogs: false },
   super_admin: { canViewMetrics: true, canManageBots: true, canEditConfig: true, canManageCalendar: true, canManageChats: true, canAccessSystemLogs: true },
   support: { canViewMetrics: true, canManageBots: true, canEditConfig: true, canManageCalendar: false, canManageChats: false, canAccessSystemLogs: true },
+  especialista: { canViewMetrics: false, canManageBots: false, canEditConfig: false, canManageCalendar: false, canManageChats: false, canAccessSystemLogs: false },
 };
 
 /** identificador = correo, usuario o teléfono */

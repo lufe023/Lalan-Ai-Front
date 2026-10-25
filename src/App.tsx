@@ -34,6 +34,7 @@ import { direccionCorta } from '../worker/direccion-corta.js';
 import { QuioscoScreen } from './screens/QuioscoScreen';
 import { AprobarQuiosco } from './components/ajustes/AprobarQuiosco';
 import { PlataformaScreen } from './screens/PlataformaScreen';
+import { EspecialistaApp } from './screens/EspecialistaApp';
 import { CambiarClaveScreen } from './screens/CambiarClaveScreen';
 import { AceptarTerminosScreen } from './screens/AceptarTerminosScreen';
 import { ConfirmarCorreoScreen, confirmacionOmitida } from './screens/ConfirmarCorreoScreen';
@@ -75,7 +76,7 @@ const MainAppContent: React.FC = () => {
   const { currentScreen, showSplash, activeConversationId, navigateTo } = useApp();
   const { isAuthenticated, isLoading, currentUser } = useAuth();
   // Se mide el uso de los salones; no el de Lalan (super admin, soporte) ni el modo mapa de calor
-  const medir = isAuthenticated && !MODO_CALOR && !MODO_GRABAR && !currentUser?.soporte && currentUser?.role !== 'super_admin' && currentUser?.role !== 'support';
+  const medir = isAuthenticated && !MODO_CALOR && !MODO_GRABAR && !currentUser?.soporte && currentUser?.role !== 'super_admin' && currentUser?.role !== 'support' && currentUser?.role !== 'especialista';
   useUsoApp(currentScreen, medir);
   React.useEffect(() => {
     if (MODO_CALOR && isAuthenticated) navigateTo(MODO_CALOR.pantalla as ScreenName);
@@ -167,6 +168,9 @@ const MainAppContent: React.FC = () => {
           <ConfirmarCorreoScreen />
         ) : isAuthenticated && currentUser?.aceptarTerminos ? (
           <AceptarTerminosScreen version={currentUser.aceptarTerminos} />
+        ) : isAuthenticated && currentUser?.role === 'especialista' ? (
+          // La especialista tiene su propia app: sus citas, sus servicios y su cuenta
+          <EspecialistaApp />
         ) : !isAuthenticated ? (
           <motion.div
             key="login-view"

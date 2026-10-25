@@ -8,6 +8,7 @@ import { recibeCitas } from '../utils/recibeCitas';
 import { RESORTE } from '../components/ui/movimiento';
 import { AnimatePresence, motion } from 'motion/react';
 import {
+  KeyRound,
   Palette,
   Sun,
   Moon,
@@ -65,6 +66,7 @@ import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
 import { AvatarEspecialista, FotoEspecialista } from '../components/ajustes/FotoEspecialista';
+import { EntradaEspecialista, PlantillaPermisosEspecialista } from '../components/ajustes/EntradaEspecialista';
 import { useEncuadres } from '../hooks/useEncuadres';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
@@ -104,6 +106,8 @@ export const SettingsScreen: React.FC = () => {
   const { ponerPaleta, sedes: sedesDelSalon, varias: variasSedes, actual: sedeActual } = useSedeActiva();
   // La fila de especialista con sus sedes abiertas (con varias sedes)
   const [sedesAbiertas, setSedesAbiertas] = useState<string | null>(null);
+  /** La especialista cuya entrada a Lalan (y permisos) está abierta */
+  const [entradaDe, setEntradaDe] = useState<string | null>(null);
   /** De quién está abierta la foto (debajo de su fila) */
   const [fotoDe, setFotoDe] = useState<string | null>(null);
   const { encuadres, guardar: guardarEncuadre } = useEncuadres();
@@ -935,6 +939,18 @@ export const SettingsScreen: React.FC = () => {
                 )}
                 <button
                   type="button"
+                  onClick={() => setEntradaDe(entradaDe === e.id ? null : e.id)}
+                  aria-label={`Entrada a Lalan de ${e.name}`}
+                  aria-expanded={entradaDe === e.id}
+                  title="Entrada a Lalan y sus permisos"
+                  className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    entradaDe === e.id ? 'text-[var(--primary)] bg-[var(--primary)]/10' : 'text-slate-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
+                  }`}
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setHorarioDe(e.id)}
                   aria-label={`Horario de ${e.name}`}
                   title="Horario y días que no viene"
@@ -961,6 +977,12 @@ export const SettingsScreen: React.FC = () => {
                     onEncuadre={guardarEncuadre}
                     onCambio={loadEspecialistas}
                   />
+                </div>
+              )}
+              {/* Su entrada a Lalan: ve sus citas y lo que se le permita */}
+              {entradaDe === e.id && (
+                <div className="ml-2 p-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700">
+                  <EntradaEspecialista staffId={e.id} nombre={e.name} telefono={e.phone ?? null} activa={e.active} />
                 </div>
               )}
               {/* En qué sedes trabaja: la primera que se marca es la suya */}
@@ -1045,6 +1067,8 @@ export const SettingsScreen: React.FC = () => {
             </button>
           </div>
         </div>
+
+        <PlantillaPermisosEspecialista />
 
           </>
         )}

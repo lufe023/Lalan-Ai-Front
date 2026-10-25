@@ -57,7 +57,9 @@ export function paletaDeSede(sedes: SedeDelSalon[], id: string): string | null {
  * trabaja en ella y cambia de color.
  */
 export const SedeActivaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated: conSesion, currentUser } = useAuth();
+  // La especialista no cambia de sede: trabaja en las suyas (las trae su perfil)
+  const isAuthenticated = conSesion && currentUser?.role !== 'especialista';
   const { applyPalettePreset, activePaletteId } = useTheme();
   const [sedes, setSedes] = useState<SedeDelSalon[]>([]);
   const [elegida, setElegida] = useState(() => sedeActiva());
