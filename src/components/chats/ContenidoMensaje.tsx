@@ -50,17 +50,17 @@ const ES_RELLENO = /^\[.*\]$|^\(Envió |^\((Nota de voz|Audio)\) /;
 
 const cache = new Map<string, string>();
 
-function useArchivo(mensajeId: string, activo: boolean) {
+function useArchivo(mensajeId: string, activo: boolean, ruta: string) {
   const [url, setUrl] = useState<string | null>(cache.get(mensajeId) ?? null);
   const [error, setError] = useState(false);
   useEffect(() => {
     if (!activo || url) return;
     let vivo = true;
-    blobProtegido(`/conversations/mensajes/${mensajeId}/archivo`)
+    blobProtegido(ruta)
       .then((u) => { cache.set(mensajeId, u); if (vivo) setUrl(u); })
       .catch(() => { if (vivo) setError(true); });
     return () => { vivo = false; };
-  }, [mensajeId, activo, url]);
+  }, [mensajeId, activo, url, ruta]);
   return { url, error };
 }
 
@@ -69,13 +69,16 @@ export const ContenidoMensaje: React.FC<{
   /** Burbuja de color (equipo o asistente): los textos secundarios van claros */
   sobreColor: boolean;
   esSuperAdmin: boolean;
-}> = ({ msg, sobreColor, esSuperAdmin }) => {
+  /** De dónde se pide el archivo (la especialista lo pide por su propio chat) */
+  rutaArchivo?: string;
+}> = ({ msg, sobreColor, esSuperAdmin, rutaArchivo }) => {
+  const ruta = rutaArchivo ?? `/conversations/mensajes/${msg.id}/archivo`;
   const tipo = msg.tipo ?? 'texto';
   const a = msg.adjunto;
   const esImagen = TIPOS_IMAGEN.includes(tipo);
   const esVideo = TIPOS_VIDEO.includes(tipo);
   const esAudio = TIPOS_AUDIO.includes(tipo);
-  const { url, error } = useArchivo(msg.id, !!a?.tieneArchivo && (esImagen || esVideo || esAudio) && (!msg.eliminado || esSuperAdmin));
+  const { url, error } = useArchivo(msg.id, !!a?.tieneArchivo && (esImagen || esVideo || esAudio) && (!msg.eliminado || esSuperAdmin), ruta);
   const suave = sobreColor ? 'text-white/75' : 'text-slate-500 dark:text-neutral-400';
 
   if (msg.eliminado && !esSuperAdmin) {
@@ -127,7 +130,7 @@ export const ContenidoMensaje: React.FC<{
             {url && (
               <button
                 type="button"
-                onClick={() => void descargarArchivo(`/conversations/mensajes/${msg.id}/archivo`, `nota-de-voz.${EXTENSION_AUDIO[(a.mime ?? '').split(';')[0]] ?? 'ogg'}`)}
+                onClick={() => void descargarArchivo(ruta, `nota-de-voz.${EXTENSION_AUDIO[(a.mime ?? '').split(';')[0]] ?? 'ogg'}`)}
                 className={`flex items-center gap-1 text-[0.6875rem] font-bold ${suave}`}
               >
                 <Download className="w-3 h-3" /> Descargar
@@ -149,7 +152,7 @@ export const ContenidoMensaje: React.FC<{
         <button
           type="button"
           disabled={!a.tieneArchivo}
-          onClick={() => void descargarArchivo(`/conversations/mensajes/${msg.id}/archivo`, a.nombre || 'documento')}
+          onClick={() => void descargarArchivo(ruta, a.nombre || 'documento')}
           className={`flex items-center gap-2 px-2.5 py-2 rounded-xl text-left ${sobreColor ? 'bg-white/10' : 'bg-slate-100 dark:bg-neutral-700/60'} disabled:opacity-60`}
         >
           <FileText className="w-4 h-4 shrink-0" />

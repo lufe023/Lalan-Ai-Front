@@ -321,6 +321,10 @@ export interface ChatMessage {
   eliminado?: boolean;
   /** De dónde llegó: anuncio, enlace o historia */
   origen?: { tipo: string; id?: string; url?: string; titulo?: string } | null;
+  /** Quién del salón lo escribió (equipo o especialista) */
+  autorNombre?: string | null;
+  /** Aviso de Lalan sobre el trato de una especialista con la clienta */
+  conducta?: { gravedad: 'leve' | 'grave'; motivo: string; pausada: boolean } | null;
 }
 
 export interface AdjuntoDeMensaje {
@@ -365,6 +369,14 @@ export interface Conversation {
   /** Bloqueada por el salón: no se guarda nada de lo que mande */
   bloqueada?: boolean;
   bloqueadaPor?: string | null;
+  /** La especialista que atiende el chat ahora (la dirección lo audita y puede tomarlo) */
+  especialista?: { userId: string; nombre: string; staffId: string | null } | null;
+  especialistaDesde?: string | null;
+  /** Quién se lo pasó; null si lo abrió ella desde su cita */
+  especialistaPor?: string | null;
+  /** Lalan la pausó por un trato grave: no puede escribir hasta que la dirección decida */
+  especialistaPausadaAt?: string | null;
+  especialistaPausaMotivo?: string | null;
 }
 
 export interface ActividadDelCanal {

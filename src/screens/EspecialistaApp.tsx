@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   CalendarDays, Scissors, UserRound, Loader2, ChevronDown, AlertTriangle, Heart, History, StickyNote,
-  Play, CheckCircle2, CalendarClock, XCircle, Megaphone, Check, LogOut, ShieldCheck, RefreshCw, Zap, X,
+  Play, CheckCircle2, CalendarClock, XCircle, Megaphone, Check, LogOut, ShieldCheck, RefreshCw, Zap, X, MessageCircle, ShieldAlert,
 } from 'lucide-react';
 import { quickAuth } from '../services/quickAuth';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -13,14 +13,20 @@ import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { useConfirmar } from '../components/ui/ModalConfirmar';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
-import { miAgendaApi, type EstadoCita, type FichaClienta, type MiCita, type MiPerfil } from '../services/especialistas';
+import { miAgendaApi, misChatsApi, type EstadoCita, type FichaClienta, type MiChat, type MiChatResumen, type MiCita, type MiPerfil } from '../services/especialistas';
+import { ChatDeEspecialista } from '../components/especialista/ChatDeEspecialista';
+import { getChannelBadge, horaDeMensaje } from '../components/chats/VentanaChat';
 
-type Pestana = 'citas' | 'servicios' | 'cuenta';
-const PESTANAS: { id: Pestana; label: string; icon: React.ElementType }[] = [
-  { id: 'citas', label: 'Mis citas', icon: CalendarDays },
-  { id: 'servicios', label: 'Mis servicios', icon: Scissors },
-  { id: 'cuenta', label: 'Mi cuenta', icon: UserRound },
+type Pestana = 'citas' | 'chats' | 'servicios' | 'cuenta';
+/** `corto` es lo que cabe en la barra con cuatro pestañas en un teléfono */
+const PESTANAS: { id: Pestana; label: string; corto: string; icon: React.ElementType }[] = [
+  { id: 'citas', label: 'Mis citas', corto: 'Citas', icon: CalendarDays },
+  { id: 'chats', label: 'Mis chats', corto: 'Chats', icon: MessageCircle },
+  { id: 'servicios', label: 'Mis servicios', corto: 'Servicios', icon: Scissors },
+  { id: 'cuenta', label: 'Mi cuenta', corto: 'Cuenta', icon: UserRound },
 ];
+/** Lo que abre una notificación: los avisos de chats van a sus chats */
+const PESTANA_DE_AVISO: Record<string, Pestana> = { 'mis-citas': 'citas', 'mis-chats': 'chats' };
 /** Cuántos días de citas se traen de una vez */
 const DIAS = 14;
 const MS_DIA = 86_400_000;
@@ -106,8 +112,12 @@ const AccesoRapido: React.FC<{ comoAviso?: boolean }> = ({ comoAviso }) => {
 export const EspecialistaApp: React.FC = () => {
   const { logout, currentUser } = useAuth();
   const { showToast } = useApp();
-  const [pestana, setPestana] = useState<Pestana>('citas');
+  const [pestana, setPestana] = useState<Pestana>(() => {
+    try { return PESTANA_DE_AVISO[new URLSearchParams(window.location.search).get('ir') ?? ''] ?? 'citas'; } catch { return 'citas'; }
+  });
   const [perfil, setPerfil] = useState<MiPerfil | null>(null);
+  const [chats, setChats] = useState<MiChatResumen[]>([]);
+  const [chatAbierto, setChatAbierto] = useState<{ id: string; inicial?: MiChat } | null>(null);
   const [citas, setCitas] = useState<MiCita[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -116,8 +126,11 @@ export const EspecialistaApp: React.FC = () => {
     setCargando(true);
     try {
       const desde = inicioDelDia(new Date());
-      const [p, c] = await Promise.all([miAgendaApi.perfil(), miAgendaApi.citas(desde, new Date(desde.getTime() + DIAS * MS_DIA))]);
-      setPerfil(p); setCitas(c); setError(null);
+      const [p, c, ch] = await Promise.all([
+        miAgendaApi.perfil(), miAgendaApi.citas(desde, new Date(desde.getTime() + DIAS * MS_DIA)),
+        misChatsApi.lista().catch(() => [] as MiChatResumen[]),
+      ]);
+      setPerfil(p); setCitas(c); setChats(ch); setError(null);
     } catch (e) { setError((e as Error)?.message || 'No se pudo cargar tu agenda.'); }
     finally { setCargando(false); }
   }, []);
@@ -127,8 +140,12 @@ export const EspecialistaApp: React.FC = () => {
     const t = window.setInterval(() => { if (document.visibilityState === 'visible') void cargar(); }, REFRESCO_MS);
     const alVolver = () => { if (document.visibilityState === 'visible') void cargar(); };
     document.addEventListener('visibilitychange', alVolver);
-    // Tocó un aviso de cita con la app abierta: se vuelve a pedir la agenda
-    const alAviso = (ev: MessageEvent) => { if (ev.data?.tipo === 'ir') { setPestana('citas'); void cargar(); } };
+    // Tocó un aviso con la app abierta: se va a esa pestaña y se vuelve a pedir todo
+    const alAviso = (ev: MessageEvent) => {
+      if (ev.data?.tipo !== 'ir') return;
+      setPestana(PESTANA_DE_AVISO[ev.data?.pantalla] ?? 'citas');
+      void cargar();
+    };
     navigator.serviceWorker?.addEventListener('message', alAviso);
     return () => {
       window.clearInterval(t);
@@ -138,17 +155,30 @@ export const EspecialistaApp: React.FC = () => {
   }, [cargar]);
 
   const reemplazar = (c: MiCita) => setCitas(l => (l ?? []).map(x => (x.id === c.id ? c : x)));
+  const conChats = !!perfil?.permisos.chatearConClientas || chats.length > 0;
+  const pestanas = PESTANAS.filter(p => p.id !== 'chats' || conChats);
+  const porContestar = chats.filter(c => c.teEspera && !c.pausado).length;
+
+  /** "Escribirle" desde una cita: abre (o retoma) el chat con esa clienta */
+  const escribirle = async (citaId: string) => {
+    try {
+      const chat = await misChatsApi.desdeCita(citaId);
+      setChatAbierto({ id: chat.id, inicial: chat });
+    } catch (e) { showToast('No se pudo abrir el chat', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'); }
+  };
+  const cerrarChat = () => { setChatAbierto(null); void cargar(); };
   const sedes = perfil?.sedes ?? [];
   const subtitulo = perfil
     ? [perfil.especialista.especialidad, sedes.length === 1 ? sedes[0].name : sedes.length > 1 ? `${sedes.length} sedes` : null].filter(Boolean).join(' · ')
     : currentUser?.name;
 
   return (
-    <div className="flex-1 w-full h-full flex flex-col overflow-hidden">
+    <div className="relative flex-1 w-full h-full flex flex-col overflow-hidden">
+      {chatAbierto && <ChatDeEspecialista key={chatAbierto.id} chatId={chatAbierto.id} inicial={chatAbierto.inicial} onCerrar={cerrarChat} />}
       <IOSHeader
         title={PESTANAS.find(p => p.id === pestana)!.label}
         subtitle={subtitulo}
-        rightAction={pestana === 'citas' ? (
+        rightAction={pestana === 'citas' || pestana === 'chats' ? (
           <button type="button" onClick={() => void cargar()} aria-label="Actualizar"
             className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-neutral-800/80 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] transition cursor-pointer">
             <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
@@ -156,17 +186,20 @@ export const EspecialistaApp: React.FC = () => {
         ) : undefined}
       />
 
-      {/* Las tres pestañas, como un control segmentado del iPhone */}
+      {/* Las pestañas, como un control segmentado del iPhone */}
       <div className="px-4 lg:px-8 pb-2 shrink-0">
         <div role="tablist" className="flex p-1 rounded-xl bg-slate-100 dark:bg-neutral-800/80 max-w-md">
-          {PESTANAS.map(p => {
+          {pestanas.map(p => {
             const activa = pestana === p.id;
             return (
-              <button key={p.id} role="tab" aria-selected={activa} type="button" onClick={() => setPestana(p.id)}
-                className={`flex-1 min-h-[36px] rounded-lg flex items-center justify-center gap-1.5 text-[0.8125rem] font-semibold transition cursor-pointer ${
+              <button key={p.id} role="tab" aria-selected={activa} aria-label={p.label} type="button" onClick={() => setPestana(p.id)}
+                className={`relative flex-1 min-h-[36px] rounded-lg flex items-center justify-center gap-1.5 text-[0.8125rem] font-semibold transition cursor-pointer ${
                   activa ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-neutral-400'
                 }`}>
-                <p.icon className="w-4 h-4" /> <span className="hidden min-[380px]:inline">{p.label}</span>
+                <p.icon className="w-4 h-4" /> <span className="hidden min-[380px]:inline">{pestanas.length > 3 ? p.corto : p.label}</span>
+                {p.id === 'chats' && porContestar > 0 && (
+                  <span className="absolute -top-1 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold flex items-center justify-center">{porContestar}</span>
+                )}
               </button>
             );
           })}
@@ -183,8 +216,9 @@ export const EspecialistaApp: React.FC = () => {
         {pestana === 'citas' && (
           citas === null && !error
             ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" /></div>
-            : perfil && <ListaDeCitas citas={citas ?? []} perfil={perfil} onCambio={reemplazar} onRecargar={cargar} showToast={showToast} />
+            : perfil && <ListaDeCitas citas={citas ?? []} perfil={perfil} onCambio={reemplazar} onRecargar={cargar} showToast={showToast} onEscribir={escribirle} />
         )}
+        {pestana === 'chats' && <MisChats chats={chats} onAbrir={id => setChatAbierto({ id })} />}
         {pestana === 'servicios' && perfil && <MisServicios perfil={perfil} />}
         {pestana === 'cuenta' && (
           <>
@@ -208,7 +242,8 @@ const ListaDeCitas: React.FC<{
   citas: MiCita[]; perfil: MiPerfil;
   onCambio: (c: MiCita) => void; onRecargar: () => Promise<void>;
   showToast: (t: string, m: string, tipo?: 'success' | 'info' | 'warning') => void;
-}> = ({ citas, perfil, onCambio, onRecargar, showToast }) => {
+  onEscribir: (citaId: string) => Promise<void>;
+}> = ({ citas, perfil, onCambio, onRecargar, showToast, onEscribir }) => {
   const [abierta, setAbierta] = useState<string | null>(null);
   const [verCanceladas, setVerCanceladas] = useState(false);
   const visibles = citas.filter(c => verCanceladas || c.estado !== 'cancelled');
@@ -249,7 +284,7 @@ const ListaDeCitas: React.FC<{
             </h2>
             {d.citas.map(c => (
               <TarjetaCita key={c.id} cita={c} perfil={perfil} abierta={abierta === c.id}
-                onAbrir={() => setAbierta(abierta === c.id ? null : c.id)} onCambio={onCambio} onRecargar={onRecargar} showToast={showToast} />
+                onAbrir={() => setAbierta(abierta === c.id ? null : c.id)} onCambio={onCambio} onRecargar={onRecargar} showToast={showToast} onEscribir={onEscribir} />
             ))}
           </section>
         );
@@ -267,7 +302,8 @@ const TarjetaCita: React.FC<{
   cita: MiCita; perfil: MiPerfil; abierta: boolean; onAbrir: () => void;
   onCambio: (c: MiCita) => void; onRecargar: () => Promise<void>;
   showToast: (t: string, m: string, tipo?: 'success' | 'info' | 'warning') => void;
-}> = ({ cita, perfil, abierta, onAbrir, onCambio, onRecargar, showToast }) => {
+  onEscribir: (citaId: string) => Promise<void>;
+}> = ({ cita, perfil, abierta, onAbrir, onCambio, onRecargar, showToast, onEscribir }) => {
   const p = perfil.permisos;
   const { confirmar, modalConfirmar } = useConfirmar();
   const [ficha, setFicha] = useState<FichaClienta | null>(null);
@@ -382,6 +418,14 @@ const TarjetaCita: React.FC<{
                 </div>
               )}
 
+              {/* Hablar con la clienta (por el número del salón) antes o después de la cita */}
+              {p.chatearConClientas && cita.clientaId && cita.estado !== 'cancelled' && (
+                <button type="button" disabled={!!ocupado} onClick={() => { setOcupado('chat'); void onEscribir(cita.id).finally(() => setOcupado(null)); }}
+                  className={`${boton} w-full justify-center bg-sky-500/10 text-sky-700 dark:text-sky-300`}>
+                  {ocupado === 'chat' ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />} Escribirle a {cita.clienta.split(' ')[0]}
+                </button>
+              )}
+
               {/* Lo que puede hacer, según sus permisos y el estado de la cita */}
               {cita.estado !== 'cancelled' && cita.estado !== 'completed' && (
                 <div className="flex flex-wrap gap-1.5">
@@ -430,6 +474,43 @@ const TarjetaCita: React.FC<{
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+/** Los chats que tiene a su cargo: los que abrió desde una cita o le pasó la administración */
+const MisChats: React.FC<{ chats: MiChatResumen[]; onAbrir: (id: string) => void }> = ({ chats, onAbrir }) => {
+  if (!chats.length) {
+    return (
+      <div className="py-12 text-center space-y-2">
+        <MessageCircle className="w-10 h-10 mx-auto text-slate-300 dark:text-neutral-700" />
+        <p className="text-[0.875rem] font-semibold text-slate-600 dark:text-neutral-300">No tienes chats abiertos</p>
+        <p className="text-[0.75rem] text-slate-400 max-w-xs mx-auto">Abre uno con «Escribirle» en una de tus citas, o espera a que la administración te pase uno.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 divide-y divide-slate-100 dark:divide-neutral-800 overflow-hidden">
+      {chats.map(c => (
+        <button key={c.id} type="button" onClick={() => onAbrir(c.id)} className="w-full px-3 py-3 flex items-center gap-3 text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-neutral-800/60">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${c.pausado ? 'bg-rose-500/10 text-rose-500' : 'bg-sky-500/10 text-sky-600'}`}>
+            {c.pausado ? <ShieldAlert className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[0.875rem] truncate ${c.teEspera ? 'font-extrabold text-slate-900 dark:text-white' : 'font-bold text-slate-800 dark:text-neutral-100'}`}>{c.clienta}</span>
+              {getChannelBadge(c.canal as never)}
+            </div>
+            <p className={`text-[0.75rem] truncate ${c.teEspera ? 'text-slate-700 dark:text-neutral-200 font-semibold' : 'text-slate-500 dark:text-neutral-400'}`}>
+              {c.pausado ? 'Lalan pausó este chat: la administración lo está revisando' : c.ultimo ?? 'Sin mensajes nuevos'}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span className="text-[0.6875rem] text-slate-400">{horaDeMensaje(c.ultimoEn)}</span>
+            {c.teEspera && !c.pausado && <span className="w-2.5 h-2.5 rounded-full bg-[var(--primary)]" aria-label="Te toca contestar" />}
+          </div>
+        </button>
+      ))}
     </div>
   );
 };

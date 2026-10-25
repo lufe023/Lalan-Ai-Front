@@ -4,7 +4,8 @@ import { api } from './api';
 export type ClavePermiso =
   | 'alergiasYGustos' | 'notasClienta' | 'visitasPasadas'
   | 'marcarEstado' | 'llamarEnPizarra' | 'confirmarCitas' | 'reagendarCitas' | 'cancelarCitas' | 'verPrecios'
-  | 'fotosPropias' | 'fotosTodas';
+  | 'fotosPropias' | 'fotosTodas'
+  | 'chatearConClientas' | 'verChatAnterior' | 'plantillasPagas' | 'sugerenciasLalan';
 
 export type MapaPermisos = Record<ClavePermiso, boolean>;
 
@@ -80,4 +81,65 @@ export const miAgendaApi = {
   confirmar: (citaId: string) => api.post<MiCita>(`/especialista/citas/${citaId}/confirmar`, {}),
   reagendar: (citaId: string, inicio: Date) => api.patch<MiCita>(`/especialista/citas/${citaId}/hora`, { inicio: inicio.toISOString() }),
   llamar: (citaId: string) => api.post<{ codigo: string; estado: string }>(`/especialista/citas/${citaId}/llamar`, {}),
+};
+
+// ── Los chats de la especialista con sus clientas ────────────────
+
+/** El aviso fijo que ve la especialista en cada chat (lo pidió la dirección de Lalan tal cual) */
+export const AVISO_CHAT_ESPECIALISTA = 'Los administradores del salón pueden ver esta conversación. También Lalan la ve y puede informar de comportamientos antiéticos.';
+
+export interface MiChatResumen {
+  id: string;
+  clienta: string;
+  canal: 'whatsapp' | 'instagram' | 'messenger' | string;
+  ultimo: string | null;
+  ultimoEn: string;
+  pausado: boolean;
+  ventanaAbierta: boolean;
+  /** Lo último lo escribió la clienta: le toca contestar */
+  teEspera: boolean;
+}
+
+export interface MensajeDeMiChat {
+  id: string;
+  de: 'clienta' | 'yo' | 'salon' | 'lalan' | 'aviso' | 'sugerencia';
+  autor: string | null;
+  texto: string;
+  borrado: boolean;
+  tipo: string;
+  en: string;
+  estado: 'pendiente' | 'enviado' | 'entregado' | 'leido' | 'fallido' | null;
+  motivoFallo: string | null;
+  adjunto: { tieneArchivo: boolean; mime?: string | null; nombre?: string | null; descripcion?: string | null; transcripcion?: string | null } | null;
+}
+
+export interface MiChat {
+  id: string;
+  clienta: string;
+  canal: string;
+  desde: string | null;
+  ventanaAbierta: boolean;
+  puedePlantilla: boolean;
+  pausado: { desde: string; motivo: string | null } | null;
+  mensajes: MensajeDeMiChat[];
+}
+
+export const misChatsApi = {
+  lista: () => api.get<MiChatResumen[]>('/especialista/chats'),
+  desdeCita: (citaId: string) => api.post<MiChat>(`/especialista/chats/desde-cita/${citaId}`, {}),
+  chat: (id: string) => api.get<MiChat>(`/especialista/chats/${id}`),
+  escribir: (id: string, texto: string) => api.post<MiChat>(`/especialista/chats/${id}/mensajes`, { texto }),
+  plantilla: (id: string) => api.post<MiChat>(`/especialista/chats/${id}/plantilla`, {}),
+  soltar: (id: string) => api.post<{ ok: true }>(`/especialista/chats/${id}/soltar`, {}),
+  archivo: (id: string, mensajeId: string) => `/especialista/chats/${id}/mensajes/${mensajeId}/archivo`,
+};
+
+/** Lo de la dirección: a quién se le puede pasar un chat, y tomarlo o dejarla seguir */
+export interface EspecialistaConEntrada { userId: string; staffId: string; nombre: string; especialidad: string | null; sedeId: string | null; puedeEscribir: boolean }
+
+export const chatEspecialistaApi = {
+  conEntrada: () => api.get<EspecialistaConEntrada[]>('/salon/especialistas-con-entrada'),
+  asignar: (conversacionId: string, staffId: string) => api.post(`/conversations/${conversacionId}/especialista`, { staffId }),
+  tomar: (conversacionId: string) => api.delete(`/conversations/${conversacionId}/especialista`),
+  reanudar: (conversacionId: string) => api.post(`/conversations/${conversacionId}/especialista/reanudar`, {}),
 };
