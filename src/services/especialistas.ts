@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { AvisoAlergia } from './saberProductos';
+import type { AvisoAlergia, PreguntaAlergia } from './saberProductos';
 
 /** Los interruptores que la administración le enciende o apaga a cada especialista */
 export type ClavePermiso =
@@ -70,6 +70,7 @@ export interface FichaClienta {
   alergias: string | null;
   /** Avisos de los productos de su servicio que llevan (o pueden llevar) algo a lo que es alérgica */
   avisos?: AvisoAlergia[];
+  preguntas?: PreguntaAlergia[];
   gustos: { gusto: string; categoria: string; icono: string | null; nota: string | null; intensidad: number | null }[];
   notas: string | null;
   visitas: { fecha: string; servicio: string; notas?: string | null }[];
@@ -85,6 +86,8 @@ export const miAgendaApi = {
   reagendar: (citaId: string, inicio: Date) => api.patch<MiCita>(`/especialista/citas/${citaId}/hora`, { inicio: inicio.toISOString() }),
   llamar: (citaId: string) => api.post<{ codigo: string; estado: string }>(`/especialista/citas/${citaId}/llamar`, {}),
   revisado: (citaId: string, productId: string) => api.post<{ ok: true }>(`/especialista/citas/${citaId}/revisado`, { productId }),
+  /** Lo que dijo la clienta: sí la anota en su ficha, no la descarta */
+  responderAlergia: (citaId: string, grupo: string, tiene: boolean) => api.post<FichaClienta>(`/especialista/citas/${citaId}/alergia`, { grupo, tiene }),
 };
 
 // ── Los chats de la especialista con sus clientas ────────────────

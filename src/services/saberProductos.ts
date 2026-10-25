@@ -90,8 +90,16 @@ export interface VinculoProducto {
 export interface AvisosDeCita {
   grupos: string[];
   avisos: AvisoAlergia[];
+  /** Aunque no tenga nada anotado: lo que conviene preguntarle por lo que llevan los productos */
+  preguntas: PreguntaAlergia[];
   clientId: string | null;
   alergias: { clave: string; nombre: string; confirmada: boolean }[];
+}
+
+export interface PreguntaAlergia {
+  productId: string; producto: string; conocido: string;
+  componentes: { componente: string; grupo: string; seguro: boolean }[];
+  texto: string;
 }
 
 /** La cita pide abrir la ficha de una clienta: Clientas la abre al montarse */

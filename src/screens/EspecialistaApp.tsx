@@ -384,8 +384,10 @@ const TarjetaCita: React.FC<{
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> <span><b>Alergias o salud:</b> {ficha.alergias}</span>
                     </div>
                   )}
-                  {!!ficha.avisos?.length && (
-                    <ListaAvisosAlergia avisos={ficha.avisos} onRevisar={(productId) => miAgendaApi.revisado(cita.id, productId).then(() => miAgendaApi.clienta(cita.id).then(setFicha))} />
+                  {(!!ficha.avisos?.length || !!ficha.preguntas?.length) && (
+                    <ListaAvisosAlergia avisos={ficha.avisos ?? []} preguntas={ficha.preguntas}
+                      onRevisar={(productId) => miAgendaApi.revisado(cita.id, productId).then(() => miAgendaApi.clienta(cita.id).then(setFicha))}
+                      onResponder={(grupo, tiene) => miAgendaApi.responderAlergia(cita.id, grupo, tiene).then(setFicha)} />
                   )}
                   {ficha.gustos.length > 0 && (
                     <div className="space-y-1">
@@ -416,7 +418,7 @@ const TarjetaCita: React.FC<{
                       ))}
                     </div>
                   )}
-                  {!ficha.alergias && !ficha.avisos?.length && !ficha.gustos.length && !ficha.notas && !cita.notas && !ficha.visitas.length && (
+                  {!ficha.alergias && !ficha.avisos?.length && !ficha.preguntas?.length && !ficha.gustos.length && !ficha.notas && !cita.notas && !ficha.visitas.length && (
                     <p className="text-[0.75rem] text-slate-400">No hay más datos de la clienta para ti.</p>
                   )}
                 </div>
