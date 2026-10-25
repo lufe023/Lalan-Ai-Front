@@ -3,7 +3,7 @@ import { FotoClienta } from '../ui/FotoClienta';
 import { GrabadorVoz } from './GrabadorVoz';
 import { useDeslizarParaVolver } from '../../hooks/useDeslizarParaVolver';
 import { motion } from 'motion/react';
-import { AlertTriangle, Bot, Check, CheckCheck, Clock, Minus, Send, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
+import { AlertTriangle, Bot, Check, CheckCheck, Clock, Minus, Send, ShieldAlert, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { CommunicationChannel, ChatStatus, ChatMessage } from '../../types';
@@ -12,6 +12,7 @@ import { ContenidoMensaje, OrigenDelChat, ReaccionDeMensaje } from './ContenidoM
 import { TurnoEspecial } from './TurnoEspecial';
 import { ClientaDelChat } from './ClientaDelChat';
 import { SedeDelChat } from './SedeDelChat';
+import { EspecialistaDelChat } from './EspecialistaDelChat';
 import { BloquearChat, ProteccionDelChat } from './ProteccionDelChat';
 import { useAuth } from '../../context/AuthContext';
 
@@ -274,8 +275,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
             if (msg.sender === 'system') {
               return (
                 <div key={msg.id || idx} className="flex justify-center">
-                  <div className="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-[0.75rem] text-amber-800 dark:text-amber-200 flex items-center gap-1.5 max-w-[90%]">
-                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                  <div className={`px-3 py-1.5 rounded-xl text-[0.75rem] flex items-center gap-1.5 max-w-[90%] ${msg.conducta
+                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-semibold'
+                    : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200'}`}>
+                    {msg.conducta ? <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
                     <span>{msg.text}</span>
                     <span className="opacity-60 shrink-0">· {horaDeMensaje(msg.timestamp)}</span>
                   </div>
@@ -309,7 +312,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                       </span>
                     ) : (
                       <span className="flex items-center gap-0.5">
-                        <UserCheck className="w-2.5 h-2.5" /> Equipo del salón
+                        <UserCheck className="w-2.5 h-2.5" /> {msg.autorNombre ?? 'Equipo del salón'}
                       </span>
                     )}
                   </div>
@@ -419,6 +422,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
         <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
+        <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
         <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>
@@ -507,8 +511,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
             if (msg.sender === 'system') {
               return (
                 <div key={msg.id || idx} className="flex justify-center">
-                  <div className="px-3 py-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-[0.75rem] text-amber-800 dark:text-amber-200 flex items-center gap-1.5 max-w-[90%]">
-                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                  <div className={`px-3 py-1.5 rounded-xl text-[0.75rem] flex items-center gap-1.5 max-w-[90%] ${msg.conducta
+                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-semibold'
+                    : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200'}`}>
+                    {msg.conducta ? <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
                     <span>{msg.text}</span>
                     <span className="opacity-60 shrink-0">· {horaDeMensaje(msg.timestamp)}</span>
                   </div>
@@ -542,7 +548,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
                       </span>
                     ) : (
                       <span className="flex items-center gap-0.5">
-                        <UserCheck className="w-2.5 h-2.5" /> Equipo del salón
+                        <UserCheck className="w-2.5 h-2.5" /> {msg.autorNombre ?? 'Equipo del salón'}
                       </span>
                     )}
                   </div>
@@ -652,6 +658,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
         <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
+        <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
         <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>

@@ -862,6 +862,9 @@ function mapApiConversation(c: any): Conversation {
     windowExpiresAt: c.windowExpiresAt ?? null,
     fueraDeHorarioHasta: c.fueraDeHorarioHasta ?? null, fueraDeHorarioPor: c.fueraDeHorarioPor ?? null,
     silenciadaHasta: c.silenciadaHasta ?? null, bloqueada: !!c.bloqueada, bloqueadaPor: c.bloqueadaPor ?? null,
+    especialista: c.especialista ? { userId: c.especialista.id, nombre: c.especialista.name, staffId: c.especialista.staffId ?? null } : null,
+    especialistaDesde: c.especialistaDesde ?? null, especialistaPor: c.especialistaPor ?? null,
+    especialistaPausadaAt: c.especialistaPausadaAt ?? null, especialistaPausaMotivo: c.especialistaPausaMotivo ?? null,
     // Los borrados vienen sin contenido (salvo para el super admin): se muestran como aviso
     messages: (c.messages ?? [])
       .map((m: any): ChatMessage => ({
@@ -870,6 +873,7 @@ function mapApiConversation(c: any): Conversation {
         deliveryStatus: m.deliveryStatus ?? null, failureReason: m.failureReason ?? null,
         tipo: m.contentType ?? 'texto', adjunto: m.adjunto ?? null,
         reaccion: m.reaction ?? null, eliminado: !!m.deletedAt, origen: m.origin ?? null,
+        autorNombre: m.autorNombre ?? null, conducta: m.contentData?.conducta ?? null,
       })),
   };
 }

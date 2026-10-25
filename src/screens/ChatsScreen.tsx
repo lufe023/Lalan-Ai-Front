@@ -19,6 +19,7 @@ import {
   Zap,
   Check,
   Wand2,
+  UserCog,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
@@ -61,6 +62,9 @@ export const ChatsScreen: React.FC = () => {
     return () => window.removeEventListener('keydown', alTeclear);
   }, [activeConversationId, setActiveConversationId]);
 
+  // Auditoría: solo los chats que atiende una especialista
+  const [soloEspecialistas, setSoloEspecialistas] = useState(false);
+  const conEspecialista = conversations.filter(c => c.especialista).length;
   // Filter conversations
   const filteredConversations = conversations.filter(c => {
     const matchesChannel = selectedChannel === 'all' || c.channel === selectedChannel;
@@ -68,7 +72,7 @@ export const ChatsScreen: React.FC = () => {
     const matchesSearch =
       c.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesChannel && matchesStatus && matchesSearch;
+    return matchesChannel && matchesStatus && matchesSearch && (!soloEspecialistas || !!c.especialista);
   });
 
 
@@ -125,6 +129,16 @@ export const ChatsScreen: React.FC = () => {
           ]}
         />
 
+        {(conEspecialista > 0 || soloEspecialistas) && (
+          <button
+            type="button" aria-pressed={soloEspecialistas} onClick={() => setSoloEspecialistas(v => !v)}
+            className={`px-3 py-1 rounded-full text-[0.75rem] font-bold flex items-center gap-1 cursor-pointer ${soloEspecialistas
+              ? 'bg-violet-600 text-white' : 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300'}`}
+          >
+            <UserCog className="w-3.5 h-3.5" aria-hidden="true" /> Chats de especialistas · {conEspecialista}
+          </button>
+        )}
+
         {/* Conversations List: entran en cascada; el chat que recibe un mensaje sube deslizándose */}
         <ListaAnimada className="space-y-2">
           {filteredConversations.map((conv, i) => (
@@ -160,6 +174,12 @@ export const ChatsScreen: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     {getChannelBadge(conv.channel)}
                     {getStatusIndicator(conv.status)}
+                    {conv.especialista && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[0.6875rem] font-extrabold ${conv.especialistaPausadaAt
+                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400' : 'bg-violet-500/15 text-violet-700 dark:text-violet-300'}`}>
+                        {conv.especialistaPausadaAt ? 'Pausada: ' : 'Con '}{conv.especialista.nombre.split(' ')[0]}
+                      </span>
+                    )}
                   </div>
 
                   <Insignia cuenta={conv.unreadCount} className="px-1.5 py-0.2 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold">
