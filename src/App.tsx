@@ -214,16 +214,17 @@ const MainAppContent: React.FC = () => {
                     vieja se iba primero y quedaba el hueco) ni la vieja se apaga a
                     medias (se veían las dos pantallas mezcladas). La nueva lleva el
                     fondo de la app para tapar del todo. popLayout saca la vieja del
-                    flujo; zIndex 0 la deja debajo. */}
+                    flujo; zIndex 0 la deja debajo. La subida es CSS (entrar-suave):
+                    con motion, el iPhone pintaba la pantalla ya puesta y luego la
+                    animaba, y eso se veía como parpadeo. */}
                 <AnimatePresence initial={false} mode="popLayout">
                   <motion.div
                     key={currentScreen}
                     data-pantalla={currentScreen}
-                    initial={{ opacity: 0, y: 14, scale: 0.985 }}
-                    animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 380, damping: 32, mass: 0.8 } }}
+                    initial={false}
                     exit={{ zIndex: 0, transition: { duration: 0.3, zIndex: { duration: 0 } } }}
-                    style={{ zIndex: 1 }}
-                    className="relative w-full flex-1 min-h-0 flex flex-col bg-[#f8fafc] dark:bg-[#09090b]"
+                    style={{ zIndex: 1, ['--entrar-escala' as string]: 0.985 }}
+                    className="entrar-suave relative w-full flex-1 min-h-0 flex flex-col bg-[#f8fafc] dark:bg-[#09090b]"
                   >
                     {renderCurrentScreen()}
                   </motion.div>
