@@ -15,3 +15,15 @@ Todo cambio tiene que respetarlo:
 - **Pasos de la bienvenida** que cargan inventario o personal preguntan la
   sede cuando hay varias.
 - Nunca supongas que hay una sola sede.
+
+## UX primero: conecta, muestra y enlaza
+
+La dueña hace el menor esfuerzo posible. En toda función nueva:
+
+- **Si una cosa conecta con otra, conéctala.** Un aviso sobre una clienta
+  abre su ficha; un aviso sobre un producto deja decir qué producto es ahí
+  mismo.
+- **Si una función genera información importante, muéstrala donde se decide.**
+  Di el dato concreto ("piel sensible"), no "tiene alergias anotadas".
+- **Si un flujo lleva a algún lado, pon el botón.** Nunca dejes a la dueña
+  buscando a mano lo que el aviso ya sabe.
