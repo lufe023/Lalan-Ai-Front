@@ -22,14 +22,38 @@ const DURACION_ENTRADA_MS = 700;
 
 const PrimeraVez = createContext(false);
 
+/**
+ * Las pantallas que ya se abrieron en esta sesión. La cascada, los números
+ * que cuentan desde cero y las secciones que suben son la bienvenida de la
+ * primera vez; al volver a una pestaña, lo que ya estaba se queda quieto,
+ * como en las apps del iPhone (si todo volviera a entrar, parecería que la
+ * pantalla se recargó o falló).
+ */
+const pantallasVistas = new Set<string>();
+const PrimeraVisita = createContext(true);
+
+/** Envuelve cada pantalla: dice a sus listas y números si es la primera visita */
+export const VisitaDePantalla: React.FC<{ pantalla: string; children: React.ReactNode }> = ({ pantalla, children }) => {
+  const [primera] = useState(() => !pantallasVistas.has(pantalla));
+  useEffect(() => { pantallasVistas.add(pantalla); }, [pantalla]);
+  return <PrimeraVisita.Provider value={primera}>{children}</PrimeraVisita.Provider>;
+};
+
 /** Una lista cuyas tarjetas entran en cascada y se reacomodan solas */
 /**
  * `clave`: cuando cambia (otro día en la Agenda, otra pestaña), la lista
  * vuelve a entrar en cascada como si se abriera de nuevo.
  */
 export const ListaAnimada: React.FC<{ className?: string; clave?: string; children: React.ReactNode }> = ({ className, clave, children }) => {
-  const [primeraVez, setPrimeraVez] = useState(true);
+  const primeraVisita = useContext(PrimeraVisita);
+  const [primeraVez, setPrimeraVez] = useState(primeraVisita);
+  // Al volver a la pantalla la lista ya está: no entra en cascada. Sí entra
+  // cuando cambia la clave (otro día, otra pestaña) con la pantalla abierta
+  const claveAnterior = useRef(clave);
   useEffect(() => {
+    const cambio = claveAnterior.current !== clave;
+    claveAnterior.current = clave;
+    if (!cambio && !primeraVisita) return;
     setPrimeraVez(true);
     const t = window.setTimeout(() => setPrimeraVez(false), DURACION_ENTRADA_MS);
     return () => window.clearTimeout(t);
@@ -41,7 +65,7 @@ export const ListaAnimada: React.FC<{ className?: string; clave?: string; childr
           al final y cargar más). Las tarjetas ya se acomodan solas.
           `relative`: popLayout saca las que se van con position absolute */}
       <div className={`relative ${className ?? ''}`}>
-        <AnimatePresence initial mode="popLayout">{children}</AnimatePresence>
+        <AnimatePresence initial={primeraVisita} mode="popLayout">{children}</AnimatePresence>
       </div>
     </PrimeraVez.Provider>
   );
@@ -128,14 +152,15 @@ export const NumeroAnimado: React.FC<{ valor: number; formato?: (n: number) => s
   const mv = useMotionValue(valor);
   const texto = useTransform(mv, (v) => (formato ? formato(decimales ? v : Math.round(v)) : Math.round(v).toLocaleString('es-DO')));
   const primero = useRef(true);
+  const primeraVisita = useContext(PrimeraVisita);
   useEffect(() => {
-    // La primera vez cuenta desde cero (se ve "llegar" el número); después, desde el anterior
-    const desde = primero.current ? 0 : mv.get();
+    // La primera visita cuenta desde cero (se ve "llegar" el número); después, desde el anterior
+    const desde = primero.current && primeraVisita ? 0 : mv.get();
     primero.current = false;
     mv.set(desde);
     const c = animate(mv, valor, { duration: 0.7, ease: [0.22, 1, 0.36, 1] });
     return () => c.stop();
-  }, [valor, mv]);
+  }, [valor, mv, primeraVisita]);
   return <motion.span>{texto}</motion.span>;
 };
 
@@ -149,17 +174,20 @@ type PropsAparecer = Omit<React.ComponentProps<typeof motion.div>, 'initial' | '
  * Una tarjeta o sección que sube suave al aparecer en pantalla (también al
  * bajar con el dedo: entra cuando se asoma, una sola vez).
  */
-export const Aparecer = React.forwardRef<HTMLDivElement, PropsAparecer>(({ indice = 0, tocable, ...props }, ref) => (
+export const Aparecer = React.forwardRef<HTMLDivElement, PropsAparecer>(({ indice = 0, tocable, ...props }, ref) => {
+  const primeraVisita = useContext(PrimeraVisita);
+  return (
   <motion.div
     ref={ref}
-    initial={{ opacity: 0, y: 16, scale: 0.985 }}
+    initial={primeraVisita ? { opacity: 0, y: 16, scale: 0.985 } : false}
     whileInView={{ opacity: 1, y: 0, scale: 1 }}
     viewport={{ once: true, margin: '0px 0px -24px 0px' }}
     transition={{ ...RESORTE, delay: Math.min(indice, MAXIMO_EN_CASCADA) * PASO_CASCADA_S }}
     {...(tocable ? { whileTap: { scale: 0.98 } } : {})}
     {...props}
   />
-));
+  );
+});
 Aparecer.displayName = 'Aparecer';
 
 /** El globito de "nuevo": aparece con un saltito y vuelve a saltar cuando sube la cuenta */

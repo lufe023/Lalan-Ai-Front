@@ -28,6 +28,7 @@ import { GananciasScreen } from './screens/GananciasScreen';
 import { PantallaTurnos } from './screens/PantallaTurnos';
 import { ReproductorSala } from './screens/ReproductorSala';
 import { PedirCancionScreen } from './screens/PedirCancionScreen';
+import { VisitaDePantalla } from './components/ui/movimiento';
 import VitrinaScreen from './screens/VitrinaScreen';
 import VitrinaCortaScreen from './screens/VitrinaCortaScreen';
 import { direccionCorta } from '../worker/direccion-corta.js';
@@ -208,18 +209,23 @@ const MainAppContent: React.FC = () => {
 
               {/* Screen transitions */}
               <div className="flex-1 overflow-hidden flex flex-col relative">
-                <AnimatePresence mode="wait">
+                {/* Cambiar de pestaña como en el iPhone: la pantalla nueva aparece
+                    encima de la vieja con un fundido corto, sin dejar un instante
+                    la app en blanco (con mode="wait" se iba la vieja, quedaba el
+                    hueco y luego subía la nueva: se veía como un parpadeo).
+                    popLayout saca la vieja del flujo mientras se desvanece */}
+                <AnimatePresence initial={false} mode="popLayout">
                   <motion.div
                     key={currentScreen}
                     data-pantalla={currentScreen}
-                    /* La pantalla nueva sube y se asienta con resorte; la vieja se va rápido
-                       (si la salida tardara lo mismo, cambiar de pestaña se sentiría lento) */
-                    initial={{ opacity: 0, y: 14, scale: 0.985 }}
-                    animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 380, damping: 32, mass: 0.8 } }}
-                    exit={{ opacity: 0, scale: 0.99, transition: { duration: 0.12, ease: 'easeIn' } }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, transition: { duration: 0.16, ease: 'easeOut' } }}
+                    exit={{ opacity: 0, transition: { duration: 0.16, ease: 'easeIn' } }}
                     className="w-full flex-1 min-h-0 flex flex-col"
                   >
-                    {renderCurrentScreen()}
+                    <VisitaDePantalla pantalla={currentScreen}>
+                      {renderCurrentScreen()}
+                    </VisitaDePantalla>
                   </motion.div>
                 </AnimatePresence>
               </div>
