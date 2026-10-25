@@ -29,6 +29,7 @@ import {
   Contact,
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
+import { ComoQuedo } from '../components/clientes/ComoQuedo';
 import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
 import { ElegirFotoDeCanal } from '../components/clientes/ElegirFotoDeCanal';
 import { ArchivoDeContactos, entregarContactos, prepararContactos, sePuedeCompartir } from '../utils/contactos';
@@ -831,6 +832,9 @@ export const ClientsScreen: React.FC = () => {
 
             {/* Datos que Lalan anotó de sus chats */}
             <LoQueLalanSabe clienteId={selectedClient.id} />
+
+            {/* Fotos y videos de cómo le quedó cada visita */}
+            <ComoQuedo clienteId={selectedClient.id} />
 
             {/* VIP Lounge & Preferences Card */}
             <div className="rounded-2xl border border-amber-500/30 dark:border-amber-500/20 overflow-hidden">

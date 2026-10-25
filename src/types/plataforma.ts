@@ -61,7 +61,7 @@ export interface CatalogosPiloto { tiposNegocio: Opcion[]; queAutomatizar: Opcio
 
 export type ClaveModulo =
   | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
-  | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco' | 'vitrina';
+  | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco' | 'vitrina' | 'fotos_clientes';
 
 export type GrupoModulo = 'atencion' | 'salon' | 'dinero' | 'experiencia';
 export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo; /** Qué deja de funcionar sin él */ queBloquea?: string }
@@ -71,6 +71,8 @@ export type Recurso = 'mensajesMes' | 'sedes' | 'usuarios' | 'especialistas';
 export type Limites = Record<Recurso, number | null> & {
   /** Preguntas por persona al día a la pantalla de Lalan (null = el tope general) */
   preguntasDia?: number | null;
+  /** Espacio para «Cómo quedó», en MB (null = sin tope) */
+  fotosClientesMB?: number | null;
 };
 
 /** Un paquete de respuestas extra que el salón puede pedir */
