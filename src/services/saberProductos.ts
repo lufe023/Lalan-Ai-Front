@@ -50,9 +50,17 @@ export type DatosComponente = Omit<Componente, 'id' | 'enProductos'>;
 export type DatosGenerico = Pick<ProductoConocido, 'nombre' | 'alias' | 'marcas' | 'categoria' | 'nota'>;
 export type DatosComposicion = Pick<FilaComposicion, 'productoConocidoId' | 'componenteId' | 'presencia' | 'marca' | 'nota' | 'fuente'>;
 
+export interface PropuestaIa {
+  existenteId: string | null;
+  generico: { nombre: string; categoria: string | null; alias: string[]; marcas: string[] };
+  componentes: { componenteId: string | null; nombre: string; grupo: string | null; presencia: Presencia; marca: string | null; nota: string | null }[];
+}
+
 export const baseProductosApi = {
   base: () => api.get<BaseProductos>('/plataforma/productos'),
   porReconocer: () => api.get<PorReconocer[]>('/plataforma/productos/por-reconocer'),
+  /** La IA propone qué genérico es y qué suele llevar; no guarda nada */
+  proponer: (nombre: string) => api.post<PropuestaIa>('/plataforma/productos/proponer', { nombre }),
   mercado: (f: { desde?: string; hasta?: string; tipo?: string; pais?: string; ciudad?: string }) => {
     const q = new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString();
     return api.get<Mercado>(`/plataforma/productos/mercado${q ? `?${q}` : ''}`);
@@ -82,7 +90,7 @@ export interface AvisoAlergia {
   productId: string; producto: string; conocido: string | null; nivel: NivelAviso; grupo: string | null; componente: string | null; marcas: string[];
   texto: string; revisado: { por: string; en: string } | null;
 }
-export interface AlergiasClienta { grupos: GrupoAlergia[]; detectados: string[]; decididos: { grupo: string; estado: 'confirmada' | 'descartada' }[]; vigentes: string[] }
+export interface AlergiasClienta { grupos: GrupoAlergia[]; detectados: string[]; /** Los que solo vio la IA */ porIa?: string[]; decididos: { grupo: string; estado: 'confirmada' | 'descartada' }[]; vigentes: string[] }
 
 export const saberProductosApi = {
   genericos: (q: string) => api.get<{ id: string; nombre: string; categoria: string | null }[]>(`/saber-productos/genericos?q=${encodeURIComponent(q)}`),
@@ -90,7 +98,7 @@ export const saberProductosApi = {
   sugerencia: (nombre: string) => api.get<{ sugerido: { id: string; nombre: string } | null; marcaSugerida: string | null; lleva: ComponenteEnProducto[] }>(`/saber-productos/sugerencia?nombre=${encodeURIComponent(nombre)}`),
   vinculo: (productId: string) => api.get<VinculoProducto>(`/saber-productos/productos/${productId}`),
   vincular: (productId: string, d: { productoConocidoId: string | null; marca?: string | null }) => api.put<VinculoProducto>(`/saber-productos/productos/${productId}`, d),
-  riesgosDeServicio: (serviceId: string) => api.get<{ productId: string; conocido: string; componentes: ComponenteEnProducto[] }[]>(`/saber-productos/servicios/${serviceId}/riesgos`),
+  riesgosDeServicio: (serviceId: string) => api.get<{ productId: string; producto: string; conocido: string; componentes: ComponenteEnProducto[] }[]>(`/saber-productos/servicios/${serviceId}/riesgos`),
   alergias: (clientId: string) => api.get<AlergiasClienta>(`/saber-productos/clientas/${clientId}/alergias`),
   marcarAlergia: (clientId: string, grupo: string, estado: 'confirmada' | 'descartada' | null) => api.put<AlergiasClienta>(`/saber-productos/clientas/${clientId}/alergias`, { grupo, estado }),
   avisosDeCita: (citaId: string) => api.get<{ grupos: string[]; avisos: AvisoAlergia[] }>(`/saber-productos/citas/${citaId}/avisos`),

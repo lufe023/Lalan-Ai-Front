@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Plus, ShieldAlert, X } from 'lucide-react';
+import { Check, Plus, ShieldAlert, Sparkles, X } from 'lucide-react';
 import { saberProductosApi, type AlergiasClienta } from '../../services/saberProductos';
 import { useConfirmar } from '../ui/ModalConfirmar';
 
@@ -54,8 +54,10 @@ export const AlergiasEnGrupos: React.FC<{ clienteId: string; texto: string | nul
       <div className="flex flex-wrap gap-1.5">
         {datos.vigentes.map((g) => {
           const confirmada = estado(g) === 'confirmada';
+          const deIa = !confirmada && !!datos.porIa?.includes(g);
           return (
-            <span key={g} className={`inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-[0.75rem] font-semibold ${confirmada ? 'bg-amber-500/20 text-amber-800 dark:text-amber-200' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-dashed border-amber-500/40'}`}>
+            <span key={g} title={deIa ? 'La leyó la IA de Lalan en la nota' : undefined} className={`inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-[0.75rem] font-semibold ${confirmada ? 'bg-amber-500/20 text-amber-800 dark:text-amber-200' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-dashed border-amber-500/40'}`}>
+              {deIa && <Sparkles className="w-3 h-3" aria-label="Leída por IA" />}
               {nombre(g)}
               {!confirmada && (
                 <button type="button" title="Confirmar" aria-label={`Confirmar ${nombre(g)}`} onClick={() => void marcar(g, 'confirmada')} className="p-1 rounded-full hover:bg-amber-500/20 cursor-pointer"><Check className="w-3 h-3" /></button>
@@ -78,7 +80,7 @@ export const AlergiasEnGrupos: React.FC<{ clienteId: string; texto: string | nul
         )}
       </div>
       {datos.vigentes.some((g) => estado(g) !== 'confirmada') && (
-        <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Las punteadas las leyó Lalan en el texto: confírmalas o quítalas.</p>
+        <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Las punteadas las leyó Lalan en el texto{datos.porIa?.some((g) => estado(g) !== 'confirmada') ? ' (las de ✦ con IA)' : ''}: confírmalas o quítalas.</p>
       )}
       {descartados.length > 0 && (
         <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">

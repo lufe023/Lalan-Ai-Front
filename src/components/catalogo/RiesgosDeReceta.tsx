@@ -8,7 +8,7 @@ import { NOMBRE_PRESENCIA, saberProductosApi, type ComponenteEnProducto } from '
  * alérgica. Lee la receta guardada; `version` cambia al guardarla.
  */
 export const RiesgosDeReceta: React.FC<{ serviceId: string; version: string; nombres: Record<string, string> }> = ({ serviceId, version, nombres }) => {
-  const [filas, setFilas] = useState<{ productId: string; conocido: string; componentes: ComponenteEnProducto[] }[]>([]);
+  const [filas, setFilas] = useState<{ productId: string; producto?: string; conocido: string; componentes: ComponenteEnProducto[] }[]>([]);
   useEffect(() => {
     saberProductosApi.riesgosDeServicio(serviceId).then(setFilas).catch(() => setFilas([]));
   }, [serviceId, version]);
@@ -20,7 +20,7 @@ export const RiesgosDeReceta: React.FC<{ serviceId: string; version: string; nom
       </p>
       {filas.map((f) => (
         <p key={f.productId} className="text-[0.75rem] text-slate-700 dark:text-neutral-200">
-          <b>{nombres[f.productId] ?? f.conocido}</b>: {f.componentes.map((c) => `${c.componente} (${c.presencia === 'marca' ? c.marca : NOMBRE_PRESENCIA[c.presencia].toLowerCase()})`).join(', ')}
+          <b>{nombres[f.productId] ?? f.producto ?? f.conocido}</b>: {f.componentes.map((c) => `${c.componente} (${c.presencia === 'marca' ? c.marca : NOMBRE_PRESENCIA[c.presencia].toLowerCase()})`).join(', ')}
         </p>
       ))}
       <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Si una clienta con cita es alérgica a algo de esto, el equipo lo verá en su cita.</p>

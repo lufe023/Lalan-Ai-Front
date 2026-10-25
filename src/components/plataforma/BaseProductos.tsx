@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ExternalLink, FlaskConical, Loader2, Pencil, Plus, Search, Trash2, Undo2 } from 'lucide-react';
+import { CheckCircle2, ExternalLink, FlaskConical, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Undo2 } from 'lucide-react';
 import { IOSSegmentedControl } from '../ui/IOSSegmentedControl';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import {
   baseProductosApi, NOMBRE_NIVEL, NOMBRE_PRESENCIA, NOMBRE_RIESGO,
   type BaseProductos as Base, type Componente, type DatosComponente, type DatosComposicion, type DatosGenerico,
-  type FilaComposicion, type NivelRiesgo, type PorReconocer, type Presencia, type ProductoConocido, type Riesgo, type TipoRiesgo,
+  type FilaComposicion, type NivelRiesgo, type PorReconocer, type Presencia, type ProductoConocido, type PropuestaIa, type Riesgo, type TipoRiesgo,
 } from '../../services/saberProductos';
 
 const tarjeta = 'rounded-2xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3';
@@ -56,11 +56,15 @@ const FormGenerico: React.FC<{ inicial?: ProductoConocido | null; nombreSugerido
   );
 };
 
-const FormComposicion: React.FC<{ generico: ProductoConocido; componentes: Componente[]; inicial?: FilaComposicion | null; onGuardar: (d: DatosComposicion) => Promise<void>; onCancelar: () => void }> = ({ generico, componentes, inicial, onGuardar, onCancelar }) => {
-  const [componenteId, setComponenteId] = useState(inicial?.componenteId ?? '');
-  const [presencia, setPresencia] = useState<Presencia>(inicial?.presencia ?? 'siempre');
-  const [marca, setMarca] = useState(inicial?.marca ?? '');
-  const [nota, setNota] = useState(inicial?.nota ?? '');
+/** Lo que propuso la IA para un componente, para llenar el formulario (sin fuente) */
+type PropuestaFila = Pick<DatosComposicion, 'componenteId' | 'presencia' | 'marca' | 'nota'>;
+
+const FormComposicion: React.FC<{ generico: ProductoConocido; componentes: Componente[]; inicial?: FilaComposicion | null; propuesta?: PropuestaFila; onGuardar: (d: DatosComposicion) => Promise<void>; onCancelar: () => void }> = ({ generico, componentes, inicial, propuesta, onGuardar, onCancelar }) => {
+  const desde = inicial ?? propuesta;
+  const [componenteId, setComponenteId] = useState(desde?.componenteId ?? '');
+  const [presencia, setPresencia] = useState<Presencia>(desde?.presencia ?? 'siempre');
+  const [marca, setMarca] = useState(desde?.marca ?? '');
+  const [nota, setNota] = useState(desde?.nota ?? '');
   const [fuente, setFuente] = useState(inicial?.fuente ?? '');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -76,6 +80,7 @@ const FormComposicion: React.FC<{ generico: ProductoConocido; componentes: Compo
   };
   return (
     <form onSubmit={enviar} className="rounded-xl border border-dashed border-slate-300 dark:border-neutral-700 p-2.5 grid sm:grid-cols-2 gap-2">
+      {propuesta && <p className="sm:col-span-2 text-[0.75rem] font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> Propuesto por la IA: comprueba con una fuente y pega su enlace.</p>}
       <label className={etiqueta}>Componente
         <select value={componenteId} onChange={(e) => setComponenteId(e.target.value)} className={campo}>
           <option value="">Elige…</option>
@@ -154,6 +159,45 @@ const FormComponente: React.FC<{ grupos: Base['grupos']; inicial?: Componente | 
 
 type Vista = 'productos' | 'componentes' | 'reconocer';
 
+/** Lo que propone la IA para un nombre de "Por reconocer". Nada se guarda sin que lo uses, y lo que lleva necesita su fuente */
+const TarjetaPropuesta: React.FC<{
+  nombre: string; datos: PropuestaIa | null; error: string; usando: boolean; existente: string | null;
+  nombreGrupo: (clave: string) => string; onUsar: () => void; onCerrar: () => void;
+}> = ({ nombre, datos, error, usando, existente, nombreGrupo, onUsar, onCerrar }) => (
+  <div className="basis-full rounded-xl border border-violet-300/60 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/20 p-2.5 space-y-1.5 text-[0.8125rem]">
+    {!datos && !error && <p className="flex items-center gap-1.5 text-slate-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> La IA está pensando qué es "{nombre}"…</p>}
+    {error && <p className="text-rose-600 text-xs">{error}</p>}
+    {datos && (existente ? (
+      <p>La IA cree que es <b>{existente}</b>, que ya está en la base.</p>
+    ) : (
+      <>
+        <p>La IA cree que es <b>{datos.generico.nombre}</b>{datos.generico.categoria ? ` (${datos.generico.categoria})` : ''}.</p>
+        {datos.generico.alias.length > 0 && <p className="text-xs text-slate-500">También: {datos.generico.alias.join(', ')}</p>}
+        {datos.componentes.length === 0 ? <p className="text-xs text-slate-500">No propone componentes de cuidado.</p> : (
+          <ul className="space-y-0.5">
+            {datos.componentes.map((c) => (
+              <li key={c.nombre} className="text-xs">
+                <b>{c.nombre}</b> · {c.presencia === 'marca' ? `solo ${c.marca}` : NOMBRE_PRESENCIA[c.presencia].toLowerCase()}{c.grupo ? ` · ${nombreGrupo(c.grupo)}` : ''}
+                {!c.componenteId && <span className="text-amber-700 dark:text-amber-300"> · no está en Componentes: créalo si hace falta</span>}
+                {c.nota && <span className="text-slate-500"> · {c.nota}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    ))}
+    <p className="text-[0.6875rem] text-slate-500">La IA puede equivocarse. Lo que lleva entra como borrador y solo con la fuente que pongas tú.</p>
+    <div className="flex gap-2 justify-end">
+      <button type="button" onClick={onCerrar} className={botonChico}>Cerrar</button>
+      {datos && (
+        <button type="button" disabled={usando} onClick={onUsar} className={botonPrimario}>
+          {usando && <Loader2 className="w-4 h-4 animate-spin" />} {existente ? `Añadir como otro nombre de ${existente}` : 'Crear el genérico con esto'}
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 /**
  * La base de productos de Lalan: genéricos ("Acetona para uñas"), sus
  * componentes y riesgos, y qué lleva cada uno. Cada fila de composición entra
@@ -169,6 +213,11 @@ export const BaseProductos: React.FC = () => {
   const [buscar, setBuscar] = useState('');
   const [editando, setEditando] = useState<string | null>(null); // 'nuevo' | id de genérico | 'c:'+id | 'f:'+id | 'nf:'+idGenerico
   const [nombreSugerido, setNombreSugerido] = useState('');
+  // La propuesta de la IA para un nombre de "Por reconocer"
+  const [propuesta, setPropuesta] = useState<{ nombre: string; datos: PropuestaIa | null; error: string } | null>(null);
+  const [usando, setUsando] = useState(false);
+  // Componentes propuestos por la IA para un genérico recién creado, a la espera de su fuente
+  const [pendientes, setPendientes] = useState<Record<string, PropuestaFila[]>>({});
   const { confirmar, modalConfirmar } = useConfirmar();
 
   const cargar = useCallback(() => {
@@ -186,6 +235,36 @@ export const BaseProductos: React.FC = () => {
   const componentes = (base?.componentes ?? []).filter((c) => !q || [c.nombre, ...c.sinonimos].some((x) => x.toLowerCase().includes(q)));
 
   const hecho = async (p: Promise<unknown>) => { await p; setEditando(null); cargar(); };
+
+  const proponer = (nombre: string) => {
+    setPropuesta({ nombre, datos: null, error: '' });
+    baseProductosApi.proponer(nombre)
+      .then((datos) => setPropuesta((p) => (p?.nombre === nombre ? { ...p, datos } : p)))
+      .catch((e) => setPropuesta((p) => (p?.nombre === nombre ? { ...p, error: e?.message || 'La IA no contestó' } : p)));
+  };
+  const quitarPendiente = (genericoId: string, i: number) => setPendientes((p) => {
+    const filas = (p[genericoId] ?? []).filter((_, j) => j !== i);
+    const { [genericoId]: _quitado, ...resto } = p;
+    return filas.length ? { ...resto, [genericoId]: filas } : resto;
+  });
+  /** Usar la propuesta: o el nombre va como otro nombre del genérico que ya es, o se crea el genérico y quedan sus componentes por llenar */
+  const usarPropuesta = async (nombre: string, datos: PropuestaIa) => {
+    setUsando(true);
+    try {
+      const existente = datos.existenteId ? base?.productos.find((p) => p.id === datos.existenteId) : null;
+      if (existente) {
+        await baseProductosApi.guardarGenerico(existente.id, { nombre: existente.nombre, categoria: existente.categoria, alias: [...new Set([...existente.alias, nombre])], marcas: existente.marcas, nota: existente.nota });
+        setPropuesta(null); setPorReconocer(null); cargar();
+        return;
+      }
+      const nuevo = await baseProductosApi.guardarGenerico(null, { ...datos.generico, nota: null });
+      const filas = datos.componentes.filter((c) => c.componenteId).map((c) => ({ componenteId: c.componenteId!, presencia: c.presencia, marca: c.marca, nota: c.nota }));
+      if (filas.length) setPendientes((p) => ({ ...p, [nuevo.id]: filas }));
+      setPropuesta(null); setPorReconocer(null); setBuscar(nuevo.nombre); setVista('productos'); cargar();
+    } catch (e) {
+      setPropuesta((p) => (p ? { ...p, error: (e as Error)?.message || 'No se pudo guardar' } : p));
+    } finally { setUsando(false); }
+  };
   const borrar = async (titulo: string, mensaje: string, hacer: () => Promise<unknown>) => {
     if (await confirmar({ titulo, mensaje, textoConfirmar: 'Borrar', tono: 'peligro' })) await hecho(hacer());
   };
@@ -263,6 +342,11 @@ export const BaseProductos: React.FC = () => {
                       </li>
                     ))}
                   </ul>
+                  {(pendientes[p.id] ?? []).map((pf, i) => (
+                    <FormComposicion key={`${pf.componenteId}-${i}`} generico={p} componentes={base.componentes} propuesta={pf}
+                      onCancelar={() => quitarPendiente(p.id, i)}
+                      onGuardar={async (d) => { await baseProductosApi.guardarComposicion(null, d); quitarPendiente(p.id, i); cargar(); }} />
+                  ))}
                   {editando === `nf:${p.id}`
                     ? <FormComposicion generico={p} componentes={base.componentes} onCancelar={() => setEditando(null)} onGuardar={(d) => hecho(baseProductosApi.guardarComposicion(null, d))} />
                     : <button type="button" onClick={() => setEditando(`nf:${p.id}`)} className={botonChico}><Plus className="w-3.5 h-3.5" /> Qué lleva</button>}
@@ -312,7 +396,16 @@ export const BaseProductos: React.FC = () => {
                           <div className="text-xs text-slate-500">{r.salones} salón{r.salones === 1 ? '' : 'es'} · {r.productos} producto{r.productos === 1 ? '' : 's'}{r.sugerido ? ` · parece ${r.sugerido}` : ''}</div>
                         </div>
                         {!r.sugerido && (
-                          <button type="button" onClick={() => { setNombreSugerido(r.nombre); setEditando('nuevo'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={botonChico}><Plus className="w-3.5 h-3.5" /> Crear genérico</button>
+                          <>
+                            <button type="button" onClick={() => proponer(r.nombre)} className={`${botonChico} text-violet-700 dark:text-violet-300`}><Sparkles className="w-3.5 h-3.5" /> Proponer con IA</button>
+                            <button type="button" onClick={() => { setNombreSugerido(r.nombre); setEditando('nuevo'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={botonChico}><Plus className="w-3.5 h-3.5" /> Crear genérico</button>
+                          </>
+                        )}
+                        {propuesta?.nombre === r.nombre && (
+                          <TarjetaPropuesta nombre={r.nombre} datos={propuesta.datos} error={propuesta.error} usando={usando}
+                            existente={propuesta.datos?.existenteId ? base.productos.find((p) => p.id === propuesta.datos!.existenteId)?.nombre ?? null : null}
+                            nombreGrupo={nombreGrupo}
+                            onUsar={() => propuesta.datos && void usarPropuesta(r.nombre, propuesta.datos)} onCerrar={() => setPropuesta(null)} />
                         )}
                       </li>
                     ))}
