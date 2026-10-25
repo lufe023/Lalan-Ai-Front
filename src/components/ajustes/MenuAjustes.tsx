@@ -27,7 +27,7 @@ export const GRUPOS_AJUSTES: Grupo[] = [
   { id: 'chats', titulo: 'Lalan en los chats', resumen: 'Conectar WhatsApp, Instagram y Messenger; mensajes automáticos', icono: Bot, color: 'bg-purple-500', roles: ADMINISTRACION },
   { id: 'sala', titulo: 'Sala y Lounge', resumen: 'Pantalla de turnos, quiosco de llegada y canciones que piden las clientas', icono: Monitor, color: 'bg-indigo-500', roles: ADMINISTRACION },
   { id: 'vitrina', titulo: 'Vitrina', resumen: 'Tu página para que las clientas reserven solas: bloques, colores y enlace', icono: Globe, color: 'bg-fuchsia-500', roles: ADMINISTRACION },
-  { id: 'caja', titulo: 'Caja', resumen: 'Monedas, billetes, recibos e impresión', icono: Wallet, color: 'bg-teal-500', roles: ADMINISTRACION },
+  { id: 'caja', titulo: 'Caja', resumen: 'Fiao, monedas, billetes, recibos e impresión', icono: Wallet, color: 'bg-teal-500', roles: ADMINISTRACION },
   // Es de cada teléfono (no cambia nada del salón): la ve todo el equipo
   { id: 'apariencia', titulo: 'Apariencia', resumen: 'Tamaño de la letra, tema claro u oscuro y colores', icono: Palette, color: 'bg-rose-500' },
 ];

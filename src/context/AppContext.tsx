@@ -457,6 +457,13 @@ interface AppContextType {
   moveSaleItem: (itemId: string, toSaleId: string) => Promise<void>;
   paySale: (dto: { method: string; amount: number; tip?: number; reference?: string; currency?: string }) => Promise<void>;
   closeSale: (permitirSinPagar?: boolean) => Promise<boolean>;
+  /**
+   * Fiao: cierra la comanda con saldo a nombre de la clienta, o la deja
+   * esperando a que la dueña lo autorice. Devuelve en qué quedó.
+   */
+  dejarFiao: (dto: { fechaPromesa?: string | null; nota?: string | null }) => Promise<{ estado: 'fiado' | 'esperando'; solicitud?: any } | null>;
+  /** Vuelve a leer la comanda activa; si otro la cerró (la dueña aprobó el fiao), la suelta */
+  refrescarComanda: () => Promise<void>;
   /** Bitácora del salón: cortesías, ventas y canciones. Vive en el backend. */
   loungeEvents: LoungeEvent[];
   loungeEventsLoading: boolean;
@@ -2874,6 +2881,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [activeSale, loadLoungeEvents, loadOpenFolios]);
 
+  const dejarFiao = useCallback(async (dto: { fechaPromesa?: string | null; nota?: string | null }) => {
+    if (!activeSale) return null;
+    setSaleBusy(true);
+    try {
+      const r = await api.post<{ estado: 'fiado' | 'esperando'; solicitud?: any }>(`/fiao/ventas/${activeSale.id}`, dto);
+      if (r?.estado === 'fiado') {
+        setActiveSale(null);
+        void loadOpenFolios();
+        showToast('Quedó fiado', 'La cuenta pasó a Caja, Fiao. Ahí se abona.', 'success');
+        void loadLoungeEvents({ range: 'today' });
+      }
+      return r ?? null;
+    } catch (e: any) {
+      showToast('No se pudo dejar fiao', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+      return null;
+    } finally {
+      setSaleBusy(false);
+    }
+  }, [activeSale, loadLoungeEvents, loadOpenFolios]);
+
+  const refrescarComanda = useCallback(async () => {
+    if (!activeSale) return;
+    try {
+      const v = await api.get<Sale>(`/sales/${activeSale.id}`);
+      if (v?.status !== 'open') { setActiveSale(null); void loadOpenFolios(); }
+      else setActiveSale(v);
+    } catch { /* se queda como estaba */ }
+  }, [activeSale, loadOpenFolios]);
+
   // Al cambiar la clienta del sillón, traemos su ticket abierto si lo hay
   useEffect(() => {
     if (!activeLoungeClient) { setActiveSale(null); return; }
@@ -2981,7 +3017,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeLoungeClient, loungeClients, setLoungeClients, toggleLoungeClient,
       bienvenida, cerrarBienvenida,
       activeSale, saleBusy, openSale, addSaleItem, removeSaleItem,
-      setSaleItemQty, toggleSaleItemCourtesy, setSalePriceList, paySale, closeSale,
+      setSaleItemQty, toggleSaleItemCourtesy, setSalePriceList, paySale, closeSale, dejarFiao, refrescarComanda,
       sala, salaCargando, loadSala,
       zonas, loadZonas, guardarZona, eliminarZona,
       especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista,

@@ -4,15 +4,17 @@ import { RESORTE } from '../components/ui/movimiento';
 import {
   Receipt, Printer, UserPlus, Search, RotateCcw, Users,
   Wallet, LockOpen, Lock, ArrowDownLeft, ArrowUpRight, Plus,
-  ClipboardList, Clock, MapPin,
+  ClipboardList, Clock, MapPin, HandCoins,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
+import { alRecibir } from '../services/socket';
 import { PosPanel } from '../components/pos/PosPanel';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { PageContent } from '../components/ui/PageContent';
 import { imprimirRecibo } from '../utils/recibo';
 import { ListaRecibos } from '../components/caja/ListaRecibos';
+import { PanelFiao } from '../components/caja/PanelFiao';
 import { useSedeActiva } from '../context/SedeActivaContext';
 import { useOpcionesRecibo } from '../hooks/useOpcionesRecibo';
 
@@ -31,7 +33,29 @@ export const CajaScreen: React.FC = () => {
     baseCurrency, loadCurrencies,
   } = useApp();
 
-  const [vista, setVista] = useState<'cobrar' | 'comandas' | 'recibos' | 'turno'>('cobrar');
+  const [vista, setVista] = useState<'cobrar' | 'comandas' | 'fiao' | 'recibos' | 'turno'>('cobrar');
+  // Fiaos y abonos esperando a la dueña: el número rojo de la pestaña
+  const [porAutorizar, setPorAutorizar] = useState(0);
+  useEffect(() => {
+    const contar = () => {
+      api.get<any[]>('/fiao/solicitudes').then(l => setPorAutorizar(l?.length ?? 0)).catch(() => setPorAutorizar(0));
+    };
+    contar();
+    return alRecibir('ventas:cambio', contar);
+  }, []);
+  // La notificación "Fiao por autorizar" abre esta pestaña
+  useEffect(() => {
+    const revisar = () => {
+      try {
+        if (sessionStorage.getItem('lalan.abrirAviso') !== 'fiao') return;
+        sessionStorage.removeItem('lalan.abrirAviso');
+      } catch { return; }
+      setVista('fiao');
+    };
+    revisar();
+    window.addEventListener('lalan:abrir-aviso', revisar);
+    return () => window.removeEventListener('lalan:abrir-aviso', revisar);
+  }, []);
   const [turno, setTurno] = useState<any>(null);
   const [historial, setHistorial] = useState<any[]>([]);
   const [fondo, setFondo] = useState('');
@@ -237,6 +261,7 @@ export const CajaScreen: React.FC = () => {
           {([
             { id: 'cobrar' as const, label: 'Cobrar', icon: Receipt, pendientes: 0 },
             { id: 'comandas' as const, label: 'Comandas', icon: ClipboardList, pendientes: abiertas.length },
+            { id: 'fiao' as const, label: 'Fiao', icon: HandCoins, pendientes: porAutorizar },
             { id: 'recibos' as const, label: 'Recibos', icon: Printer, pendientes: 0 },
             { id: 'turno' as const, label: 'Turno', icon: Wallet, pendientes: 0 },
           ]).map(t => {
@@ -434,6 +459,8 @@ export const CajaScreen: React.FC = () => {
               )}
             </div>
           </>
+        ) : vista === 'fiao' ? (
+          <PanelFiao plata={plata} onPendientes={setPorAutorizar} />
         ) : vista === 'turno' ? (
           <>
             {varias && actual && (
@@ -515,6 +542,17 @@ export const CajaScreen: React.FC = () => {
                       </div>
                     ))}
                   </div>
+
+                  {/* Plata de consumos de otros días: no es venta de hoy */}
+                  {Number(turno.resumen?.abonosFiao ?? 0) > 0 && (
+                    <div className="flex items-center justify-between px-2.5 py-2 rounded-xl bg-[var(--primary)]/5 text-[0.75rem]">
+                      <span className="flex items-center gap-1.5 text-slate-600 dark:text-neutral-300">
+                        <HandCoins className="w-3.5 h-3.5 text-[var(--primary)]" />
+                        Abonos a fiao ({turno.resumen.cantidadAbonos})
+                      </span>
+                      <span className="font-mono tabular-nums font-bold text-slate-800 dark:text-neutral-100">{plata(turno.resumen.abonosFiao)}</span>
+                    </div>
+                  )}
 
                   {!!turno.resumen?.porMetodo && (
                     <div className="flex flex-wrap gap-1">

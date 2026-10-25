@@ -7,6 +7,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { imprimirRecibo } from '../../utils/recibo';
 import { useOpcionesRecibo } from '../../hooks/useOpcionesRecibo';
+import { CobroFiao } from './CobroFiao';
 
 /** Algo que se le puede despachar a la clienta: producto o servicio */
 type Vendible = {
@@ -72,6 +73,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
   const [cobroPropina, setCobroPropina] = useState('');
   const [cobroMoneda, setCobroMoneda] = useState<string>('');
   const [imprimirAlCerrar, setImprimirAlCerrar] = useState(true);
+  const [fiaoActivo, setFiaoActivo] = useState(false);
 
   /** Dinero con símbolo. Lo que se lee es "43.00 RD$", no un número pelado. */
   const sim = baseCurrency?.symbol ?? '';
@@ -1001,6 +1003,15 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   </p>
                 )}
 
+                <CobroFiao
+                  pendiente={pendiente}
+                  plata={plata}
+                  onActivo={setFiaoActivo}
+                  onFiado={() => setMostrarCobro(false)}
+                />
+
+                {/* Con el fiao prendido, dejar saldo es "Dejar fiao" (arriba) */}
+                {!(fiaoActivo && pendiente > 0) && (
                 <button
                   onClick={async () => {
                     // Foto de la venta ANTES de cerrar: closeSale vacía
@@ -1023,6 +1034,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 >
                   {pendiente > 0 ? 'Cerrar sin cobrar el resto' : 'Cerrar consumo'}
                 </button>
+                )}
 
                 <label className="flex items-center justify-center gap-2 text-[0.75rem] text-slate-500 dark:text-neutral-400 cursor-pointer">
                   <input

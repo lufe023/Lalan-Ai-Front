@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSedeActiva } from '../context/SedeActivaContext';
 import { AjustesAdelanto } from '../components/ajustes/AjustesAdelanto';
+import { AjustesFiao } from '../components/ajustes/AjustesFiao';
 import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
 import { CopiarDeSede } from '../components/ui/CopiarDeSede';
 import { recibeCitas } from '../utils/recibeCitas';
@@ -1420,6 +1421,8 @@ export const SettingsScreen: React.FC = () => {
         {seccion === 'vitrina' && <AjustesVitrina />}
         {seccion === 'caja' && (
           <>
+        <AjustesFiao />
+
         {/* SECTION 3.5: MONEDAS Y DENOMINACIONES */}
         <div data-guia="monedas" className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
           <div className="flex items-center gap-1.5">
