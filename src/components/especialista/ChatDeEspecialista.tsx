@@ -16,7 +16,7 @@ const CERCA_DEL_FINAL_PX = 160;
 function comoMensaje(m: MensajeDeMiChat): ChatMessage {
   return {
     id: m.id, text: m.texto, timestamp: m.en, tipo: m.tipo, adjunto: m.adjunto, eliminado: m.borrado,
-    deliveryStatus: m.estado, failureReason: m.motivoFallo,
+    deliveryStatus: m.estado, failureReason: m.motivoFallo, fotoCatalogo: m.fotoCatalogo ?? null,
     sender: m.de === 'clienta' ? 'client' : m.de === 'lalan' ? 'bot' : m.de === 'aviso' ? 'system' : 'agent',
   };
 }

@@ -60,6 +60,16 @@ function encuadresDe(datos: DatosVitrina): Record<string, Encuadre> {
   return todos;
 }
 
+/** El `?servicio=` del enlace que manda Lalán por el chat, esté antes o después del # */
+function servicioDelEnlace(): string | null {
+  const deHash = window.location.hash.split('?')[1] ?? '';
+  for (const q of [window.location.search, deHash]) {
+    const id = new URLSearchParams(q).get('servicio');
+    if (id) return id.slice(0, 40);
+  }
+  return null;
+}
+
 interface Props {
   datos: DatosVitrina;
   slug: string | null;
@@ -219,6 +229,15 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     if (item) { setTestimonio(null); setFicha({ tipo: 'servicio', item }); }
   };
 
+  // Lalán mandó por el chat el enlace de un servicio (?servicio=…): abre su ficha con toda la galería
+  useEffect(() => {
+    if (previa) return;
+    const id = servicioDelEnlace();
+    const item = id ? datos.servicios.find((x) => x.id === id) : null;
+    if (item) setFicha({ tipo: 'servicio', item });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const bloques = diseno.bloques.filter((b) => b.visible);
   const conPortada = bloques.some((b) => b.tipo === 'portada');
 
@@ -350,6 +369,8 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
         {ficha && (() => {
           const servicio = ficha.tipo === 'servicio' ? ficha.item : null;
           const dentro = servicio ? servicioIds.includes(ficha.item.id) : productoIds.includes(ficha.item.id);
+          // Lo que dicen las clientas de ESTE servicio, con fotos: así quedó de verdad
+          const resultados = servicio ? (datos.testimonios ?? []).filter((t) => t.servicio?.id === servicio.id && t.fotos.length) : [];
           return (
             <div className="mx-auto max-w-md space-y-4">
               <div className="mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
@@ -374,6 +395,25 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
                     </li>
                   ))}
                 </ul>
+              )}
+              {!!resultados.length && (
+                <section aria-label="Resultados reales">
+                  <h3 className="mb-2 text-sm font-semibold">Así les quedó</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {resultados.map((t) => (
+                      <button
+                        key={t.id} type="button" onClick={() => { setFicha(null); setTestimonio(t); }}
+                        aria-label={`Ver lo que dijo ${t.nombre}`}
+                        className="group w-24 cursor-pointer text-left transition active:scale-95"
+                      >
+                        <span className="block aspect-square overflow-hidden rounded-2xl bg-[var(--v-tinte)] ring-1 ring-[var(--v-borde)]">
+                          <Foto src={t.fotos[t.antesDespues ? 1 : 0]} alt={`Resultado de ${t.nombre}`} />
+                        </span>
+                        <span className="mt-1 block truncate text-xs text-[var(--v-suave)] group-hover:text-[var(--v-texto)]">{t.nombre}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
               )}
               <button
                 type="button" className={`${BOTON_P} w-full py-3.5 text-[15px]`}

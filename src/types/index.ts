@@ -325,6 +325,8 @@ export interface ChatMessage {
   autorNombre?: string | null;
   /** Aviso de Lalan sobre el trato de una especialista con la clienta */
   conducta?: { gravedad: 'leve' | 'grave'; motivo: string; pausada: boolean } | null;
+  /** Una foto o un video de la galería de un servicio que Lalan le mandó (id de la foto del catálogo) */
+  fotoCatalogo?: string | null;
 }
 
 export interface AdjuntoDeMensaje {

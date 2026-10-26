@@ -451,6 +451,8 @@ export const CatalogScreen: React.FC = () => {
   // Deep-link desde Dashboard: abrir servicio/producto directo en la pestaña solicitada
   useEffect(() => {
     if (!catalogDeepLink) return;
+    // Al abrir la app desde un aviso, el catálogo puede no haber llegado todavía: espera a que llegue
+    if ((catalogDeepLink.serviceId && !services.length) || (catalogDeepLink.productId && !products.length)) return;
     if (catalogDeepLink.serviceId) {
       const svc = services.find(s => s.id === catalogDeepLink.serviceId);
       if (svc) {
@@ -465,7 +467,7 @@ export const CatalogScreen: React.FC = () => {
     }
     clearCatalogDeepLink();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogDeepLink]);
+  }, [catalogDeepLink, services.length, products.length]);
 
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
