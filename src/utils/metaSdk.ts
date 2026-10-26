@@ -13,8 +13,8 @@ export interface ConfigMeta {
   faltanSoloInstagram?: string[];
 }
 
-/** Lo que devuelve el registro insertado de WhatsApp */
-export interface RegistroWhatsapp { code: string; wabaId: string; phoneNumberId: string; coexistencia: boolean }
+/** Lo que devuelve el registro insertado de WhatsApp. Sin los ids, Lalan busca el número con el permiso */
+export interface RegistroWhatsapp { code: string; wabaId?: string; phoneNumberId?: string; coexistencia: boolean }
 
 /** Tipos de evento que manda la ventana de WhatsApp */
 const EVENTO_WA = { tipo: 'WA_EMBEDDED_SIGNUP', cancelar: 'CANCEL', error: 'ERROR' } as const;
@@ -72,8 +72,8 @@ export async function abrirRegistroWhatsapp(cfg: ConfigMeta, coexistencia: boole
       code = r?.authResponse?.code ?? null;
       if (!code) { window.removeEventListener('message', oir); reject(new Error('No se completó la conexión.')); return; }
       listo();
-      // Si el evento con los ids no llega (ventanas viejas), se avisa en vez de quedarse esperando
-      setTimeout(() => { if (!ids) { window.removeEventListener('message', oir); reject(new Error('Meta no devolvió el número elegido. Inténtalo de nuevo.')); } }, 8000);
+      // Si el evento con los ids no llega, Lalan busca el número con el permiso en vez de quedarse esperando
+      setTimeout(() => { if (!ids) { window.removeEventListener('message', oir); resolve({ code: code!, coexistencia }); } }, 8000);
     }, {
       config_id: cfg.whatsappConfigId,
       response_type: 'code',

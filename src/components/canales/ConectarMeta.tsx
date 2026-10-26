@@ -3,10 +3,11 @@ import { Check, Facebook, Instagram, Loader2, MessageCircle, Unplug } from 'luci
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSedeActiva } from '../../context/SedeActivaContext';
 import { IOSModal } from '../ui/IOSModal';
 import { abrirLoginPaginas, abrirRegistroWhatsapp, type ConfigMeta } from '../../utils/metaSdk';
 import { conectarSoloInstagram } from '../../utils/instagramLogin';
-import { esAppInstalada, irAFacebook, necesitaRedireccion, tomarPendientes } from '../../utils/facebookLogin';
+import { irAFacebook, irAWhatsapp, necesitaRedireccion, tomarNumeros, tomarPendientes, type NumerosPendientes, type ResultadoWhatsapp } from '../../utils/facebookLogin';
 import type { CommunicationChannel } from '../../types';
 import { sedeDeLaGuia } from '../guias/GuiaEnCurso';
 
@@ -43,41 +44,75 @@ const NOMBRE: Record<CommunicationChannel, string> = { whatsapp: 'WhatsApp', ins
 export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado }) => {
   const { botConfigs, recargarBots, showToast } = useApp();
   const { currentUser } = useAuth();
+  // Con una sede activa elegida arriba, se conecta a esa: el servidor trabaja en ella
+  const { actual } = useSedeActiva();
   const [cfg, setCfg] = useState<ConfigMeta | null>(null);
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [sede, setSede] = useState<string>('');
   const [ocupado, setOcupado] = useState<CommunicationChannel | null>(null);
   const [preguntaWa, setPreguntaWa] = useState(false);
   const [elegir, setElegir] = useState<{ token: string; paginas: Pagina[]; canal: CommunicationChannel } | null>(null);
+  const [numeros, setNumeros] = useState<NumerosPendientes | null>(null);
+  /** Los canales conectados de la sede elegida (no los de la sede que muestra el panel) */
+  const [deLaSede, setDeLaSede] = useState<{ channel: CommunicationChannel; channelIdentifier: string | null }[] | null>(null);
 
   useEffect(() => {
     api.get<ConfigMeta>('/bots/conexion/configuracion').then(setCfg).catch(() => setCfg(null));
-    // Si se volvió de Facebook (app instalada / teléfono), sus páginas esperan aquí para elegir
+    // Si se volvió de Meta (app instalada / teléfono), sus páginas o sus números esperan aquí para elegir
     const pendientes = tomarPendientes();
-    api.get<Sede[]>('/users/sedes').then((s) => { setSedes(s); setSede(pendientes?.locationId ?? sedeGuia(s) ?? s[0]?.id ?? ''); }).catch(() => undefined);
+    const nums = tomarNumeros();
+    api.get<Sede[]>('/users/sedes').then((s) => {
+      setSedes(s);
+      setSede(pendientes?.locationId ?? nums?.locationId ?? sedeGuia(s) ?? actual?.id ?? s[0]?.id ?? '');
+    }).catch(() => undefined);
     if (pendientes) {
       setElegir({ token: pendientes.tokenUsuario, paginas: pendientes.paginas, canal: pendientes.canal });
     }
+    if (nums) setNumeros(nums);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const conectado = (c: CommunicationChannel) => botConfigs.find((b) => b.id === c && b.channelIdentifier);
+  // La sede activa manda: si se cambia arriba, aquí también
+  useEffect(() => { if (actual) setSede(actual.id); }, [actual]);
+
+  useEffect(() => {
+    if (!sede) { setDeLaSede(null); return; }
+    api.get<{ channel: CommunicationChannel; channelIdentifier: string | null }[]>(`/bots?sede=${encodeURIComponent(sede)}`)
+      .then(setDeLaSede).catch(() => setDeLaSede(null));
+  }, [sede, botConfigs]);
+
+  const conectado = (c: CommunicationChannel) => deLaSede
+    ? deLaSede.some((b) => b.channel === c && b.channelIdentifier)
+    : botConfigs.some((b) => b.id === c && b.channelIdentifier);
   const fallo = (e: unknown) => showToast('No se pudo conectar', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning');
+
+  const listoWhatsapp = async (res: ResultadoWhatsapp) => {
+    if (res.elegir) { setNumeros({ canal: 'whatsapp', locationId: res.locationId, ...res.elegir }); return; }
+    setNumeros(null);
+    await recargarBots();
+    showToast('WhatsApp conectado', res.avisos[0] ?? `Lalan ya recibe los mensajes${res.numero ? ` de ${res.numero}` : ''}.`, res.avisos.length ? 'warning' : 'success');
+  };
 
   const whatsapp = async (coexistencia: boolean) => {
     if (!cfg) return;
     setPreguntaWa(false);
-    // La ventana de registro de WhatsApp de Meta no funciona dentro de la app instalada: se abre en el navegador
-    if (esAppInstalada()) {
-      showToast('Te abrimos el navegador', 'Para conectar WhatsApp, Meta necesita su ventana: termina allí y vuelve a la app.', 'info');
-      window.open(window.location.href, '_blank');
+    setOcupado('whatsapp');
+    // En la app instalada o el teléfono la ventanita de Meta no existe o no vuelve: se va a Meta en esta pestaña
+    if (necesitaRedireccion()) {
+      try { await irAWhatsapp(coexistencia, sede || undefined); } catch (e) { fallo(e); setOcupado(null); }
       return;
     }
-    setOcupado('whatsapp');
     try {
       const r = await abrirRegistroWhatsapp(cfg, coexistencia);
-      const res = await api.post<{ numero: string | null; avisos: string[] }>('/bots/conexion/whatsapp', { ...r, locationId: sede || undefined });
-      await recargarBots();
-      showToast('WhatsApp conectado', res.avisos[0] ?? `Lalan ya recibe los mensajes${res.numero ? ` de ${res.numero}` : ''}.`, res.avisos.length ? 'warning' : 'success');
+      await listoWhatsapp(await api.post<ResultadoWhatsapp>('/bots/conexion/whatsapp', { ...r, locationId: sede || undefined }));
+    } catch (e) { fallo(e); } finally { setOcupado(null); }
+  };
+
+  const usarNumero = async (id: string) => {
+    if (!numeros) return;
+    setOcupado('whatsapp');
+    try {
+      await listoWhatsapp(await api.post<ResultadoWhatsapp>('/bots/conexion/whatsapp/numero', { pendiente: numeros.pendiente, phoneNumberId: id }));
     } catch (e) { fallo(e); } finally { setOcupado(null); }
   };
 
@@ -150,10 +185,11 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
       {sedes.length > 1 && (
         <label className="block" data-guia="conectar-sede">
           <span className="text-[0.6875rem] font-bold uppercase text-slate-400">Para la sede</span>
-          <select value={sede} onChange={(e) => setSede(e.target.value)}
-            className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white">
+          <select value={sede} onChange={(e) => setSede(e.target.value)} disabled={!!actual}
+            className="mt-1 w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white disabled:opacity-80">
             {sedes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
+          {actual && <span className="block mt-1 text-[0.6875rem] text-slate-400">Es la sede en la que estás trabajando. Para otra, cámbiala arriba, junto a tu cuenta.</span>}
         </label>
       )}
 
@@ -207,6 +243,22 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
             <b className="text-sm block">Usar el número que ya tengo en WhatsApp Business</b>
             <span className="text-[0.75rem] text-slate-500">Sigues usando la app en tu teléfono y Lalan contesta a la vez. Si le escribes a una clienta desde el teléfono, Lalan se aparta de esa conversación. Tendrás que escanear un código con el teléfono.</span>
           </button>
+        </div>
+      </IOSModal>
+
+      <IOSModal isOpen={!!numeros} onClose={() => setNumeros(null)} title="¿Qué número conecto?" subtitle={`Autorizaste varios en Meta. Elige el de ${sedes.find((s) => s.id === numeros?.locationId)?.name ?? 'esta sede'}`} fixedHeight={false}>
+        <div className="space-y-3 p-1">
+          {numeros?.numeros.map((n) => (
+            <button key={n.id} type="button" disabled={!!ocupado} onClick={() => void usarNumero(n.id)}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] disabled:opacity-40 cursor-pointer text-left">
+              <MessageCircle className="w-5 h-5 text-[#25D366] shrink-0" />
+              <span className="flex-1 min-w-0">
+                <b className="text-sm block truncate">{n.numero ?? n.id}</b>
+                {n.nombre && <span className="text-[0.75rem] text-slate-500 block truncate">{n.nombre}</span>}
+              </span>
+              {ocupado && <Loader2 className="w-4 h-4 animate-spin" />}
+            </button>
+          ))}
         </div>
       </IOSModal>
 
