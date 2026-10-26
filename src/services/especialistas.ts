@@ -117,6 +117,8 @@ export interface MensajeDeMiChat {
   en: string;
   estado: 'pendiente' | 'enviado' | 'entregado' | 'leido' | 'fallido' | null;
   motivoFallo: string | null;
+  /** Una foto o un video de un servicio que mandó Lalan */
+  fotoCatalogo?: string | null;
   adjunto: { tieneArchivo: boolean; mime?: string | null; nombre?: string | null; descripcion?: string | null; transcripcion?: string | null } | null;
 }
 

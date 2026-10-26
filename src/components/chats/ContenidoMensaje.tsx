@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Download, EyeOff, FileText, ImageOff, Megaphone, Link2, CircleDot, MicOff } from 'lucide-react';
 import { blobProtegido, descargarArchivo } from '../../services/api';
+import { urlFotoCatalogo, urlVideoCatalogo } from '../catalogo/FotoDelCatalogo';
 import type { ChatMessage } from '../../types';
 
 /**
@@ -90,6 +91,23 @@ export const ContenidoMensaje: React.FC<{
   }
 
   const texto = msg.text && !(a && ES_RELLENO.test(msg.text)) ? msg.text : '';
+
+  // Una foto o un video de un servicio que Lalan mandó: es de la galería (pública), no un archivo del chat
+  if (msg.fotoCatalogo && (esImagen || esVideo)) {
+    const foto = urlFotoCatalogo(msg.fotoCatalogo)!;
+    return (
+      <div className="space-y-1.5">
+        {esVideo
+          ? <video src={urlVideoCatalogo(msg.fotoCatalogo)} poster={foto} controls playsInline preload="none" className="rounded-xl max-h-72 w-full bg-black" />
+          : (
+            <a href={foto} target="_blank" rel="noreferrer" className="block">
+              <img src={foto} alt={texto || 'Foto del servicio'} loading="lazy" className="rounded-xl max-h-72 w-auto object-cover" />
+            </a>
+          )}
+        {texto && <p className={`text-[0.75rem] leading-snug ${suave}`}>{texto}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1.5">
