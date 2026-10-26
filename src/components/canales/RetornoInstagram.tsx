@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { terminarConexionInstagram } from '../../utils/instagramLogin';
-import { guardarPendientes, terminarFacebook } from '../../utils/facebookLogin';
+import { guardarNumeros, guardarPendientes, terminarFacebook } from '../../utils/facebookLogin';
 import { pedirSeccionAjustes } from '../ajustes/MenuAjustes';
 
 /** Saca de la dirección los parámetros de vuelta (para que recargar no lo repita) */
@@ -17,6 +17,8 @@ function limpiarDireccion(claves: string[]) {
  *  · Instagram ("solo Instagram"): queda conectado ahí mismo.
  *  · Facebook: vuelven sus páginas y se abre "Lalan en los chats" para que
  *    la dueña elija la de su negocio, igual que en la computadora.
+ *  · WhatsApp: queda conectado ahí mismo; si autorizó varios números, se
+ *    abre "Lalan en los chats" para que elija cuál.
  */
 export const RetornoInstagram: React.FC = () => {
   const { recargarBots, showToast, navigateTo } = useApp();
@@ -44,11 +46,22 @@ export const RetornoInstagram: React.FC = () => {
       hecho.current = true;
       limpiarDireccion(['fb_code', 'fb_state', 'fb_error']);
       if (!fb.code || !fb.state) {
-        showToast('No se conectó Facebook', fb.error === 'cancelado' ? 'Cerraste la ventana antes de aceptar.' : `Facebook: ${fb.error}`, 'warning');
+        showToast('No se conectó', fb.error === 'cancelado' ? 'Cerraste la ventana antes de aceptar.' : `Meta: ${fb.error}`, 'warning');
         return;
       }
       terminarFacebook(fb.code, fb.state)
-        .then((r) => {
+        .then(async (r) => {
+          if ('whatsapp' in r) {
+            const w = r.whatsapp;
+            if (w.elegir) guardarNumeros({ canal: 'whatsapp', locationId: r.locationId, ...w.elegir });
+            else {
+              await recargarBots();
+              showToast('WhatsApp conectado', w.avisos[0] ?? `Lalan ya recibe los mensajes${w.numero ? ` de ${w.numero}` : ''}.`, w.avisos.length ? 'warning' : 'success');
+            }
+            pedirSeccionAjustes('chats');
+            navigateTo('settings');
+            return;
+          }
           if (!r.paginas.length) {
             showToast('No hay páginas', 'Tu usuario de Facebook no administra ninguna página, o no la marcaste en la ventana de Meta.', 'warning');
             return;
@@ -58,7 +71,7 @@ export const RetornoInstagram: React.FC = () => {
           pedirSeccionAjustes('chats');
           navigateTo('settings');
         })
-        .catch((e) => showToast('No se pudo conectar Facebook', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'));
+        .catch((e) => showToast('No se pudo conectar', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'));
     }
   }, [recargarBots, showToast, navigateTo]);
   return null;
