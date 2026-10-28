@@ -36,6 +36,7 @@ import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
 import { ConfirmarCita, sinEspecialista } from '../components/agenda/ConfirmarCita';
 import { AdelantoCita } from '../components/agenda/AdelantoCita';
 import { AvisosAlergiaCita } from '../components/agenda/AvisosAlergia';
+import { RecordatorioCita, RecordatoriosAMano, useRecordatoriosAMano } from '../components/agenda/RecordarPorWhatsapp';
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
@@ -96,6 +97,15 @@ export const CalendarScreen: React.FC = () => {
     setActiveAppointment(a);
   };
   const totalPendientes = useMemo(() => citasPendientes(appointments).total, [appointments]);
+  /* Recordatorios de hoy y mañana desde el WhatsApp propio (sin plantilla de Meta) */
+  const recordatorios = useRecordatoriosAMano();
+  const [verRecordatorios, setVerRecordatorios] = useState(false);
+  const abrirRecordatorio = (id: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    setVerRecordatorios(false);
+    abrirPendiente(a);
+  };
   const [showNewAptModal, setShowNewAptModal] = useState<boolean>(false);
   const [completionDialog, setCompletionDialog] = useState<{
     appointment: Appointment;
@@ -397,6 +407,19 @@ export const CalendarScreen: React.FC = () => {
                   >
                     ⏳ Pendientes{totalPendientes ? ` ${totalPendientes}` : ''}
                   </button>
+                  {!!recordatorios.lista?.length && (
+                    <button
+                      type="button"
+                      onClick={() => { recordatorios.recargar(); setVerRecordatorios(true); }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ios-touch cursor-pointer flex items-center gap-1 ${
+                        recordatorios.porRecordar
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-white dark:bg-neutral-900 text-slate-500 border border-slate-200/80 dark:border-neutral-800'
+                      }`}
+                    >
+                      💬 Recordar{recordatorios.porRecordar ? ` ${recordatorios.porRecordar}` : ''}
+                    </button>
+                  )}
                   {[
                     { id: 'all', label: 'Todos' },
                     // Las categorías del salón (las crea la dueña en Catálogo)
@@ -616,6 +639,12 @@ export const CalendarScreen: React.FC = () => {
 
               {/* ── Alergias: un producto de su servicio lleva algo que le hace daño ── */}
               <AvisosAlergiaCita key={`alergia-${activeAppointment.id}`} citaId={activeAppointment.id} />
+
+              {/* ── Recordatorio: listo para mandarlo desde su propio WhatsApp ── */}
+              {['pending', 'confirmed', 'confirmed_by_ai'].includes(activeAppointment.status)
+                && new Date(activeAppointment.startsAt ?? `${activeAppointment.date}T${activeAppointment.time}`).getTime() > Date.now() && (
+                <RecordatorioCita key={`recordatorio-${activeAppointment.id}`} citaId={activeAppointment.id} onCambio={recordatorios.cambiar} />
+              )}
 
               {/* ── Por confirmar: aquí mismo, con quién la atiende si no tiene ── */}
               {(activeAppointment.status === 'pending' || recienConfirmada === activeAppointment.id) && (
@@ -1116,6 +1145,8 @@ export const CalendarScreen: React.FC = () => {
         )}
       </AnimatePresence>
       <CitasPendientes abierto={verPendientes} onCerrar={() => setVerPendientes(false)} citas={appointments} onAbrir={abrirPendiente} />
+      <RecordatoriosAMano abierto={verRecordatorios} onCerrar={() => setVerRecordatorios(false)} lista={recordatorios.lista}
+        onMarcado={recordatorios.cambiar} onAbrir={abrirRecordatorio} />
       {cambiandoDe && (
         <CambiarEspecialista
           cita={{
