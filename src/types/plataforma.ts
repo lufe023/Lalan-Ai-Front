@@ -28,6 +28,43 @@ export interface ResumenLanding {
   clicsDestacados: { detalle: string; clics: number }[];
 }
 
+/** Una visita en una fila (Plataforma → Visitas → Visita por visita) */
+export interface VisitaFila {
+  id: string;
+  creadoEn: string;
+  /** Igual en todas las visitas de la misma persona ese día (anónimo) */
+  persona: string;
+  pais: string | null;
+  ciudad: string | null;
+  dispositivo: Dispositivo;
+  navegador: string | null;
+  sistema: string | null;
+  fuente: string;
+  medio: string | null;
+  campana: string | null;
+  referente: string | null;
+  ruta: string;
+  duracionSeg: number;
+  scrollMax: number;
+  secciones: string[];
+  clics: number;
+  vioHistoria: boolean;
+  terminoHistoria: boolean;
+  abrioPiloto: boolean;
+  envioPiloto: boolean;
+  tocoEntrar: boolean;
+  tocoWhatsapp: boolean;
+  seFueSinMirar: boolean;
+}
+
+export interface VisitasPorFila {
+  desde: string;
+  hasta: string;
+  total: number;
+  filas: VisitaFila[];
+  recortado: boolean;
+}
+
 export interface AplicacionPiloto {
   id: string;
   creadoEn: string;
