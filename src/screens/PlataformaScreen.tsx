@@ -20,6 +20,7 @@ import { SaludServicios } from '../components/plataforma/SaludServicios';
 import { NegociosPlataforma, type PrellenadoNegocio } from '../components/plataforma/NegociosPlataforma';
 import { PlanesPlataforma } from '../components/plataforma/PlanesPlataforma';
 import { UsoAppPanel } from '../components/plataforma/UsoAppPanel';
+import { VisitasPorFila } from '../components/plataforma/VisitasPorFila';
 import { LoQueLalanSabeHacer } from '../components/plataforma/LoQueLalanSabeHacer';
 import { BaseProductos } from '../components/plataforma/BaseProductos';
 import { MercadoPlataforma } from '../components/plataforma/MercadoPlataforma';
@@ -202,6 +203,8 @@ export const PlataformaScreen: React.FC = () => {
   const [rango, setRango] = useState<Rango>('30');
   const [datos, setDatos] = useState<ResumenLanding | null>(null);
   const [cargando, setCargando] = useState(false);
+  /** Sube con el botón de actualizar para que la tabla de visitas también se recargue */
+  const [vuelta, setVuelta] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [dispositivoCalor, setDispositivoCalor] = useState<Dispositivo>('pc');
   const [origenCalor, setOrigenCalor] = useState<'landing' | 'app'>('landing');
@@ -227,7 +230,7 @@ export const PlataformaScreen: React.FC = () => {
         title="Plataforma"
         subtitle="Clientes, planes, la landing y el piloto · solo super admin"
         rightAction={
-          <button onClick={() => void cargar()} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 ios-touch" title="Actualizar">
+          <button onClick={() => { setVuelta((v) => v + 1); void cargar(); }} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 ios-touch" title="Actualizar">
             <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
           </button>
         }
@@ -338,6 +341,8 @@ export const PlataformaScreen: React.FC = () => {
               <Titulo ayuda="Botones y enlaces que más tocan">Lo que más tocan</Titulo>
               <Barras total={datos.clicsDestacados.reduce((s, c) => s + c.clics, 0)} filas={datos.clicsDestacados.map((c) => ({ etiqueta: <><MousePointerClick className="w-3 h-3 inline mr-1" />{c.detalle}</>, valor: c.clics }))} />
             </Tarjeta>
+
+            <VisitasPorFila key={vuelta} desde={desde} secciones={datos.secciones} fuente={(id) => FUENTES[id] ?? id} pais={nombrePais} bandera={bandera} />
           </>
         )}
 
