@@ -21,7 +21,12 @@ interface AuthContextType {
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  /** Si la cuenta tiene dos pasos, devuelve el reto en vez de abrir la sesión */
+  login: (credentials: LoginCredentials) => Promise<{ dosPasos?: RetoDosPasos }>;
+  /** El segundo paso: el código de la app o el del correo */
+  completarDosPasos: (pase: string, codigo: string, porCorreo?: boolean) => Promise<void>;
+  /** Ya configuró los dos pasos: se quita la pantalla que la pide */
+  dosPasosListo: () => void;
   loginWithQuickDevice: () => Promise<void>;
   logout: () => void;
   hasPermission: (permission: keyof UserProfile['permissions']) => boolean;
@@ -48,7 +53,12 @@ interface ApiUser {
   locationId?: string | null;
   /** Solo la asistente: lo que la dueña le dejó hacer (null = todo) */
   permisos?: MapaPermisosRol | null;
+  /** Super admin y soporte sin verificación en dos pasos: la app se la pide */
+  configurarDosPasos?: boolean;
 }
+
+/** Tras la clave correcta, cuando falta el código de dos pasos */
+export interface RetoDosPasos { pase: string; correo: string | null }
 
 function buildProfile(u: ApiUser): UserProfile {
   return {
@@ -67,6 +77,7 @@ function buildProfile(u: ApiUser): UserProfile {
     soporte: u.soporte,
     permissions: PERMISSIONS[u.role] ?? PERMISSIONS.assistant,
     permisos: u.permisos,
+    configurarDosPasos: !!u.configurarDosPasos,
   };
 }
 
@@ -126,16 +137,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async ({ identificador, password }: LoginCredentials) => {
     // La sesión llega en cookies httpOnly: el cuerpo ya no trae tokens
-    const data = await api.post<{ user: ApiUser }>(
+    const data = await api.post<{ user: ApiUser } | { dosPasos: RetoDosPasos }>(
       '/auth/login',
       { identificador, password },
     );
-    sesionLocal.guardar(data.user);
-    setCurrentUser(buildProfile(data.user));
-    try {
-      localStorage.setItem('lalan_cached_user', JSON.stringify(data.user));
-    } catch {}
+    if ('dosPasos' in data) return { dosPasos: data.dosPasos };
+    abrir(data.user);
+    return {};
   }, []);
+
+  const completarDosPasos = useCallback(async (pase: string, codigo: string, porCorreo = false) => {
+    const data = await api.post<{ user: ApiUser }>('/auth/dos-pasos', { pase, codigo, porCorreo });
+    abrir(data.user);
+  }, []);
+
+  const dosPasosListo = useCallback(() => {
+    setCurrentUser((u) => (u ? { ...u, configurarDosPasos: false } : u));
+  }, []);
+
+  /** Con la sesión ya abierta en cookies: la marca local y la persona */
+  function abrir(user: ApiUser) {
+    sesionLocal.guardar(user);
+    setCurrentUser(buildProfile(user));
+    try { localStorage.setItem('lalan_cached_user', JSON.stringify(user)); } catch {}
+  }
 
   const loginWithQuickDevice = useCallback(async () => {
     const { user } = await quickAuth.loginWithDevice();
@@ -187,7 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [faltanPermisos]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, puede, claveCambiada, correoListo, terminosAceptados }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, puede, completarDosPasos, dosPasosListo, claveCambiada, correoListo, terminosAceptados }}>
       {children}
     </AuthContext.Provider>
   );

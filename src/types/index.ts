@@ -26,6 +26,8 @@ export interface UserProfile {
   aceptarTerminos?: string | null;
   /** Solo la asistente: lo que la dueña le dejó hacer. null = todo; undefined = aún no se sabe */
   permisos?: Partial<Record<string, boolean>> | null;
+  /** Super admin y soporte sin verificación en dos pasos: la app se la pide antes de seguir */
+  configurarDosPasos?: boolean;
   permissions: {
     canViewMetrics: boolean;
     canManageBots: boolean;

@@ -42,6 +42,7 @@ import { PlanProvider } from './context/PlanContext';
 import { SedeActivaProvider } from './context/SedeActivaContext';
 import { BarraSoporte } from './components/ui/BarraSoporte';
 import { AvisoSoporteDentro } from './components/ui/AvisoSoporteDentro';
+import { ConfigurarDosPasosScreen } from './screens/ConfigurarDosPasosScreen';
 import { AvisoMensajes } from './components/ui/AvisoMensajes';
 import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
 import { BotonLalan, PantallaLalan } from './components/lalan/PantallaLalan';
@@ -182,6 +183,8 @@ const MainAppContent: React.FC = () => {
           <ConfirmarCorreoScreen />
         ) : isAuthenticated && currentUser?.aceptarTerminos ? (
           <AceptarTerminosScreen version={currentUser.aceptarTerminos} />
+        ) : isAuthenticated && currentUser?.configurarDosPasos && !currentUser.soporte ? (
+          <ConfigurarDosPasosScreen />
         ) : isAuthenticated && currentUser?.role === 'especialista' ? (
           // La especialista tiene su propia app: sus citas, sus servicios y su cuenta
           <EspecialistaApp />

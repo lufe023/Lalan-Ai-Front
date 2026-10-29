@@ -4,7 +4,8 @@ import { ActivarAccesoRapidoModal } from '../components/ui/ActivarAccesoRapidoMo
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, AtSign as Mail, Lock, Loader2, AlertCircle, Zap, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
 import { LogoLalan } from '../components/ui/LogoLalan';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, type RetoDosPasos } from '../context/AuthContext';
+import { PasoDelCodigo } from '../components/ajustes/DosPasos';
 import { useApp } from '../context/AppContext';
 import { quickAuth, QuickAuthRegistration } from '../services/quickAuth';
 
@@ -15,6 +16,8 @@ export const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /** La clave estuvo bien y falta el código de dos pasos */
+  const [reto, setReto] = useState<RetoDosPasos | null>(null);
   const [recuperando, setRecuperando] = useState(false);
   const [showActivarModal, setShowActivarModal] = useState(false);
 
@@ -33,19 +36,25 @@ export const LoginScreen: React.FC = () => {
     setError('');
     setLoading(true);
     try {
-      await login({ identificador: email.trim(), password });
-      showToast('¡Hola!', 'Sesión iniciada correctamente.', 'success');
-      // Si este dispositivo aún no tiene configurado el acceso rápido, ofrecemos activarlo
-      if (!quickAuth.getRegistration().isRegistered) {
-        setShowActivarModal(true);
-      } else {
-        navigateTo('dashboard');
-      }
+      const r = await login({ identificador: email.trim(), password });
+      if (r.dosPasos) { setReto(r.dosPasos); return; }
+      entro();
     } catch (err: any) {
       setError(err?.message === 'Invalid credentials' ? 'Esos datos no coinciden.' : (err?.message ?? 'Error al iniciar sesión.'));
     } finally {
       setLoading(false);
     }
+  };
+
+  /** Ya dentro. Con dos pasos no se ofrece el 1 toque: no se salta el código */
+  const entro = (conCodigo = false) => {
+      showToast('¡Hola!', 'Sesión iniciada correctamente.', 'success');
+      // Si este dispositivo aún no tiene configurado el acceso rápido, ofrecemos activarlo
+      if (!conCodigo && !quickAuth.getRegistration().isRegistered) {
+        setShowActivarModal(true);
+      } else {
+        navigateTo('dashboard');
+      }
   };
 
   const handleQuickDeviceLogin = async () => {
@@ -86,7 +95,9 @@ export const LoginScreen: React.FC = () => {
           <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">Studio & Lounge · Gestión inteligente</p>
         </div>
 
-        {recuperando ? (
+        {reto ? (
+          <PasoDelCodigo reto={reto} onListo={() => { setReto(null); entro(true); }} onVolver={() => { setReto(null); setPassword(''); }} />
+        ) : recuperando ? (
           <RecuperarClave emailInicial={email} onVolver={(e) => { setRecuperando(false); if (e) setEmail(e); setPassword(''); setError(''); }} />
         ) : !modoManual && registration.isRegistered && registration.user ? (
           /* ── MODO ACCESO RÁPIDO CON 1 TOQUE (Dispositivo reconocido) ── */
