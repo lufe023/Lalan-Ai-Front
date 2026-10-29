@@ -85,9 +85,14 @@ const MainAppContent: React.FC = () => {
   // Se mide el uso de los salones; no el de Lalan (super admin, soporte) ni el modo mapa de calor
   const medir = isAuthenticated && !MODO_CALOR && !MODO_GRABAR && !currentUser?.soporte && currentUser?.role !== 'super_admin' && currentUser?.role !== 'support' && currentUser?.role !== 'especialista';
   useUsoApp(currentScreen, medir);
+  // Solo al entrar: navigateTo cambia con cada pantalla, y si esto corriera
+  // otra vez devolvería a la pantalla de arranque en cada toque
+  const yaLlevado = React.useRef(false);
   React.useEffect(() => {
-    if (MODO_CALOR && isAuthenticated) navigateTo(MODO_CALOR.pantalla as ScreenName);
-    if (MODO_GRABAR && isAuthenticated) navigateTo(MODO_GRABAR.pantalla as ScreenName);
+    if (!isAuthenticated || yaLlevado.current) return;
+    yaLlevado.current = true;
+    if (MODO_CALOR) navigateTo(MODO_CALOR.pantalla as ScreenName);
+    if (MODO_GRABAR) navigateTo(MODO_GRABAR.pantalla as ScreenName);
   }, [isAuthenticated, navigateTo]);
 
   /**
