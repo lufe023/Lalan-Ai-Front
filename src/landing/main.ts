@@ -4,7 +4,7 @@
  * comparte bien), más la medición anónima, el piloto y el mapa de calor.
  */
 import './pagina.js';
-import { leerToken } from './api';
+import { haySesion } from './api';
 import { iniciarMedicion } from './medicion';
 import { iniciarPiloto } from './piloto';
 import { iniciarCalor } from './calor';
@@ -15,7 +15,7 @@ import { iniciarPlanes } from './planes';
 import { iniciarHistoria } from './historiaPerezosa';
 
 // Quien ya tiene sesión en este aparato ve "Ir a mi salón" en vez de "Entrar"
-if (leerToken()) {
+if (haySesion()) {
   const entrar = document.getElementById('enlace-entrar');
   if (entrar) entrar.textContent = 'Ir a mi salón';
 }

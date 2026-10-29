@@ -12,15 +12,13 @@
  * la usa para poner la cabecera.
  */
 const CLAVE = 'lalan.sedeLocal';
-const CLAVE_TOKEN = 'lalan_access_token';
+/** La marca de sesión que guarda api.ts (no secreta: rol y sede) */
+const CLAVE_SESION = 'lalan_sesion';
 
-/** La sede del token, si el usuario está atado a una */
+/** La sede del usuario, si está atado a una */
 export function sedePropia(): string | null {
   try {
-    const t = localStorage.getItem(CLAVE_TOKEN);
-    if (!t) return null;
-    const base = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const datos = JSON.parse(atob(base + '='.repeat((4 - (base.length % 4)) % 4)));
+    const datos = JSON.parse(localStorage.getItem(CLAVE_SESION) || 'null');
     return typeof datos?.locationId === 'string' ? datos.locationId : null;
   } catch { return null; }
 }

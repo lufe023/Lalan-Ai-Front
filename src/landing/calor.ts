@@ -4,7 +4,7 @@
  * (misma web, mismo almacenamiento que la app) y los dibuja encima de cada
  * sección, en la misma posición relativa donde se tocó.
  */
-import { API, leerToken, MODO_CALOR } from './api';
+import { API, haySesion, MODO_CALOR } from './api';
 
 interface Clic { seccion: string; x: number; y: number }
 
@@ -57,14 +57,13 @@ export async function iniciarCalor(): Promise<void> {
   barra.className = 'calor-barra';
   barra.textContent = 'Cargando el mapa de calor…';
   document.body.appendChild(barra);
-  const token = leerToken();
-  if (!token) { barra.textContent = 'Entra a la app como super admin para ver el mapa de calor.'; return; }
+  if (!haySesion()) { barra.textContent = 'Entra a la app como super admin para ver el mapa de calor.'; return; }
   const q = new URLSearchParams(location.search);
   const params = new URLSearchParams({ dispositivo: MODO_CALOR });
   if (q.get('desde')) params.set('desde', q.get('desde')!);
   if (q.get('hasta')) params.set('hasta', q.get('hasta')!);
   try {
-    const r = await fetch(`${API}/plataforma/landing/clics?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+    const r = await fetch(`${API}/plataforma/landing/clics?${params}`, { credentials: 'include', headers: { 'X-Sesion': 'cookie' } });
     if (!r.ok) throw new Error(r.status === 403 ? 'Solo el super admin puede ver el mapa de calor.' : 'No se pudo cargar el mapa.');
     const clics: Clic[] = await r.json();
     const porSeccion = new Map<string, Clic[]>();

@@ -285,7 +285,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
   const entrar = async () => {
     if (!window.confirm(`Vas a entrar al salón ${d?.nombre ?? ''} como soporte. Lo que cambies se guarda en su salón. Quedará anotado en su bitácora.`)) return;
     setEntrando(true);
-    try { const r = await api.post<{ accessToken: string }>(`/plataforma/negocios/${id}/entrar`, {}); entrarComoSoporte(r.accessToken); }
+    try { await api.post(`/plataforma/negocios/${id}/entrar`, {}); entrarComoSoporte(); }
     catch (e) { setError((e as Error).message); setEntrando(false); }
   };
   const agregarPaquete = async (respuestas: number, precio: number) => {

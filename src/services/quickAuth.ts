@@ -1,6 +1,7 @@
-import { api, tokenStore, publicRequest, ErrorPublico } from './api';
+import { api, ErrorPublico, sesionLocal, URL_API } from './api';
 
 const DEVICE_ID_KEY = 'lalan_quick_device_id';
+/** Solo de versiones viejas: el secreto ahora vive en una cookie httpOnly que pone el servidor */
 const DEVICE_SECRET_KEY = 'lalan_quick_device_secret';
 const DEVICE_USER_KEY = 'lalan_quick_device_user';
 const DEVICE_NAME_KEY = 'lalan_quick_device_name';
@@ -76,11 +77,10 @@ export const quickAuth = {
   getRegistration(): QuickAuthRegistration {
     try {
       const deviceId = localStorage.getItem(DEVICE_ID_KEY);
-      const secret = localStorage.getItem(DEVICE_SECRET_KEY);
       const userRaw = localStorage.getItem(DEVICE_USER_KEY);
       const deviceName = localStorage.getItem(DEVICE_NAME_KEY) || getFriendlyDeviceName();
 
-      if (deviceId && secret && userRaw) {
+      if (deviceId && userRaw) {
         return {
           isRegistered: true,
           deviceId,
@@ -103,19 +103,14 @@ export const quickAuth = {
    */
   async registerDevice(user: QuickAuthUser): Promise<void> {
     const deviceId = getOrCreateDeviceId();
-    const deviceSecret = generateCryptoSecret();
     const deviceName = getFriendlyDeviceName();
 
-    // 1. Registrar en el backend
-    await api.post('/auth/quick-login/register', {
-      deviceId,
-      deviceSecret,
-      deviceName,
-    });
+    // 1. Registrar en el backend: el servidor crea el secreto y lo deja en una cookie httpOnly
+    await api.post('/auth/quick-login/register', { deviceId, deviceName });
 
-    // 2. Guardar en almacenamiento seguro local
+    // 2. Aquí solo queda lo que no abre nada: el id, el nombre y a quién mostrar en el botón
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
-    localStorage.setItem(DEVICE_SECRET_KEY, deviceSecret);
+    localStorage.removeItem(DEVICE_SECRET_KEY);
     localStorage.setItem(DEVICE_NAME_KEY, deviceName);
     localStorage.setItem(DEVICE_USER_KEY, JSON.stringify(user));
   },
@@ -123,43 +118,46 @@ export const quickAuth = {
   /**
    * Inicia sesión con 1 solo toque usando el dispositivo registrado
    */
-  async loginWithDevice(): Promise<{ user: any; accessToken: string }> {
+  async loginWithDevice(): Promise<{ user: any }> {
     const deviceId = localStorage.getItem(DEVICE_ID_KEY);
-    const deviceSecret = localStorage.getItem(DEVICE_SECRET_KEY);
+    if (!deviceId) throw new Error('Dispositivo no configurado para acceso rápido.');
+    // Un aparato vinculado con una versión vieja aún guarda su secreto: se manda una vez y se borra
+    const viejo = localStorage.getItem(DEVICE_SECRET_KEY);
 
-    if (!deviceId || !deviceSecret) {
-      throw new Error('Dispositivo no configurado para acceso rápido.');
-    }
-
-    // 1. Enviar petición al endpoint público de acceso rápido
-    let res: { accessToken: string; refreshToken: string; user: any; newDeviceSecret?: string };
+    // 1. Endpoint público de acceso rápido; la cookie del aparato viaja sola
+    let res: Response;
     try {
-      res = await publicRequest('/auth/quick-login', { method: 'POST', body: { deviceId, deviceSecret } });
-    } catch (e) {
+      res = await fetch(`${URL_API}/auth/quick-login`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-Sesion': 'cookie' },
+        body: JSON.stringify(viejo ? { deviceId, deviceSecret: viejo } : { deviceId }),
+      });
+    } catch {
+      throw new ErrorPublico('No hay conexión. Revisa tu internet e inténtalo de nuevo.', 0);
+    }
+    if (!res.ok) {
+      const cuerpo = await res.json().catch(() => null);
+      const m = cuerpo?.message?.message ?? cuerpo?.message ?? 'No se pudo entrar';
       // 401: desvinculado, vencido o secreto viejo. El botón deja de salir y se entra con clave.
-      if (e instanceof ErrorPublico && e.status === 401) {
+      if (res.status === 401) {
         localStorage.removeItem(DEVICE_SECRET_KEY);
         localStorage.removeItem(DEVICE_USER_KEY);
         localStorage.removeItem(DEVICE_NAME_KEY);
       }
-      throw e;
+      throw new ErrorPublico(Array.isArray(m) ? m.join(' | ') : String(m), res.status);
+    }
+    const datos: { user: any } = await res.json();
+
+    // 2. La sesión y el secreto nuevo del aparato ya quedaron en cookies httpOnly
+    localStorage.removeItem(DEVICE_SECRET_KEY);
+    sesionLocal.guardar(datos.user ?? {});
+
+    // 3. Actualizar datos del usuario local
+    if (datos.user) {
+      localStorage.setItem(DEVICE_USER_KEY, JSON.stringify(datos.user));
     }
 
-    // 2. Guardar tokens de sesión
-    tokenStore.set(res.accessToken);
-    tokenStore.setRefresh(res.refreshToken);
-
-    // 3. Rotación de secreto (Seguridad: el secreto cambia en cada inicio de sesión)
-    if (res.newDeviceSecret) {
-      localStorage.setItem(DEVICE_SECRET_KEY, res.newDeviceSecret);
-    }
-
-    // 4. Actualizar datos del usuario local
-    if (res.user) {
-      localStorage.setItem(DEVICE_USER_KEY, JSON.stringify(res.user));
-    }
-
-    return { user: res.user, accessToken: res.accessToken };
+    return { user: datos.user };
   },
 
   /**
@@ -168,7 +166,7 @@ export const quickAuth = {
   async revokeDevice(): Promise<void> {
     const deviceId = localStorage.getItem(DEVICE_ID_KEY);
     try {
-      if (deviceId && tokenStore.get()) {
+      if (deviceId && sesionLocal.hay()) {
         await api.delete(`/auth/quick-login/${encodeURIComponent(deviceId)}`).catch(() => {});
       }
     } finally {

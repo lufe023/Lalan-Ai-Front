@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { tokenStore, refrescarSesion } from './api';
+import { sesionLocal, refrescarSesion } from './api';
 import { sedeLocal } from './sedeLocal';
 
 /**
@@ -82,6 +82,8 @@ function conectar(auth: () => Record<string, any>, modo: string) {
        funcionaría y el tiempo real estaría muerto sin que nadie lo note. */
     auth: (cb: (datos: Record<string, any>) => void) => cb(auth()),
     path: RUTA,
+    // La sesión de la app viaja en su cookie httpOnly (el servidor la lee en el handshake)
+    withCredentials: true,
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: 1000,
@@ -112,14 +114,14 @@ function conectar(auth: () => Record<string, any>, modo: string) {
 
 /** La app: se identifica con el JWT que ya tiene guardado */
 export function conectarComoUsuario() {
-  if (!tokenStore.get()) return null;
+  if (!sesionLocal.hay()) return null;
   /* El modo no lleva el token dentro a propósito: si lo llevara, renovar la
      sesión contaría como "otro modo" y tiraría el socket para levantar uno
      idéntico. Se suelta al cerrar sesión, que es cuando de verdad cambia
      quién está conectado. */
   /* `sede`: el local cuya música maneja dirección (ver sedeLocal). Se lee en
      cada conexión, así que cambiarla es reconectar. */
-  return conectar(() => ({ tipo: 'app', token: tokenStore.get() ?? '', sede: sedeLocal() }), 'app');
+  return conectar(() => ({ tipo: 'app', sede: sedeLocal() }), 'app');
 }
 
 /** La pantalla de pared: su token público, y solo para escuchar */

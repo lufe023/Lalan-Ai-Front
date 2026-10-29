@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ConfirmacionCorreo, UserProfile, UserRole } from '../types';
-import { api, salirEnServidor, tokenStore } from '../services/api';
+import { api, migrarSesionVieja, salirEnServidor, sesionLocal } from '../services/api';
 import { enSoporte, salirDeSoporte } from '../services/soporte';
 import { quickAuth } from '../services/quickAuth';
 
@@ -42,6 +42,7 @@ interface ApiUser {
   confirmarCorreo?: ConfirmacionCorreo | null;
   aceptarTerminos?: string | null;
   soporte?: { negocio: string };
+  locationId?: string | null;
 }
 
 function buildProfile(u: ApiUser): UserProfile {
@@ -70,9 +71,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Restore session on mount
   useEffect(() => {
     const restore = async () => {
-      if (!tokenStore.get()) { setIsLoading(false); return; }
+      if (!sesionLocal.hay()) { setIsLoading(false); return; }
       try {
+        // Una sesión de antes (tokens en localStorage) pasa a cookies httpOnly
+        await migrarSesionVieja();
         const user = await api.get<ApiUser>('/auth/me');
+        sesionLocal.guardar(user);
         setCurrentUser(buildProfile(user));
         try {
           localStorage.setItem('lalan_cached_user', JSON.stringify(user));
@@ -88,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCurrentUser(buildProfile(cachedUser));
           } catch {}
         } else if (err?.message === 'Session expired') {
-          tokenStore.clear();
+          sesionLocal.borrar();
           localStorage.removeItem('lalan_cached_user');
         } else if (cachedRaw) {
           // El servidor falló (un despliegue, un 500): eso no cierra la sesión
@@ -107,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handler = () => {
       if (enSoporte()) { salirDeSoporte(); return; }
       setCurrentUser(null);
-      tokenStore.clear();
+      sesionLocal.borrar();
       try { localStorage.removeItem('lalan_cached_user'); } catch {}
     };
     window.addEventListener('lalan:logout', handler);
@@ -115,12 +119,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async ({ identificador, password }: LoginCredentials) => {
-    const data = await api.post<{ accessToken: string; refreshToken: string; user: ApiUser }>(
+    // La sesión llega en cookies httpOnly: el cuerpo ya no trae tokens
+    const data = await api.post<{ user: ApiUser }>(
       '/auth/login',
       { identificador, password },
     );
-    tokenStore.set(data.accessToken);
-    tokenStore.setRefresh(data.refreshToken);
+    sesionLocal.guardar(data.user);
     setCurrentUser(buildProfile(data.user));
     try {
       localStorage.setItem('lalan_cached_user', JSON.stringify(data.user));
@@ -129,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithQuickDevice = useCallback(async () => {
     const { user } = await quickAuth.loginWithDevice();
+    sesionLocal.guardar(user);
     setCurrentUser(buildProfile(user));
     try {
       localStorage.setItem('lalan_cached_user', JSON.stringify(user));
@@ -139,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (enSoporte()) { salirDeSoporte(); return; }
     // Que el servidor también la cierre: así deja de salir en "Dónde está abierta tu sesión"
     salirEnServidor();
-    tokenStore.clear();
+    sesionLocal.borrar();
     try {
       localStorage.removeItem('lalan_cached_user');
     } catch {}
