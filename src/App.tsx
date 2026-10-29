@@ -17,6 +17,8 @@ import { CatalogScreen } from './screens/CatalogScreen';
 import { ChatsScreen } from './screens/ChatsScreen';
 import { BotsControlScreen } from './screens/BotsControlScreen';
 import { InformesScreen } from './screens/InformesScreen';
+import { ComprasScreen } from './screens/ComprasScreen';
+import { RegistroProveedorScreen } from './screens/RegistroProveedorScreen';
 import { MiSemanaScreen } from './screens/MiSemanaScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LoungePlayerScreen } from './screens/LoungePlayerScreen';
@@ -132,6 +134,7 @@ const MainAppContent: React.FC = () => {
       case 'plataforma':  return <React.Suspense key="plataforma" fallback={null}><PlataformaScreen /></React.Suspense>;
       case 'informes':    return <InformesScreen    key="informes"    />;
       case 'mi-semana':   return <MiSemanaScreen    key="mi-semana"   />;
+      case 'compras':     return <ComprasScreen     key="compras"     />;
       default:          return <DashboardScreen key="default"   />;
     }
   };
@@ -335,6 +338,11 @@ function direccionDeVitrina(): { nombre: string; sede: string | null } | null {
   return direccionCorta(ruta);
 }
 
+/** Donde un distribuidor se anota en la lista de proveedores de Lalan (#/proveedores) */
+function esRegistroProveedor(): boolean {
+  return /^#\/proveedores\/?$/.test(window.location.hash || '');
+}
+
 /** El quiosco de la entrada (#/quiosco): su token vive en el aparato, no en la URL */
 function esQuiosco(): boolean {
   return /^#\/quiosco(\/[A-Za-z0-9_-]*)?$/.test(window.location.hash || '');
@@ -363,6 +371,7 @@ export default function App() {
   const [tokenReproductor, setTokenReproductor] = React.useState<string | null>(tokenDeReproductor);
   const [tokenPedirCancion, setTokenPedirCancion] = React.useState<string | null>(tokenDePedirCancion);
   const [quiosco, setQuiosco] = React.useState<boolean>(esQuiosco);
+  const [registroProveedor, setRegistroProveedor] = React.useState<boolean>(esRegistroProveedor);
   const [slugVitrina, setSlugVitrina] = React.useState<string | null>(slugDeVitrina);
   const [vitrinaCorta, setVitrinaCorta] = React.useState(direccionDeVitrina);
 
@@ -372,6 +381,7 @@ export default function App() {
       setTokenReproductor(tokenDeReproductor());
       setTokenPedirCancion(tokenDePedirCancion());
       setQuiosco(esQuiosco());
+      setRegistroProveedor(esRegistroProveedor());
       setSlugVitrina(slugDeVitrina());
     };
     window.addEventListener('hashchange', alCambiar);
@@ -397,6 +407,14 @@ export default function App() {
     return (
       <ThemeProvider>
         <ReproductorSala token={tokenReproductor} />
+      </ThemeProvider>
+    );
+  }
+
+  if (registroProveedor) {
+    return (
+      <ThemeProvider>
+        <RegistroProveedorScreen />
       </ThemeProvider>
     );
   }

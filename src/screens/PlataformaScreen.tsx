@@ -25,10 +25,11 @@ import { LoQueLalanSabeHacer } from '../components/plataforma/LoQueLalanSabeHace
 import { BaseProductos } from '../components/plataforma/BaseProductos';
 import { MercadoPlataforma } from '../components/plataforma/MercadoPlataforma';
 import { RolesPlataforma } from '../components/plataforma/RolesPlataforma';
+import { ProveedoresPlataforma } from '../components/plataforma/ProveedoresPlataforma';
 import type { Dispositivo, ResumenLanding } from '../types/plataforma';
 import { useAuth } from '../context/AuthContext';
 
-type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'roles' | 'salud' | 'portadas' | 'guias' | 'vitrina' | 'lalan' | 'productos' | 'mercado';
+type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'roles' | 'salud' | 'portadas' | 'guias' | 'vitrina' | 'lalan' | 'productos' | 'mercado' | 'proveedores';
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'salud', label: 'Salud' },
   { id: 'negocios', label: 'Clientes' },
@@ -44,6 +45,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'lalan', label: 'Lalan' },
   { id: 'productos', label: 'Productos' },
   { id: 'mercado', label: 'Mercado' },
+  { id: 'proveedores', label: 'Proveedores' },
 ];
 
 type Rango = '7' | '30' | '90';
@@ -388,6 +390,7 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'vitrina' && <VitrinaPlataforma />}
         {pestana === 'productos' && <BaseProductos />}
         {pestana === 'mercado' && <MercadoPlataforma />}
+        {pestana === 'proveedores' && <ProveedoresPlataforma />}
         {pestana === 'lalan' && (
           <div className="space-y-5">
             <IOSSegmentedControl id="plataforma-lalan" options={[{ id: 'uso', label: 'Cómo la usan' }, { id: 'sabe', label: 'Lo que sabe hacer' }, { id: 'ajustes', label: 'Ajustes de la app' }, { id: 'landing', label: 'Landing (IA y voz)' }]} value={vistaLalan} onChange={(v) => setVistaLalan(v as 'uso' | 'sabe' | 'ajustes' | 'landing')} size="sm" />

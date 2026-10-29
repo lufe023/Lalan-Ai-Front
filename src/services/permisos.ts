@@ -13,6 +13,7 @@ export type ClavePermisoRol =
   | 'chats.atender' | 'sala.operar' | 'caja.cobrar'
   | 'catalogo.ver' | 'catalogo.editar' | 'precios.editar'
   | 'inventario.ver' | 'inventario.ajustar'
+  | 'compras.ver' | 'compras.gestionar'
   | 'reportes.ver';
 
 export type MapaPermisosRol = Partial<Record<ClavePermisoRol, boolean>>;
@@ -66,6 +67,7 @@ export const PERMISO_DE_PANTALLA: Partial<Record<ScreenName, ClavePermisoRol>> =
   dashboard: 'reportes.ver',
   informes: 'reportes.ver',
   'mi-semana': 'reportes.ver',
+  compras: 'compras.ver',
   ganancias: 'reportes.ver',
   'citas-report': 'reportes.ver',
   'conversiones-report': 'reportes.ver',

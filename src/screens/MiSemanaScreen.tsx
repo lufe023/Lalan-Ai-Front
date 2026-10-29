@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, Check, ChevronRight, Clock, Copy, FileText, Loader2, MessageCircle, Package, Sparkles, UserRound, UserX } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Check, ChevronRight, Clock, Copy, FileText, Loader2, MessageCircle, Package, ShoppingCart, Sparkles, UserRound, UserX } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -15,6 +15,8 @@ import { ABRIR_CITA } from './CalendarScreen';
 import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
 import { HojaDelDia, OfrecerHueco, ResolverCita, hora12, type HuecoElegido, type PorVolver } from '../components/mi-semana/AccionesMiSemana';
 import { urlDeFoto } from '../services/api';
+import { ABRIR_PEDIDO, VISTA_COMPRAS, comprasApi } from '../services/compras';
+import { usePlan } from '../context/PlanContext';
 
 /* Lo que devuelve /mi-semana (mi-semana.service.ts) */
 interface Gusto { tipo: string; descripcion: string; valor: string; notas: string | null; falta: 'sin_producto' | 'se_acabo' | null; productId: string | null }
@@ -161,6 +163,31 @@ export const MiSemanaScreen: React.FC = () => {
   const ingresoDeLaPestana = datos?.ingreso == null ? null : diasDeLaPestana.reduce((t, d) => t + (d.ingreso ?? 0), 0);
   const porVencer = datos?.porVencer ?? [];
   const listaParaPedir = productosDeLaPestana.map((p) => `• ${p.nombre}: faltan ${cantidad(Math.max(0, p.necesita - p.hay), p.unidad)} (${p.sede.nombre})`).join('\n');
+  const { tieneModulo } = usePlan();
+  const [armando, setArmando] = useState(false);
+  /** Un pedido por sede y proveedor con lo que falta; abre Compras en el pedido */
+  const armarPedido = async () => {
+    setArmando(true);
+    try {
+      const porSede = new Map<string, ProductoQueFalta[]>();
+      for (const p of productosDeLaPestana) (porSede.get(p.sede.id) ?? porSede.set(p.sede.id, []).get(p.sede.id)!).push(p);
+      const ordenes: string[] = [];
+      const sin: string[] = [];
+      for (const [sedeId, lista] of porSede) {
+        const r = await comprasApi.armar({ locationId: sedeId, origen: 'mi_semana', items: lista.map((p) => ({ productId: p.productId, faltan: Math.max(0, p.necesita - p.hay) })) });
+        ordenes.push(...r.ordenes.map((o) => o.id));
+        sin.push(...r.sinProveedor.map((x) => x.nombre));
+      }
+      try {
+        if (ordenes.length === 1) sessionStorage.setItem(ABRIR_PEDIDO, ordenes[0]);
+        else if (!ordenes.length) sessionStorage.setItem(VISTA_COMPRAS, 'por-pedir');
+      } catch { /* nada */ }
+      if (sin.length) showToast?.(ordenes.length ? 'Pedido armado' : 'Falta decir a quién se lo compras', `${sin.join(', ')} no ${sin.length === 1 ? 'tiene' : 'tienen'} proveedor: dilo en «Por pedir».`, 'info');
+      else showToast?.(ordenes.length === 1 ? 'Pedido armado' : `${ordenes.length} pedidos armados`, 'Revísalo y pide precio o confírmalo.', 'success');
+      navigateTo('compras');
+    } catch (e) { showToast?.('No se pudo armar', (e as Error).message, 'warning'); }
+    finally { setArmando(false); }
+  };
   const copiarLista = async () => {
     try { await navigator.clipboard.writeText(`Para pedir:\n${listaParaPedir}`); showToast?.('Lista copiada', 'Pégala donde le pides a tu proveedor.', 'success'); } catch { /* sin portapapeles */ }
   };
@@ -238,6 +265,11 @@ export const MiSemanaScreen: React.FC = () => {
                 </div>
               ))}
               <div className="flex flex-wrap gap-2 pt-1">
+                {tieneModulo('inventario') && (
+                  <button type="button" disabled={armando} onClick={() => void armarPedido()} className="px-3 py-2 rounded-xl text-[0.75rem] font-bold bg-[var(--primary)] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    {armando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />} Armar el pedido
+                  </button>
+                )}
                 <a href={`https://wa.me/?text=${encodeURIComponent(`Hola, quiero pedir:\n${listaParaPedir}`)}`} target="_blank" rel="noopener"
                   className="px-3 py-2 rounded-xl text-[0.75rem] font-bold bg-[#25D366] text-white flex items-center gap-1.5"><MessageCircle className="w-4 h-4" /> Pedirlo por WhatsApp</a>
                 <button type="button" onClick={() => void copiarLista()} className="px-3 py-2 rounded-xl text-[0.75rem] font-bold bg-white dark:bg-neutral-900 border border-rose-200 dark:border-rose-900/60 text-slate-700 dark:text-neutral-200 flex items-center gap-1.5 cursor-pointer"><Copy className="w-4 h-4" /> Copiar la lista</button>
