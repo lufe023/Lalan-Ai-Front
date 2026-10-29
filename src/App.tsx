@@ -34,7 +34,6 @@ import VitrinaCortaScreen from './screens/VitrinaCortaScreen';
 import { direccionCorta } from '../worker/direccion-corta.js';
 import { QuioscoScreen } from './screens/QuioscoScreen';
 import { AprobarQuiosco } from './components/ajustes/AprobarQuiosco';
-import { PlataformaScreen } from './screens/PlataformaScreen';
 import { EspecialistaApp } from './screens/EspecialistaApp';
 import { CambiarClaveScreen } from './screens/CambiarClaveScreen';
 import { AceptarTerminosScreen } from './screens/AceptarTerminosScreen';
@@ -42,6 +41,7 @@ import { ConfirmarCorreoScreen, confirmacionOmitida } from './screens/ConfirmarC
 import { PlanProvider } from './context/PlanContext';
 import { SedeActivaProvider } from './context/SedeActivaContext';
 import { BarraSoporte } from './components/ui/BarraSoporte';
+import { AvisoSoporteDentro } from './components/ui/AvisoSoporteDentro';
 import { AvisoMensajes } from './components/ui/AvisoMensajes';
 import { ChatsFlotantes } from './components/chats/ChatsFlotantes';
 import { BotonLalan, PantallaLalan } from './components/lalan/PantallaLalan';
@@ -71,6 +71,10 @@ const MODO_GRABAR = (() => {
 import { pantallaRecordada, esAplicacionInstalada } from './utils/pantallaRecordada';
 import { conectarComoUsuario, desconectar } from './services/socket';
 import { PERMISO_DE_PANTALLA } from './services/permisos';
+
+/* Plataforma es solo para Lalan (super admin y soporte): su código no se
+   descarga en el teléfono de cada salón */
+const PlataformaScreen = React.lazy(() => import('./screens/PlataformaScreen').then((m) => ({ default: m.PlataformaScreen })));
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -119,7 +123,7 @@ const MainAppContent: React.FC = () => {
       case 'conversiones-report': return <ConversionesReportScreen key="conversiones-report" />;
       case 'price-lists': return <PriceListsScreen key="price-lists" />;
       case 'ganancias':   return <GananciasScreen   key="ganancias"   />;
-      case 'plataforma':  return <PlataformaScreen  key="plataforma"  />;
+      case 'plataforma':  return <React.Suspense key="plataforma" fallback={null}><PlataformaScreen /></React.Suspense>;
       case 'informes':    return <InformesScreen    key="informes"    />;
       case 'mi-semana':   return <MiSemanaScreen    key="mi-semana"   />;
       default:          return <DashboardScreen key="default"   />;
@@ -196,7 +200,9 @@ const MainAppContent: React.FC = () => {
           // On mobile  → flex-col  (sidebar at bottom = tab bar)
           // On desktop → flex-row  (sidebar on left via lg:order-first)
           <div className="flex-1 w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
-            {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} />}
+            {currentUser?.soporte && <BarraSoporte negocio={currentUser.soporte.negocio} soloLectura={currentUser.soporte.soloLectura} />}
+            {/* La dueña sabe cuándo alguien de Lalan está dentro de su salón */}
+            {currentUser?.role === 'admin' && !currentUser.soporte && <AvisoSoporteDentro />}
             <ChatsFlotantes />
             <RetornoInstagram />
             {/* Escaneó el QR de un quiosco: aprobarlo desde aquí */}

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
+import { IOSToggle } from '../ui/IOSToggle';
 import { api } from '../../services/api';
 import { ClaveParaCompartir } from './ClaveParaCompartir';
 import { UsoDelPlan } from './UsoDelPlan';
@@ -282,11 +283,14 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
     catch (e) { setError((e as Error).message); }
   };
   const [entrando, setEntrando] = useState(false);
-  const entrar = async () => {
-    if (!window.confirm(`Vas a entrar al salón ${d?.nombre ?? ''} como soporte. Lo que cambies se guarda en su salón. Quedará anotado en su bitácora.`)) return;
+  /** El formulario de entrada: para qué, y si hay que cambiar algo (la dueña lo ve) */
+  const [paraEntrar, setParaEntrar] = useState<{ motivo: string; cambiar: boolean } | null>(null);
+  const entrar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paraEntrar || paraEntrar.motivo.trim().length < 5) return;
     setEntrando(true);
-    try { await api.post(`/plataforma/negocios/${id}/entrar`, {}); entrarComoSoporte(); }
-    catch (e) { setError((e as Error).message); setEntrando(false); }
+    try { await api.post(`/plataforma/negocios/${id}/entrar`, { motivo: paraEntrar.motivo.trim(), cambiar: paraEntrar.cambiar }); entrarComoSoporte(); }
+    catch (err) { setError((err as Error).message); setEntrando(false); }
   };
   const agregarPaquete = async (respuestas: number, precio: number) => {
     if (!window.confirm(`¿Sumarle ${respuestas.toLocaleString('es-DO')} respuestas a ${d?.nombre ?? 'este salón'} por ${precio.toLocaleString('es-DO')} pesos? Valen hasta fin de mes.`)) return;
@@ -310,7 +314,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           <p className="text-[0.75rem] text-slate-500">Cliente desde {fecha(d.creadoEn)} · {d.sedes.length} {d.sedes.length === 1 ? 'sede' : 'sedes'}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button type="button" onClick={() => void entrar()} disabled={entrando}
+          <button type="button" onClick={() => setParaEntrar(paraEntrar ? null : { motivo: '', cambiar: false })} disabled={entrando} aria-expanded={!!paraEntrar}
             className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold flex items-center gap-1 bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 cursor-pointer" title="Abrir su app para configurarle especialistas, moneda, ajustes…">
             {entrando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LifeBuoy className="w-3.5 h-3.5" />} Entrar a su salón
           </button>
@@ -321,6 +325,26 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="cursor-pointer"><X className="w-4 h-4 text-slate-400" /></button>
         </div>
       </div>
+      {paraEntrar && (
+        <form onSubmit={entrar} className="p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 space-y-2.5">
+          <label className="block space-y-1">
+            <span className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">¿Para qué entras? La dueña lo verá en su aviso y en su historial.</span>
+            <input autoFocus required minLength={5} maxLength={300} value={paraEntrar.motivo} onChange={(e) => setParaEntrar({ ...paraEntrar, motivo: e.target.value })}
+              placeholder="Ej.: Configurar la caja que pidió por WhatsApp" className={campo} />
+          </label>
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <IOSToggle checked={paraEntrar.cambiar} onChange={(v) => setParaEntrar({ ...paraEntrar, cambiar: v })} ariaLabel="Necesito cambiar algo" />
+            <span className="text-[0.75rem] text-slate-600 dark:text-neutral-300 leading-snug">
+              <b className="text-slate-800 dark:text-white">Necesito cambiar algo</b><br />
+              {paraEntrar.cambiar ? 'Lo que cambies se guarda en su salón y queda en su bitácora con tu nombre.' : 'Entras solo a mirar: ves todo y no puedes cambiar nada.'}
+            </span>
+          </label>
+          <button type="submit" disabled={entrando || paraEntrar.motivo.trim().length < 5}
+            className="w-full py-2 rounded-xl bg-amber-500 text-white text-[0.8125rem] font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer">
+            {entrando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LifeBuoy className="w-3.5 h-3.5" />} {paraEntrar.cambiar ? 'Entrar para ayudar' : 'Entrar a mirar'}
+          </button>
+        </form>
+      )}
       {clave && <ClaveParaCompartir {...clave} onListo={() => setClave(null)} />}
       {error && <p className="text-[0.8125rem] font-semibold text-rose-600" role="alert">{error}</p>}
 

@@ -16,7 +16,7 @@ export interface UserProfile {
   /** Entró con una clave temporal: antes de usar la app, pone la suya */
   debeCambiarClave?: boolean;
   /** Sesión de soporte de Lalan dentro de este salón */
-  soporte?: { negocio: string };
+  soporte?: { negocio: string; soloLectura?: boolean; motivo?: string | null };
   /** Su correo (puede no tener: entra con usuario o teléfono) */
   correo?: string | null;
   usuario?: string | null;

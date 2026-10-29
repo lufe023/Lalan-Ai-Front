@@ -953,6 +953,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const abrirDentro = (aviso?: string | null, conversacion?: string | null) => {
       // «Pidió fotos de un servicio que no tiene»: abre ese servicio en el catálogo para subirlas
       if (aviso?.startsWith('servicio:')) setCatalogDeepLink({ serviceId: aviso.slice('servicio:'.length) });
+      // «Lalan entró a tu salón»: abre Ajustes en esa sección (Mi cuenta → Lalan en tu salón)
+      else if (aviso?.startsWith('ajustes:')) { try { sessionStorage.setItem('lalan_ajustes_seccion', aviso.slice('ajustes:'.length)); } catch { /* nada */ } }
       else if (aviso) { try { sessionStorage.setItem('lalan.abrirAviso', aviso); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-aviso')); }
       if (conversacion) setActiveConversationId(conversacion);
     };

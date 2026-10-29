@@ -44,7 +44,7 @@ interface ApiUser {
   usuario?: string | null; telefono?: string | null;
   confirmarCorreo?: ConfirmacionCorreo | null;
   aceptarTerminos?: string | null;
-  soporte?: { negocio: string };
+  soporte?: { negocio: string; soloLectura?: boolean; motivo?: string | null };
   locationId?: string | null;
   /** Solo la asistente: lo que la dueña le dejó hacer (null = todo) */
   permisos?: MapaPermisosRol | null;
