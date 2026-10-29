@@ -828,7 +828,7 @@ function citasDetras(todas: Appointment[], cita: Appointment): Appointment[] {
   }
 }
 
-function mapApiAppointment(a: any): Appointment {
+export function mapApiAppointment(a: any): Appointment {
   const startsAt = new Date(a.startsAt);
   return {
     id: a.id, clientId: a.clientId, clientName: a.clientName, clientPhone: a.clientPhone,
