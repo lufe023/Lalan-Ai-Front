@@ -5,6 +5,7 @@ import {
   Armchair, BarChart3, Calendar, CalendarCheck2, CornerDownLeft, Globe2, LayoutDashboard,
   MessageSquareText, MessagesSquare, Music, Receipt, Search, Sliders, Sparkles, Tag, Users, Wallet,
   CalendarRange,
+  ShoppingCart,
 } from 'lucide-react';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -150,6 +151,7 @@ export const BuscadorOpciones: React.FC = () => {
       { id: 'citas-report', titulo: 'Informe de citas', donde: 'Informes', palabras: 'reporte agenda especialistas no llegan ausencias', icono: CalendarCheck2, color: 'bg-violet-500', modulo: 'informes', ir: pantalla('citas-report') },
       { id: 'ganancias', titulo: 'Ganancias', donde: 'Informes', palabras: 'reporte rentabilidad utilidad costos dinero', icono: Wallet, color: 'bg-violet-500', modulo: 'informes', ir: pantalla('ganancias') },
       { id: 'mi-semana', titulo: 'Mi semana', donde: 'Menú', palabras: 'planificador manana semana proximas citas recordatorios gustos alergias productos faltan', icono: CalendarRange, color: 'bg-rose-500', ir: pantalla('mi-semana') },
+      { id: 'compras', titulo: 'Compras', donde: 'Menú', palabras: 'proveedores pedidos orden de compra cotizacion suplidor recibir mercancia faltan pedir', icono: ShoppingCart, color: 'bg-emerald-500', ir: pantalla('compras') },
       { id: 'calendar', titulo: 'Agenda', donde: 'Menú', palabras: 'citas calendario reservas turnos pendientes', icono: Calendar, color: 'bg-rose-500', ir: pantalla('calendar') },
       { id: 'sala', titulo: 'Sala', donde: 'Menú', palabras: 'turnos llegadas espera pantalla', icono: Armchair, color: 'bg-indigo-500', modulo: 'sala_turnos', ir: pantalla('sala') },
       { id: 'clients', titulo: 'Clientas', donde: 'Menú', palabras: 'clientes contactos fichas personas', icono: Users, color: 'bg-emerald-500', ir: pantalla('clients') },

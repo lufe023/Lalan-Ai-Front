@@ -21,6 +21,7 @@ import {
   X,
   LayoutGrid,
   CalendarRange,
+  ShoppingCart,
 } from 'lucide-react';
 import { abrirBuscador, ATAJO_BUSCADOR } from './BuscadorOpciones';
 import { IOSModal } from './IOSModal';
@@ -46,6 +47,7 @@ const MODULO_DE_PESTANA: Partial<Record<ScreenName, ClaveModulo>> = {
   lounge: 'lounge_musica',
   caja: 'caja',
   'price-lists': 'listas_precios',
+  compras: 'inventario',
 };
 
 /**
@@ -107,6 +109,7 @@ export const IOSTabBar: React.FC = () => {
     { id: 'informes', label: 'Informes', icon: BarChart3 },
     { id: 'calendar', label: 'Agenda', icon: Calendar, badge: pendingApts > 0 ? pendingApts : undefined },
     { id: 'mi-semana', label: 'Mi semana', icon: CalendarRange },
+    { id: 'compras', label: 'Compras', icon: ShoppingCart },
     { id: 'sala', label: 'Sala', icon: Armchair },
     { id: 'clients', label: 'Clientas', icon: Users },
     { id: 'lounge', label: 'Lounge', icon: Music },

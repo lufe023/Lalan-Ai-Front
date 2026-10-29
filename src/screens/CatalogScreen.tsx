@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Aparecer, ChipsFiltro } from '../components/ui/movimiento';
 import { AnimatePresence } from 'motion/react';
 import {
@@ -25,8 +25,11 @@ import {
   X,
   Eye,
   MapPin,
+  Truck,
 } from 'lucide-react';
 import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
+import { ProveedoresDelProducto } from '../components/compras/ProveedoresDelProducto';
+import { comprasApi } from '../services/compras';
 import { SedeDelStock, useSedeDelStock } from '../components/inventario/SedeDelStock';
 import { RecibirFactura } from '../components/inventario/RecibirFactura';
 import { useApp, ServiceIngredient, type CambioDeGaleria } from '../context/AppContext';
@@ -114,6 +117,12 @@ export const CatalogScreen: React.FC = () => {
   const sedeDelStockInicial = useSedeDelStock();
   /* Recibir mercancía (lotes con vencimiento) */
   const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
+  /** A quién se le compra cada producto (Compras): el chip de la tarjeta y su hoja */
+  const [proveedoresDe, setProveedoresDe] = useState<Record<string, { cuantos: number; preferido: string | null }>>({});
+  const [conProveedores, setConProveedores] = useState<{ id: string; name: string; unit?: string } | null>(null);
+  const cargarProveedores = useCallback(() => {
+    comprasApi.resumenProductos().then(setProveedoresDe).catch(() => setProveedoresDe({}));
+  }, []);
   const [cargandoFactura, setCargandoFactura] = useState(false);
   const { base, dinero, enSuMoneda, esExtranjera } = useDinero();
   const iconoCategoria = (kind: 'service' | 'product', key: string) => categoriaPorClave(kind, key)?.icon || '✨';
@@ -123,6 +132,8 @@ export const CatalogScreen: React.FC = () => {
   };
   const { currentUser } = useAuth();
   const { tieneModulo } = usePlan();
+  const conCompras = tieneModulo('inventario');
+  useEffect(() => { if (conCompras) cargarProveedores(); }, [conCompras, cargarProveedores]);
 
   const [activeTab, setActiveTab] = useState<'services' | 'products' | 'ofertas'>('services');
   const [searchQuery, setSearchQuery] = useState('');
@@ -870,6 +881,15 @@ export const CatalogScreen: React.FC = () => {
                       </BotonDeTarjeta>
                     </>}
                     etiquetas={<>
+                      {conCompras && !product.preparedToOrder && (
+                        <button type="button" onClick={() => setConProveedores({ id: product.id, name: product.name, unit: product.unit })}
+                          title="A quién se lo compras" className={`inline-flex items-center gap-1 px-1.5 rounded-full text-[0.6875rem] font-semibold cursor-pointer ${proveedoresDe[product.id] ? 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300' : 'border border-dashed border-slate-300 dark:border-neutral-700 text-slate-400'}`}>
+                          <Truck className="w-3 h-3" />
+                          {proveedoresDe[product.id]
+                            ? `${proveedoresDe[product.id].preferido}${proveedoresDe[product.id].cuantos > 1 ? ` +${proveedoresDe[product.id].cuantos - 1}` : ''}`
+                            : 'Proveedor'}
+                        </button>
+                      )}
                       {variasSedes && sedeActual && product.precioPropio && (
                         <span className="inline-flex items-center gap-1 px-1.5 rounded-full bg-[var(--primary)]/10 text-[0.6875rem] font-semibold text-[var(--primary)]">
                           <MapPin className="w-3 h-3" /> precio de {sedeActual.name}
@@ -1903,6 +1923,7 @@ export const CatalogScreen: React.FC = () => {
      
       </IOSModal>
       <RecibirMercancia producto={recibiendo} onClose={() => setRecibiendo(null)} />
+      <ProveedoresDelProducto producto={conProveedores} onClose={() => setConProveedores(null)} onCambio={cargarProveedores} />
       <RecibirFactura
         isOpen={cargandoFactura}
         onClose={() => setCargandoFactura(false)}
