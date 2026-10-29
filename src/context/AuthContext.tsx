@@ -27,7 +27,8 @@ interface AuthContextType {
   completarDosPasos: (pase: string, codigo: string, porCorreo?: boolean) => Promise<void>;
   /** Ya configuró los dos pasos: se quita la pantalla que la pide */
   dosPasosListo: () => void;
-  loginWithQuickDevice: () => Promise<void>;
+  /** Con dos pasos devuelve el reto: falta el código */
+  loginWithQuickDevice: () => Promise<{ dosPasos?: RetoDosPasos }>;
   logout: () => void;
   hasPermission: (permission: keyof UserProfile['permissions']) => boolean;
   /** ¿La dueña le dejó hacer esto? Administración puede todo */
@@ -163,12 +164,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const loginWithQuickDevice = useCallback(async () => {
-    const { user } = await quickAuth.loginWithDevice();
-    sesionLocal.guardar(user);
-    setCurrentUser(buildProfile(user));
-    try {
-      localStorage.setItem('lalan_cached_user', JSON.stringify(user));
-    } catch {}
+    const r = await quickAuth.loginWithDevice();
+    if ('dosPasos' in r) return { dosPasos: r.dosPasos };
+    abrir(r.user);
+    return {};
   }, []);
 
   const logout = useCallback(() => {
