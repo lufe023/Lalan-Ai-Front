@@ -173,7 +173,7 @@ export const FichaProveedor: React.FC<{
         <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-violet-50/70 dark:bg-violet-950/20">
           <span className="text-[0.8125rem] text-slate-700 dark:text-neutral-200">
             <b className="flex items-center gap-1"><Bot className="w-4 h-4 text-violet-600" /> Lalan le puede escribir</b>
-            <span className="block text-[0.6875rem] text-slate-500">Pedir precios y preguntar por la entrega. Nunca compra sin tu sí.</span>
+            <span className="block text-[0.6875rem] text-slate-500">Pedir precios y preguntar por la entrega. Lo que escriba a tu WhatsApp va a su pedido en Compras, no a los chats de clientas. Nunca compra sin tu sí.</span>
           </span>
           <IOSToggle checked={f.lalanHabla} onChange={(v) => setF({ ...f, lalanHabla: v })} ariaLabel="Lalan le puede escribir" />
         </div>

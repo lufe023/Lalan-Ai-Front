@@ -9,7 +9,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { SelectorSede } from '../components/ui/SelectorSede';
 import { ItemAnimado, ListaAnimada } from '../components/ui/movimiento';
 import { useSedes } from '../hooks/useSedes';
-import { ABRIR_PEDIDO, VISTA_COMPRAS, comprasApi, dinero, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
+import { ABRIR_PEDIDO, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, comprasApi, dinero, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
 import { DetallePedido } from '../components/compras/DetallePedido';
 import { ListaProveedores } from '../components/compras/Proveedores';
 import { PorPedir } from '../components/compras/PorPedir';
@@ -36,6 +36,14 @@ export const ComprasScreen: React.FC = () => {
   const [abierto, setAbierto] = useState<string | null>(() => {
     try { const id = sessionStorage.getItem(ABRIR_PEDIDO); if (id) sessionStorage.removeItem(ABRIR_PEDIDO); return id; } catch { return null; }
   });
+  // Con Compras ya abierta, la notificación de un pedido lo abre
+  useEffect(() => {
+    const abrir = () => {
+      try { const id = sessionStorage.getItem(ABRIR_PEDIDO); if (id) { sessionStorage.removeItem(ABRIR_PEDIDO); setVista('pedidos'); setAbierto(id); } } catch { /* nada */ }
+    };
+    window.addEventListener(EVENTO_ABRIR_PEDIDO, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_PEDIDO, abrir);
+  }, []);
   const [filtro, setFiltro] = useState<Filtro>('');
   const [q, setQ] = useState('');
   const [lista, setLista] = useState<FilaPedido[] | null>(null);

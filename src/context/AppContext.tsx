@@ -9,6 +9,7 @@ import { loungeAudio } from '../utils/loungeAudio';
 import { api, subirArchivo, urlDeFoto } from '../services/api';
 import { alRecibir, alConectar } from '../services/socket';
 import { conSedeLocal, sedeLocal } from '../services/sedeLocal';
+import { ABRIR_PEDIDO, EVENTO_ABRIR_PEDIDO } from '../services/compras';
 import { PeticionCancion, componerCola, indicesDePeticiones } from '../utils/peticiones';
 import {
   estadoMusica, soyElAnfitrion, ordenar, cuandoSepamos, useMusicaSala,
@@ -954,6 +955,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // «Pidió fotos de un servicio que no tiene»: abre ese servicio en el catálogo para subirlas
       if (aviso?.startsWith('servicio:')) setCatalogDeepLink({ serviceId: aviso.slice('servicio:'.length) });
       // «Lalan entró a tu salón»: abre Ajustes en esa sección (Mi cuenta → Lalan en tu salón)
+      // Un proveedor contestó o Lalan espera tu sí: abre ese pedido en Compras
+      else if (aviso?.startsWith('pedido:')) { try { sessionStorage.setItem(ABRIR_PEDIDO, aviso.slice('pedido:'.length)); } catch { /* nada */ } window.dispatchEvent(new Event(EVENTO_ABRIR_PEDIDO)); }
       else if (aviso?.startsWith('ajustes:')) { try { sessionStorage.setItem('lalan_ajustes_seccion', aviso.slice('ajustes:'.length)); } catch { /* nada */ } }
       else if (aviso) { try { sessionStorage.setItem('lalan.abrirAviso', aviso); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-aviso')); }
       if (conversacion) setActiveConversationId(conversacion);

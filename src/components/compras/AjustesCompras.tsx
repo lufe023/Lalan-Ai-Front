@@ -9,7 +9,7 @@ import { botonPrincipal, campo, etiqueta } from './piezas';
 const MODOS: { id: ModoCompra; titulo: string; texto: string; icono: React.ReactNode }[] = [
   { id: 'manual', titulo: 'Lo hago yo', texto: 'Lalan solo te avisa qué falta. Tú armas y mandas los pedidos.', icono: <Hand className="w-4 h-4" /> },
   { id: 'sugerir', titulo: 'Lalan me los arma', texto: 'Cada mañana Lalan arma los pedidos por proveedor con lo que falta. Tú los revisas y los mandas.', icono: <Sparkles className="w-4 h-4" /> },
-  { id: 'lalan', titulo: 'Lalan pide precio por mí', texto: 'Además le pide precio a los proveedores que dejas que te escriban. Comprar y pagar siempre esperan tu sí.', icono: <Bot className="w-4 h-4" /> },
+  { id: 'lalan', titulo: 'Lalan pide precio por mí', texto: 'Además le pide precio a los proveedores que dejas que Lalan les escriba, lee lo que contestan (WhatsApp o correo), anota los precios y te pregunta. Comprar y pagar siempre esperan tu sí.', icono: <Bot className="w-4 h-4" /> },
 ];
 
 /** Cómo compra el salón, como se elige cómo llegan los informes */

@@ -144,6 +144,10 @@ export const comprasApi = {
   recibir: (id: string, d: { lineas: { lineaId: string; cantidad: number; costo?: number | null; lote?: string | null; vence?: string | null }[]; cerrarResto?: boolean }) =>
     api.post<Pedido>(`/compras/ordenes/${id}/recibir`, d),
   nota: (id: string, d: { texto: string; tipo?: 'nota' | 'mensaje_entrante'; canal?: string }) => api.post<Pedido>(`/compras/ordenes/${id}/notas`, d),
+  /** Lalan le contesta al proveedor con lo que dice la dueña (literal: sale tal cual) */
+  indicar: (id: string, texto: string, literal = false) => api.post<Pedido>(`/compras/ordenes/${id}/indicar`, { texto, literal }),
+  /** Lalan le pide precio al proveedor y sigue ella la conversación */
+  lalanPide: (id: string) => api.post<{ canal: 'whatsapp' | 'correo'; orden: Pedido }>(`/compras/ordenes/${id}/lalan-pide`, {}),
   adjuntar: (id: string, archivos: File[]) => {
     const f = new FormData();
     archivos.forEach((a) => f.append('archivos', a));
@@ -168,6 +172,8 @@ export const comprasApi = {
 
 /** Para abrir un pedido al llegar a Compras desde otra pantalla (Mi semana, Catálogo, un aviso) */
 export const ABRIR_PEDIDO = 'lalan_abrir_pedido';
+/** La notificación de un pedido pide abrirlo con la pantalla ya abierta */
+export const EVENTO_ABRIR_PEDIDO = 'lalan:abrir-pedido';
 /** La pestaña de Compras con la que abrir ("por-pedir") */
 export const VISTA_COMPRAS = 'lalan_vista_compras';
 

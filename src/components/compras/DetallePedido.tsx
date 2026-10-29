@@ -38,6 +38,8 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   const [enviar, setEnviar] = useState<'cotizacion' | 'orden' | null>(null);
   const [recibir, setRecibir] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
+  /** Cada vez que sube, el historial abre «Dile a Lalan» */
+  const [dileALalan, setDileALalan] = useState(0);
 
   const poner = useCallback((x: Pedido) => { setP(x); setRenglones(aRenglones(x)); setCambiado(false); }, []);
   const cargar = useCallback(() => {
@@ -101,6 +103,16 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
     try { actualizado(await comprasApi.estado(p.id, estado)); } catch (e) { showToast('No se pudo', (e as Error).message, 'warning'); }
     finally { setOcupado(null); }
   };
+  const lalanPide = async () => {
+    if (cambiado) await guardar();
+    setOcupado('lalan');
+    try {
+      const r = await comprasApi.lalanPide(p.id);
+      actualizado(r.orden);
+      showToast('Lalan pidió el precio', `Le escribió a ${p.proveedor.nombre} por ${r.canal === 'whatsapp' ? 'WhatsApp' : 'correo'}. Te aviso cuando conteste.`, 'success');
+    } catch (e) { showToast('Lalan no pudo escribirle', (e as Error).message, 'warning'); }
+    finally { setOcupado(null); }
+  };
   const duplicar = async () => {
     setOcupado('duplicar');
     try { const n = await comprasApi.duplicar(p.id); onCambio(); onAbrir(n.id); showToast('Pedido copiado', `${n.numero} quedó en borrador.`, 'success'); }
@@ -132,6 +144,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
           <Bot className="w-4 h-4 text-violet-600 shrink-0" />
           <span className="flex-1 min-w-[12rem] text-[0.8125rem] text-violet-900 dark:text-violet-200">{p.preguntaDuena ?? 'Lalan espera tu sí para seguir con este pedido.'}</span>
           {enCotizacion && <button type="button" onClick={() => void pasar('confirmada', { titulo: `¿Confirmar la compra a ${p.proveedor.nombre}?`, mensaje: `Total ${dinero(s, p.total)}.`, boton: 'Sí, comprar' })} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, comprar</button>}
+          <button type="button" onClick={() => setDileALalan((n) => n + 1)} className={botonSuave}><MessageCircle className="w-4 h-4" /> Dile otra cosa</button>
           <button type="button" onClick={() => void pasar('cancelada', { titulo: '¿No comprar este pedido?', peligro: true, boton: 'No comprar' })} className={botonSuave}>No</button>
         </div>
       )}
@@ -149,6 +162,11 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             <button type="button" disabled={sinRenglones || !!ocupado} onClick={() => void pasar('confirmada', { titulo: '¿Confirmar sin mandarla?', mensaje: 'Úsalo si ya la acordaste por teléfono o en persona. Queda como orden de compra, lista para recibir.', boton: 'Confirmar' })} className={botonSuave}>
               {ocupado === 'confirmada' ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Solo confirmar
             </button>
+            {p.proveedor.lalanHabla && !p.manejaLalan && (
+              <button type="button" disabled={sinRenglones || !!ocupado} onClick={() => void lalanPide()} className={botonSuave} title="Lalan le escribe, anota los precios y te pregunta antes de comprar">
+                {ocupado === 'lalan' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />} Que Lalan pida el precio
+              </button>
+            )}
           </>}
           {porRecibir && <>
             <button type="button" onClick={() => setRecibir(true)} className={botonPrincipal}><PackageCheck className="w-4 h-4" /> Recibir</button>
@@ -281,7 +299,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
         </div>
 
         {/* ── Historial ── */}
-        <Historial pedido={p} onCambio={actualizado} />
+        <Historial pedido={p} onCambio={actualizado} dileALalan={dileALalan} />
       </div>
 
       <EnviarPedido pedido={enviar ? p : null} como={enviar ?? 'cotizacion'} onClose={() => setEnviar(null)} onEnviado={actualizado} />
@@ -331,16 +349,36 @@ const TITULO_EVENTO: Record<string, string> = {
  * El historial del pedido (el "chatter" de Odoo): notas, lo que dijo el
  * proveedor, lo que se le mandó y por dónde, los archivos y cada cambio.
  */
-const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void }> = ({ pedido, onCambio }) => {
+const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileALalan: number }> = ({ pedido, onCambio, dileALalan }) => {
   const { showToast } = useApp();
   const { confirmar, modalConfirmar } = useConfirmar();
-  const [modo, setModo] = useState<'nota' | 'proveedor'>('nota');
+  const lalanHabla = pedido.proveedor.lalanHabla;
+  const [modo, setModo] = useState<'nota' | 'proveedor' | 'lalan'>(pedido.esperaDuena && lalanHabla ? 'lalan' : 'nota');
+  const caja = useRef<HTMLElement>(null);
+  const escribir = useRef<HTMLTextAreaElement>(null);
+  // «Dile otra cosa» en el aviso de Lalan: abre esta pestaña y deja el cursor listo
+  useEffect(() => {
+    if (!dileALalan || !lalanHabla) return;
+    setModo('lalan');
+    caja.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => escribir.current?.focus(), 300);
+  }, [dileALalan, lalanHabla]);
   const [canal, setCanal] = useState<'whatsapp' | 'correo'>('whatsapp');
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const archivo = useRef<HTMLInputElement>(null);
 
+  const indicar = async (literal: boolean) => {
+    if (!texto.trim()) return;
+    setEnviando(true);
+    try {
+      onCambio(await comprasApi.indicar(pedido.id, texto, literal));
+      setTexto('');
+      showToast(literal ? 'Mensaje enviado' : 'Lalan le contestó', `Míralo en el historial de ${pedido.numero}.`, 'success');
+    } catch (e) { showToast('No salió', (e as Error).message, 'warning'); }
+    finally { setEnviando(false); }
+  };
   const anotar = async () => {
     if (!texto.trim()) return;
     setEnviando(true);
@@ -364,10 +402,10 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void }> = (
   };
 
   return (
-    <aside className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3 lg:sticky lg:top-2">
+    <aside ref={caja} className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3 lg:sticky lg:top-2 scroll-mt-4">
       {modalConfirmar}
       <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800/70">
-        {([['nota', 'Nota interna'], ['proveedor', 'Lo que dijo el proveedor']] as const).map(([id, nombre]) => (
+        {([['nota', 'Nota interna'], ['proveedor', 'Lo que dijo'], ...(lalanHabla ? [['lalan', 'Dile a Lalan']] : [])] as ['nota' | 'proveedor' | 'lalan', string][]).map(([id, nombre]) => (
           <button key={id} type="button" onClick={() => setModo(id)} className={`flex-1 py-1.5 rounded-lg text-[0.75rem] font-bold cursor-pointer ${modo === id ? 'bg-white dark:bg-neutral-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}>{nombre}</button>
         ))}
       </div>
@@ -380,15 +418,27 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void }> = (
           ))}
         </div>
       )}
-      <textarea className={`${campo} min-h-[70px]`} value={texto} onChange={(e) => setTexto(e.target.value)}
-        placeholder={modo === 'proveedor' ? 'Ej.: la caja está a 1,250 y la trae el jueves' : 'Escribe una nota para el equipo…'} />
-      <div className="flex gap-2">
-        <button type="button" disabled={!texto.trim() || enviando} onClick={() => void anotar()} className={`${botonPrincipal} flex-1`}>{enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Anotar</button>
-        <button type="button" disabled={subiendo} onClick={() => archivo.current?.click()} className={botonSuave} title="Adjuntar la cotización, la factura o una foto">
-          {subiendo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />} Adjuntar
-        </button>
-        <input ref={archivo} type="file" multiple accept="image/*,application/pdf,.xlsx,.xls,.csv,.doc,.docx" className="hidden" onChange={(e) => void subir(e.target.files)} />
-      </div>
+      {modo === 'lalan' && (
+        <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Lalan le contesta a {pedido.proveedor.nombre} por donde están hablando, con lo que le digas. Nunca compra ni paga sin tu sí.</p>
+      )}
+      <textarea ref={escribir} className={`${campo} min-h-[70px]`} value={texto} onChange={(e) => setTexto(e.target.value)}
+        placeholder={modo === 'proveedor' ? 'Ej.: la caja está a 1,250 y la trae el jueves' : modo === 'lalan' ? 'Ej.: dile que sí, pero que lo traiga el lunes' : 'Escribe una nota para el equipo…'} />
+      {modo === 'lalan' ? (
+        <div className="flex gap-2">
+          <button type="button" disabled={!texto.trim() || enviando} onClick={() => void indicar(false)} className={`${botonPrincipal} flex-1`}>{enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />} Que Lalan se lo diga</button>
+          <button type="button" disabled={!texto.trim() || enviando} onClick={() => void indicar(true)} className={botonSuave} title="Sale tal cual lo escribiste">
+            <Send className="w-4 h-4" /> Tal cual
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <button type="button" disabled={!texto.trim() || enviando} onClick={() => void anotar()} className={`${botonPrincipal} flex-1`}>{enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Anotar</button>
+          <button type="button" disabled={subiendo} onClick={() => archivo.current?.click()} className={botonSuave} title="Adjuntar la cotización, la factura o una foto">
+            {subiendo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />} Adjuntar
+          </button>
+          <input ref={archivo} type="file" multiple accept="image/*,application/pdf,.xlsx,.xls,.csv,.doc,.docx" className="hidden" onChange={(e) => void subir(e.target.files)} />
+        </div>
+      )}
 
       {pedido.adjuntos.length > 0 && (
         <div className="space-y-1">
