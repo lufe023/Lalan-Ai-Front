@@ -6,7 +6,7 @@
  * Se recarga la página al entrar y al salir: así nada de lo cargado de un
  * salón se queda en pantalla del otro.
  */
-import { tokenStore } from './api';
+import { tokenStore, URL_API } from './api';
 
 const CLAVE_PROPIA = 'lalan_sesion_propia';
 
@@ -27,6 +27,11 @@ export function entrarComoSoporte(accessToken: string): void {
 }
 
 export function salirDeSoporte(): void {
+  // Se cierra también en el servidor: el token de soporte deja de servir ya, no a las 2 h
+  const deSoporte = tokenStore.get();
+  if (deSoporte) {
+    fetch(`${URL_API}/auth/salir`, { method: 'POST', keepalive: true, headers: { Authorization: `Bearer ${deSoporte}` } }).catch(() => undefined);
+  }
   let propia: SesionPropia = { access: null, refresh: null };
   try { propia = JSON.parse(localStorage.getItem(CLAVE_PROPIA) || '{}'); } catch { /* sesión propia ilegible: se sale a secas */ }
   tokenStore.clear();
