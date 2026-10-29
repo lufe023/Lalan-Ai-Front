@@ -5,16 +5,60 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
 /** La dirección del servidor, para las pantallas sin sesión que llevan su propia cabecera (el quiosco) */
 export const URL_API = BASE_URL;
 
-const TOKEN_KEY = 'lalan_access_token';
-const REFRESH_KEY = 'lalan_refresh_token';
+/*
+ * La sesión vive en cookies httpOnly que pone el servidor: ningún script de
+ * la página puede leerla. Aquí solo queda una marca NO secreta (rol y sede)
+ * para saber, sin preguntar al servidor, si en este aparato hay alguien
+ * dentro y de qué sede es. Antes los tokens vivían en localStorage.
+ */
+const MARCA = 'lalan_sesion';
+/** Las claves de antes: solo se leen una vez para pasar la sesión a cookies */
+const TOKEN_VIEJO = 'lalan_access_token';
+const REFRESH_VIEJO = 'lalan_refresh_token';
+/** Marca de que se está dentro del salón de un cliente como soporte */
+export const MARCA_SOPORTE = 'lalan_sesion_propia';
 
-export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
-  getRefresh: () => localStorage.getItem(REFRESH_KEY),
-  setRefresh: (t: string) => localStorage.setItem(REFRESH_KEY, t),
-  clear: () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); },
+export interface MarcaSesion { role?: string; locationId?: string | null }
+
+export const sesionLocal = {
+  hay: (): boolean => {
+    try { return !!localStorage.getItem(MARCA) || !!localStorage.getItem(REFRESH_VIEJO); } catch { return false; }
+  },
+  leer: (): MarcaSesion | null => {
+    try { return JSON.parse(localStorage.getItem(MARCA) || 'null'); } catch { return null; }
+  },
+  guardar: (u: MarcaSesion) => {
+    try { localStorage.setItem(MARCA, JSON.stringify({ role: u.role, locationId: u.locationId ?? null })); } catch { /* sin almacenamiento */ }
+  },
+  borrar: () => {
+    try { [MARCA, TOKEN_VIEJO, REFRESH_VIEJO].forEach((k) => localStorage.removeItem(k)); } catch { /* sin almacenamiento */ }
+  },
 };
+
+/** Lo que va en todo pedido con sesión: la sede activa y el aviso de que la sesión va en cookies */
+export const cabecerasDeSesion = (extra?: HeadersInit) => ({ ...cabeceraSede(extra), 'X-Sesion': 'cookie' });
+
+/**
+ * Pasa una sesión de antes (tokens en localStorage) a cookies: el servidor
+ * renueva con el refresh viejo y responde poniendo las cookies. Después las
+ * claves viejas se borran. Nadie tiene que volver a entrar.
+ */
+export async function migrarSesionVieja(): Promise<void> {
+  let viejo: string | null = null;
+  try { viejo = localStorage.getItem(REFRESH_VIEJO); } catch { return; }
+  if (!viejo) return;
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-Sesion': 'cookie' },
+      body: JSON.stringify({ refreshToken: viejo }),
+    });
+    if (!res.ok && res.status !== 401 && res.status !== 403) return; // servidor caído: se intenta la próxima vez
+  } catch {
+    return;
+  }
+  try { localStorage.removeItem(TOKEN_VIEJO); localStorage.removeItem(REFRESH_VIEJO); } catch { /* nada */ }
+}
 
 /**
  * Renovar la sesión sin molestar a nadie.
@@ -41,8 +85,8 @@ export class SinServidor extends Error {
 }
 
 /**
- * Devuelve el access token nuevo, o null si el servidor dijo que la sesión
- * ya no vale. Lanza `SinServidor` si no se pudo saber.
+ * Devuelve algo (no vacío) si la sesión se renovó, o null si el servidor
+ * dijo que ya no vale. Lanza `SinServidor` si no se pudo saber.
  */
 export function refrescarSesion(): Promise<string | null> {
   if (!refrescoEnCurso) {
@@ -52,46 +96,38 @@ export function refrescarSesion(): Promise<string | null> {
 }
 
 /**
- * Las pestañas comparten los tokens (localStorage) y por eso caducan a la
- * vez. Si dos refrescan con el mismo refresh token, el servidor lo rota con
- * la primera y rechaza a la segunda, que borraba los tokens nuevos de la
- * primera: se cerraba la sesión en todas (pasaba con la Vitrina o el
- * catálogo abiertos en otra pestaña). El candado hace que refresquen de una
- * en una, y la que llega tarde usa lo que ya renovó la otra.
+ * Las pestañas comparten las cookies. El candado hace que refresquen de una
+ * en una: la segunda ya manda la cookie que rotó la primera.
  */
 function refrescarEntrePestanas(): Promise<string | null> {
-  const conElQueFallo = tokenStore.getRefresh();
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
-  if (!locks) return refreshAccessToken(conElQueFallo);
-  return locks.request('lalan-refresco', () => refreshAccessToken(conElQueFallo));
+  if (!locks) return refreshAccessToken();
+  return locks.request('lalan-refresco', () => refreshAccessToken());
 }
 
-async function refreshAccessToken(conElQueFallo: string | null): Promise<string | null> {
-  const refreshToken = tokenStore.getRefresh();
-  if (!refreshToken) return null;
-  // Otra pestaña ya renovó mientras esta esperaba
-  if (refreshToken !== conElQueFallo) return tokenStore.get();
+async function refreshAccessToken(): Promise<string | null> {
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-Sesion': 'cookie' },
+      body: '{}',
     });
   } catch {
     throw new SinServidor();
   }
-  if (res.status === 401 || res.status === 403) {
-    // Por si otra pestaña sin candado (navegador viejo) le ganó la rotación
-    if (tokenStore.getRefresh() !== refreshToken) return tokenStore.get();
-    tokenStore.clear();
-    return null;
-  }
+  if (res.status === 401 || res.status === 403) return null;
   if (!res.ok) throw new SinServidor();
-  const data = await res.json();
-  tokenStore.set(data.accessToken);
-  tokenStore.setRefresh(data.refreshToken);
-  return data.accessToken;
+  /* Si se estaba en soporte, este refresco es porque la entrada al salón
+     caducó: el servidor ya la borró y la sesión es otra vez la propia. Se
+     recarga para que nada del salón ajeno se quede en pantalla. */
+  try {
+    if (localStorage.getItem(MARCA_SOPORTE)) {
+      localStorage.removeItem(MARCA_SOPORTE);
+      window.location.reload();
+    }
+  } catch { /* nada */ }
+  return 'cookie';
 }
 
 export async function apiFetch<T = unknown>(
@@ -99,22 +135,21 @@ export async function apiFetch<T = unknown>(
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
-  const token = tokenStore.get();
   const { 'X-Sede': _sede, ...propias } = (options.headers as Record<string, string> ?? {});
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...propias,
-    // La sede activa que eligió dirección (ver sedeActiva.ts)
-    ...cabeceraSede(options.headers),
+    // La sede activa que eligió dirección (ver sedeActiva.ts) y la sesión en cookies
+    ...cabecerasDeSesion(options.headers),
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers, credentials: 'include' });
 
   if (res.status === 401 && retry) {
-    const newToken = await refrescarSesion();
-    if (newToken) return apiFetch<T>(path, options, false);
-    tokenStore.clear();
+    // Sin marca de sesión no hay nada que renovar (pantallas antes de entrar)
+    const renovada = sesionLocal.hay() ? await refrescarSesion() : null;
+    if (renovada) return apiFetch<T>(path, options, false);
+    sesionLocal.borrar();
     window.dispatchEvent(new Event('lalan:logout'));
     throw new Error('Session expired');
   }
@@ -228,9 +263,11 @@ export const urlCortaDeVitrina = (direccion: string) => `${window.location.origi
  * su refresh ya no sirve). keepalive: llega aunque la página se recargue.
  */
 export function salirEnServidor() {
-  const token = tokenStore.get();
-  if (!token) return;
-  void fetch(`${BASE_URL}/auth/salir`, { method: 'POST', keepalive: true, headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined);
+  // Público en el servidor: cierra la sesión de la cookie aunque el acceso ya caducó, y borra las cookies
+  void fetch(`${BASE_URL}/auth/salir`, {
+    method: 'POST', keepalive: true, credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'X-Sesion': 'cookie' }, body: '{}',
+  }).catch(() => undefined);
 }
 
 export const api = {
@@ -258,7 +295,7 @@ export const apiCadena = {
  * En iPhone abre la vista del PDF, desde donde se comparte o se guarda.
  */
 export async function descargarArchivo(path: string, nombre: string): Promise<void> {
-  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: { ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) } });
+  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: cabecerasDeSesion(), credentials: 'include' });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
   if (!res.ok) throw new Error('No se pudo descargar el archivo');
@@ -274,7 +311,7 @@ export async function descargarArchivo(path: string, nombre: string): Promise<vo
  * sesión y se convierte en un blob. Quien la pide la libera al desmontarse.
  */
 export async function blobProtegido(path: string): Promise<string> {
-  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: { ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) } });
+  const pedir = () => fetch(`${BASE_URL}${path}`, { headers: cabecerasDeSesion(), credentials: 'include' });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
   if (!res.ok) throw new Error('No se pudo cargar el archivo');
@@ -284,7 +321,7 @@ export async function blobProtegido(path: string): Promise<string> {
 /** Subir un archivo (multipart) con la sesión: notas de voz del chat */
 export async function subirArchivo<T>(path: string, formulario: FormData): Promise<T> {
   const pedir = () => fetch(`${BASE_URL}${path}`, {
-    method: 'POST', body: formulario, headers: { ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) },
+    method: 'POST', body: formulario, headers: cabecerasDeSesion(), credentials: 'include',
   });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
@@ -317,7 +354,7 @@ export function urlDeFoto(foto?: string | null): string | undefined {
 export async function pedirAudio(path: string, cuerpo: unknown, senal?: AbortSignal): Promise<Blob | null> {
   const pedir = () => fetch(`${BASE_URL}${path}`, {
     method: 'POST', signal: senal, body: JSON.stringify(cuerpo),
-    headers: { 'Content-Type': 'application/json', ...cabeceraSede(), ...(tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {}) },
+    headers: { 'Content-Type': 'application/json', ...cabecerasDeSesion() }, credentials: 'include',
   });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();

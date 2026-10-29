@@ -34,7 +34,8 @@ export function useSocket({ token, onAppointmentDue, onAppointmentCreated, onApp
     if (!token) return;
 
     const socket = io(`${WS_URL}/ws`, {
-      auth: { token },
+      // La sesión viaja en la cookie httpOnly; `token` solo dice si hay alguien dentro
+      withCredentials: true,
       transports: ['websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,

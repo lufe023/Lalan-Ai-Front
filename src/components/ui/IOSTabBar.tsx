@@ -30,6 +30,7 @@ import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
 import { EsferaLalan } from '../lalan/EsferaLalan';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { PERMISO_DE_PANTALLA } from '../../services/permisos';
 import { useNombreSede } from './ListaSedes';
 import { useAplicacionesNuevas } from '../../hooks/useAplicacionesNuevas';
 import { usePlan } from '../../context/PlanContext';
@@ -73,7 +74,7 @@ export const IOSTabBar: React.FC = () => {
     ytQueue, ytIndex, ytPlaying, ytToggle, ytNext,
     openFolios,
   } = useApp();
-  const { currentUser } = useAuth();
+  const { currentUser, puede } = useAuth();
   const nombreSede = useNombreSede();
   const { tieneModulo } = usePlan();
   const aplicacionesNuevas = useAplicacionesNuevas(currentUser?.role === 'super_admin');
@@ -123,7 +124,8 @@ export const IOSTabBar: React.FC = () => {
       ? [{ id: 'plataforma' as ScreenName, label: currentUser?.role === 'support' ? 'Clientes' : 'Plataforma', icon: Globe2, badge: aplicacionesNuevas > 0 ? aplicacionesNuevas : undefined }]
       : []),
   ];
-  const tabs = todasLasPestanas.filter((t) => { const m = MODULO_DE_PESTANA[t.id]; return !m || tieneModulo(m); });
+  // Fuera lo que el plan no trae y lo que la dueña le apagó a la asistente
+  const tabs = todasLasPestanas.filter((t) => { const m = MODULO_DE_PESTANA[t.id]; return (!m || tieneModulo(m)) && puede(PERMISO_DE_PANTALLA[t.id]); });
 
   /* El teléfono: cuatro fijas y «Más». En la computadora el menú lateral
      sigue mostrando todas. */

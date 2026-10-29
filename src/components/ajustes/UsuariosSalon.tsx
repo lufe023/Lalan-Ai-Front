@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Users, UserPlus, KeyRound, Loader2, X, Pencil, MailCheck, MailWarning } from 'lucide-react';
+import { Users, UserPlus, KeyRound, Loader2, X, Pencil, MailCheck, MailWarning, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { usePlan } from '../../context/PlanContext';
 import { ClaveParaCompartir } from '../plataforma/ClaveParaCompartir';
 import type { UsuarioSalon } from '../../types/plataforma';
 import { useConfirmar } from '../ui/ModalConfirmar';
+import { PermisosDePersona, PlantillaAsistente, ResumenRol, useCatalogoPermisos } from './PermisosEquipo';
 
 const ROLES: { id: UsuarioSalon['role']; label: string; ayuda: string }[] = [
-  { id: 'assistant', label: 'Asistente', ayuda: 'Agenda, chats, clientas, sala y caja. No cambia la configuración.' },
+  { id: 'assistant', label: 'Asistente', ayuda: 'El día a día del salón. Tú decides qué más puede hacer.' },
   { id: 'admin', label: 'Administración', ayuda: 'Todo, incluida la configuración y los usuarios.' },
 ];
 
@@ -39,6 +40,9 @@ export const UsuariosSalon: React.FC = () => {
   const [clave, setClave] = useState<ClaveNueva | null>(null);
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const { catalogo, recargar: recargarPermisos } = useCatalogoPermisos();
+  /** La asistente cuya lista de permisos está abierta */
+  const [permisosDe, setPermisosDe] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -68,6 +72,13 @@ export const UsuariosSalon: React.FC = () => {
       setEditandoAcceso({ id: u.id, datos: { email: '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono) } });
       return;
     }
+    // Que la dueña vea qué cambia antes de cambiarlo
+    if (u.role !== role && !(await confirmar({
+      titulo: role === 'admin' ? `¿${u.name.split(' ')[0]} pasa a administración?` : `¿${u.name.split(' ')[0]} pasa a asistente?`,
+      mensaje: <ResumenRol rol={role === 'admin' ? 'admin' : 'assistant'} catalogo={catalogo} />,
+      textoConfirmar: 'Sí, cambiar',
+      icono: <ShieldCheck className="w-7 h-7" aria-hidden="true" />,
+    }))) return;
     await editar(u, { role });
   };
 
@@ -112,6 +123,7 @@ export const UsuariosSalon: React.FC = () => {
   const lleno = tope !== null && activos >= tope;
 
   return (
+    <>
     <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       {modalConfirmar}
       <div className="flex items-center justify-between gap-2">
@@ -160,6 +172,7 @@ export const UsuariosSalon: React.FC = () => {
               </button>
             ))}
           </div>
+          <ResumenRol rol={form.role === 'admin' ? 'admin' : 'assistant'} catalogo={catalogo} />
           <button type="submit" disabled={ocupado} className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer">
             {ocupado && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Crear y generar su clave temporal
           </button>
@@ -211,6 +224,11 @@ export const UsuariosSalon: React.FC = () => {
                 <button type="button" title="Con qué entra (usuario, teléfono, correo)"
                   onClick={() => setEditandoAcceso(editandoAcceso?.id === u.id ? null : { id: u.id, datos: { email: u.email ?? '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono) } })}
                   className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
+                {u.role === 'assistant' && catalogo && (
+                  <button type="button" onClick={() => setPermisosDe(permisosDe === u.id ? null : u.id)} title="Qué puede hacer"
+                    aria-expanded={permisosDe === u.id}
+                    className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer ${permisosDe === u.id ? 'text-[var(--primary)]' : 'text-slate-500'}`}><ShieldCheck className="w-3.5 h-3.5" /></button>
+                )}
                 <button type="button" onClick={() => void nuevaClave(u)} title="Clave temporal nueva" className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><KeyRound className="w-3.5 h-3.5" /></button>
                 {!yo && (
                   <button type="button" onClick={() => void editar(u, { active: !u.active })}
@@ -218,11 +236,16 @@ export const UsuariosSalon: React.FC = () => {
                     {u.active ? 'Desactivar' : 'Activar'}
                   </button>
                 )}
+                {permisosDe === u.id && u.role === 'assistant' && catalogo && (
+                  <div className="basis-full"><PermisosDePersona id={u.id} nombre={u.name} catalogo={catalogo} /></div>
+                )}
               </div>
             );
           })}
         </div>
       )}
     </div>
+    <PlantillaAsistente catalogo={catalogo} onCambio={() => void recargarPermisos()} />
+    </>
   );
 };

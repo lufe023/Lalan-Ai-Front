@@ -24,10 +24,11 @@ import { VisitasPorFila } from '../components/plataforma/VisitasPorFila';
 import { LoQueLalanSabeHacer } from '../components/plataforma/LoQueLalanSabeHacer';
 import { BaseProductos } from '../components/plataforma/BaseProductos';
 import { MercadoPlataforma } from '../components/plataforma/MercadoPlataforma';
+import { RolesPlataforma } from '../components/plataforma/RolesPlataforma';
 import type { Dispositivo, ResumenLanding } from '../types/plataforma';
 import { useAuth } from '../context/AuthContext';
 
-type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'salud' | 'portadas' | 'guias' | 'vitrina' | 'lalan' | 'productos' | 'mercado';
+type Pestana = 'negocios' | 'planes' | 'visitas' | 'calor' | 'piloto' | 'soporte' | 'roles' | 'salud' | 'portadas' | 'guias' | 'vitrina' | 'lalan' | 'productos' | 'mercado';
 const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'salud', label: 'Salud' },
   { id: 'negocios', label: 'Clientes' },
@@ -36,6 +37,7 @@ const PESTANAS: { id: Pestana; label: string }[] = [
   { id: 'calor', label: 'Mapa de calor' },
   { id: 'piloto', label: 'Piloto' },
   { id: 'soporte', label: 'Equipo' },
+  { id: 'roles', label: 'Roles' },
   { id: 'portadas', label: 'Portadas' },
   { id: 'guias', label: 'Guías' },
   { id: 'vitrina', label: 'Vitrina' },
@@ -380,6 +382,7 @@ export const PlataformaScreen: React.FC = () => {
         {pestana === 'negocios' && <NegociosPlataforma soloSoporte={esSoporte} prellenado={prellenado} onPrellenadoUsado={() => setPrellenado(null)} abrirId={abrirNegocio} />}
         {pestana === 'planes' && <PlanesPlataforma />}
         {pestana === 'soporte' && <EquipoSoporte />}
+        {pestana === 'roles' && <RolesPlataforma />}
         {pestana === 'portadas' && <PortadasPlataforma />}
         {pestana === 'guias' && <GuiasPlataforma />}
         {pestana === 'vitrina' && <VitrinaPlataforma />}

@@ -60,6 +60,8 @@ import { PeticionesMusica } from '../components/ui/PeticionesMusica';
 import { TuPlan } from '../components/ajustes/TuPlan';
 import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
 import { AvisosEquipo } from '../components/ajustes/AvisosEquipo';
+import { CambiosDelSalon, SoporteEnTuSalon } from '../components/ajustes/TransparenciaSalon';
+import { DosPasosCuenta } from '../components/ajustes/DosPasos';
 import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPedida } from '../components/ajustes/MenuAjustes';
 import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
@@ -485,8 +487,13 @@ export const SettingsScreen: React.FC = () => {
         </div>
         {/* Contraseña y sesiones: son de la dueña de la cuenta, no de quien entra a dar soporte */}
         {!enSoporte() && <SeguridadCuenta />}
+        {/* Dos pasos: obligatoria para Lalan (super admin y soporte), opcional para la dueña */}
+        {!enSoporte() && currentUser?.role !== 'assistant' && <DosPasosCuenta />}
         {/* Privado entre ella y Lalan: tampoco se ve desde una sesión de soporte */}
         {!enSoporte() && puedeHablarConLalan(currentUser?.role) && <LoQueLalanSabe />}
+        {/* La dueña ve quién de Lalan entró y quién cambió qué */}
+        {currentUser?.role === 'admin' && !currentUser.soporte && <SoporteEnTuSalon />}
+        {currentUser?.role === 'admin' && <CambiosDelSalon />}
           </>
         )}
         {seccion === 'plan' && (

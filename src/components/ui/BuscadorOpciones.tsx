@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { PERMISO_DE_PANTALLA } from '../../services/permisos';
 import { usePlan } from '../../context/PlanContext';
 import { gruposPara, pedirSeccionAjustes } from '../ajustes/MenuAjustes';
 import type { SeccionAjustes } from '../ajustes/MenuAjustes';
@@ -103,7 +104,7 @@ function puntaje(busqueda: string, o: Opcion): number {
 
 export const BuscadorOpciones: React.FC = () => {
   const { currentScreen, navigateTo } = useApp();
-  const { currentUser } = useAuth();
+  const { currentUser, puede } = useAuth();
   const { tieneModulo } = usePlan();
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState('');
@@ -173,8 +174,9 @@ export const BuscadorOpciones: React.FC = () => {
     if (puedeHablarConLalan(rol)) {
       lista.push({ id: 'lalan', titulo: 'Habla con Lalan', donde: 'Lalan', palabras: 'asistente ayuda preguntar voz', icono: Sparkles, color: 'bg-[var(--primary)]', ir: abrirLalan });
     }
-    return lista.filter((o) => !o.modulo || tieneModulo(o.modulo));
-  }, [currentUser?.role, currentScreen, navigateTo, tieneModulo]);
+    // Lo que la dueña le apagó a la asistente tampoco sale en el buscador
+    return lista.filter((o) => (!o.modulo || tieneModulo(o.modulo)) && puede(PERMISO_DE_PANTALLA[o.id as ScreenName]));
+  }, [currentUser?.role, currentScreen, navigateTo, tieneModulo, puede]);
 
   const resultados = useMemo(() => {
     const q = normalizar(texto.trim());

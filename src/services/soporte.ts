@@ -1,42 +1,30 @@
 /**
  * Sesión de soporte: entrar al salón de un cliente para ayudarle y volver.
  *
- * La sesión propia se guarda aparte mientras tanto. El token de soporte no
- * se renueva: cuando caduca (o al tocar "Salir"), se vuelve a la propia.
+ * El servidor pone la entrada al salón en su propia cookie httpOnly, que
+ * manda sobre la sesión propia mientras exista. Aquí solo queda una marca
+ * (no secreta) de que se está en soporte. Al caducar (o al tocar "Salir")
+ * el servidor borra esa cookie y vuelve la sesión propia, que nunca se tocó.
  * Se recarga la página al entrar y al salir: así nada de lo cargado de un
  * salón se queda en pantalla del otro.
  */
-import { tokenStore, URL_API } from './api';
-
-const CLAVE_PROPIA = 'lalan_sesion_propia';
-
-interface SesionPropia { access: string | null; refresh: string | null }
+import { MARCA_SOPORTE, URL_API } from './api';
 
 export function enSoporte(): boolean {
-  try { return !!localStorage.getItem(CLAVE_PROPIA); } catch { return false; }
+  try { return !!localStorage.getItem(MARCA_SOPORTE); } catch { return false; }
 }
 
-export function entrarComoSoporte(accessToken: string): void {
-  if (!enSoporte()) {
-    const propia: SesionPropia = { access: tokenStore.get(), refresh: tokenStore.getRefresh() };
-    localStorage.setItem(CLAVE_PROPIA, JSON.stringify(propia));
-  }
-  tokenStore.clear();
-  tokenStore.set(accessToken);
+export function entrarComoSoporte(): void {
+  try { localStorage.setItem(MARCA_SOPORTE, '1'); } catch { /* sin almacenamiento: igual se entra */ }
   window.location.reload();
 }
 
-export function salirDeSoporte(): void {
-  // Se cierra también en el servidor: el token de soporte deja de servir ya, no a las 2 h
-  const deSoporte = tokenStore.get();
-  if (deSoporte) {
-    fetch(`${URL_API}/auth/salir`, { method: 'POST', keepalive: true, headers: { Authorization: `Bearer ${deSoporte}` } }).catch(() => undefined);
-  }
-  let propia: SesionPropia = { access: null, refresh: null };
-  try { propia = JSON.parse(localStorage.getItem(CLAVE_PROPIA) || '{}'); } catch { /* sesión propia ilegible: se sale a secas */ }
-  tokenStore.clear();
-  if (propia.access) tokenStore.set(propia.access);
-  if (propia.refresh) tokenStore.setRefresh(propia.refresh);
-  localStorage.removeItem(CLAVE_PROPIA);
+export async function salirDeSoporte(): Promise<void> {
+  // El servidor cierra la entrada (el token deja de servir ya, no a las 2 h) y borra su cookie
+  await fetch(`${URL_API}/auth/salir`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'X-Sesion': 'cookie' }, body: '{}',
+  }).catch(() => undefined);
+  try { localStorage.removeItem(MARCA_SOPORTE); } catch { /* nada */ }
   window.location.reload();
 }

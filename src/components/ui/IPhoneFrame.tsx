@@ -6,7 +6,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useDinero } from '../../hooks/useDinero';
 import { useApp } from '../../context/AppContext';
 import { useSocket, DueAppointment } from '../../hooks/useSocket';
-import { tokenStore } from '../../services/api';
+import { sesionLocal } from '../../services/api';
 
 interface IPhoneFrameProps {
   children: React.ReactNode;
@@ -36,7 +36,7 @@ export const IPhoneFrame: React.FC<IPhoneFrameProps> = ({ children }) => {
     try { setPermisoAvisos(await Notification.requestPermission()); } catch { /* noop */ }
   };
   const [dueAppointments, setDueAppointments] = useState<DueAppointment[]>([]);
-  const token = tokenStore.get();
+  const token = sesionLocal.hay() ? 'cookie' : null;
 
   const handleAppointmentDue = useCallback((appt: DueAppointment) => {
     setDueAppointments(prev => {

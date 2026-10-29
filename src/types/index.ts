@@ -16,7 +16,7 @@ export interface UserProfile {
   /** Entró con una clave temporal: antes de usar la app, pone la suya */
   debeCambiarClave?: boolean;
   /** Sesión de soporte de Lalan dentro de este salón */
-  soporte?: { negocio: string };
+  soporte?: { negocio: string; soloLectura?: boolean; motivo?: string | null };
   /** Su correo (puede no tener: entra con usuario o teléfono) */
   correo?: string | null;
   usuario?: string | null;
@@ -24,6 +24,10 @@ export interface UserProfile {
   confirmarCorreo?: ConfirmacionCorreo | null;
   /** Versión de los términos que la administración del salón tiene que aceptar al entrar (null = nada) */
   aceptarTerminos?: string | null;
+  /** Solo la asistente: lo que la dueña le dejó hacer. null = todo; undefined = aún no se sabe */
+  permisos?: Partial<Record<string, boolean>> | null;
+  /** Super admin y soporte sin verificación en dos pasos: la app se la pide antes de seguir */
+  configurarDosPasos?: boolean;
   permissions: {
     canViewMetrics: boolean;
     canManageBots: boolean;

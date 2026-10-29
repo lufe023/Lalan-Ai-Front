@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ConfirmacionCorreo, UserProfile, UserRole } from '../types';
-import { api, salirEnServidor, tokenStore } from '../services/api';
+import { api, migrarSesionVieja, salirEnServidor, sesionLocal } from '../services/api';
 import { enSoporte, salirDeSoporte } from '../services/soporte';
 import { quickAuth } from '../services/quickAuth';
+import { puedeCon, type ClavePermisoRol, type MapaPermisosRol } from '../services/permisos';
 
 // ─── Permissions map by role ──────────────────────────────────────
 const PERMISSIONS: Record<UserRole, UserProfile['permissions']> = {
@@ -20,10 +21,17 @@ interface AuthContextType {
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  /** Si la cuenta tiene dos pasos, devuelve el reto en vez de abrir la sesión */
+  login: (credentials: LoginCredentials) => Promise<{ dosPasos?: RetoDosPasos }>;
+  /** El segundo paso: el código de la app o el del correo */
+  completarDosPasos: (pase: string, codigo: string, porCorreo?: boolean) => Promise<void>;
+  /** Ya configuró los dos pasos: se quita la pantalla que la pide */
+  dosPasosListo: () => void;
   loginWithQuickDevice: () => Promise<void>;
   logout: () => void;
   hasPermission: (permission: keyof UserProfile['permissions']) => boolean;
+  /** ¿La dueña le dejó hacer esto? Administración puede todo */
+  puede: (clave?: ClavePermisoRol) => boolean;
   /** Ya puso su clave: se quita la pantalla de cambio obligatorio */
   claveCambiada: () => void;
   /** Confirmó su correo (o lo dejó para después, si no era obligatorio) */
@@ -41,8 +49,16 @@ interface ApiUser {
   usuario?: string | null; telefono?: string | null;
   confirmarCorreo?: ConfirmacionCorreo | null;
   aceptarTerminos?: string | null;
-  soporte?: { negocio: string };
+  soporte?: { negocio: string; soloLectura?: boolean; motivo?: string | null };
+  locationId?: string | null;
+  /** Solo la asistente: lo que la dueña le dejó hacer (null = todo) */
+  permisos?: MapaPermisosRol | null;
+  /** Super admin y soporte sin verificación en dos pasos: la app se la pide */
+  configurarDosPasos?: boolean;
 }
+
+/** Tras la clave correcta, cuando falta el código de dos pasos */
+export interface RetoDosPasos { pase: string; correo: string | null }
 
 function buildProfile(u: ApiUser): UserProfile {
   return {
@@ -60,6 +76,8 @@ function buildProfile(u: ApiUser): UserProfile {
     aceptarTerminos: u.aceptarTerminos ?? null,
     soporte: u.soporte,
     permissions: PERMISSIONS[u.role] ?? PERMISSIONS.assistant,
+    permisos: u.permisos,
+    configurarDosPasos: !!u.configurarDosPasos,
   };
 }
 
@@ -70,9 +88,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Restore session on mount
   useEffect(() => {
     const restore = async () => {
-      if (!tokenStore.get()) { setIsLoading(false); return; }
+      if (!sesionLocal.hay()) { setIsLoading(false); return; }
       try {
+        // Una sesión de antes (tokens en localStorage) pasa a cookies httpOnly
+        await migrarSesionVieja();
         const user = await api.get<ApiUser>('/auth/me');
+        sesionLocal.guardar(user);
         setCurrentUser(buildProfile(user));
         try {
           localStorage.setItem('lalan_cached_user', JSON.stringify(user));
@@ -88,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCurrentUser(buildProfile(cachedUser));
           } catch {}
         } else if (err?.message === 'Session expired') {
-          tokenStore.clear();
+          sesionLocal.borrar();
           localStorage.removeItem('lalan_cached_user');
         } else if (cachedRaw) {
           // El servidor falló (un despliegue, un 500): eso no cierra la sesión
@@ -107,7 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handler = () => {
       if (enSoporte()) { salirDeSoporte(); return; }
       setCurrentUser(null);
-      tokenStore.clear();
+      sesionLocal.borrar();
       try { localStorage.removeItem('lalan_cached_user'); } catch {}
     };
     window.addEventListener('lalan:logout', handler);
@@ -115,20 +136,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async ({ identificador, password }: LoginCredentials) => {
-    const data = await api.post<{ accessToken: string; refreshToken: string; user: ApiUser }>(
+    // La sesión llega en cookies httpOnly: el cuerpo ya no trae tokens
+    const data = await api.post<{ user: ApiUser } | { dosPasos: RetoDosPasos }>(
       '/auth/login',
       { identificador, password },
     );
-    tokenStore.set(data.accessToken);
-    tokenStore.setRefresh(data.refreshToken);
-    setCurrentUser(buildProfile(data.user));
-    try {
-      localStorage.setItem('lalan_cached_user', JSON.stringify(data.user));
-    } catch {}
+    if ('dosPasos' in data) return { dosPasos: data.dosPasos };
+    abrir(data.user);
+    return {};
   }, []);
+
+  const completarDosPasos = useCallback(async (pase: string, codigo: string, porCorreo = false) => {
+    const data = await api.post<{ user: ApiUser }>('/auth/dos-pasos', { pase, codigo, porCorreo });
+    abrir(data.user);
+  }, []);
+
+  const dosPasosListo = useCallback(() => {
+    setCurrentUser((u) => (u ? { ...u, configurarDosPasos: false } : u));
+  }, []);
+
+  /** Con la sesión ya abierta en cookies: la marca local y la persona */
+  function abrir(user: ApiUser) {
+    sesionLocal.guardar(user);
+    setCurrentUser(buildProfile(user));
+    try { localStorage.setItem('lalan_cached_user', JSON.stringify(user)); } catch {}
+  }
 
   const loginWithQuickDevice = useCallback(async () => {
     const { user } = await quickAuth.loginWithDevice();
+    sesionLocal.guardar(user);
     setCurrentUser(buildProfile(user));
     try {
       localStorage.setItem('lalan_cached_user', JSON.stringify(user));
@@ -139,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (enSoporte()) { salirDeSoporte(); return; }
     // Que el servidor también la cierre: así deja de salir en "Dónde está abierta tu sesión"
     salirEnServidor();
-    tokenStore.clear();
+    sesionLocal.borrar();
     try {
       localStorage.removeItem('lalan_cached_user');
     } catch {}
@@ -163,8 +199,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return !!currentUser.permissions[permission];
   }, [currentUser]);
 
+  const puede = useCallback((clave?: ClavePermisoRol) => puedeCon(currentUser?.permisos, clave), [currentUser]);
+
+  /* El inicio de sesión no trae los permisos de la asistente: se piden a
+     /auth/me para no mostrarle lo que la dueña le apagó */
+  const faltanPermisos = currentUser?.role === 'assistant' && currentUser.permisos === undefined;
+  useEffect(() => {
+    if (!faltanPermisos) return;
+    api.get<ApiUser>('/auth/me')
+      .then((u) => setCurrentUser((c) => (c ? { ...c, permisos: u.permisos ?? null } : c)))
+      .catch(() => setCurrentUser((c) => (c ? { ...c, permisos: null } : c)));
+  }, [faltanPermisos]);
+
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, claveCambiada, correoListo, terminosAceptados }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, puede, completarDosPasos, dosPasosListo, claveCambiada, correoListo, terminosAceptados }}>
       {children}
     </AuthContext.Provider>
   );
