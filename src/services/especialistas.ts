@@ -26,7 +26,13 @@ export interface EntradaDeEspecialista extends CatalogoPermisos {
   entraCon?: string[];
 }
 
-export interface PlantillaPermisos extends CatalogoPermisos { valores: MapaPermisos }
+export interface PlantillaPermisos extends CatalogoPermisos {
+  valores: MapaPermisos;
+  /** Lo que trae de Lalan */
+  fabrica?: MapaPermisos;
+  /** Lo que cambió el salón; vacío = como lo trae Lalan */
+  salon?: Partial<MapaPermisos>;
+}
 
 export const entradaApi = {
   estado: (staffId: string) => api.get<EntradaDeEspecialista>(`/salon/staff/${staffId}/entrada`),
@@ -37,6 +43,8 @@ export const entradaApi = {
   quitar: (staffId: string) => api.delete<EntradaDeEspecialista>(`/salon/staff/${staffId}/entrada`),
   plantilla: () => api.get<PlantillaPermisos>('/salon/permisos-especialista'),
   guardarPlantilla: (permisos: Partial<MapaPermisos>) => api.patch<PlantillaPermisos>('/salon/permisos-especialista', { permisos }),
+  /** La plantilla vuelve a como la trae Lalan */
+  volverPlantilla: () => api.delete<PlantillaPermisos>('/salon/permisos-especialista'),
 };
 
 // ── Lo de la propia especialista ─────────────────────────────────

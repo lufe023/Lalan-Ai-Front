@@ -6,12 +6,21 @@ import { usePlan } from '../../context/PlanContext';
 import { ClaveParaCompartir } from '../plataforma/ClaveParaCompartir';
 import type { UsuarioSalon } from '../../types/plataforma';
 import { useConfirmar } from '../ui/ModalConfirmar';
-import { PermisosDePersona, PlantillaAsistente, ResumenRol, useCatalogoPermisos } from './PermisosEquipo';
+import { PermisosDePersona, ResumenRol, RolesDelSalon, useCatalogoPermisos } from './PermisosEquipo';
+import { rolDePersona, type CatalogoPermisosRol } from '../../services/permisos';
 
-const ROLES: { id: UsuarioSalon['role']; label: string; ayuda: string }[] = [
-  { id: 'assistant', label: 'Asistente', ayuda: 'El día a día del salón. Tú decides qué más puede hacer.' },
-  { id: 'admin', label: 'Administración', ayuda: 'Todo, incluida la configuración y los usuarios.' },
+/** Lo que se elige al dar de alta o cambiar el rol: 'admin' o la clave de un rol de Lalan */
+type Eleccion = string;
+const ADMIN = 'admin';
+
+/** Los roles para elegir: los de Lalan y Administración al final */
+const opcionesDeRol = (catalogo: CatalogoPermisosRol | null) => [
+  ...(catalogo?.roles ?? [{ clave: 'assistant', nombre: 'Asistente', descripcion: 'El día a día del salón.' }])
+    .map((r) => ({ id: r.clave, label: r.nombre, ayuda: r.descripcion })),
+  { id: ADMIN, label: 'Administración', ayuda: 'Todo, incluida la configuración y los usuarios.' },
 ];
+const eleccionDe = (u: UsuarioSalon, catalogo: CatalogoPermisosRol | null): Eleccion =>
+  u.role === 'admin' ? ADMIN : catalogo ? rolDePersona(catalogo, u.rolPersonal).clave : (u.rolPersonal ?? 'assistant');
 
 interface Sede { id: string; name: string }
 interface ClaveNueva { nombre: string; entraCon: string[]; clave: string; telefono: string | null }
@@ -23,7 +32,7 @@ const telefonoLegible = (t: string | null) => {
   const d = t.length === 11 && t.startsWith('1') ? t.slice(1) : t;
   return d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : t;
 };
-const VACIO = { name: '', email: '', usuario: '', telefono: '', role: 'assistant' as UsuarioSalon['role'], roleTitle: '', locationId: '' };
+const VACIO = { name: '', email: '', usuario: '', telefono: '', eleccion: '' as Eleccion, roleTitle: '', locationId: '' };
 
 const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 
@@ -41,6 +50,10 @@ export const UsuariosSalon: React.FC = () => {
   const [error, setError] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const { catalogo, recargar: recargarPermisos } = useCatalogoPermisos();
+  const opciones = opcionesDeRol(catalogo);
+  // Sin elegir todavía: el rol base (Recepción)
+  const eleccionForm = form.eleccion || catalogo?.rolBase || 'assistant';
+  const rolDelForm = eleccionForm === ADMIN ? 'admin' : catalogo ? rolDePersona(catalogo, eleccionForm) : null;
   /** La asistente cuya lista de permisos está abierta */
   const [permisosDe, setPermisosDe] = useState<string | null>(null);
 
@@ -57,29 +70,39 @@ export const UsuariosSalon: React.FC = () => {
     try {
       const r = await api.post<{ usuario: UsuarioSalon; claveTemporal: string; entraCon: string[] }>('/users', {
         name: form.name, email: form.email.trim() || null, usuario: form.usuario.trim() || null, telefono: form.telefono.trim() || null,
-        role: form.role, roleTitle: form.roleTitle || undefined, locationId: form.locationId || null,
+        role: eleccionForm === ADMIN ? 'admin' : 'assistant', rolPersonal: eleccionForm === ADMIN ? null : eleccionForm,
+        roleTitle: form.roleTitle || undefined, locationId: form.locationId || null,
       });
       setClave({ nombre: r.usuario.name, entraCon: r.entraCon, clave: r.claveTemporal, telefono: r.usuario.telefono });
       setCreando(false); setForm(VACIO);
-      await cargar(); void recargarPlan();
+      await cargar(); void recargarPlan(); void recargarPermisos();
     } catch (err) { setError((err as Error).message); } finally { setOcupado(false); }
   };
 
   /** Administración necesita correo: si no tiene, se le pide aquí mismo en vez de fallar */
-  const cambiarRol = async (u: UsuarioSalon, role: UsuarioSalon['role']) => {
-    if (role === 'admin' && !u.email) {
-      setError(`Para hacer administradora a ${u.name.split(' ')[0]}, primero ponle su correo (ahí le llegan los informes). Escríbelo abajo y guarda; luego cambia el rol.`);
+  const cambiarRol = async (u: UsuarioSalon, eleccion: Eleccion) => {
+    const nombre = u.name.split(' ')[0];
+    if (eleccion === ADMIN && !u.email) {
+      setError(`Para hacer administradora a ${nombre}, primero ponle su correo (ahí le llegan los informes). Escríbelo abajo y guarda; luego cambia el rol.`);
       setEditandoAcceso({ id: u.id, datos: { email: '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono) } });
       return;
     }
+    if (eleccion === eleccionDe(u, catalogo)) return;
+    const rol = eleccion === ADMIN ? 'admin' : catalogo ? rolDePersona(catalogo, eleccion) : null;
     // Que la dueña vea qué cambia antes de cambiarlo
-    if (u.role !== role && !(await confirmar({
-      titulo: role === 'admin' ? `¿${u.name.split(' ')[0]} pasa a administración?` : `¿${u.name.split(' ')[0]} pasa a asistente?`,
-      mensaje: <ResumenRol rol={role === 'admin' ? 'admin' : 'assistant'} catalogo={catalogo} />,
+    if (!(await confirmar({
+      titulo: rol === 'admin' ? `¿${nombre} pasa a administración?` : `¿${nombre} pasa a ${rol?.nombre ?? 'otro rol'}?`,
+      mensaje: (
+        <div className="space-y-2">
+          {rol && <ResumenRol rol={rol} catalogo={catalogo} />}
+          {u.role === 'assistant' && <p className="text-[0.75rem] text-slate-500">Lo que le habías cambiado solo a {nombre} se quita.</p>}
+        </div>
+      ),
       textoConfirmar: 'Sí, cambiar',
       icono: <ShieldCheck className="w-7 h-7" aria-hidden="true" />,
     }))) return;
-    await editar(u, { role });
+    await editar(u, eleccion === ADMIN ? { role: 'admin' } : { role: 'assistant', rolPersonal: eleccion });
+    void recargarPermisos();
   };
 
   const guardarAcceso = async (e: React.FormEvent) => {
@@ -151,12 +174,12 @@ export const UsuariosSalon: React.FC = () => {
           <div className="grid sm:grid-cols-2 gap-2">
             <input required minLength={2} placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={campo} />
             <input type="tel" inputMode="tel" placeholder="Teléfono (puede entrar con él)" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} className={campo} />
-            <input required={form.role === 'admin'} type="email" autoCapitalize="none"
-              placeholder={form.role === 'admin' ? 'Correo (obligatorio en administración)' : 'Correo (opcional)'}
+            <input required={eleccionForm === ADMIN} type="email" autoCapitalize="none"
+              placeholder={eleccionForm === ADMIN ? 'Correo (obligatorio en administración)' : 'Correo (opcional)'}
               value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={campo} />
             <input autoCapitalize="none" placeholder="Usuario (si lo dejas vacío, se crea solo)" value={form.usuario}
               onChange={(e) => setForm({ ...form, usuario: e.target.value.toLowerCase().replace(/\s/g, '') })} className={campo} />
-            <input placeholder="Cargo (ej.: Recepción)" value={form.roleTitle} onChange={(e) => setForm({ ...form, roleTitle: e.target.value })} className={campo} />
+            <input placeholder="Cargo que se ve (opcional, ej.: Estilista principal)" value={form.roleTitle} onChange={(e) => setForm({ ...form, roleTitle: e.target.value })} className={campo} />
             {sedes.length > 1 && (
               <select value={form.locationId} onChange={(e) => setForm({ ...form, locationId: e.target.value })} className={campo}>
                 <option value="">Todas las sedes</option>
@@ -164,15 +187,16 @@ export const UsuariosSalon: React.FC = () => {
               </select>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {ROLES.map((r) => (
-              <button key={r.id} type="button" onClick={() => setForm({ ...form, role: r.id })}
-                className={`p-2.5 rounded-xl border text-left cursor-pointer ${form.role === r.id ? 'border-[var(--primary)] bg-white dark:bg-neutral-900' : 'border-slate-200 dark:border-neutral-700'}`}>
-                <b className="text-[0.8125rem]">{r.label}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5">{r.ayuda}</span>
+          <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Su rol</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Su rol">
+            {opciones.map((r) => (
+              <button key={r.id} type="button" role="radio" aria-checked={eleccionForm === r.id} onClick={() => setForm({ ...form, eleccion: r.id })}
+                className={`p-2.5 rounded-xl border text-left cursor-pointer ${eleccionForm === r.id ? 'border-[var(--primary)] bg-white dark:bg-neutral-900' : 'border-slate-200 dark:border-neutral-700'}`}>
+                <b className="text-[0.8125rem]">{r.label}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5 leading-snug">{r.ayuda}</span>
               </button>
             ))}
           </div>
-          <ResumenRol rol={form.role === 'admin' ? 'admin' : 'assistant'} catalogo={catalogo} />
+          {rolDelForm && <ResumenRol rol={rolDelForm} catalogo={catalogo} />}
           <button type="submit" disabled={ocupado} className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer">
             {ocupado && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Crear y generar su clave temporal
           </button>
@@ -210,9 +234,9 @@ export const UsuariosSalon: React.FC = () => {
                     </form>
                   )}
                 </div>
-                <select value={u.role} disabled={yo} onChange={(e) => void cambiarRol(u, e.target.value as UsuarioSalon['role'])}
+                <select value={eleccionDe(u, catalogo)} disabled={yo} onChange={(e) => void cambiarRol(u, e.target.value)}
                   className="text-[0.75rem] rounded-lg px-2 py-1.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700" aria-label="Rol">
-                  {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                  {opciones.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>
                 {sedes.length > 1 && (
                   <select value={u.locationId ?? ''} onChange={(e) => void editar(u, { locationId: e.target.value || null })}
@@ -245,7 +269,7 @@ export const UsuariosSalon: React.FC = () => {
         </div>
       )}
     </div>
-    <PlantillaAsistente catalogo={catalogo} onCambio={() => void recargarPermisos()} />
+    <RolesDelSalon catalogo={catalogo} onCambio={recargarPermisos} />
     </>
   );
 };

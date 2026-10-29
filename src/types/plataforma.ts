@@ -273,6 +273,8 @@ export interface UsuarioSalon {
   correoConfirmadoEn: string | null;
   role: 'admin' | 'assistant';
   roleTitle: string | null;
+  /** Rol `assistant`: cuál de los roles de Lalan (null = Recepción) */
+  rolPersonal: string | null;
   active: boolean;
   locationId: string | null;
   debeCambiarClave: boolean;

@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { IOSToggle } from '../ui/IOSToggle';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { ClaveParaCompartir } from '../plataforma/ClaveParaCompartir';
-import { entradaApi, type CatalogoPermisos, type ClavePermiso, type EntradaDeEspecialista, type MapaPermisos } from '../../services/especialistas';
+import { entradaApi, type CatalogoPermisos, type ClavePermiso, type EntradaDeEspecialista, type MapaPermisos, type PlantillaPermisos } from '../../services/especialistas';
 
 const campo = 'w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 
@@ -14,9 +14,11 @@ export const ListaPermisos: React.FC<{
   valores: MapaPermisos;
   /** Las que difieren de la plantilla del salón: llevan la marca "Solo ella" */
   propios?: Partial<MapaPermisos>;
+  /** El texto de esa marca (en la plantilla: "Cambiado en tu salón") */
+  textoMarca?: string;
   ocupada?: ClavePermiso | null;
   onCambiar: (clave: ClavePermiso, valor: boolean) => void;
-}> = ({ catalogo, valores, propios, ocupada, onCambiar }) => (
+}> = ({ catalogo, valores, propios, textoMarca = 'Solo ella', ocupada, onCambiar }) => (
   <div className="space-y-3">
     {catalogo.grupos.map(g => {
       const delGrupo = catalogo.permisos.filter(p => p.grupo === g.id);
@@ -30,7 +32,7 @@ export const ListaPermisos: React.FC<{
                 <span className="text-[0.8125rem] text-slate-700 dark:text-neutral-200 leading-snug">
                   {p.descripcion}
                   {propios && propios[p.clave] !== undefined && (
-                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] text-[0.625rem] font-bold align-middle">Solo ella</span>
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] text-[0.625rem] font-bold align-middle">{textoMarca}</span>
                   )}
                 </span>
                 <span className="flex items-center gap-1.5 shrink-0">
@@ -185,13 +187,20 @@ export const EntradaEspecialista: React.FC<{ staffId: string; nombre: string; te
   );
 };
 
-/** Ajustes → Equipo: con qué permisos arranca cada especialista a la que se le da entrada */
-export const PlantillaPermisosEspecialista: React.FC = () => {
+/** Con qué permisos arranca cada especialista a la que se le da entrada (Ajustes → El salón, y Equipo → Roles) */
+export const PlantillaPermisosEspecialista: React.FC<{ sinMarco?: boolean }> = ({ sinMarco }) => {
   const { showToast } = useApp();
-  const [datos, setDatos] = useState<(CatalogoPermisos & { valores: MapaPermisos }) | null>(null);
+  const { confirmar, modalConfirmar } = useConfirmar();
+  const [datos, setDatos] = useState<PlantillaPermisos | null>(null);
   const [ocupada, setOcupada] = useState<ClavePermiso | null>(null);
   useEffect(() => { entradaApi.plantilla().then(setDatos).catch(() => setDatos(null)); }, []);
   if (!datos) return null;
+
+  // Lo que el salón cambió y quedó distinto de lo que trae Lalan
+  const cambiados = datos.fabrica && datos.salon
+    ? Object.fromEntries(Object.entries(datos.salon).filter(([c, v]) => v !== datos.fabrica![c as ClavePermiso])) as Partial<MapaPermisos>
+    : {};
+  const cambiado = Object.keys(cambiados).length > 0;
 
   const cambiar = async (c: ClavePermiso, v: boolean) => {
     setOcupada(c);
@@ -200,17 +209,44 @@ export const PlantillaPermisosEspecialista: React.FC = () => {
     catch (e) { showToast('No se guardó', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'); entradaApi.plantilla().then(setDatos).catch(() => undefined); }
     finally { setOcupada(null); }
   };
+  const volver = async () => {
+    if (!(await confirmar({
+      titulo: '¿Especialista vuelve a como lo trae Lalan?',
+      mensaje: 'Se quitan los cambios que le hiciste a este rol en tu salón. Lo que le cambiaste a una especialista en su ficha se queda.',
+      textoConfirmar: 'Sí, volver',
+      icono: <RotateCcw className="w-7 h-7" aria-hidden="true" />,
+    }))) return;
+    try { setDatos(await entradaApi.volverPlantilla()); showToast('Listo', 'Especialista quedó como lo trae Lalan.', 'success'); }
+    catch (e) { showToast('No se pudo', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'); }
+  };
 
   return (
-    <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
-      <div className="flex items-center gap-1.5">
-        <ShieldCheck className="w-4 h-4 text-[var(--primary)]" />
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Permisos de las especialistas</h2>
-      </div>
+    <div className={sinMarco ? 'space-y-3' : 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3'}>
+      {modalConfirmar}
+      {sinMarco ? (
+        <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Especialista</h3>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="w-4 h-4 text-[var(--primary)]" />
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Permisos de las especialistas</h2>
+        </div>
+      )}
       <p className="text-[0.75rem] text-slate-400 leading-relaxed">
         Lo que puede hacer cada especialista con entrada a Lalan, salvo que le cambies algo en su ficha (la llave en su fila).
       </p>
-      <ListaPermisos catalogo={datos} valores={datos.valores} ocupada={ocupada} onCambiar={cambiar} />
+      {datos.fabrica && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`px-2 py-1 rounded-lg text-[0.6875rem] font-bold ${cambiado ? 'bg-[var(--primary)]/10 text-[var(--primary)]' : 'bg-slate-100 text-slate-500 dark:bg-neutral-800 dark:text-neutral-400'}`}>
+            {cambiado ? 'Cambiado en tu salón' : 'Como lo trae Lalan'}
+          </span>
+          {cambiado && (
+            <button type="button" onClick={() => void volver()} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-neutral-700 text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-neutral-800">
+              <RotateCcw className="w-3 h-3" /> Volver a como lo trae Lalan
+            </button>
+          )}
+        </div>
+      )}
+      <ListaPermisos catalogo={datos} valores={datos.valores} propios={cambiados} textoMarca="Cambiado en tu salón" ocupada={ocupada} onCambiar={cambiar} />
     </div>
   );
 };
