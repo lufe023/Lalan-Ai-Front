@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FotoClienta } from '../ui/FotoClienta';
 import { GrabadorVoz } from './GrabadorVoz';
+import { AdjuntarMedio } from './AdjuntarMedio';
 import { useDeslizarParaVolver } from '../../hooks/useDeslizarParaVolver';
 import { motion } from 'motion/react';
 import { AlertTriangle, Bot, Check, CheckCheck, Clock, Minus, Send, ShieldAlert, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
@@ -168,6 +169,24 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
       showToast('No se pudo enviar la nota de voz', (err as Error)?.message || 'Inténtalo de nuevo.', 'warning');
     } finally {
       setIndicando(false);
+    }
+  };
+
+  /** Una foto o un video para la clienta: sale por el número o la cuenta de este chat, y Lalan se pausa aquí */
+  const enviarMedio = async (archivo: File, texto: string) => {
+    if (!activeConversationId || activeConversationId.startsWith('temp_')) return false;
+    const formulario = new FormData();
+    formulario.append('archivo', archivo, archivo.name);
+    if (texto) formulario.append('texto', texto);
+    try {
+      const r = await subirArchivo<{ deliveryStatus?: string; failureReason?: string }>(`/conversations/${activeConversationId}/medio`, formulario);
+      if (r.deliveryStatus === 'fallido') showToast('No se envió', r.failureReason ?? 'Meta no aceptó el archivo.', 'warning');
+      setInputText('');
+      await recargarConversaciones();
+      return true;
+    } catch (err) {
+      showToast('No se pudo enviar', (err as Error)?.message || 'Inténtalo de nuevo.', 'warning');
+      return false;
     }
   };
 
@@ -383,6 +402,16 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           onSubmit={handleSendMessage}
           className="relative p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0"
         >
+          {!(paraLaAsistente && activeConversation.status !== 'ai_active') && !ventanaCerrada && (
+            <AdjuntarMedio
+              onEnviar={enviarMedio}
+              onAviso={(t, d) => showToast(t, d, 'warning')}
+              para={activeConversation.clientName.split(' ')[0] || activeConversation.clientName}
+              canal={activeConversation.channel}
+              deshabilitado={indicando}
+              textoInicial={inputText}
+            />
+          )}
           <input
             type="text"
             placeholder={
@@ -619,6 +648,16 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           onSubmit={handleSendMessage}
           className="relative p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0 pb-safe-tab"
         >
+          {!(paraLaAsistente && activeConversation.status !== 'ai_active') && !ventanaCerrada && (
+            <AdjuntarMedio
+              onEnviar={enviarMedio}
+              onAviso={(t, d) => showToast(t, d, 'warning')}
+              para={activeConversation.clientName.split(' ')[0] || activeConversation.clientName}
+              canal={activeConversation.channel}
+              deshabilitado={indicando}
+              textoInicial={inputText}
+            />
+          )}
           <input
             type="text"
             placeholder={

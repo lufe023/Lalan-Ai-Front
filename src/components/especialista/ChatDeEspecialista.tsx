@@ -4,6 +4,7 @@ import { AlertTriangle, Bot, Eye, Loader2, LogOut, Send, ShieldAlert, Sparkles, 
 import { useApp } from '../../context/AppContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { ContenidoMensaje } from '../chats/ContenidoMensaje';
+import { AdjuntarMedio } from '../chats/AdjuntarMedio';
 import { EstadoDeEnvio, getChannelBadge, horaDeMensaje } from '../chats/VentanaChat';
 import { AVISO_CHAT_ESPECIALISTA, misChatsApi, type MensajeDeMiChat, type MiChat } from '../../services/especialistas';
 import type { ChatMessage, CommunicationChannel } from '../../types';
@@ -67,6 +68,20 @@ export const ChatDeEspecialista: React.FC<{ chatId: string; inicial?: MiChat | n
     } catch (err) {
       showToast('No se pudo enviar', (err as Error)?.message || 'Inténtalo de nuevo.', 'warning');
     } finally { setEnviando(false); }
+  };
+
+  /** Una foto o un video: Lalan mira qué se ve antes de que salga (por eso tarda un poco más que un texto) */
+  const enviarMedio = async (archivo: File, pie: string) => {
+    try {
+      const r = await misChatsApi.medio(chatId, archivo, pie);
+      setChat(r); setTexto(''); cercaDelFinal.current = true;
+      if (r.pausado) showToast('Lalan detuvo tu mensaje', 'No salió y la administración ya se enteró. Espera a que lo revisen.', 'warning');
+      else if (r.mensajes[r.mensajes.length - 1]?.estado === 'fallido') showToast('No se envió', r.mensajes[r.mensajes.length - 1]?.motivoFallo ?? 'Inténtalo de nuevo.', 'warning');
+      return true;
+    } catch (err) {
+      showToast('No se pudo enviar', (err as Error)?.message || 'Inténtalo de nuevo.', 'warning');
+      return false;
+    }
   };
 
   const plantilla = async () => {
@@ -200,6 +215,14 @@ export const ChatDeEspecialista: React.FC<{ chatId: string; inicial?: MiChat | n
       )}
       {!bloqueado && (
         <form onSubmit={enviar} className="p-3 px-4 glass-ios border-t border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2 shrink-0 pb-safe-tab">
+          <AdjuntarMedio
+            onEnviar={enviarMedio}
+            onAviso={(t, d) => showToast(t, d, 'warning')}
+            para={chat?.clienta.split(' ')[0] ?? 'la clienta'}
+            canal={chat?.canal}
+            deshabilitado={enviando}
+            textoInicial={texto}
+          />
           <input type="text" value={texto} onChange={e => setTexto(e.target.value)} placeholder={`Escríbele a ${chat?.clienta.split(' ')[0] ?? 'la clienta'}…`} aria-label="Mensaje para la clienta"
             className="flex-1 px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.875rem] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
           <button type="submit" disabled={!texto.trim() || enviando} aria-label="Enviar"
