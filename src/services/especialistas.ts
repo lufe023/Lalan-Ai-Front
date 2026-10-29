@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, subirArchivo } from './api';
 import type { AvisoAlergia, PreguntaAlergia } from './saberProductos';
 
 /** Los interruptores que la administración le enciende o apaga a cada especialista */
@@ -138,6 +138,13 @@ export const misChatsApi = {
   desdeCita: (citaId: string) => api.post<MiChat>(`/especialista/chats/desde-cita/${citaId}`, {}),
   chat: (id: string) => api.get<MiChat>(`/especialista/chats/${id}`),
   escribir: (id: string, texto: string) => api.post<MiChat>(`/especialista/chats/${id}/mensajes`, { texto }),
+  /** Una foto o un video para la clienta (Lalan lo revisa antes de que salga) */
+  medio: (id: string, archivo: File, texto: string) => {
+    const f = new FormData();
+    f.append('archivo', archivo, archivo.name);
+    if (texto) f.append('texto', texto);
+    return subirArchivo<MiChat>(`/especialista/chats/${id}/medio`, f);
+  },
   plantilla: (id: string) => api.post<MiChat>(`/especialista/chats/${id}/plantilla`, {}),
   soltar: (id: string) => api.post<{ ok: true }>(`/especialista/chats/${id}/soltar`, {}),
   archivo: (id: string, mensajeId: string) => `/especialista/chats/${id}/mensajes/${mensajeId}/archivo`,

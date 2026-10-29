@@ -46,8 +46,8 @@ function conNegrita(texto: string): React.ReactNode[] {
   return texto.split(/\*([^*\n]+)\*/g).map((trozo, i) => (i % 2 ? <strong key={i}>{trozo}</strong> : trozo));
 }
 
-/** Textos de relleno que pone el sistema cuando no hay texto de la clienta */
-const ES_RELLENO = /^\[.*\]$|^\(Envió |^\((Nota de voz|Audio)\) /;
+/** Textos de relleno que pone el sistema cuando no hay texto (de la clienta, o del equipo junto a su foto) */
+const ES_RELLENO = /^\[.*\]$|^\(Envió |^\((Nota de voz|Audio)\) |^(📷 Foto|🎬 Video)$/;
 
 const cache = new Map<string, string>();
 
@@ -124,7 +124,7 @@ export const ContenidoMensaje: React.FC<{
               ? <video src={url} controls playsInline className="rounded-xl max-h-72 w-full bg-black" />
               : (
                 <a href={url} target="_blank" rel="noreferrer" className="block">
-                  <img src={url} alt={a.descripcion ?? 'Foto de la clienta'} className={`rounded-xl max-h-72 w-auto object-cover ${tipo === 'sticker' ? 'max-h-28' : ''}`} />
+                  <img src={url} alt={a.descripcion ?? (msg.sender === 'client' ? 'Foto de la clienta' : 'Foto del salón')} className={`rounded-xl max-h-72 w-auto object-cover ${tipo === 'sticker' ? 'max-h-28' : ''}`} />
                 </a>
               )
           ) : (
