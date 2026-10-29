@@ -93,7 +93,7 @@ export interface LoungeEvent {
 }
 
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'conversiones-report' | 'sala' | 'plataforma' | 'informes';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'conversiones-report' | 'sala' | 'plataforma' | 'informes' | 'mi-semana';
 
 // ═══════════════════════════════════════════════════════════════════
 //  SALA Y TURNOS
@@ -828,7 +828,7 @@ function citasDetras(todas: Appointment[], cita: Appointment): Appointment[] {
   }
 }
 
-function mapApiAppointment(a: any): Appointment {
+export function mapApiAppointment(a: any): Appointment {
   const startsAt = new Date(a.startsAt);
   return {
     id: a.id, clientId: a.clientId, clientName: a.clientName, clientPhone: a.clientPhone,

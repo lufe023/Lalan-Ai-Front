@@ -52,11 +52,15 @@ function vistaPrevia(cita: CitaParaCambiar, nueva: string | null, motivo: string
  * esperar a la suya otro día: hay clientas que no se atienden con nadie más.
  * Lo que conteste lo maneja Lalan en el chat y queda marcado en la cita.
  */
-export const CambiarEspecialista: React.FC<{ cita: CitaParaCambiar; onCerrar: () => void; onListo: (r: ResultadoCambio) => void }> = ({ cita, onCerrar, onListo }) => {
+export const CambiarEspecialista: React.FC<{
+  cita: CitaParaCambiar; onCerrar: () => void; onListo: (r: ResultadoCambio) => void;
+  /** No tiene a nadie: se elige quién la atiende, sin avisarle por defecto (no hay nada que preguntarle) */
+  asignar?: boolean;
+}> = ({ cita, onCerrar, onListo, asignar = false }) => {
   const [lista, setLista] = useState<Reemplazo[] | null>(null);
   const [error, setError] = useState('');
   const [elegida, setElegida] = useState<string | null | undefined>(undefined);   // undefined = nada; null = sin especialista
-  const [avisar, setAvisar] = useState(true);
+  const [avisar, setAvisar] = useState(!asignar);
   const [motivo, setMotivo] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoCambio | null>(null);
@@ -92,7 +96,7 @@ export const CambiarEspecialista: React.FC<{ cita: CitaParaCambiar; onCerrar: ()
   const telefono = (cita.clientPhone ?? '').replace(/\D/g, '');
 
   return (
-    <IOSModal id="cambiar-especialista" isOpen onClose={onCerrar} title="Cambiar quién la atiende" subtitle={`${cita.clientName} · ${cita.serviceName ?? ''}`}>
+    <IOSModal id="cambiar-especialista" isOpen onClose={onCerrar} title={asignar ? 'Elegir quién la atiende' : 'Cambiar quién la atiende'} subtitle={`${cita.clientName} · ${cita.serviceName ?? ''}`}>
       <div className="max-w-xl mx-auto space-y-4 pb-6 text-slate-900 dark:text-white">
         {resultado ? (
           <div className="space-y-3">
@@ -121,8 +125,8 @@ export const CambiarEspecialista: React.FC<{ cita: CitaParaCambiar; onCerrar: ()
         ) : (
           <>
             <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400">
-              Ahora es con <b className="text-slate-800 dark:text-neutral-100">{cita.staffName || 'nadie'}</b>,{' '}
-              {new Date(cita.startsAt).toLocaleString('es-DO', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.
+              {asignar ? 'Todavía no tiene a nadie' : <>Ahora es con <b className="text-slate-800 dark:text-neutral-100">{cita.staffName || 'nadie'}</b></>},{' '}
+              {new Date(cita.startsAt).toLocaleString('es-DO', { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }).replace(/\.$/, '')}.
             </p>
 
             <div className="space-y-2">
@@ -140,14 +144,14 @@ export const CambiarEspecialista: React.FC<{ cita: CitaParaCambiar; onCerrar: ()
                 </button>
               ))}
               {lista && !lista.length && <p className="text-[0.8125rem] text-slate-400">Nadie más del equipo hace este servicio.</p>}
-              <button type="button" onClick={() => setElegida(null)} className={opcion(elegida === null)}>
+              {!asignar && <button type="button" onClick={() => setElegida(null)} className={opcion(elegida === null)}>
                 <UserX className="w-4 h-4 text-slate-400 shrink-0" />
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-[0.875rem]">Dejarla sin especialista</span>
                   <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400">Se le pregunta si la quiere con otra persona o prefiere otro día con la suya</span>
                 </span>
                 {elegida === null && <Check className="w-4 h-4 text-[var(--primary)]" />}
-              </button>
+              </button>}
             </div>
 
             {ocupada && <p className="text-[0.75rem] font-semibold text-amber-700 dark:text-amber-400">Esa persona ya tiene algo a esa hora: si sigues, le quedan dos citas encima.</p>}
@@ -172,7 +176,7 @@ export const CambiarEspecialista: React.FC<{ cita: CitaParaCambiar; onCerrar: ()
             <button type="button" onClick={() => void guardar()} disabled={elegida === undefined || guardando}
               className="w-full py-3 rounded-2xl bg-[var(--primary)] text-white font-bold flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer">
               {guardando && <Loader2 className="w-4 h-4 animate-spin" />}
-              {avisar ? 'Cambiar y avisarle' : 'Cambiar sin avisar'}
+              {asignar ? (nueva ? `Asignar a ${primerNombre(nueva)}${avisar ? ' y avisarle' : ''}` : 'Elige a alguien') : avisar ? 'Cambiar y avisarle' : 'Cambiar sin avisar'}
             </button>
           </>
         )}
