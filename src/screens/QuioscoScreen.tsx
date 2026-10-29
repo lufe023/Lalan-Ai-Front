@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { ErrorPublico, urlDeFoto } from '../services/api';
 import { Busqueda, InicioQuiosco, ResultadoLlegada, quioscoApi, tokenQuiosco, urlAprobarQuiosco } from '../services/quiosco';
 import { recordarPantalla } from '../utils/pantallaRecordada';
+import { useIrAtras } from '../hooks/useIrAtras';
 
 /**
  * El quiosco de la entrada: una tablet (o pantalla táctil) donde la clienta
@@ -212,6 +213,8 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
     setHistorial((h) => h.slice(0, -1));
     setPaso(previo);
   };
+  // Lo mismo que el botón "Atrás" de arriba: deslizar desde el borde izquierdo
+  useIrAtras(atras, paso !== 'inicio' && paso !== 'final' && paso !== 'enviando' && historial.length > 0);
 
   const categoriaElegida = useMemo(
     () => datos?.servicios.find((s) => s.id === r.servicios[0])?.categoria ?? null,

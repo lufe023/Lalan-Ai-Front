@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { AlertTriangle, Bot, Eye, Loader2, LogOut, Send, ShieldAlert, Sparkles, UserCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
+import { useIrAtras } from '../../hooks/useIrAtras';
 import { ContenidoMensaje } from '../chats/ContenidoMensaje';
 import { AdjuntarMedio } from '../chats/AdjuntarMedio';
 import { EstadoDeEnvio, getChannelBadge, horaDeMensaje } from '../chats/VentanaChat';
@@ -31,6 +32,8 @@ function comoMensaje(m: MensajeDeMiChat): ChatMessage {
 export const ChatDeEspecialista: React.FC<{ chatId: string; inicial?: MiChat | null; onCerrar: () => void }> = ({ chatId, inicial, onCerrar }) => {
   const { showToast } = useApp();
   const { confirmar, modalConfirmar } = useConfirmar();
+  // Deslizar desde el borde izquierdo o clic derecho = Volver a sus chats
+  useIrAtras(onCerrar);
   const [chat, setChat] = useState<MiChat | null>(inicial ?? null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);

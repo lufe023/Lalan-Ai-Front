@@ -6,6 +6,7 @@ import { Sparkles, AtSign as Mail, Lock, Loader2, AlertCircle, Zap, ArrowRight, 
 import { LogoLalan } from '../components/ui/LogoLalan';
 import { useAuth, type RetoDosPasos } from '../context/AuthContext';
 import { PasoDelCodigo } from '../components/ajustes/DosPasos';
+import { useIrAtras } from '../hooks/useIrAtras';
 import { useApp } from '../context/AppContext';
 import { quickAuth, QuickAuthRegistration } from '../services/quickAuth';
 
@@ -29,6 +30,8 @@ export const LoginScreen: React.FC = () => {
   useEffect(() => {
     setRegistration(quickAuth.getRegistration());
   }, []);
+  // Con la clave a mano en un aparato con acceso rápido: deslizar o clic derecho vuelve al acceso rápido
+  useIrAtras(() => { setError(''); setModoManual(false); }, modoManual && registration.isRegistered && !reto && !recuperando);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

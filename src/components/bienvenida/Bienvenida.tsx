@@ -5,6 +5,7 @@ import { ChevronLeft, PartyPopper, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { abrirLalan } from '../lalan/PantallaLalan';
+import { useIrAtras } from '../../hooks/useIrAtras';
 import { alPedirBienvenida, avisarCambioBienvenida, bienvenidaApi, bienvenidaPospuesta, posponerBienvenida } from '../../services/bienvenida';
 import type { EstadoBienvenida, Paso } from '../../types/bienvenida';
 import { Aviso, BotonPrincipal, BotonSecundario, Cargando } from './comun';
@@ -78,6 +79,8 @@ export const Bienvenida: React.FC = () => {
     irA(lista[Math.min(lista.indexOf(pantalla) + 1, lista.length - 1)]);
   };
   const atras = () => irA(orden[Math.max(indice - 1, 0)]);
+  // Deslizar desde el borde o clic derecho = el paso anterior
+  useIrAtras(atras, abierta && indice > 0, { enDialogo: true });
 
   const cerrar = () => {
     if (!estado?.terminada) posponerBienvenida();

@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { FotoClienta } from '../ui/FotoClienta';
 import { GrabadorVoz } from './GrabadorVoz';
 import { AdjuntarMedio } from './AdjuntarMedio';
-import { useDeslizarParaVolver } from '../../hooks/useDeslizarParaVolver';
+import { useIrAtras } from '../../hooks/useIrAtras';
 import { motion } from 'motion/react';
 import { AlertTriangle, Bot, Check, CheckCheck, Clock, Minus, Send, ShieldAlert, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
@@ -113,8 +113,8 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
   const activeConversation = conversations.find(c => c.id === conversacionId);
   const { currentUser } = useAuth();
   const esSuperAdmin = currentUser?.role === 'super_admin';
-  // Deslizar desde el borde izquierdo = Volver a la lista de chats
-  useDeslizarParaVolver(onCerrar, !flotante);
+  // Deslizar desde el borde izquierdo o clic derecho = Volver a la lista de chats
+  useIrAtras(onCerrar, !flotante);
   const puedeAutorizarTurno = esSuperAdmin || currentUser?.role === 'admin';
   const activeConversationId = conversacionId;
 
