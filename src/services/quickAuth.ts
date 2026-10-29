@@ -14,6 +14,20 @@ export interface QuickAuthUser {
   avatar?: string;
 }
 
+/** Con dos pasos el toque reemplaza la clave, no el código: falta este paso */
+export interface RetoUnToque { pase: string; correo: string | null }
+
+/** Avisa a Mi cuenta que el 1 toque de este aparato cambió (vincular, quitar) */
+export const EVENTO_UN_TOQUE = 'lalan:un-toque';
+const avisar = () => { try { window.dispatchEvent(new Event(EVENTO_UN_TOQUE)); } catch { /* sin ventana */ } };
+
+/** Lo que este aparato guarda del 1 toque; se borra al quitarlo */
+function olvidar() {
+  localStorage.removeItem(DEVICE_SECRET_KEY);
+  localStorage.removeItem(DEVICE_USER_KEY);
+  localStorage.removeItem(DEVICE_NAME_KEY);
+}
+
 export interface QuickAuthRegistration {
   isRegistered: boolean;
   deviceId: string | null;
@@ -113,12 +127,14 @@ export const quickAuth = {
     localStorage.removeItem(DEVICE_SECRET_KEY);
     localStorage.setItem(DEVICE_NAME_KEY, deviceName);
     localStorage.setItem(DEVICE_USER_KEY, JSON.stringify(user));
+    avisar();
   },
 
   /**
-   * Inicia sesión con 1 solo toque usando el dispositivo registrado
+   * Inicia sesión con 1 solo toque usando el dispositivo registrado.
+   * Con dos pasos vuelve el reto: falta el código, como tras la clave.
    */
-  async loginWithDevice(): Promise<{ user: any }> {
+  async loginWithDevice(): Promise<{ user: any } | { dosPasos: RetoUnToque }> {
     const deviceId = localStorage.getItem(DEVICE_ID_KEY);
     if (!deviceId) throw new Error('Dispositivo no configurado para acceso rápido.');
     // Un aparato vinculado con una versión vieja aún guarda su secreto: se manda una vez y se borra
@@ -139,17 +155,15 @@ export const quickAuth = {
       const cuerpo = await res.json().catch(() => null);
       const m = cuerpo?.message?.message ?? cuerpo?.message ?? 'No se pudo entrar';
       // 401: desvinculado, vencido o secreto viejo. El botón deja de salir y se entra con clave.
-      if (res.status === 401) {
-        localStorage.removeItem(DEVICE_SECRET_KEY);
-        localStorage.removeItem(DEVICE_USER_KEY);
-        localStorage.removeItem(DEVICE_NAME_KEY);
-      }
+      if (res.status === 401) olvidar();
       throw new ErrorPublico(Array.isArray(m) ? m.join(' | ') : String(m), res.status);
     }
-    const datos: { user: any } = await res.json();
-
-    // 2. La sesión y el secreto nuevo del aparato ya quedaron en cookies httpOnly
+    const datos: { user: any } | { dosPasos: RetoUnToque } = await res.json();
+    // El secreto nuevo ya quedó en la cookie del aparato
     localStorage.removeItem(DEVICE_SECRET_KEY);
+    if ('dosPasos' in datos) return { dosPasos: datos.dosPasos };
+
+    // 2. La sesión ya quedó en cookies httpOnly
     sesionLocal.guardar(datos.user ?? {});
 
     // 3. Actualizar datos del usuario local
@@ -170,9 +184,14 @@ export const quickAuth = {
         await api.delete(`/auth/quick-login/${encodeURIComponent(deviceId)}`).catch(() => {});
       }
     } finally {
-      localStorage.removeItem(DEVICE_SECRET_KEY);
-      localStorage.removeItem(DEVICE_USER_KEY);
-      localStorage.removeItem(DEVICE_NAME_KEY);
+      olvidar();
+      avisar();
     }
+  },
+
+  /** El servidor ya no lo tiene activo (cambio de clave, sesión cerrada desde otro aparato…): se deja de ofrecer */
+  olvidarLocal(): void {
+    olvidar();
+    avisar();
   },
 };

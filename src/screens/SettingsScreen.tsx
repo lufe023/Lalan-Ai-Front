@@ -48,7 +48,7 @@ import { api, urlDePantalla, urlDeReproductor } from '../services/api';
 import QRCode from 'qrcode';
 import { vocesDisponibles, alCargarVoces, decir, fraseDeTurno } from '../utils/campana';
 import { useAuth } from '../context/AuthContext';
-import { quickAuth, QuickAuthRegistration } from '../services/quickAuth';
+import { quickAuth, QuickAuthRegistration, EVENTO_UN_TOQUE } from '../services/quickAuth';
 import { CommunicationChannel, ThemeMode, UserRole, ThemePalettePreset, EventoActividad } from '../types';
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
@@ -160,6 +160,12 @@ export const SettingsScreen: React.FC = () => {
   const grupoAbierto = seccion ? gruposPara(currentUser?.role).find((x) => x.id === seccion) ?? GRUPOS_AJUSTES.find((x) => x.id === seccion) ?? null : null;
 
   const [quickReg, setQuickReg] = useState<QuickAuthRegistration>(() => quickAuth.getRegistration());
+  // Quitado o vinculado desde «Dónde está abierta tu sesión»: la tarjeta lo refleja
+  useEffect(() => {
+    const alCambiar = () => setQuickReg(quickAuth.getRegistration());
+    window.addEventListener(EVENTO_UN_TOQUE, alCambiar);
+    return () => window.removeEventListener(EVENTO_UN_TOQUE, alCambiar);
+  }, []);
 
   const handleVincularDispositivo = async () => {
     if (!currentUser) return;
@@ -448,7 +454,7 @@ export const SettingsScreen: React.FC = () => {
             </div>
             <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-tight">
               {quickReg.isRegistered
-                ? 'Este teléfono puede entrar al salón sin volver a ingresar contraseña.'
+                ? `Desde este ${quickReg.deviceName || 'aparato'} entras al salón sin volver a escribir la contraseña.`
                 : 'Actívalo para entrar a tu salón con un solo toque desde este equipo.'}
             </p>
           </div>

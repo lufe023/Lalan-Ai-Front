@@ -64,7 +64,9 @@ export const LoginScreen: React.FC = () => {
     setError('');
     setLoading(true);
     try {
-      await loginWithQuickDevice();
+      const r = await loginWithQuickDevice();
+      // Con dos pasos el toque reemplaza la clave, no el código
+      if (r.dosPasos) { setReto(r.dosPasos); return; }
       showToast('¡Hola!', 'Acceso rápido autenticado en este dispositivo.', 'success');
       navigateTo('dashboard');
     } catch (err: any) {
