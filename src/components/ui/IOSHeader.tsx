@@ -91,7 +91,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
             {/* En el teléfono, con varias sedes, el espacio es para el nombre de la sede */}
             <span className={`text-xs font-bold tracking-tight text-slate-800 dark:text-neutral-200 whitespace-nowrap shrink-0 ${nombreSede ? 'hidden sm:inline' : ''}`}>Lalan AI</span>
             <span className="text-[0.6875rem] text-slate-400 font-normal hidden sm:inline whitespace-nowrap shrink-0">
-              • {currentUser?.roleTitle || 'Asistente'}
+              • {currentUser?.roleTitle || currentUser?.rolNombre || 'Asistente'}
             </span>
             {/* En qué sede se está: a la vista siempre, y un toque abre el cambio de sede */}
             {nombreSede && (
