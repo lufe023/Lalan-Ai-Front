@@ -4,6 +4,7 @@ import { Check, Copy, Loader2, Mail, ShieldCheck, Smartphone } from 'lucide-reac
 import { api } from '../../services/api';
 import { useAuth, type RetoDosPasos } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
+import { useIrAtras } from '../../hooks/useIrAtras';
 
 const campoCodigo = 'w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-center text-xl font-bold tracking-[0.4em] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 const soloCifras = (v: string) => v.replace(/\D/g, '').slice(0, 6);
@@ -11,6 +12,7 @@ const soloCifras = (v: string) => v.replace(/\D/g, '').slice(0, 6);
 /** Al entrar, tras la clave: el código de la app o uno por correo */
 export const PasoDelCodigo: React.FC<{ reto: RetoDosPasos; onListo: () => void; onVolver: () => void }> = ({ reto, onListo, onVolver }) => {
   const { completarDosPasos } = useAuth();
+  useIrAtras(onVolver);
   const [codigo, setCodigo] = useState('');
   const [porCorreo, setPorCorreo] = useState(false);
   const [aviso, setAviso] = useState('');

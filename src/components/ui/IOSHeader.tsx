@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useDeslizarParaVolver } from '../../hooks/useDeslizarParaVolver';
+import { useIrAtras } from '../../hooks/useIrAtras';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sun,
@@ -45,8 +45,8 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
   const { currentUser, logout } = useAuth();
   const { triggerSplash } = useApp();
   const { isDark, setThemeMode } = useTheme();
-  // Deslizar desde el borde izquierdo = Atrás (como en el iPhone)
-  useDeslizarParaVolver(onBack, showBack);
+  // Deslizar desde el borde izquierdo o clic derecho = Atrás
+  useIrAtras(onBack, showBack);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const nombreSede = useNombreSede();

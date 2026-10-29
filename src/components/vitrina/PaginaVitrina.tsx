@@ -5,6 +5,7 @@ import {
   MessageCircle, Music, Navigation, Phone, Plus, ShoppingBag, Sparkles, Star, Store, Tag, User, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
+import { useIrAtras } from '../../hooks/useIrAtras';
 import type {
   DatosVitrina, EspecialistaVitrina, EstadoDiaVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina,
   TestimonioVitrina, TipoBloqueVitrina,
@@ -1715,6 +1716,8 @@ function PanelReserva({
   };
   const siguiente = () => { if (indice < pasos.length - 1) ir(pasos[indice + 1].clave); };
   const atras = () => { if (indice > 0) ir(pasos[indice - 1].clave); };
+  // Deslizar desde el borde o clic derecho: el paso anterior, o de vuelta a la Vitrina
+  useIrAtras(indice > 0 ? atras : cerrar, !!abierta, { enDialogo: true });
 
   // Desde el panel de al lado ya vio lo que eligió: arranca en lo que sigue
   useEffect(() => {

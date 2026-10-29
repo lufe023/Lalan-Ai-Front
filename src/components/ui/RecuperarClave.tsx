@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Loader2, MailCheck, CheckCircle2, MessageCircle } from 'lucide-react';
 import { api } from '../../services/api';
+import { useIrAtras } from '../../hooks/useIrAtras';
 
 const LARGO_MINIMO = 8;
 const WHATSAPP_LALAN = '18092299444';
@@ -12,6 +13,7 @@ const campo = 'w-full px-3.5 py-3 rounded-xl bg-white dark:bg-neutral-900 border
 /** ¿Olvidaste tu clave? Un código al correo y una clave nueva, sin llamar a nadie */
 export const RecuperarClave: React.FC<{ emailInicial?: string; onVolver: (email?: string) => void }> = ({ emailInicial = '', onVolver }) => {
   const [paso, setPaso] = useState<Paso>('correo');
+  useIrAtras(() => onVolver());
   const [email, setEmail] = useState(emailInicial);
   const [codigo, setCodigo] = useState('');
   const [nueva, setNueva] = useState('');

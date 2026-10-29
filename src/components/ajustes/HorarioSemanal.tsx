@@ -3,6 +3,7 @@ import { CalendarDays, Check, Moon, Plus, X } from 'lucide-react';
 import { IOSModal } from '../ui/IOSModal';
 import { IOSToggle } from '../ui/IOSToggle';
 import { SelectorHora } from '../ui/SelectorHora';
+import { useIrAtras } from '../../hooks/useIrAtras';
 import { hora12 } from '../../utils/hora';
 import type { DiaDeHorario, TramoHorario } from '../../types';
 
@@ -117,6 +118,8 @@ export const HorarioSemanal: React.FC<{
 }> = ({ semana, onGuardar, titulo = 'Horario de la semana', textoApagado = 'Cerrado', enLinea = false, persona }) => {
   const [editando, setEditando] = useState<DiaDeHorario | null>(null);
   const habitual = useMemo(() => jornadaHabitual(semana), [semana]);
+  // Con el día abierto en el mismo lugar, deslizar o clic derecho vuelve a la semana
+  useIrAtras(() => setEditando(null), enLinea && !!editando, { enDialogo: true });
 
   const cambiarAbierto = (dia: number, abierto: boolean) =>
     onGuardar(semana.map(d => (d.dia === dia ? { ...d, abierto } : d)));
