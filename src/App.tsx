@@ -70,12 +70,13 @@ const MODO_GRABAR = (() => {
 })();
 import { pantallaRecordada, esAplicacionInstalada } from './utils/pantallaRecordada';
 import { conectarComoUsuario, desconectar } from './services/socket';
+import { PERMISO_DE_PANTALLA } from './services/permisos';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const MainAppContent: React.FC = () => {
   const { currentScreen, showSplash, activeConversationId, navigateTo } = useApp();
-  const { isAuthenticated, isLoading, currentUser } = useAuth();
+  const { isAuthenticated, isLoading, currentUser, puede } = useAuth();
   // Se mide el uso de los salones; no el de Lalan (super admin, soporte) ni el modo mapa de calor
   const medir = isAuthenticated && !MODO_CALOR && !MODO_GRABAR && !currentUser?.soporte && currentUser?.role !== 'super_admin' && currentUser?.role !== 'support' && currentUser?.role !== 'especialista';
   useUsoApp(currentScreen, medir);
@@ -95,8 +96,15 @@ const MainAppContent: React.FC = () => {
     return () => { if (!isAuthenticated) desconectar(); };
   }, [isAuthenticated]);
 
+  /* Una pantalla que la dueña le apagó a la asistente (o la de inicio,
+     Métricas, si no ve números) abre la primera que sí puede usar */
+  const pantalla: ScreenName = puede(PERMISO_DE_PANTALLA[currentScreen])
+    ? currentScreen
+    : (['calendar', 'sala', 'chats', 'clients', 'caja'] as ScreenName[]).find((p) => puede(PERMISO_DE_PANTALLA[p])) ?? 'settings';
+  React.useEffect(() => { if (pantalla !== currentScreen) navigateTo(pantalla); }, [pantalla, currentScreen, navigateTo]);
+
   const renderCurrentScreen = () => {
-    switch (currentScreen) {
+    switch (pantalla) {
       case 'dashboard': return <DashboardScreen key="dashboard" />;
       case 'calendar':  return <CalendarScreen  key="calendar"  />;
       case 'clients':   return <ClientsScreen   key="clients"   />;

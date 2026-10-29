@@ -24,6 +24,8 @@ export interface UserProfile {
   confirmarCorreo?: ConfirmacionCorreo | null;
   /** Versión de los términos que la administración del salón tiene que aceptar al entrar (null = nada) */
   aceptarTerminos?: string | null;
+  /** Solo la asistente: lo que la dueña le dejó hacer. null = todo; undefined = aún no se sabe */
+  permisos?: Partial<Record<string, boolean>> | null;
   permissions: {
     canViewMetrics: boolean;
     canManageBots: boolean;

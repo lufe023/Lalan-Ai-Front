@@ -3,6 +3,7 @@ import { ConfirmacionCorreo, UserProfile, UserRole } from '../types';
 import { api, migrarSesionVieja, salirEnServidor, sesionLocal } from '../services/api';
 import { enSoporte, salirDeSoporte } from '../services/soporte';
 import { quickAuth } from '../services/quickAuth';
+import { puedeCon, type ClavePermisoRol, type MapaPermisosRol } from '../services/permisos';
 
 // ─── Permissions map by role ──────────────────────────────────────
 const PERMISSIONS: Record<UserRole, UserProfile['permissions']> = {
@@ -24,6 +25,8 @@ interface AuthContextType {
   loginWithQuickDevice: () => Promise<void>;
   logout: () => void;
   hasPermission: (permission: keyof UserProfile['permissions']) => boolean;
+  /** ¿La dueña le dejó hacer esto? Administración puede todo */
+  puede: (clave?: ClavePermisoRol) => boolean;
   /** Ya puso su clave: se quita la pantalla de cambio obligatorio */
   claveCambiada: () => void;
   /** Confirmó su correo (o lo dejó para después, si no era obligatorio) */
@@ -43,6 +46,8 @@ interface ApiUser {
   aceptarTerminos?: string | null;
   soporte?: { negocio: string };
   locationId?: string | null;
+  /** Solo la asistente: lo que la dueña le dejó hacer (null = todo) */
+  permisos?: MapaPermisosRol | null;
 }
 
 function buildProfile(u: ApiUser): UserProfile {
@@ -61,6 +66,7 @@ function buildProfile(u: ApiUser): UserProfile {
     aceptarTerminos: u.aceptarTerminos ?? null,
     soporte: u.soporte,
     permissions: PERMISSIONS[u.role] ?? PERMISSIONS.assistant,
+    permisos: u.permisos,
   };
 }
 
@@ -168,8 +174,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return !!currentUser.permissions[permission];
   }, [currentUser]);
 
+  const puede = useCallback((clave?: ClavePermisoRol) => puedeCon(currentUser?.permisos, clave), [currentUser]);
+
+  /* El inicio de sesión no trae los permisos de la asistente: se piden a
+     /auth/me para no mostrarle lo que la dueña le apagó */
+  const faltanPermisos = currentUser?.role === 'assistant' && currentUser.permisos === undefined;
+  useEffect(() => {
+    if (!faltanPermisos) return;
+    api.get<ApiUser>('/auth/me')
+      .then((u) => setCurrentUser((c) => (c ? { ...c, permisos: u.permisos ?? null } : c)))
+      .catch(() => setCurrentUser((c) => (c ? { ...c, permisos: null } : c)));
+  }, [faltanPermisos]);
+
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, claveCambiada, correoListo, terminosAceptados }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, puede, claveCambiada, correoListo, terminosAceptados }}>
       {children}
     </AuthContext.Provider>
   );
