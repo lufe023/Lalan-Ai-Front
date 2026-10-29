@@ -110,6 +110,10 @@ export const conSede = (ruta: string, sede?: string) => (sede ? `${ruta}${ruta.i
 
 export const comprasApi = {
   ajustes: () => api.get<AjustesCompras>('/compras/ajustes'),
+  correo: () => api.get<CorreoCompras>('/compras/correo'),
+  conectarCorreo: (d: { correo: string; nombre?: string; clave?: string; imapHost?: string; imapPuerto?: number }) => api.put<CorreoCompras>('/compras/correo', d),
+  revisarCorreo: () => api.post<CorreoCompras>('/compras/correo/revisar', {}),
+  quitarCorreo: () => api.delete<CorreoCompras>('/compras/correo'),
   guardarAjustes: (a: Partial<AjustesCompras>) => api.put<AjustesCompras>('/compras/ajustes', a),
 
   proveedores: (sede?: string) => api.get<Proveedor[]>(conSede('/compras/proveedores', sede)),
@@ -171,6 +175,11 @@ export const comprasApi = {
 };
 
 /** Para abrir un pedido al llegar a Compras desde otra pantalla (Mi semana, Catálogo, un aviso) */
+/** El correo del salón que Lalan usa para compras (la contraseña nunca vuelve) */
+export type CorreoCompras =
+  | { conectado: false }
+  | { conectado: true; correo: string; nombre: string | null; imapHost: string; imapPuerto: number; activo: boolean; revisadoEn: string | null; error: string | null };
+
 export const ABRIR_PEDIDO = 'lalan_abrir_pedido';
 /** La notificación de un pedido pide abrirlo con la pantalla ya abierta */
 export const EVENTO_ABRIR_PEDIDO = 'lalan:abrir-pedido';
