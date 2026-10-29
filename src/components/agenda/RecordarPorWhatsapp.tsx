@@ -44,7 +44,7 @@ const cuandoFue = (iso: string) => {
   return hoy ? `hoy a las ${hora(iso)}` : d.toLocaleString('es-DO', { weekday: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
-const CHIP: Record<EstadoAutomatico, [string, string]> = {
+export const CHIP_RECORDATORIO: Record<EstadoAutomatico, [string, string]> = {
   enviado: ['Lalan ya se lo recordó', 'bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-300'],
   gratis: ['Lalan se lo recuerda gratis', 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'],
   pagado: ['El automático cobra', 'bg-amber-500/15 text-amber-700 dark:text-amber-400'],
@@ -57,7 +57,7 @@ const CHIP: Record<EstadoAutomatico, [string, string]> = {
  * darle a enviar. Al tocarlo queda anotado quién se lo mandó, y el
  * recordatorio pagado de Meta para esa cita ya no sale.
  */
-const BotonWhatsapp: React.FC<{ r: RecordatorioAMano; onMarcado: (r: RecordatorioAMano) => void; compacto?: boolean; suave?: boolean }> = ({ r, onMarcado, compacto, suave }) => {
+export const BotonWhatsapp: React.FC<{ r: RecordatorioAMano; onMarcado: (r: RecordatorioAMano) => void; compacto?: boolean; suave?: boolean }> = ({ r, onMarcado, compacto, suave }) => {
   if (!r.enlace) return null;
   const marcar = () => { recordatoriosApi.marcar(r.id).then(onMarcado).catch(() => { /* el enlace ya se abrió: lo importante salió */ }); };
   return (
@@ -84,7 +84,7 @@ export const RecordatorioCita: React.FC<{ citaId: string; onCambio?: (r: Recorda
   const copiar = async () => {
     try { await navigator.clipboard.writeText(r.texto); setCopiado(true); setTimeout(() => setCopiado(false), 2000); } catch { /* sin portapapeles */ }
   };
-  const [chip, color] = CHIP[r.automatico.estado];
+  const [chip, color] = CHIP_RECORDATORIO[r.automatico.estado];
   return (
     <div className="p-4 rounded-3xl border border-slate-200/80 dark:border-neutral-800 space-y-3">
       <div className="flex items-start gap-3">
@@ -136,7 +136,7 @@ export function useRecordatoriosAMano() {
 }
 
 const Fila: React.FC<{ r: RecordatorioAMano; onMarcado: (r: RecordatorioAMano) => void; onAbrir: (id: string) => void }> = ({ r, onMarcado, onAbrir }) => {
-  const [chip, color] = r.aMano ? ['Se lo mandaste', 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'] : CHIP[r.automatico.estado];
+  const [chip, color] = r.aMano ? ['Se lo mandaste', 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'] : CHIP_RECORDATORIO[r.automatico.estado];
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/80 dark:border-neutral-800">
       <button type="button" onClick={() => onAbrir(r.id)} className="flex-1 min-w-0 text-left cursor-pointer group">
@@ -162,8 +162,8 @@ const Fila: React.FC<{ r: RecordatorioAMano; onMarcado: (r: RecordatorioAMano) =
  */
 export const RecordatoriosAMano: React.FC<{
   abierto: boolean; onCerrar: () => void; lista: RecordatorioAMano[] | null;
-  onMarcado: (r: RecordatorioAMano) => void; onAbrir: (id: string) => void;
-}> = ({ abierto, onCerrar, lista, onMarcado, onAbrir }) => {
+  onMarcado: (r: RecordatorioAMano) => void; onAbrir: (id: string) => void; onMiSemana?: () => void;
+}> = ({ abierto, onCerrar, lista, onMarcado, onAbrir, onMiSemana }) => {
   const faltan = (lista ?? []).filter(faltaRecordar);
   const cubiertas = (lista ?? []).filter((r) => !faltaRecordar(r));
   return (
@@ -183,6 +183,11 @@ export const RecordatoriosAMano: React.FC<{
             <h4 className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-400">Ya cubiertas ({cubiertas.length})</h4>
             {cubiertas.map((r) => <Fila key={r.id} r={r} onMarcado={onMarcado} onAbrir={onAbrir} />)}
           </section>
+        )}
+        {onMiSemana && (
+          <button type="button" onClick={onMiSemana} className="w-full py-3 rounded-2xl text-[0.8125rem] font-bold text-[var(--primary)] bg-[var(--primary)]/10 flex items-center justify-center gap-1 cursor-pointer">
+            Ver la semana completa, con gustos, alergias y productos <ChevronRight className="w-4 h-4" />
+          </button>
         )}
       </div>
     </IOSModal>

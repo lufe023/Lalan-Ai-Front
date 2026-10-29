@@ -45,6 +45,9 @@ import { SedesDeClienta } from '../components/ui/SedesDeClienta';
 /** Cuántas clientas se sugieren mientras se escribe su nombre */
 const CLIENTAS_SUGERIDAS = 6;
 
+/** Otra pantalla deja aquí el id de la cita que la Agenda tiene que abrir */
+export const ABRIR_CITA = 'lalan.abrirCita';
+
 export const CalendarScreen: React.FC = () => {
   const { dinero } = useDinero();
   const {
@@ -97,6 +100,16 @@ export const CalendarScreen: React.FC = () => {
     setActiveAppointment(a);
   };
   const totalPendientes = useMemo(() => citasPendientes(appointments).total, [appointments]);
+  // Otra pantalla (Mi semana) pidió abrir una cita: se salta a su día y se abre
+  useEffect(() => {
+    let id: string | null = null;
+    try { id = sessionStorage.getItem(ABRIR_CITA); } catch { /* sin almacenamiento */ }
+    if (!id) return;
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return; // aún cargando: se intenta de nuevo cuando lleguen
+    try { sessionStorage.removeItem(ABRIR_CITA); } catch { /* nada */ }
+    abrirPendiente(a);
+  }, [appointments]);
   /* Recordatorios de hoy y mañana desde el WhatsApp propio (sin plantilla de Meta) */
   const recordatorios = useRecordatoriosAMano();
   const [verRecordatorios, setVerRecordatorios] = useState(false);
@@ -1146,7 +1159,7 @@ export const CalendarScreen: React.FC = () => {
       </AnimatePresence>
       <CitasPendientes abierto={verPendientes} onCerrar={() => setVerPendientes(false)} citas={appointments} onAbrir={abrirPendiente} />
       <RecordatoriosAMano abierto={verRecordatorios} onCerrar={() => setVerRecordatorios(false)} lista={recordatorios.lista}
-        onMarcado={recordatorios.cambiar} onAbrir={abrirRecordatorio} />
+        onMarcado={recordatorios.cambiar} onAbrir={abrirRecordatorio} onMiSemana={() => navigateTo('mi-semana')} />
       {cambiandoDe && (
         <CambiarEspecialista
           cita={{
