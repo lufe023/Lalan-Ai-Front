@@ -26,7 +26,8 @@ interface Cita {
   sede: { id: string; nombre: string };
   recordatorio: RecordatorioAMano;
   gustos: Gusto[];
-  alergias: { nombres: string[]; avisos: { productId: string; texto: string }[] };
+  /** producto/nivel/componente pueden faltar si el servidor es anterior: entonces se muestra el texto */
+  alergias: { nombres: string[]; avisos: { productId: string; texto: string; producto?: string; nivel?: 'contiene' | 'puede_contener' | 'sin_datos'; componente?: string | null }[] };
   senales: { emoji: string; descripcion: string; valor: string; fechaEvento: string | null }[];
   productos: ProductoDeCita[];
   staffTelefono: string | null;
@@ -349,6 +350,26 @@ const Enlace: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ 
   </button>
 );
 
+/**
+ * Los avisos de alergia agrupados, una línea por cosa: qué componente lleva
+ * cada producto y, en una sola línea, los que Lalan no sabe qué llevan. Así
+ * no se repite la misma frase por cada producto de la receta.
+ */
+const lineasDeAlergia = (avisos: Cita['alergias']['avisos']) => {
+  if (avisos.some((a) => !a.nivel || !a.producto)) return [...new Set(avisos.map((a) => a.texto))].map((texto) => ({ fuerte: false, titulo: '', productos: texto }));
+  const porComponente = (nivel: 'contiene' | 'puede_contener') => {
+    const m = new Map<string, string[]>();
+    for (const a of avisos.filter((x) => x.nivel === nivel)) m.set(a.componente ?? '', [...(m.get(a.componente ?? '') ?? []), a.producto!]);
+    return [...m];
+  };
+  const sinDatos = [...new Set(avisos.filter((a) => a.nivel === 'sin_datos').map((a) => a.producto!))];
+  return [
+    ...porComponente('contiene').map(([comp, ps]) => ({ fuerte: true, titulo: `Lleva ${comp}`, productos: ps.join(', ') })),
+    ...porComponente('puede_contener').map(([comp, ps]) => ({ fuerte: false, titulo: `Puede llevar ${comp}`, productos: ps.join(', ') })),
+    ...(sinDatos.length ? [{ fuerte: false, titulo: 'Revisa la etiqueta', productos: sinDatos.join(', ') }] : []),
+  ];
+};
+
 /** Una cita con todo lo que hay que saber antes de que llegue */
 const TarjetaCita: React.FC<{
   c: Cita; indice: number; $: (n: number) => string;
@@ -357,6 +378,8 @@ const TarjetaCita: React.FC<{
 }> = ({ c, indice, $, onRecordatorio, onFicha, onCita, onChat, onInventario, onCambiar, onResolver, onFoto }) => {
   const [chip, color] = c.recordatorio.aMano ? ['Ya se lo mandaste', 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'] : CHIP_RECORDATORIO[c.recordatorio.automatico.estado];
   const faltan = c.productos.filter((p) => !p.alcanza);
+  const hayAlergia = c.alergias.avisos.length > 0 || c.alergias.nombres.length > 0;
+  const lineas = lineasDeAlergia(c.alergias.avisos);
   const hoy = new Date().toISOString().slice(0, 10);
   return (
     <Aparecer indice={indice} className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3">
@@ -387,6 +410,52 @@ const TarjetaCita: React.FC<{
           </div>
         </div>
       </div>
+
+      {/* Lo urgente, arriba y aparte: alergia y productos que no alcanzan */}
+      {(hayAlergia || faltan.length > 0) && (
+        <div className="rounded-2xl bg-rose-500/[0.07] dark:bg-rose-500/10 border border-rose-500/25 p-3 space-y-3">
+          <p className="text-[0.6875rem] font-extrabold uppercase tracking-wide text-rose-700 dark:text-rose-300">Antes de empezar</p>
+          {hayAlergia && (
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                <span className="flex items-center gap-1.5 text-[0.8125rem] text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                  <b>Alergia: {c.alergias.nombres.join(', ').toLowerCase() || 'revisa la etiqueta'}</b>
+                </span>
+                {c.clientId && <Enlace onClick={() => onFicha(c.clientId!)}>Ver su ficha</Enlace>}
+              </div>
+              {lineas.length > 0 && (
+                <ul className="pl-6 space-y-1">
+                  {lineas.map((l, i) => (
+                    <li key={i} className={`text-[0.75rem] leading-snug list-disc ${l.fuerte ? 'text-rose-800 dark:text-rose-200' : 'text-slate-700 dark:text-neutral-300'}`}>
+                      {l.titulo && <b>{l.titulo}: </b>}{l.productos}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {c.alergias.avisos.length > 0 && <p className="pl-6 text-[0.6875rem] text-slate-500 dark:text-neutral-400">Habla con ella antes de empezar.</p>}
+            </div>
+          )}
+          {faltan.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                <span className="flex items-center gap-1.5 text-[0.8125rem] text-rose-800 dark:text-rose-300">
+                  <Package className="w-4 h-4 shrink-0 text-rose-500" />
+                  <b>{faltan.length === 1 ? 'Falta un producto' : `Faltan ${faltan.length} productos`}</b>
+                </span>
+                <Enlace onClick={onInventario}>Ver inventario</Enlace>
+              </div>
+              <ul className="pl-6 space-y-1">
+                {faltan.map((p) => (
+                  <li key={p.productId} className="text-[0.75rem] leading-snug list-disc text-slate-700 dark:text-neutral-300">
+                    <b>{p.nombre}</b>: hay {cantidad(p.hay, p.unidad)}, pide {cantidad(p.necesita, p.unidad)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-neutral-800">
         {/* Recordatorio */}
@@ -443,31 +512,18 @@ const TarjetaCita: React.FC<{
           </Fila>
         )}
 
-        {/* Alergias: por su nombre y el producto que la lleva */}
-        {(c.alergias.avisos.length > 0 || c.alergias.nombres.length > 0) && (
-          <Fila icono={<AlertTriangle className="w-4 h-4 text-amber-500" />} tono="text-amber-800 dark:text-amber-200">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span><b>Alergia:</b> {c.alergias.nombres.join(', ') || 'revisa la etiqueta'}</span>
-              {c.clientId && <Enlace onClick={() => onFicha(c.clientId!)}>Ver su ficha</Enlace>}
-            </div>
-            {c.alergias.avisos.map((a) => <p key={a.productId} className="text-[0.75rem] text-amber-700 dark:text-amber-300">{a.texto}</p>)}
-          </Fila>
-        )}
-
-        {/* Productos del servicio en su sede */}
-        {faltan.length > 0 ? (
-          <Fila icono={<Package className="w-4 h-4 text-rose-500" />} tono="text-rose-800 dark:text-rose-300">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span><b>Falta:</b> {faltan.map((p) => `${p.nombre} (hay ${cantidad(p.hay, p.unidad)}, pide ${cantidad(p.necesita, p.unidad)})`).join(' · ')}</span>
-              <Enlace onClick={onInventario}>Ver inventario</Enlace>
-            </div>
-          </Fila>
-        ) : c.productos.length > 0 && (
+        {/* Productos del servicio en su sede: si alcanzan, solo una línea discreta */}
+        {faltan.length === 0 && c.productos.length > 0 && (
           <Fila icono={<Package className="w-4 h-4 text-emerald-500" />} tono="text-slate-500 dark:text-neutral-400">
             <span className="text-[0.75rem]">Productos del servicio: alcanzan</span>
           </Fila>
         )}
+      </div>
 
+      {/* Lo que la hace sentir en casa: abajo y más suave, no es urgente */}
+      {(c.gustos.length > 0 || c.senales.length > 0) && (
+      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-neutral-800">
+        <p className="text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400 dark:text-neutral-500">Para consentirla</p>
         {/* Gustos: aunque el salón no tenga Lounge */}
         {c.gustos.length > 0 && (
           <Fila icono="💜">
@@ -502,6 +558,7 @@ const TarjetaCita: React.FC<{
           </Fila>
         )}
       </div>
+      )}
 
       <div className="grid grid-cols-3 sm:flex gap-2 pt-1">
         {c.conversationId && <button type="button" onClick={() => onChat(c.conversationId!)} className={BOTON}><MessageCircle className="w-3.5 h-3.5" /> Su chat</button>}
