@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActividadCanal } from '../components/canales/ActividadCanal';
 import { CostosWhatsapp } from '../components/canales/CostosWhatsapp';
 import { PlantillasWhatsapp } from '../components/canales/PlantillasWhatsapp';
+import { PerfilWhatsapp } from '../components/canales/PerfilWhatsapp';
 import { motion } from 'motion/react';
 import {
   Bot,
@@ -53,6 +54,7 @@ export const BotsControlScreen: React.FC = () => {
     catch (e: any) { showToast('No se pudo cambiar', e?.message ?? '', 'warning'); }
   };
 
+  const [perfilAbierto, setPerfilAbierto] = useState(false);
   const esDireccion = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   /* Aviso a la dueña por WhatsApp: se editan en local y se guardan al salir del campo */
@@ -289,6 +291,19 @@ export const BotsControlScreen: React.FC = () => {
 
               {/* Lo que hizo, contado de verdad: hoy o los últimos días */}
               <ActividadCanal canal={bot.id} hoy={bot.actividad} alVerChats={() => navigateTo('chats')} sede={bot.locationId} />
+
+              {/* WhatsApp: la foto, el nombre y los datos que ve la clienta al tocar el chat */}
+              {bot.id === 'whatsapp' && bot.channelIdentifier && esDireccion && (
+                <details className="pt-2 border-t border-slate-100 dark:border-neutral-800/80 group" onToggle={e => setPerfilAbierto(e.currentTarget.open)}>
+                  <summary className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200 cursor-pointer select-none">
+                    Foto, nombre y datos del perfil
+                  </summary>
+                  <div className="mt-2">
+                    {/* Se pide a Meta solo al abrirlo */}
+                    {perfilAbierto && <PerfilWhatsapp sede={sedeVista || bot.locationId} />}
+                  </div>
+                </details>
+              )}
 
               {/* WhatsApp: lo que cobra Meta, apagar lo cobrado y cómo se ven las plantillas */}
               {bot.id === 'whatsapp' && bot.channelIdentifier && esDireccion && (
