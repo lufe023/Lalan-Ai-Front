@@ -18,6 +18,8 @@ import { ChatsScreen } from './screens/ChatsScreen';
 import { BotsControlScreen } from './screens/BotsControlScreen';
 import { InformesScreen } from './screens/InformesScreen';
 import { ComprasScreen } from './screens/ComprasScreen';
+import { AvisosScreen } from './screens/AvisosScreen';
+import { MiActividadScreen } from './screens/MiActividadScreen';
 import { RegistroProveedorScreen } from './screens/RegistroProveedorScreen';
 import { MiSemanaScreen } from './screens/MiSemanaScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -135,6 +137,8 @@ const MainAppContent: React.FC = () => {
       case 'informes':    return <InformesScreen    key="informes"    />;
       case 'mi-semana':   return <MiSemanaScreen    key="mi-semana"   />;
       case 'compras':     return <ComprasScreen     key="compras"     />;
+      case 'avisos':      return <AvisosScreen      key="avisos"      />;
+      case 'mi-actividad': return <MiActividadScreen key="mi-actividad" />;
       default:          return <DashboardScreen key="default"   />;
     }
   };
