@@ -47,7 +47,7 @@ const MODULO_DE_PESTANA: Partial<Record<ScreenName, ClaveModulo>> = {
   lounge: 'lounge_musica',
   caja: 'caja',
   'price-lists': 'listas_precios',
-  compras: 'inventario',
+  compras: 'compras',
 };
 
 /**

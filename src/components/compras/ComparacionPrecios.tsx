@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Bot, Check, ChevronRight, HandCoins, Loader2, MessageCircle, Scale, Send, Trophy, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { usePlan } from '../../context/PlanContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { EtiquetaSede } from '../ui/CopiarASede';
 import { Aparecer } from '../ui/movimiento';
@@ -17,6 +18,8 @@ type Proveedor = Comparacion['proveedores'][number];
  */
 export const ComparacionPrecios: React.FC<{ id: string; onVolver: () => void; onAbrirPedido: (id: string) => void; onCambio: () => void }> = ({ id, onVolver, onAbrirPedido, onCambio }) => {
   const { showToast, currencies } = useApp();
+  // Pedir precio y pedir mejor precio los hace Lalan: módulo Compras automáticas
+  const automaticas = usePlan().tieneModulo('compras_lalan');
   const { confirmar, modalConfirmar } = useConfirmar();
   const [c, setC] = useState<Comparacion | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +161,7 @@ export const ComparacionPrecios: React.FC<{ id: string; onVolver: () => void; on
               : sinPedir.length ? <>Todavía no se le ha pedido precio a {sinPedir.map((p) => p.proveedor.nombre).join(', ')}.</>
                 : <>Cotizaron {c.cotizaron} de {c.enRonda}. Lalan lee lo que manden (mensaje, PDF o foto) y te avisa cuando estén todos.</>}
         </span>
-        {!c.decidida && sinPedir.length > 0 && (
+        {automaticas && !c.decidida && sinPedir.length > 0 && (
           <button type="button" disabled={!!ocupado} onClick={() => void pedirATodos()} className={botonPrincipal}>
             {ocupado === 'pedir' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Que Lalan pida precio a {sinPedir.length === 1 ? '1' : `los ${sinPedir.length}`}
           </button>
@@ -183,7 +186,7 @@ export const ComparacionPrecios: React.FC<{ id: string; onVolver: () => void; on
             {p.esperaDuena && <p className="text-[0.75rem] font-semibold text-violet-600 flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> Lalan te pregunta algo</p>}
             <div className="flex flex-wrap gap-1.5 pt-1">
               <button type="button" onClick={() => onAbrirPedido(p.ordenId)} className={botonSuave}><MessageCircle className="w-4 h-4" /> Conversación</button>
-              {puedeMejorar(p) && (
+              {automaticas && puedeMejorar(p) && (
                 <button type="button" disabled={!!ocupado} onClick={() => void mejorar(p)} className={botonSuave} title="Lalan le dice que hay otra cotización más baja, sin decir de quién">
                   {ocupado === `mejorar:${p.proveedor.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <HandCoins className="w-4 h-4" />} Pedir mejor precio
                 </button>

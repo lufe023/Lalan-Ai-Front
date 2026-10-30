@@ -265,7 +265,7 @@ export const MiSemanaScreen: React.FC = () => {
                 </div>
               ))}
               <div className="flex flex-wrap gap-2 pt-1">
-                {tieneModulo('inventario') && (
+                {tieneModulo('compras') && (
                   <button type="button" disabled={armando} onClick={() => void armarPedido()} className="px-3 py-2 rounded-xl text-[0.75rem] font-bold bg-[var(--primary)] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                     {armando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />} Armar el pedido
                   </button>

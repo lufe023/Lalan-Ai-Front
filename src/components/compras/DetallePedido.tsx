@@ -4,6 +4,7 @@ import {
   Scale, Search, Send, Trash2, X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { usePlan } from '../../context/PlanContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import {
   PASOS, cantidadTexto, comprasApi, dinero, unidadTexto, type EstadoCompra, type Evento, type LineaNueva, type Pedido,
@@ -30,6 +31,8 @@ const aRenglones = (p: Pedido): Renglon[] => p.lineas.map((l) => ({
  */
 export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambio: () => void; onAbrir: (id: string) => void; onComparar?: (comparacionId: string) => void }> = ({ id, onVolver, onCambio, onAbrir, onComparar }) => {
   const { showToast, products, navigateToCatalog } = useApp();
+  // Que Lalan le escriba al proveedor es del módulo Compras automáticas
+  const automaticas = usePlan().tieneModulo('compras_lalan');
   const { confirmar, modalConfirmar } = useConfirmar();
   const [p, setP] = useState<Pedido | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +193,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             <button type="button" disabled={guardando || !!ocupado} onClick={() => void guardarBorrador()} className={botonSuave} title="Se queda guardado; no se le manda ni se le confirma nada al proveedor">
               {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} {p.estado === 'borrador' ? 'Guardar borrador' : 'Guardar'}
             </button>
-            {p.proveedor.lalanHabla && !p.manejaLalan && (
+            {automaticas && p.proveedor.lalanHabla && !p.manejaLalan && (
               <button type="button" disabled={sinRenglones || !!ocupado} onClick={() => void lalanPide()} className={botonSuave} title="Lalan le escribe, anota los precios y te pregunta antes de comprar">
                 {ocupado === 'lalan' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />} Que Lalan pida el precio
               </button>
@@ -399,7 +402,7 @@ const TITULO_EVENTO: Record<string, string> = {
 const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileALalan: number }> = ({ pedido, onCambio, dileALalan }) => {
   const { showToast } = useApp();
   const { confirmar, modalConfirmar } = useConfirmar();
-  const lalanHabla = pedido.proveedor.lalanHabla;
+  const lalanHabla = usePlan().tieneModulo('compras_lalan') && pedido.proveedor.lalanHabla;
   const [modo, setModo] = useState<'nota' | 'proveedor' | 'lalan'>(pedido.esperaDuena && lalanHabla ? 'lalan' : 'nota');
   const caja = useRef<HTMLElement>(null);
   const escribir = useRef<HTMLTextAreaElement>(null);

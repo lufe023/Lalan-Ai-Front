@@ -157,7 +157,11 @@ export interface Comparacion {
 }
 export interface PedidoDeRonda { ordenId: string; proveedor: string; canal: 'whatsapp' | 'correo' | null; motivo?: string }
 
-export interface AjustesCompras { modo: ModoCompra; impuestoPct: number; avisarFaltantes: boolean; terminos: string | null }
+export interface AjustesCompras {
+  modo: ModoCompra; impuestoPct: number; avisarFaltantes: boolean; terminos: string | null;
+  /** Si el plan incluye Compras automáticas (sin ellas, el modo «lalan» no se puede elegir) */
+  automaticas?: boolean;
+}
 
 export interface Sugerencia {
   id: string; nombre: string; contacto: string | null; whatsapp: string | null; correo: string | null; web: string | null;
