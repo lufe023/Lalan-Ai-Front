@@ -89,6 +89,7 @@ export function irA(destino: { ir: string | null; aviso?: string | null; convers
 export function botonDe(ir: string | null, aviso: string | null): string {
   if (aviso?.startsWith('cita:')) return 'Ver cita';
   if (aviso?.startsWith('pedido:')) return 'Revisar pedido';
+  if (aviso?.startsWith('comparacion:')) return 'Comparar precios';
   if (aviso?.startsWith('servicio:')) return 'Subir fotos';
   if (aviso?.startsWith('clienta:')) return 'Ver ficha';
   switch (ir) {

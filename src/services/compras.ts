@@ -94,11 +94,15 @@ export interface FilaPedido {
   total: number; currencyCode: string; renglones: number; fechaLimite: string | null; entregaEsperada: string | null;
   creadoEn: string; creadoPor: string | null; origen: string; manejaLalan: boolean; esperaDuena: boolean; atrasada: boolean;
   cuenta: CuentaPedido | null;
+  /** Se le pidió lo mismo a otros proveedores para comparar precios */
+  comparacionId: string | null;
 }
 
 export interface LineaPedido {
   id: string; productId: string; descripcion: string; cantidad: number; unidadCompra: string | null; factor: number;
   precio: number; impuestoPct: number; recibido: number; importe: number; codigo: string | null; hay: number;
+  /** El precio que dio el proveedor (null = todavía no lo cotiza) y si dijo que no lo tiene */
+  precioCotizado: number | null; sinExistencia: boolean;
   producto: { id: string; name: string; unit: string; fotoId: string | null } | null;
 }
 
@@ -112,6 +116,7 @@ export interface Pedido {
   /** Dónde se entrega y quién lo recibe (sale en la hoja y en el mensaje) */
   entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null;
   manejaLalan: boolean; esperaDuena: boolean; preguntaDuena: string | null; creadoEn: string; seEdita: boolean;
+  comparacionId: string | null;
   lineas: LineaPedido[]; historial: Evento[];
   adjuntos: { id: string; nombre: string; tipo: string; tamano: number; creadoEn: string }[];
   cuenta: CuentaPedido | null; condicionesPago: string | null; pagos: PagoPedido[];
@@ -128,8 +133,29 @@ export interface Resumen {
 export interface PorPedir {
   productId: string; nombre: string; unidad: string; sede: { id: string; nombre: string };
   hay: number; minimo: number; necesitaCitas: number; faltan: number; yaPedido: number; motivo: 'citas' | 'minimo';
-  proveedor: { id: string; nombre: string; precio: number | null; currencyCode: string | null; unidadCompra: string | null; factor: number } | null;
+  proveedor: OpcionProveedor | null;
+  /** Todos los que lo venden en esa sede (el preferido primero), para comparar precios */
+  opciones: OpcionProveedor[];
 }
+export interface OpcionProveedor { id: string; nombre: string; precio: number | null; currencyCode: string | null; unidadCompra: string | null; factor: number }
+
+/** Lo mismo pedido a varios proveedores, lado a lado */
+export interface Oferta {
+  ordenId: string; proveedorId: string; lineaId: string; cantidad: number; unidadCompra: string | null; factor: number;
+  precio: number | null; currencyCode: string; porUnidadBase: number | null; importeBase: number | null; sinExistencia: boolean;
+}
+export interface Comparacion {
+  id: string; sede: { id: string; nombre: string }; moneda: { code: string; simbolo: string };
+  proveedores: {
+    ordenId: string; numero: string; estado: EstadoCompra; proveedor: { id: string; nombre: string; whatsapp?: string | null; correo?: string | null; lalanHabla?: boolean };
+    currencyCode: string; renglones: number; cotizados: number; sinExistencia: number; completo: boolean; total: number; totalBase: number | null;
+    entregaEsperada: string | null; referenciaProveedor: string | null; manejaLalan: boolean; esperaDuena: boolean;
+  }[];
+  productos: { productId: string; descripcion: string; ofertas: Oferta[]; mejor: string | null; ahorro: number }[];
+  cotizaron: number; enRonda: number; completa: boolean; decidida: boolean;
+  sugerida: Record<string, string>; totalSugeridoBase: number; ahorroBase: number;
+}
+export interface PedidoDeRonda { ordenId: string; proveedor: string; canal: 'whatsapp' | 'correo' | null; motivo?: string }
 
 export interface AjustesCompras { modo: ModoCompra; impuestoPct: number; avisarFaltantes: boolean; terminos: string | null }
 
@@ -182,6 +208,18 @@ export const comprasApi = {
   porPedir: (sede?: string) => api.get<PorPedir[]>(conSede('/compras/por-pedir', sede)),
   armar: (d: { locationId?: string | null; origen?: string; items: { productId: string; faltan: number; proveedorId?: string | null }[] }) =>
     api.post<{ ordenes: { id: string; numero: string; proveedor: string; nueva: boolean }[]; sinProveedor: { productId: string; nombre: string }[] }>('/compras/armar', d),
+
+  /** Lo mismo a varios proveedores: un borrador por proveedor en una sola ronda */
+  comparar: (d: { locationId?: string | null; origen?: string; items: { productId: string; faltan: number; proveedorIds: string[] }[] }) =>
+    api.post<{ comparacionId: string; ordenes: { id: string; numero: string; proveedor: string; proveedorId: string }[] }>('/compras/comparar', d),
+  comparacion: (id: string) => api.get<Comparacion>(`/compras/comparaciones/${id}`),
+  /** Lalan les pide precio a todos los de la ronda */
+  pedirATodos: (id: string) => api.post<{ pedidos: PedidoDeRonda[]; comparacion: Comparacion }>(`/compras/comparaciones/${id}/pedir`, {}),
+  /** Lalan le pide a ese proveedor que mejore (sin decir quién dio el otro precio) */
+  mejorarPrecio: (id: string, proveedorId: string) => api.post<{ ordenId: string; renglones: number; comparacion: Comparacion }>(`/compras/comparaciones/${id}/mejorar`, { proveedorId }),
+  /** La dueña elige a quién le compra cada producto */
+  elegir: (id: string, eleccion: { productId: string; proveedorId: string }[]) =>
+    api.post<{ resultado: { ordenId: string; estado: EstadoCompra; proveedor: string }[]; comparacion: Comparacion }>(`/compras/comparaciones/${id}/elegir`, { eleccion }),
 
   resumen: (sede?: string) => api.get<Resumen>(conSede('/compras/resumen', sede)),
   pedidos: (f: { sede?: string; filtro?: string; estado?: string; proveedorId?: string; q?: string }) => {

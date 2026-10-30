@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bot, Loader2, Plus, Search, Settings2, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, Bot, Loader2, Plus, Scale, Search, Settings2, ShoppingCart } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -11,6 +11,7 @@ import { ItemAnimado, ListaAnimada } from '../components/ui/movimiento';
 import { useSedes } from '../hooks/useSedes';
 import { ABRIR_PEDIDO, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
 import { DetallePedido } from '../components/compras/DetallePedido';
+import { ComparacionPrecios } from '../components/compras/ComparacionPrecios';
 import { ListaProveedores } from '../components/compras/Proveedores';
 import { PorPedir } from '../components/compras/PorPedir';
 import { AjustesCompras } from '../components/compras/AjustesCompras';
@@ -35,13 +36,21 @@ export const ComprasScreen: React.FC = () => {
   const [vista, setVista] = useState<Vista>(() => {
     try { const v = sessionStorage.getItem(VISTA_COMPRAS); if (v) sessionStorage.removeItem(VISTA_COMPRAS); return (v as Vista) || 'pedidos'; } catch { return 'pedidos'; }
   });
-  const [abierto, setAbierto] = useState<string | null>(() => {
+  // Lo que pidió abrir otra pantalla o un aviso: un pedido, o una comparación ("comparacion:<id>")
+  const [pendiente] = useState<string | null>(() => {
     try { const id = sessionStorage.getItem(ABRIR_PEDIDO); if (id) sessionStorage.removeItem(ABRIR_PEDIDO); return id; } catch { return null; }
   });
-  // Con Compras ya abierta, la notificación de un pedido lo abre
+  const [abierto, setAbierto] = useState<string | null>(() => (pendiente && !pendiente.startsWith('comparacion:') ? pendiente : null));
+  const [comparando, setComparando] = useState<string | null>(() => (pendiente?.startsWith('comparacion:') ? pendiente.slice('comparacion:'.length) : null));
+  // Con Compras ya abierta, la notificación de un pedido (o de una comparación) lo abre
   useEffect(() => {
     const abrir = () => {
-      try { const id = sessionStorage.getItem(ABRIR_PEDIDO); if (id) { sessionStorage.removeItem(ABRIR_PEDIDO); setVista('pedidos'); setAbierto(id); } } catch { /* nada */ }
+      try {
+        const id = sessionStorage.getItem(ABRIR_PEDIDO);
+        if (!id) return;
+        sessionStorage.removeItem(ABRIR_PEDIDO); setVista('pedidos');
+        if (id.startsWith('comparacion:')) { setAbierto(null); setComparando(id.slice('comparacion:'.length)); } else { setComparando(null); setAbierto(id); }
+      } catch { /* nada */ }
     };
     window.addEventListener(EVENTO_ABRIR_PEDIDO, abrir);
     return () => window.removeEventListener(EVENTO_ABRIR_PEDIDO, abrir);
@@ -52,7 +61,7 @@ export const ComprasScreen: React.FC = () => {
       try {
         if (sessionStorage.getItem('lalan.abrirAviso') !== 'por-pagar') return;
         sessionStorage.removeItem('lalan.abrirAviso');
-        setAbierto(null); setVista('por-pagar');
+        setAbierto(null); setComparando(null); setVista('por-pagar');
       } catch { /* nada */ }
     };
     revisar();
@@ -89,6 +98,12 @@ export const ComprasScreen: React.FC = () => {
   ] : [], [resumen]);
 
   const abrir = (id: string) => { setAbierto(id); setVista('pedidos'); };
+  /** Abrir un pedido desde la comparación vuelve a la comparación con Atrás */
+  const [volverAComparar, setVolverAComparar] = useState<string | null>(null);
+  const cerrarPedido = () => {
+    setAbierto(null); setVuelta((v) => v + 1);
+    if (volverAComparar) { setComparando(volverAComparar); setVolverAComparar(null); }
+  };
 
   return (
     <div id="compras-screen" className="flex-1 w-full h-full flex flex-col overflow-hidden">
@@ -96,8 +111,8 @@ export const ComprasScreen: React.FC = () => {
         title="Compras"
         subtitle="Proveedores, pedidos y lo que llega"
         // Con un pedido abierto, Atrás (botón, deslizar desde el borde o clic derecho) vuelve a la lista
-        showBack={!!abierto}
-        onBack={() => { setAbierto(null); setVuelta((v) => v + 1); }}
+        showBack={!!abierto || !!comparando}
+        onBack={() => { if (abierto) cerrarPedido(); else { setComparando(null); setVuelta((v) => v + 1); } }}
         rightAction={
           <div className="flex items-center gap-1.5">
             <SelectorSede sedes={sedes} value={sede} onChange={setSede} todas />
@@ -111,7 +126,11 @@ export const ComprasScreen: React.FC = () => {
       />
       <PageContent className="space-y-3 pb-6 text-slate-900 dark:text-neutral-100">
         {abierto ? (
-          <DetallePedido key={abierto} id={abierto} onVolver={() => { setAbierto(null); setVuelta((v) => v + 1); }} onCambio={() => setVuelta((v) => v + 1)} onAbrir={setAbierto} />
+          <DetallePedido key={abierto} id={abierto} onVolver={cerrarPedido} onCambio={() => setVuelta((v) => v + 1)} onAbrir={setAbierto}
+            onComparar={(cid) => { setAbierto(null); setVolverAComparar(null); setComparando(cid); }} />
+        ) : comparando ? (
+          <ComparacionPrecios key={comparando} id={comparando} onVolver={() => { setComparando(null); setVuelta((v) => v + 1); }} onCambio={() => setVuelta((v) => v + 1)}
+            onAbrirPedido={(id) => { setVolverAComparar(comparando); setComparando(null); setAbierto(id); }} />
         ) : (
           <>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -122,7 +141,8 @@ export const ComprasScreen: React.FC = () => {
               {vista === 'pedidos' && <button type="button" onClick={() => setNuevo(true)} className={botonPrincipal}><Plus className="w-4 h-4" /> Nuevo pedido</button>}
             </div>
 
-            {vista === 'por-pedir' && <PorPedir sede={sede || undefined} recarga={vuelta} onArmados={(ids) => { setVuelta((v) => v + 1); if (ids.length === 1) abrir(ids[0]); else { setFiltro('borrador'); setVista('pedidos'); } }} />}
+            {vista === 'por-pedir' && <PorPedir sede={sede || undefined} recarga={vuelta} onArmados={(ids) => { setVuelta((v) => v + 1); if (ids.length === 1) abrir(ids[0]); else { setFiltro('borrador'); setVista('pedidos'); } }}
+              onComparar={(cid) => { setVuelta((v) => v + 1); setVista('pedidos'); setComparando(cid); }} />}
             {vista === 'por-pagar' && <PorPagarVista sede={sede || undefined} recarga={vuelta} onAbrir={abrir} />}
             {vista === 'proveedores' && <ListaProveedores sede={sede || undefined} recarga={vuelta} onAbrirPedido={abrir} />}
 
@@ -194,7 +214,8 @@ export const ComprasScreen: React.FC = () => {
                                 {dinero(simbolo(o.currencyCode), o.total)}
                                 {o.cuenta && o.cuenta.debe >= 0.005 && <span className={`block text-[0.6875rem] font-semibold ${colorVence(o.cuenta.diasParaVencer)}`}>debes {dinero(simbolo(o.currencyCode), o.cuenta.debe)}</span>}
                               </td>
-                              <td className="px-3 py-2.5"><span className="flex items-center gap-1.5"><PastillaEstado estado={o.estado} />{o.esperaDuena && <span title="Espera tu sí" className="text-violet-600"><Bot className="w-3.5 h-3.5" /></span>}</span></td>
+                              <td className="px-3 py-2.5"><span className="flex items-center gap-1.5"><PastillaEstado estado={o.estado} />{o.esperaDuena && <span title="Espera tu sí" className="text-violet-600"><Bot className="w-3.5 h-3.5" /></span>}
+                                {o.comparacionId && <button type="button" title="Ver la comparación de precios" aria-label="Ver la comparación de precios" onClick={(e) => { e.stopPropagation(); setComparando(o.comparacionId); }} className="text-[var(--primary)] cursor-pointer"><Scale className="w-3.5 h-3.5" /></button>}</span></td>
                             </tr>
                           ))}
                         </tbody>
@@ -213,6 +234,7 @@ export const ComprasScreen: React.FC = () => {
                             <span className="font-bold text-[0.8125rem] text-slate-900 dark:text-white tabular-nums">{dinero(simbolo(o.currencyCode), o.total)}</span>
                           </div>
                           {o.esperaDuena && <p className="mt-1 text-[0.75rem] font-semibold text-violet-600 flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> Lalan espera tu sí</p>}
+                          {o.comparacionId && <button type="button" onClick={(e) => { e.stopPropagation(); setComparando(o.comparacionId); }} className="mt-1 text-[0.75rem] font-bold text-[var(--primary)] flex items-center gap-1 cursor-pointer"><Scale className="w-3.5 h-3.5" /> Ver comparación de precios</button>}
                           {o.cuenta && o.cuenta.debe >= 0.005 && (
                             <p className={`mt-1 text-[0.75rem] font-semibold ${colorVence(o.cuenta.diasParaVencer)}`}>Debes {dinero(simbolo(o.currencyCode), o.cuenta.debe)} · {textoVence(o.cuenta)}</p>
                           )}
