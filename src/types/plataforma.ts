@@ -98,10 +98,15 @@ export interface CatalogosPiloto { tiposNegocio: Opcion[]; queAutomatizar: Opcio
 
 export type ClaveModulo =
   | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
-  | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco' | 'vitrina' | 'fotos_clientes';
+  | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco' | 'vitrina' | 'fotos_clientes'
+  | 'compras' | 'compras_lalan';
 
 export type GrupoModulo = 'atencion' | 'salon' | 'dinero' | 'experiencia';
-export interface ModuloCatalogo { id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo; /** Qué deja de funcionar sin él */ queBloquea?: string }
+export interface ModuloCatalogo {
+  id: ClaveModulo; nombre: string; descripcion: string; grupo: GrupoModulo; /** Qué deja de funcionar sin él */ queBloquea?: string;
+  /** Otro módulo sin el cual este no funciona (Compras necesita Inventario) */
+  requiere?: ClaveModulo;
+}
 export interface CatalogoModulos { modulos: ModuloCatalogo[]; siempreIncluido: string[] }
 
 export type Recurso = 'mensajesMes' | 'sedes' | 'usuarios' | 'especialistas';

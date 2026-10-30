@@ -59,6 +59,26 @@ const Tope: React.FC<{ r: Recurso; valor: number | null; onChange: (v: number | 
   </label>
 );
 
+/** Suma los módulos que necesitan los marcados, siguiendo la cadena */
+function conRequisitos(catalogo: CatalogoModulos, lista: ClaveModulo[]): ClaveModulo[] {
+  const r = new Set(lista);
+  for (let cambio = true; cambio;) {
+    cambio = false;
+    for (const m of catalogo.modulos) if (r.has(m.id) && m.requiere && !r.has(m.requiere)) { r.add(m.requiere); cambio = true; }
+  }
+  return Array.from(r);
+}
+
+/** Quita un módulo y los que dependen de él */
+function sinDependientes(catalogo: CatalogoModulos, lista: ClaveModulo[], quitar: ClaveModulo): ClaveModulo[] {
+  const fuera = new Set<ClaveModulo>([quitar]);
+  for (let cambio = true; cambio;) {
+    cambio = false;
+    for (const m of catalogo.modulos) if (m.requiere && fuera.has(m.requiere) && !fuera.has(m.id)) { fuera.add(m.id); cambio = true; }
+  }
+  return lista.filter((m) => !fuera.has(m));
+}
+
 const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios?: number; onGuardado: () => void }> = ({ plan, catalogo, negocios, onGuardado }) => {
   const [b, setB] = useState<Borrador>(plan);
   const [guardando, setGuardando] = useState(false);
@@ -67,7 +87,8 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
   // Sin precio propio, la respuesta adelantada se cobra a lo que cuesta en el paquete más chico
   const chico = [...(b.paquetes ?? [])].filter((p) => p.respuestas > 0 && p.precio > 0).sort((x, y) => x.respuestas - y.respuestas)[0];
   const precioDelPaquete = chico ? Math.round((chico.precio / chico.respuestas) * 100) / 100 : null;
-  const alternar = (m: ClaveModulo) => setB((x) => ({ ...x, modulos: x.modulos.includes(m) ? x.modulos.filter((y) => y !== m) : [...x.modulos, m] }));
+  // Marcar uno marca lo que necesita (Compras automáticas → Compras → Inventario); quitarlo quita lo que depende de él
+  const alternar = (m: ClaveModulo) => setB((x) => ({ ...x, modulos: x.modulos.includes(m) ? sinDependientes(catalogo, x.modulos, m) : conRequisitos(catalogo, [...x.modulos, m]) }));
   const limite = (r: Recurso, v: number | null) => setB((x) => ({ ...x, limites: { ...x.limites, [r]: v } as Limites }));
 
   const guardar = async () => {
@@ -113,7 +134,7 @@ const EditorPlan: React.FC<{ plan: Borrador; catalogo: CatalogoModulos; negocios
                   <button key={m.id} type="button" onClick={() => alternar(m.id)} aria-pressed={si}
                     className={`p-2.5 rounded-xl border text-left flex gap-2 cursor-pointer transition ${si ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700 opacity-70'}`}>
                     <span className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${si ? 'bg-[var(--primary)] text-white' : 'border border-slate-300 dark:border-neutral-600'}`}>{si && <Check className="w-3.5 h-3.5" />}</span>
-                    <span><b className="text-[0.8125rem] text-slate-900 dark:text-white">{m.nombre}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5">{m.descripcion}</span>{m.queBloquea && <span className="block text-[0.6875rem] text-amber-700 dark:text-amber-400 mt-0.5">Sin él: {m.queBloquea}</span>}</span>
+                    <span><b className="text-[0.8125rem] text-slate-900 dark:text-white">{m.nombre}</b><span className="block text-[0.6875rem] text-slate-500 mt-0.5">{m.descripcion}</span>{m.queBloquea && <span className="block text-[0.6875rem] text-amber-700 dark:text-amber-400 mt-0.5">Sin él: {m.queBloquea}</span>}{m.requiere && <span className="block text-[0.6875rem] text-slate-400 mt-0.5">Necesita {catalogo.modulos.find((x) => x.id === m.requiere)?.nombre ?? m.requiere}</span>}</span>
                   </button>
                 );
               })}

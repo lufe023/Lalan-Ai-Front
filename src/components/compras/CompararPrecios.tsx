@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bot, Loader2, Scale, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { usePlan } from '../../context/PlanContext';
 import { IOSModal } from '../ui/IOSModal';
 import { comprasApi, cantidadTexto, unidadTexto, type PorPedir as Fila, type Proveedor } from '../../services/compras';
 import { botonPrincipal, campo, etiqueta } from './piezas';
@@ -19,6 +20,7 @@ export const CompararPrecios: React.FC<{
   const { showToast } = useApp();
   const clave = (f: Fila) => `${f.sede.id}:${f.productId}`;
   const [aQuien, setAQuien] = useState<Record<string, string[]>>({});
+  const automaticas = usePlan().tieneModulo('compras_lalan');
   const [lalanPide, setLalanPide] = useState(true);
   const [creando, setCreando] = useState(false);
 
@@ -55,9 +57,9 @@ export const CompararPrecios: React.FC<{
           items: grupo.filter((f) => (aQuien[clave(f)] ?? []).length).map((f) => ({ productId: f.productId, faltan: f.faltan, proveedorIds: aQuien[clave(f)] })),
         });
         ids.push(r.comparacionId);
-        if (lalanPide) await comprasApi.pedirATodos(r.comparacionId).catch((e) => showToast('Lalan no pudo pedir precio', (e as Error).message, 'warning'));
+        if (automaticas && lalanPide) await comprasApi.pedirATodos(r.comparacionId).catch((e) => showToast('Lalan no pudo pedir precio', (e as Error).message, 'warning'));
       }
-      showToast(lalanPide ? 'Lalan está pidiendo precios' : 'Comparación lista', lalanPide ? 'Te aviso cuando contesten para que elijas.' : 'Pide precio desde la comparación cuando quieras.', 'success');
+      showToast(automaticas && lalanPide ? 'Lalan está pidiendo precios' : 'Comparación lista', automaticas && lalanPide ? 'Te aviso cuando contesten para que elijas.' : 'Pide precio desde la comparación cuando quieras.', 'success');
       onCreada(ids);
     } catch (e) { showToast('No se pudo', (e as Error).message, 'warning'); }
     finally { setCreando(false); }
@@ -96,10 +98,10 @@ export const CompararPrecios: React.FC<{
             </div>
           );
         })}
-        <label className="flex items-start gap-2 text-[0.8125rem] text-slate-700 dark:text-neutral-200 cursor-pointer">
+        {automaticas && <label className="flex items-start gap-2 text-[0.8125rem] text-slate-700 dark:text-neutral-200 cursor-pointer">
           <input type="checkbox" className="mt-0.5 size-4 accent-[var(--primary)]" checked={lalanPide} onChange={(e) => setLalanPide(e.target.checked)} />
           <span><Bot className="inline w-3.5 h-3.5 text-violet-600 -mt-0.5" /> Que Lalan les pida precio ahora. Lee lo que contesten (mensaje, PDF o foto) y nunca compra sin tu sí.</span>
-        </label>
+        </label>}
         <button type="button" disabled={!listo || creando} onClick={() => void crear()} className={`${botonPrincipal} w-full py-3`}>
           {creando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Scale className="w-4 h-4" />} Comparar con {sedes.length === 1 ? distintos(sedes[0]) : 'varios'} proveedores
         </button>

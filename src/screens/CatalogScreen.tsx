@@ -132,7 +132,7 @@ export const CatalogScreen: React.FC = () => {
   };
   const { currentUser } = useAuth();
   const { tieneModulo } = usePlan();
-  const conCompras = tieneModulo('inventario');
+  const conCompras = tieneModulo('compras');
   useEffect(() => { if (conCompras) cargarProveedores(); }, [conCompras, cargarProveedores]);
 
   const [activeTab, setActiveTab] = useState<'services' | 'products' | 'ofertas'>('services');

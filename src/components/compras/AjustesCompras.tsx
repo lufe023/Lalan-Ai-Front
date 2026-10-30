@@ -32,15 +32,19 @@ export const AjustesCompras: React.FC<{ abierto: boolean; onClose: () => void }>
     <IOSModal isOpen={abierto} onClose={onClose} title="Cómo compras" subtitle="Lo que hace Lalan con lo que falta" fixedHeight={false}>
       {!a ? <div className="flex items-center gap-2 text-[0.8125rem] text-slate-400 py-6 justify-center"><Loader2 className="w-4 h-4 animate-spin" /></div> : (
         <div className="space-y-3 p-1">
-          {MODOS.map((m) => (
-            <button key={m.id} type="button" onClick={() => setA({ ...a, modo: m.id })} className={`w-full p-3 rounded-2xl border text-left flex gap-3 cursor-pointer transition ${a.modo === m.id ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700'}`}>
+          {MODOS.map((m) => {
+            const fuera = m.id === 'lalan' && a.automaticas === false;
+            return (
+            <button key={m.id} type="button" disabled={fuera} onClick={() => setA({ ...a, modo: m.id })} className={`w-full p-3 rounded-2xl border text-left flex gap-3 transition ${fuera ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} ${a.modo === m.id ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700'}`}>
               <span className={`grid place-items-center size-8 rounded-xl shrink-0 ${a.modo === m.id ? 'bg-[var(--primary)] text-white' : 'bg-slate-100 dark:bg-neutral-800 text-slate-500'}`}>{m.icono}</span>
               <span>
                 <span className="block font-bold text-[0.8125rem] text-slate-900 dark:text-white">{m.titulo}</span>
                 <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400">{m.texto}</span>
+                {fuera && <span className="block text-[0.6875rem] font-semibold text-amber-700 dark:text-amber-400 mt-0.5">Viene con el módulo Compras automáticas. Escríbenos para agregarlo a tu plan.</span>}
               </span>
             </button>
-          ))}
+            );
+          })}
           <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/60">
             <span className="text-[0.8125rem] text-slate-700 dark:text-neutral-200"><b>Avisarme lo que falta</b>
               <span className="block text-[0.6875rem] text-slate-500">Cada mañana, al teléfono, si algo bajó de su mínimo o no alcanza para las citas</span></span>
