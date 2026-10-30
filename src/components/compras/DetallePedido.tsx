@@ -10,6 +10,7 @@ import {
 } from '../../services/compras';
 import { EnviarPedido } from './EnviarPedido';
 import { RecibirPedido } from './RecibirPedido';
+import { CuentaDelPedido } from './PorPagar';
 import {
   IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, campo, deInputFecha, etiqueta, fechaHora, paraInputFecha,
 } from './piezas';
@@ -40,6 +41,8 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   const [ocupado, setOcupado] = useState<string | null>(null);
   /** Cada vez que sube, el historial abre «Dile a Lalan» */
   const [dileALalan, setDileALalan] = useState(0);
+  /** Cada vez que sube, «Pago» abre el pago con lo que dijo el proveedor */
+  const [pedirPago, setPedirPago] = useState(0);
 
   const poner = useCallback((x: Pedido) => { setP(x); setRenglones(aRenglones(x)); setCambiado(false); }, []);
   const cargar = useCallback(() => {
@@ -154,9 +157,11 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
         <div className="p-3 rounded-2xl border border-violet-200 dark:border-violet-900/60 bg-violet-50/70 dark:bg-violet-950/20 flex flex-wrap items-center gap-2">
           <Bot className="w-4 h-4 text-violet-600 shrink-0" />
           <span className="flex-1 min-w-[12rem] text-[0.8125rem] text-violet-900 dark:text-violet-200">{p.preguntaDuena ?? 'Lalan espera tu sí para seguir con este pedido.'}</span>
+          {p.pagoReportado && <button type="button" onClick={() => setPedirPago((n) => n + 1)} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, anotar el pago</button>}
           {enCotizacion && <button type="button" onClick={() => void pasar('confirmada', { titulo: `¿Confirmar la compra a ${p.proveedor.nombre}?`, mensaje: `Total ${dinero(s, p.total)}.`, boton: 'Sí, comprar' })} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, comprar</button>}
           <button type="button" onClick={() => setDileALalan((n) => n + 1)} className={botonSuave}><MessageCircle className="w-4 h-4" /> Dile otra cosa</button>
-          <button type="button" onClick={() => void pasar('cancelada', { titulo: '¿No comprar este pedido?', peligro: true, boton: 'No comprar' })} className={botonSuave}>No</button>
+          {/* «No» es no comprar: solo mientras se cotiza o está confirmada */}
+          {(enCotizacion || p.estado === 'confirmada') && !p.pagoReportado && <button type="button" onClick={() => void pasar('cancelada', { titulo: '¿No comprar este pedido?', peligro: true, boton: 'No comprar' })} className={botonSuave}>No</button>}
         </div>
       )}
 
@@ -209,6 +214,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-3 items-start">
+        <div className="space-y-3 min-w-0">
         {/* ── El pedido ── */}
         <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-4">
           <div>
@@ -326,6 +332,9 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
               onBlur={(e) => { if ((e.target.value.trim() || null) !== p.terminos) void campoPedido({ terminos: e.target.value.trim() || null }); }} />
           </label>
         </div>
+        {/* ── Lo que se debe de este pedido ── */}
+        <CuentaDelPedido pedido={p} onCambio={actualizado} pedirPago={pedirPago} />
+        </div>
 
         {/* ── Historial ── */}
         <Historial pedido={p} onCambio={actualizado} dileALalan={dileALalan} />
@@ -371,7 +380,7 @@ const AgregarProducto: React.FC<{ excluir: string[]; onElegir: (id: string) => v
 
 const TITULO_EVENTO: Record<string, string> = {
   nota: 'Nota', estado: 'Estado', envio: 'Enviado', mensaje_entrante: 'Dijo el proveedor', mensaje_saliente: 'Le escribimos',
-  recepcion: 'Recepción', adjunto: 'Archivo', lalan: 'Lalan', aprobacion: 'Tu sí', cambio: 'Cambio',
+  recepcion: 'Recepción', adjunto: 'Archivo', lalan: 'Lalan', aprobacion: 'Tu sí', cambio: 'Cambio', pago: 'Pago',
 };
 
 /**

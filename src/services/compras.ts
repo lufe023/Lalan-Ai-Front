@@ -61,11 +61,39 @@ export interface Evento {
   autorNombre: string | null; texto: string | null; datos: any; adjuntoId: string | null; creadoEn: string;
 }
 
+/** Cuentas por pagar de un pedido (null: no se compró, o es de antes de llevar las cuentas) */
+export type EstadoDePago = 'por_pagar' | 'abonado' | 'pagado';
+export interface CuentaPedido {
+  pagado: number; debe: number; estado: EstadoDePago; venceEl: string | null; condicionesPago: string | null;
+  /** Negativo = vencido. Null cuando ya se pagó o todavía no tiene fecha (corre al recibir) */
+  diasParaVencer: number | null;
+}
+export interface PagoPedido { id: string; monto: number; currencyCode: string; fecha: string; forma: FormaDePago | null; referencia: string | null; nota: string | null }
+export type FormaDePago = 'transferencia' | 'efectivo' | 'cheque' | 'tarjeta' | 'otro';
+export const FORMAS_DE_PAGO: { id: FormaDePago; nombre: string }[] = [
+  { id: 'transferencia', nombre: 'Transferencia' }, { id: 'efectivo', nombre: 'Efectivo' }, { id: 'cheque', nombre: 'Cheque' },
+  { id: 'tarjeta', nombre: 'Tarjeta' }, { id: 'otro', nombre: 'Otro' },
+];
+
+/** «Lo que debo»: por proveedor, en la moneda base del salón */
+export interface PorPagar {
+  moneda: { code: string; simbolo: string }; total: number; vencido: number; estaSemana: number;
+  proveedores: {
+    id: string; nombre: string; whatsapp: string | null; debe: number; vencido: number; proximoVence: string | null;
+    pedidos: {
+      id: string; numero: string; estado: EstadoCompra; estadoNombre: string; llego: boolean; sede: { id: string; nombre: string };
+      currencyCode: string; simbolo: string; total: number; pagado: number; debe: number; debeBase: number; estadoPago: EstadoDePago;
+      condicionesPago: string | null; venceEl: string | null; diasParaVencer: number | null; referenciaProveedor: string | null;
+    }[];
+  }[];
+}
+
 export interface FilaPedido {
   id: string; numero: string; estado: EstadoCompra; estadoNombre: string;
   proveedor: { id: string; nombre: string }; sede: { id: string; nombre: string };
   total: number; currencyCode: string; renglones: number; fechaLimite: string | null; entregaEsperada: string | null;
   creadoEn: string; creadoPor: string | null; origen: string; manejaLalan: boolean; esperaDuena: boolean; atrasada: boolean;
+  cuenta: CuentaPedido | null;
 }
 
 export interface LineaPedido {
@@ -86,11 +114,15 @@ export interface Pedido {
   manejaLalan: boolean; esperaDuena: boolean; preguntaDuena: string | null; creadoEn: string; seEdita: boolean;
   lineas: LineaPedido[]; historial: Evento[];
   adjuntos: { id: string; nombre: string; tipo: string; tamano: number; creadoEn: string }[];
+  cuenta: CuentaPedido | null; condicionesPago: string | null; pagos: PagoPedido[];
+  /** El proveedor dijo que ya le pagaron y no se ha anotado: la dueña decide */
+  pagoReportado: { monto: number | null; cuando: string; texto: string | null } | null;
 }
 
 export interface Resumen {
   borradores: number; cotizacionesEnviadas: number; cotizacionesAtrasadas: number; sinRecibir: number;
   recepcionAtrasada: number; esperanTuSi: number; entregasATiempo: number | null; diasDeEntrega: number | null;
+  porPagar: number; pagosVencidos: number;
 }
 
 export interface PorPedir {
@@ -159,9 +191,13 @@ export const comprasApi = {
   },
   pedido: (id: string) => api.get<Pedido>(`/compras/ordenes/${id}`),
   crear: (d: { proveedorId: string; locationId?: string | null; lineas: LineaNueva[]; origen?: string }) => api.post<Pedido>('/compras/ordenes', d),
-  editar: (id: string, d: Partial<{ proveedorId: string; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null; entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null }>) =>
+  editar: (id: string, d: Partial<{ proveedorId: string; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null; entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null; condicionesPago: string | null; venceEl: string | null }>) =>
     api.patch<Pedido>(`/compras/ordenes/${id}`, d),
   estado: (id: string, estado: EstadoCompra, motivo?: string) => api.post<Pedido>(`/compras/ordenes/${id}/estado`, { estado, motivo }),
+  porPagar: (sede?: string) => api.get<PorPagar>(conSede('/compras/por-pagar', sede)),
+  pagar: (id: string, d: { monto: number; fecha?: string | null; forma?: FormaDePago | null; referencia?: string | null; nota?: string | null }) =>
+    api.post<Pedido>(`/compras/ordenes/${id}/pagos`, d),
+  quitarPago: (pagoId: string) => api.delete<Pedido>(`/compras/pagos/${pagoId}`),
   duplicar: (id: string) => api.post<Pedido>(`/compras/ordenes/${id}/duplicar`, {}),
   mensaje: (id: string, como?: 'cotizacion' | 'orden') => api.get<{ texto: string; whatsapp: string | null; correo: string | null; esCotizacion: boolean }>(`/compras/ordenes/${id}/mensaje${como ? `?como=${como}` : ''}`),
   enviar: (id: string, d: { canal: CanalEnvio; como?: 'cotizacion' | 'orden'; mensaje?: string }) => api.post<{ enlace: string | null; orden: Pedido }>(`/compras/ordenes/${id}/enviar`, d),
@@ -203,9 +239,22 @@ export type CorreoCompras =
 export const ABRIR_PEDIDO = 'lalan_abrir_pedido';
 /** La notificación de un pedido pide abrirlo con la pantalla ya abierta */
 export const EVENTO_ABRIR_PEDIDO = 'lalan:abrir-pedido';
-/** La pestaña de Compras con la que abrir ("por-pedir") */
+/** La pestaña de Compras con la que abrir ("por-pedir", "por-pagar") */
 export const VISTA_COMPRAS = 'lalan_vista_compras';
 
 export const cantidadTexto = (n: number) => n.toLocaleString('es-DO', { maximumFractionDigits: 3 });
 export const dinero = (simbolo: string, n: number) => `${simbolo}${n.toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const unidadTexto = (u?: string | null) => (!u || u === 'unit' ? 'unid.' : u);
+
+/** «Vence en 3 días», «Vence hoy», «Vencido hace 2 días» */
+export function textoVence(c: { venceEl: string | null; diasParaVencer: number | null; debe: number }, condiciones?: string | null): string {
+  if (c.debe < 0.005) return 'Pagado';
+  const d = c.diasParaVencer;
+  if (d == null) return condiciones ? `Vence al recibir · ${condiciones}` : 'Vence al recibir';
+  if (d < 0) return `Vencido hace ${-d} día${d === -1 ? '' : 's'}`;
+  if (d === 0) return 'Vence hoy';
+  if (d === 1) return 'Vence mañana';
+  return `Vence en ${d} días`;
+}
+/** Rojo vencido, ámbar esta semana, gris lo demás */
+export const colorVence = (d: number | null) => (d != null && d < 0 ? 'text-rose-600 dark:text-rose-400' : d != null && d <= 7 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-neutral-400');
