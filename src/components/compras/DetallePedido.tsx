@@ -81,7 +81,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
     setRenglones((r) => [...r, { productId, descripcion: prod.name, cantidad: '1', precio: '', impuestoPct: '', unidad: null, hay: 0, unidadInv: unidadTexto(prod.unit) }]);
     setCambiado(true);
   };
-  const guardar = async () => {
+  const guardar = async (avisar = true): Promise<boolean> => {
     setGuardando(true);
     try {
       const lineas: LineaNueva[] = renglones.map((r) => ({
@@ -89,8 +89,9 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
         precio: r.precio === '' ? null : Number(r.precio), impuestoPct: r.impuestoPct === '' ? null : Number(r.impuestoPct),
       }));
       actualizado(await comprasApi.editar(p.id, { lineas }));
-      showToast('Pedido guardado', '', 'success');
-    } catch (e) { showToast('No se pudo guardar', (e as Error).message, 'warning'); }
+      if (avisar) showToast('Pedido guardado', '', 'success');
+      return true;
+    } catch (e) { showToast('No se pudo guardar', (e as Error).message, 'warning'); return false; }
     finally { setGuardando(false); }
   };
   const campoPedido = async (c: Parameters<typeof comprasApi.editar>[1]) => {
@@ -113,6 +114,15 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
     } catch (e) { showToast('Lalan no pudo escribirle', (e as Error).message, 'warning'); }
     finally { setOcupado(null); }
   };
+  /** Guarda tal como está, sin mandarle nada al proveedor ni confirmarle */
+  const guardarBorrador = async () => {
+    if (cambiado) {
+      const ok = await guardar(false);
+      if (!ok) return;
+    }
+    showToast(p.estado === 'borrador' ? 'Borrador guardado' : 'Pedido guardado', `No se le mandó nada a ${p.proveedor.nombre}. Lo sigues cuando quieras.`, 'success');
+    onVolver();
+  };
   const duplicar = async () => {
     setOcupado('duplicar');
     try { const n = await comprasApi.duplicar(p.id); onCambio(); onAbrir(n.id); showToast('Pedido copiado', `${n.numero} quedó en borrador.`, 'success'); }
@@ -123,6 +133,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   const enCotizacion = p.estado === 'borrador' || p.estado === 'cotizacion_enviada';
   const porRecibir = p.estado === 'confirmada' || p.estado === 'recibida_parcial';
   const sinRenglones = !renglones.length;
+  const seEditaEntrega = p.estado !== 'recibida' && p.estado !== 'cancelada';
   const pasoActual = p.estado === 'recibida_parcial' ? 'confirmada' : p.estado;
   const indicePaso = PASOS.findIndex((x) => x.id === pasoActual);
 
@@ -161,6 +172,9 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             </button>
             <button type="button" disabled={sinRenglones || !!ocupado} onClick={() => void pasar('confirmada', { titulo: '¿Confirmar sin mandarla?', mensaje: 'Úsalo si ya la acordaste por teléfono o en persona. Queda como orden de compra, lista para recibir.', boton: 'Confirmar' })} className={botonSuave}>
               {ocupado === 'confirmada' ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Solo confirmar
+            </button>
+            <button type="button" disabled={guardando || !!ocupado} onClick={() => void guardarBorrador()} className={botonSuave} title="Se queda guardado; no se le manda ni se le confirma nada al proveedor">
+              {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} {p.estado === 'borrador' ? 'Guardar borrador' : 'Guardar'}
             </button>
             {p.proveedor.lalanHabla && !p.manejaLalan && (
               <button type="button" disabled={sinRenglones || !!ocupado} onClick={() => void lalanPide()} className={botonSuave} title="Lalan le escribe, anota los precios y te pregunta antes de comprar">
@@ -215,8 +229,23 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             <div>
               <span className={etiqueta}>Entregar en</span>
               <p className="font-bold text-slate-900 dark:text-white">{p.sede.nombre}</p>
-              {p.sede.direccion && <p className="text-slate-500 dark:text-neutral-400">{p.sede.direccion}</p>}
+              {!seEditaEntrega && <p className="text-slate-500 dark:text-neutral-400">{p.entregarEn ?? p.sede.direccion}</p>}
+              {!seEditaEntrega && p.recibeNombre && <p className="text-slate-500 dark:text-neutral-400">Recibe: {p.recibeNombre}{p.recibeTelefono ? ` · ${p.recibeTelefono}` : ''}</p>}
             </div>
+            {/* Dónde y quién recibe: sale en la hoja y en el mensaje al proveedor */}
+            {seEditaEntrega && (
+              <div className="sm:col-span-2 grid grid-cols-2 gap-2">
+                <label className="col-span-2"><span className={etiqueta}>Dirección de entrega</span>
+                  <input className={campo} placeholder={p.sede.direccion ?? 'Calle, número, sector'} defaultValue={p.entregarEn ?? ''} key={`e-${p.entregarEn}`}
+                    onBlur={(e) => { if ((e.target.value.trim() || null) !== p.entregarEn) void campoPedido({ entregarEn: e.target.value.trim() || null }); }} /></label>
+                <label><span className={etiqueta}>Quién recibe</span>
+                  <input className={campo} placeholder="Nombre" defaultValue={p.recibeNombre ?? ''} key={`rn-${p.recibeNombre}`}
+                    onBlur={(e) => { if ((e.target.value.trim() || null) !== p.recibeNombre) void campoPedido({ recibeNombre: e.target.value.trim() || null }); }} /></label>
+                <label><span className={etiqueta}>Su teléfono</span>
+                  <input className={campo} inputMode="tel" placeholder="809 555 1234" defaultValue={p.recibeTelefono ?? ''} key={`rt-${p.recibeTelefono}`}
+                    onBlur={(e) => { if ((e.target.value.trim() || null) !== p.recibeTelefono) void campoPedido({ recibeTelefono: e.target.value.trim() || null }); }} /></label>
+              </div>
+            )}
             {enCotizacion && (
               <label>
                 <span className={etiqueta}>Que responda antes del</span>
@@ -285,9 +314,9 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
           {/* Totales */}
           <div className="flex justify-end">
             <dl className="w-full sm:w-64 text-[0.8125rem] space-y-1">
-              <div className="flex justify-between"><dt className="text-slate-500">Subtotal</dt><dd className="font-semibold tabular-nums">{dinero(s, totales.subtotal)}</dd></div>
-              <div className="flex justify-between"><dt className="text-slate-500">Impuestos</dt><dd className="font-semibold tabular-nums">{dinero(s, totales.impuestos)}</dd></div>
-              <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-neutral-800"><dt className="font-bold">Total</dt><dd className="text-lg font-extrabold tabular-nums">{dinero(s, totales.total)}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500 dark:text-neutral-400">Subtotal</dt><dd className="font-semibold tabular-nums text-slate-900 dark:text-white">{dinero(s, totales.subtotal)}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500 dark:text-neutral-400">Impuestos</dt><dd className="font-semibold tabular-nums text-slate-900 dark:text-white">{dinero(s, totales.impuestos)}</dd></div>
+              <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-neutral-800"><dt className="font-bold text-slate-900 dark:text-white">Total</dt><dd className="text-lg font-extrabold tabular-nums text-slate-900 dark:text-white">{dinero(s, totales.total)}</dd></div>
             </dl>
           </div>
 

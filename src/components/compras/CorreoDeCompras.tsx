@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Check, ExternalLink, Loader2, Mail, RefreshCw, TriangleAlert } from 'lucide-react';
+import { Check, ChevronRight, ExternalLink, Loader2, Mail, RefreshCw, TriangleAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { comprasApi, type CorreoCompras } from '../../services/compras';
+import { pedirSeccionAjustes } from '../ajustes/MenuAjustes';
 import { botonPrincipal, botonSuave, campo, etiqueta, fechaHora } from './piezas';
 
 /** Los correos que ya sabemos dónde leer; los demás escriben su servidor */
@@ -10,7 +11,8 @@ const CONOCIDOS = ['gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.es', 'ymai
 const dominio = (c: string) => c.split('@')[1]?.trim().toLowerCase() ?? '';
 
 /**
- * El correo del salón para compras, como en Odoo cada quien pone el suyo.
+ * El correo del salón, como en Odoo cada quien pone el suyo. Vive en
+ * Ajustes → Correo del salón (se configura una vez); Compras enlaza ahí.
  * Los pedidos salen con el nombre del salón y la respuesta le llega a este
  * correo; Lalan lo lee para ver qué contestan los proveedores.
  */
@@ -60,12 +62,12 @@ export const CorreoDeCompras: React.FC = () => {
   if (!estado) return null;
 
   return (
-    <div className="p-3 rounded-2xl border border-slate-200 dark:border-neutral-700 space-y-2.5">
+    <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 space-y-2.5">
       {modalConfirmar}
       <div className="flex items-start gap-3">
         <span className="grid place-items-center size-8 rounded-xl shrink-0 bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><Mail className="w-4 h-4" /></span>
         <span className="flex-1 min-w-0">
-          <span className="block font-bold text-[0.8125rem] text-slate-900 dark:text-white">Tu correo para compras</span>
+          <span className="block font-bold text-[0.8125rem] text-slate-900 dark:text-white">Correo del salón</span>
           {estado.conectado ? (
             <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400 break-all">
               {estado.correo} · {estado.error ? 'no se pudo leer' : estado.revisadoEn ? `revisado ${fechaHora(estado.revisadoEn)}` : 'conectado'}
@@ -122,5 +124,35 @@ export const CorreoDeCompras: React.FC = () => {
         </div>
       )}
     </div>
+  );
+};
+
+/**
+ * Desde Compras: cómo está el correo del salón y un toque para ir a
+ * Ajustes → Correo del salón, donde se configura una sola vez.
+ */
+export const EnlaceCorreoSalon: React.FC<{ onIr?: () => void }> = ({ onIr }) => {
+  const { navigateTo } = useApp();
+  const [estado, setEstado] = useState<CorreoCompras | null>(null);
+  useEffect(() => { comprasApi.correo().then(setEstado).catch(() => setEstado({ conectado: false })); }, []);
+  if (!estado) return null;
+  const ir = () => { onIr?.(); pedirSeccionAjustes('correo'); navigateTo('settings'); };
+  const mal = estado.conectado && !!estado.error;
+  return (
+    <button type="button" onClick={ir} className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/70 dark:border-neutral-700 flex items-center gap-3 text-left cursor-pointer hover:border-[var(--primary)]/50 transition">
+      <span className={`grid place-items-center size-8 rounded-xl shrink-0 ${mal ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300'}`}>
+        {mal ? <TriangleAlert className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block font-bold text-[0.8125rem] text-slate-900 dark:text-white">Correo del salón</span>
+        <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400 break-all">
+          {!estado.conectado
+            ? 'Sin conectar: la respuesta del proveedor te llega a tu correo, pero Lalan no la lee. Conéctalo en Ajustes.'
+            : mal ? `${estado.correo} · no se pudo leer. Arréglalo en Ajustes.`
+              : `${estado.correo} · las respuestas te llegan ahí y Lalan las lee`}
+        </span>
+      </span>
+      <span className="flex items-center gap-0.5 text-[0.75rem] font-bold text-[var(--primary)] shrink-0">Ajustes <ChevronRight className="w-4 h-4" /></span>
+    </button>
   );
 };

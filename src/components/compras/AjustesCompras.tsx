@@ -5,7 +5,7 @@ import { IOSModal } from '../ui/IOSModal';
 import { IOSToggle } from '../ui/IOSToggle';
 import { comprasApi, type AjustesCompras as Ajustes, type ModoCompra } from '../../services/compras';
 import { botonPrincipal, campo, etiqueta } from './piezas';
-import { CorreoDeCompras } from './CorreoDeCompras';
+import { EnlaceCorreoSalon } from './CorreoDeCompras';
 
 const MODOS: { id: ModoCompra; titulo: string; texto: string; icono: React.ReactNode }[] = [
   { id: 'manual', titulo: 'Lo hago yo', texto: 'Lalan solo te avisa qué falta. Tú armas y mandas los pedidos.', icono: <Hand className="w-4 h-4" /> },
@@ -46,7 +46,7 @@ export const AjustesCompras: React.FC<{ abierto: boolean; onClose: () => void }>
               <span className="block text-[0.6875rem] text-slate-500">Cada mañana, al teléfono, si algo bajó de su mínimo o no alcanza para las citas</span></span>
             <IOSToggle checked={a.avisarFaltantes} onChange={(v) => setA({ ...a, avisarFaltantes: v })} ariaLabel="Avisarme lo que falta" />
           </div>
-          <CorreoDeCompras />
+          <EnlaceCorreoSalon onIr={onClose} />
           <label className="block"><span className={etiqueta}>Impuesto de cada renglón (%)</span>
             <input className={campo} inputMode="decimal" value={String(a.impuestoPct)} onChange={(e) => setA({ ...a, impuestoPct: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 })} /></label>
           <label className="block"><span className={etiqueta}>Condiciones al pie de cada orden</span>

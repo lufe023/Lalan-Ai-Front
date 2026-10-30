@@ -253,3 +253,17 @@ html, body, #root {
 @media (prefers-reduced-motion: reduce) {
   .entrar-suave, .fondo-hoja, .subir-hoja { animation: none; }
 }
+
+/* iOS Safari le da al campo de fecha un ancho mínimo propio y se sale de su
+   tarjeta en el teléfono: que respete el ancho del contenedor */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}

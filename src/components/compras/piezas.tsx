@@ -4,7 +4,7 @@ import { COLOR_ESTADO, NOMBRE_ESTADO, type EstadoCompra } from '../../services/c
 
 /** Las piezas chicas de Compras, para que todas sus pantallas se vean iguales */
 
-export const campo = 'w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.875rem] text-slate-900 dark:text-white placeholder:text-slate-400 dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
+export const campo = 'w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.875rem] text-slate-900 dark:text-white placeholder:text-slate-400 dark:[color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
 export const etiqueta = 'block text-[0.75rem] text-slate-500 dark:text-neutral-400 mb-1';
 
 export const botonPrincipal = 'px-3.5 py-2 rounded-xl text-[0.8125rem] font-bold bg-[var(--primary)] text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ios-touch';

@@ -9,6 +9,8 @@ import { ItemAnimado, ListaAnimada } from '../ui/movimiento';
 import {
   comprasApi, dinero, type DetalleProveedor, type Proveedor, type Sugerencia,
 } from '../../services/compras';
+import { BuscarEmpresa, type EmpresaElegida } from './BuscarEmpresa';
+import { ComoSePaga } from './ComoSePaga';
 import { PastillaEstado, botonPrincipal, botonSuave, campo, etiqueta, fechaCorta } from './piezas';
 
 /**
@@ -69,12 +71,14 @@ export const ListaProveedores: React.FC<{ sede?: string; onAbrirPedido: (id: str
 type Formulario = {
   nombre: string; contacto: string; whatsapp: string; correo: string; telefono: string; direccion: string; rnc: string;
   currencyCode: string; diasEntrega: string; condicionesPago: string; pedidoMinimo: string; notas: string; sedes: string[]; lalanHabla: boolean;
+  /** Si se eligió de la lista de Lalan, cuál */
+  plataformaId: string | null;
 };
-const vacio: Formulario = { nombre: '', contacto: '', whatsapp: '', correo: '', telefono: '', direccion: '', rnc: '', currencyCode: '', diasEntrega: '', condicionesPago: '', pedidoMinimo: '', notas: '', sedes: [], lalanHabla: true };
+const vacio: Formulario = { nombre: '', contacto: '', whatsapp: '', correo: '', telefono: '', direccion: '', rnc: '', currencyCode: '', diasEntrega: '', condicionesPago: '', pedidoMinimo: '', notas: '', sedes: [], lalanHabla: true, plataformaId: null };
 const aFormulario = (p: Proveedor | DetalleProveedor): Formulario => ({
   nombre: p.nombre, contacto: p.contacto ?? '', whatsapp: p.whatsapp ?? '', correo: p.correo ?? '', telefono: p.telefono ?? '',
   direccion: p.direccion ?? '', rnc: p.rnc ?? '', currencyCode: p.currencyCode ?? '', diasEntrega: p.diasEntrega == null ? '' : String(p.diasEntrega),
-  condicionesPago: p.condicionesPago ?? '', pedidoMinimo: p.pedidoMinimo == null ? '' : String(p.pedidoMinimo), notas: p.notas ?? '', sedes: p.sedes ?? [], lalanHabla: p.lalanHabla,
+  condicionesPago: p.condicionesPago ?? '', pedidoMinimo: p.pedidoMinimo == null ? '' : String(p.pedidoMinimo), notas: p.notas ?? '', sedes: p.sedes ?? [], lalanHabla: p.lalanHabla, plataformaId: p.plataformaId,
 });
 
 /** La ficha del proveedor: sus datos, lo que se le compra y sus pedidos */
@@ -89,9 +93,12 @@ export const FichaProveedor: React.FC<{
   const [f, setF] = useState<Formulario>(vacio);
   const [detalle, setDetalle] = useState<DetalleProveedor | null>(null);
   const [guardando, setGuardando] = useState(false);
+  // Al registrar uno nuevo, lo que se escribe en el nombre o el RNC se busca en la lista de Lalan y en la DGII
+  const [buscarEn, setBuscarEn] = useState<'nombre' | 'rnc' | null>(null);
 
   useEffect(() => {
     setDetalle(null);
+    setBuscarEn(null);
     if (!id) return;
     if (id === 'nuevo') { setF(vacio); return; }
     comprasApi.proveedor(id).then((d) => { setDetalle(d); setF(aFormulario(d)); }).catch((e) => showToast('No se pudo abrir', (e as Error).message, 'warning'));
@@ -104,6 +111,7 @@ export const FichaProveedor: React.FC<{
       direccion: f.direccion || null, rnc: f.rnc || null, currencyCode: f.currencyCode || null,
       diasEntrega: f.diasEntrega === '' ? null : Number(f.diasEntrega), condicionesPago: f.condicionesPago || null,
       pedidoMinimo: f.pedidoMinimo === '' ? null : Number(f.pedidoMinimo), notas: f.notas || null, sedes: f.sedes, lalanHabla: f.lalanHabla,
+      ...(id === 'nuevo' && f.plataformaId ? { plataformaId: f.plataformaId } : {}),
     };
     try {
       if (id === 'nuevo') {
@@ -132,6 +140,14 @@ export const FichaProveedor: React.FC<{
     catch (e) { showToast('No se pudo', (e as Error).message, 'warning'); }
   };
 
+  /** Eligió una empresa de la búsqueda: nombre, RNC y dirección; los contactos solo si estaban vacíos */
+  const elegirEmpresa = (e: EmpresaElegida) => setF((x) => ({
+    ...x, nombre: e.nombre, rnc: e.rnc ?? x.rnc, direccion: e.direccion || x.direccion, plataformaId: e.plataformaId ?? null,
+    contacto: x.contacto || e.contacto || '', whatsapp: x.whatsapp || e.whatsapp || '', correo: x.correo || e.correo || '', telefono: x.telefono || e.telefono || '',
+  }));
+  const buscador = (donde: 'nombre' | 'rnc') => (
+    <BuscarEmpresa q={donde === 'nombre' ? f.nombre : f.rnc} activo={id === 'nuevo' && buscarEn === donde} onElegir={elegirEmpresa} onCerrar={() => setBuscarEn(null)} />
+  );
   const toggleSede = (s: string) => setF((x) => ({ ...x, sedes: x.sedes.includes(s) ? x.sedes.filter((y) => y !== s) : [...x.sedes, s] }));
   const t = (k: keyof Formulario) => ({ value: f[k] as string, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value }) });
 
@@ -140,12 +156,20 @@ export const FichaProveedor: React.FC<{
       {modalConfirmar}
       <div className="space-y-4 p-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label className="sm:col-span-2"><span className={etiqueta}>Nombre</span><input className={campo} autoFocus={id === 'nuevo'} placeholder="Cecomsa, S.R.L." {...t('nombre')} /></label>
+          <div className="sm:col-span-2"><label><span className={etiqueta}>Nombre{id === 'nuevo' ? ' (o RNC): Lalan lo busca' : ''}</span>
+            <input className={campo} autoFocus={id === 'nuevo'} autoComplete="off" placeholder="Cecomsa, S.R.L." value={f.nombre}
+              onChange={(e) => { setF({ ...f, nombre: e.target.value, plataformaId: null }); setBuscarEn('nombre'); }} /></label>
+            {buscador('nombre')}
+            {f.plataformaId && id === 'nuevo' && <p className="mt-1 text-[0.6875rem] text-violet-700 dark:text-violet-300 flex items-center gap-1"><Sparkles className="w-3 h-3" /> De la lista de Lalan. Cambia lo que quieras: en tu lista manda lo tuyo.</p>}
+          </div>
           <label><span className={etiqueta}>Persona de contacto</span><input className={campo} placeholder="Juan Pérez" {...t('contacto')} /></label>
           <label><span className={etiqueta}>WhatsApp</span><input className={campo} inputMode="tel" placeholder="18095551234" {...t('whatsapp')} /></label>
           <label><span className={etiqueta}>Correo</span><input className={campo} type="email" placeholder="ventas@proveedor.com" {...t('correo')} /></label>
           <label><span className={etiqueta}>Teléfono</span><input className={campo} inputMode="tel" {...t('telefono')} /></label>
-          <label><span className={etiqueta}>RNC</span><input className={campo} {...t('rnc')} /></label>
+          <div><label><span className={etiqueta}>RNC</span>
+            <input className={campo} inputMode="numeric" autoComplete="off" value={f.rnc} onChange={(e) => { setF({ ...f, rnc: e.target.value }); setBuscarEn('rnc'); }} /></label>
+            {buscador('rnc')}
+          </div>
           <label><span className={etiqueta}>Moneda en que factura</span>
             <select className={campo} {...t('currencyCode')}>
               <option value="">La del salón</option>
@@ -153,7 +177,7 @@ export const FichaProveedor: React.FC<{
             </select>
           </label>
           <label><span className={etiqueta}>Días que tarda en entregar</span><input className={campo} inputMode="numeric" placeholder="3" value={f.diasEntrega} onChange={(e) => setF({ ...f, diasEntrega: e.target.value.replace(/\D/g, '') })} /></label>
-          <label><span className={etiqueta}>Cómo se le paga</span><input className={campo} placeholder="Contado, 15 días, 30 días…" {...t('condicionesPago')} /></label>
+          <div><span className={etiqueta}>Cómo se le paga</span><ComoSePaga valor={f.condicionesPago} onCambio={(v) => setF((x) => ({ ...x, condicionesPago: v }))} /></div>
           <label><span className={etiqueta}>Pedido mínimo</span><input className={campo} inputMode="decimal" value={f.pedidoMinimo} onChange={(e) => setF({ ...f, pedidoMinimo: e.target.value.replace(/[^\d.]/g, '') })} /></label>
           <label className="sm:col-span-2"><span className={etiqueta}>Dirección</span><input className={campo} {...t('direccion')} /></label>
           <label className="sm:col-span-2"><span className={etiqueta}>Notas</span><textarea className={`${campo} min-h-[60px]`} {...t('notas')} /></label>

@@ -5,6 +5,7 @@ import { IOSModal } from '../ui/IOSModal';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { ABRIR_PEDIDO, comprasApi, unidadTexto, type Proveedor, type Vinculo } from '../../services/compras';
 import { FichaProveedor, SugerenciasDeLalan } from './Proveedores';
+import { ComoLoVende } from './ComoLoVende';
 import { botonPrincipal, botonSuave, campo, etiqueta } from './piezas';
 
 type ConProveedor = Vinculo & { proveedor: { id: string; nombre: string; whatsapp: string | null; correo: string | null; currencyCode: string | null } };
@@ -34,7 +35,9 @@ export const ProveedoresDelProducto: React.FC<{
     if (!producto) return;
     comprasApi.deProducto(producto.id).then(setVinculos).catch(() => setVinculos([]));
     comprasApi.proveedores().then(setProveedores).catch(() => setProveedores([]));
-  }, [producto]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [producto?.id]);
+  // Por el id: el catálogo pasa un objeto nuevo en cada repintado y eso borraba lo que se estaba llenando
   useEffect(() => { setVinculos(null); setB(null); cargar(); }, [cargar]);
 
   if (!producto) return null;
@@ -56,6 +59,17 @@ export const ProveedoresDelProducto: React.FC<{
       setB(null); cargar(); onCambio?.();
     } catch (e) { showToast('No se pudo guardar', (e as Error).message, 'warning'); }
     finally { setGuardando(false); }
+  };
+  /** Se registró desde aquí: queda enlazado de una vez y se abre para ponerle precio */
+  const alCrear = async (p: Proveedor) => {
+    setProveedores((l) => (l.some((x) => x.id === p.id) ? l : [...l, p]));
+    const preferido = !vinculos?.length;
+    try {
+      await comprasApi.guardarVinculo({ proveedorId: p.id, productId: producto.id, factor: 1, preferido });
+      showToast(`${p.nombre} quedó enlazado`, `Ponle precio y cómo lo vende, si lo sabes.`, 'success');
+      cargar(); onCambio?.();
+    } catch (e) { showToast('No se pudo enlazar', (e as Error).message, 'warning'); }
+    setB({ proveedorId: p.id, codigo: '', precio: '', unidadCompra: '', factor: '1', minimo: '', preferido });
   };
   const quitar = async (v: ConProveedor) => {
     if (!(await confirmar({ titulo: `¿Ya no le compras ${producto.name} a ${v.proveedor.nombre}?`, tono: 'peligro', textoConfirmar: 'Quitar' }))) return;
@@ -113,8 +127,8 @@ export const ProveedoresDelProducto: React.FC<{
                   <option value="__nuevo">+ Nuevo proveedor…</option>
                 </select>
               </label>
-              <label><span className={etiqueta}>Cómo lo vende</span><input className={campo} placeholder={`por ${unidad}, caja de 12…`} value={b.unidadCompra} onChange={(e) => setB({ ...b, unidadCompra: e.target.value })} /></label>
-              <label><span className={etiqueta}>¿Cuántas {unidad} trae?</span><input className={campo} inputMode="decimal" value={b.factor} onChange={(e) => setB({ ...b, factor: e.target.value.replace(/[^\d.]/g, '') })} /></label>
+              <div className="col-span-2"><span className={etiqueta}>Cómo lo vende</span>
+                <ComoLoVende key={b.proveedorId} unidad={unidad} valor={b.unidadCompra} factor={b.factor} onCambio={(unidadCompra, factor) => setB({ ...b, unidadCompra, factor })} /></div>
               <label><span className={etiqueta}>Precio{b.unidadCompra ? ` por ${b.unidadCompra}` : ''}</span><input className={campo} inputMode="decimal" value={b.precio} onChange={(e) => setB({ ...b, precio: e.target.value.replace(/[^\d.]/g, '') })} /></label>
               <label><span className={etiqueta}>Código en su lista</span><input className={campo} value={b.codigo} onChange={(e) => setB({ ...b, codigo: e.target.value })} /></label>
               <label><span className={etiqueta}>Mínimo que vende</span><input className={campo} inputMode="decimal" value={b.minimo} onChange={(e) => setB({ ...b, minimo: e.target.value.replace(/[^\d.]/g, '') })} /></label>
@@ -134,7 +148,7 @@ export const ProveedoresDelProducto: React.FC<{
       </div>
     </IOSModal>
     <FichaProveedor id={nuevo ? 'nuevo' : null} onClose={() => setNuevo(false)} onCambio={cargar}
-        onCreado={(p) => { setProveedores((l) => [...l, p]); setB({ proveedorId: p.id, codigo: '', precio: '', unidadCompra: '', factor: '1', minimo: '', preferido: !vinculos?.length }); }} />
+        onCreado={(p) => void alCrear(p)} />
     </>
   );
 };
