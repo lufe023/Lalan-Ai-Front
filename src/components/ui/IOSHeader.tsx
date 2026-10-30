@@ -111,8 +111,14 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {rightAction}
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 [&>*]:shrink-0">
+          {/* Lo de cada pantalla (el selector de sedes, sobre todo) se encoge en el
+              teléfono para que los iconos de siempre no se salgan de la pantalla */}
+          {rightAction && (
+            <div className="!shrink min-w-0 flex items-center [&_select]:min-w-0 [&_select]:max-w-[8.5rem] sm:[&_select]:max-w-[14rem] [&_select]:truncate">
+              {rightAction}
+            </div>
+          )}
 
           {/* Buscar una opción: en el teléfono no hay Ctrl+K (en la computadora va en el menú).
               La especialista no tiene menú que buscar */}
