@@ -79,6 +79,9 @@ export const ComprasScreen: React.FC = () => {
       <IOSHeader
         title="Compras"
         subtitle="Proveedores, pedidos y lo que llega"
+        // Con un pedido abierto, Atrás (botón, deslizar desde el borde o clic derecho) vuelve a la lista
+        showBack={!!abierto}
+        onBack={() => { setAbierto(null); setVuelta((v) => v + 1); }}
         rightAction={
           <div className="flex items-center gap-1.5">
             <SelectorSede sedes={sedes} value={sede} onChange={setSede} todas />
