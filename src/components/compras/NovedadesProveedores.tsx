@@ -75,7 +75,7 @@ export const NovedadesProveedores: React.FC<{ recarga?: number }> = ({ recarga }
                 {n.detalle && <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300 mt-0.5">{n.detalle}</p>}
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 pl-[2.625rem]">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-1.5 sm:pl-[2.625rem]">
               {n.tipo === 'servicio' ? (
                 <button type="button" disabled={ocupado === n.id} onClick={() => void comoCliente(n)} className={botonPrincipal}>
                   {ocupado === n.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />} Atenderlo como cliente
@@ -83,11 +83,11 @@ export const NovedadesProveedores: React.FC<{ recarga?: number }> = ({ recarga }
               ) : (
                 <>
                   <button type="button" onClick={() => setEnlazar(n)} className={botonSuave}><Check className="w-4 h-4" /> Ya lo tengo</button>
-                  {n.tipo === 'producto' && <button type="button" onClick={() => setAgregar(n)} className={botonPrincipal}><Plus className="w-4 h-4" /> Agregarlo al catálogo</button>}
+                  {n.tipo === 'producto' && <button type="button" onClick={() => setAgregar(n)} className={botonPrincipal}><Plus className="w-4 h-4" /> Agregarlo</button>}
                 </>
               )}
               <button type="button" disabled={ocupado === n.id} onClick={() => void descartar(n)} className={botonSuave}>
-                <X className="w-4 h-4" /> {n.tipo === 'promocion' ? 'Visto' : 'No me interesa'}
+                <X className="w-4 h-4" /> {n.tipo === 'promocion' ? 'Visto' : 'No'}
               </button>
             </div>
           </div>
