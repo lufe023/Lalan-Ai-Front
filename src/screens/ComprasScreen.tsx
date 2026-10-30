@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bot, Loader2, Plus, Scale, Search, Settings2, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, Bot, Loader2, Plus, Receipt, Scale, Search, Settings2, ShoppingCart } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -9,15 +9,16 @@ import { PageContent } from '../components/ui/PageContent';
 import { SelectorSede } from '../components/ui/SelectorSede';
 import { ItemAnimado, ListaAnimada } from '../components/ui/movimiento';
 import { useSedes } from '../hooks/useSedes';
-import { ABRIR_PEDIDO, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
+import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
 import { DetallePedido } from '../components/compras/DetallePedido';
+import { FacturaALalan } from '../components/compras/FacturaALalan';
 import { ComparacionPrecios } from '../components/compras/ComparacionPrecios';
 import { ListaProveedores } from '../components/compras/Proveedores';
 import { PorPedir } from '../components/compras/PorPedir';
 import { AjustesCompras } from '../components/compras/AjustesCompras';
 import { NovedadesProveedores } from '../components/compras/NovedadesProveedores';
 import { PorPagarVista } from '../components/compras/PorPagar';
-import { PastillaEstado, botonPrincipal, campo, etiqueta, fechaCorta } from '../components/compras/piezas';
+import { PastillaEstado, botonPrincipal, botonSuave, campo, etiqueta, fechaCorta } from '../components/compras/piezas';
 
 type Vista = 'pedidos' | 'por-pedir' | 'proveedores' | 'por-pagar';
 type Filtro = '' | 'borrador' | 'cotizacion_enviada' | 'atrasadas' | 'sin_recibir' | 'recepcion_atrasada' | 'tu_si' | 'pago_vencido';
@@ -30,7 +31,7 @@ type Filtro = '' | 'borrador' | 'cotizacion_enviada' | 'atrasadas' | 'sin_recibi
  */
 export const ComprasScreen: React.FC = () => {
   const { currencies } = useApp();
-  const { currentUser } = useAuth();
+  const { currentUser, puede } = useAuth();
   const sedes = useSedes();
   const [sede, setSede] = useState('');
   const [vista, setVista] = useState<Vista>(() => {
@@ -73,6 +74,20 @@ export const ComprasScreen: React.FC = () => {
   const [lista, setLista] = useState<FilaPedido[] | null>(null);
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [nuevo, setNuevo] = useState(false);
+  // La factura de algo que ya compró: Lalan la lee y la registra (también se abre desde la pantalla de Lalan)
+  const [factura, setFactura] = useState(false);
+  useEffect(() => {
+    const revisar = () => {
+      try {
+        if (!sessionStorage.getItem(ABRIR_FACTURA)) return;
+        sessionStorage.removeItem(ABRIR_FACTURA);
+        setAbierto(null); setComparando(null); setVista('pedidos'); setFactura(true);
+      } catch { /* nada */ }
+    };
+    revisar();
+    window.addEventListener(EVENTO_ABRIR_FACTURA, revisar);
+    return () => window.removeEventListener(EVENTO_ABRIR_FACTURA, revisar);
+  }, []);
   const [ajustes, setAjustes] = useState(false);
   const [vuelta, setVuelta] = useState(0);
   const esDireccion = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
@@ -138,7 +153,12 @@ export const ComprasScreen: React.FC = () => {
                 <IOSSegmentedControl id="compras-vista" value={vista} onChange={(v) => setVista(v as Vista)} size="sm"
                   options={[{ id: 'pedidos', label: 'Pedidos' }, { id: 'por-pedir', label: 'Por pedir' }, { id: 'por-pagar', label: 'Por pagar' }, { id: 'proveedores', label: 'Proveedores' }]} />
               </div>
-              {vista === 'pedidos' && <button type="button" onClick={() => setNuevo(true)} className={botonPrincipal}><Plus className="w-4 h-4" /> Nuevo pedido</button>}
+              {vista === 'pedidos' && (
+                <div className="flex gap-2">
+                  {puede('compras.gestionar') && <button type="button" onClick={() => setFactura(true)} className={botonSuave} title="Pásale la factura de lo que compraste a Lalan"><Receipt className="w-4 h-4" /> Registrar factura</button>}
+                  <button type="button" onClick={() => setNuevo(true)} className={botonPrincipal}><Plus className="w-4 h-4" /> Nuevo pedido</button>
+                </div>
+              )}
             </div>
 
             {vista === 'por-pedir' && <PorPedir sede={sede || undefined} recarga={vuelta} onArmados={(ids) => { setVuelta((v) => v + 1); if (ids.length === 1) abrir(ids[0]); else { setFiltro('borrador'); setVista('pedidos'); } }}
@@ -251,6 +271,9 @@ export const ComprasScreen: React.FC = () => {
 
       <NuevoPedido abierto={nuevo} sede={sede} onClose={() => setNuevo(false)} onCreado={(id) => { setNuevo(false); setVuelta((v) => v + 1); abrir(id); }} />
       <AjustesCompras abierto={ajustes} onClose={() => setAjustes(false)} />
+      <FacturaALalan abierto={factura} sede={sede} onClose={() => setFactura(false)}
+        onRegistrada={(p) => { setFactura(false); setVuelta((v) => v + 1); abrir(p.id); }}
+        onAbrirPedido={(id) => { setFactura(false); abrir(id); }} />
     </div>
   );
 };
