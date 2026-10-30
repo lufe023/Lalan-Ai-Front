@@ -2,6 +2,34 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useDragControls, PanInfo } from 'motion/react';
 import { X } from 'lucide-react';
 
+/**
+ * Cómo se ve la hoja en pantallas medianas y grandes (en el teléfono siempre es la hoja de abajo):
+ * - completa: de lado a lado, el contenido se estira con ella (como era antes)
+ * - centrada: de lado a lado, pero el contenido ocupa el 80 % y queda centrado
+ * - angosta: la hoja misma mide como máximo 720 px y queda centrada
+ * - ventana: ventana centrada en la pantalla (máx. 680 px), sin el asa
+ */
+export type FormaHoja = 'completa' | 'centrada' | 'angosta' | 'ventana';
+
+const CAPA: Record<FormaHoja, string> = {
+  completa: '',
+  centrada: '',
+  angosta: '',
+  ventana: 'md:justify-center md:items-center md:p-6',
+};
+const HOJA: Record<FormaHoja, string> = {
+  completa: '',
+  centrada: '',
+  angosta: 'md:max-w-[720px] md:mx-auto md:border-x',
+  ventana: 'md:max-w-[680px] md:rounded-[24px] md:border',
+};
+const ANCHO_CONTENIDO: Record<FormaHoja, string> = {
+  completa: '',
+  centrada: 'md:px-[10%]',
+  angosta: '',
+  ventana: '',
+};
+
 interface IOSModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +50,8 @@ interface IOSModalProps {
   mantenerMontado?: boolean;
   /** Colores propios en vez de los de la app (la Vitrina usa los del salón) */
   apariencia?: { hoja?: string; titulo?: string; subtitulo?: string; borde?: string; cerrar?: string; asa?: string };
+  /** Cómo se ve en pantallas grandes (default: "centrada") */
+  forma?: FormaHoja;
 }
 
 export const IOSModal: React.FC<IOSModalProps> = ({
@@ -36,6 +66,7 @@ export const IOSModal: React.FC<IOSModalProps> = ({
   fijo = false,
   mantenerMontado = false,
   apariencia,
+  forma = 'centrada',
 }) => {
   const dragControls = useDragControls();
   const touchStartY = useRef<number | null>(null);
@@ -77,7 +108,7 @@ export const IOSModal: React.FC<IOSModalProps> = ({
   return (
     <AnimatePresence>
       {(isOpen || mantenerMontado) && (
-        <div id={id} className={`${fijo ? 'fixed' : 'absolute'} inset-0 z-50 flex flex-col justify-end ${isOpen ? '' : 'pointer-events-none'}`}
+        <div id={id} className={`${fijo ? 'fixed' : 'absolute'} inset-0 z-50 flex flex-col justify-end ${CAPA[forma]} ${isOpen ? '' : 'pointer-events-none'}`}
           inert={!isOpen} aria-hidden={!isOpen}>
           {/* Backdrop */}
           {/* Sin desenfoque: en iPhone, un fondo con backdrop-filter que cambia de opacidad se pinta negro un cuadro */}
@@ -109,12 +140,12 @@ export const IOSModal: React.FC<IOSModalProps> = ({
                 onClose();
               }
             }}
-            className={`${isOpen ? 'subir-hoja' : ''} relative w-full ${apariencia?.hoja ?? 'bg-white dark:bg-neutral-900 border-white/20 dark:border-neutral-800'} rounded-t-[28px] shadow-2xl flex flex-col border-t z-10 overflow-hidden`}
+            className={`${isOpen ? 'subir-hoja' : ''} relative w-full ${apariencia?.hoja ?? 'bg-white dark:bg-neutral-900 border-white/20 dark:border-neutral-800'} rounded-t-[28px] shadow-2xl flex flex-col border-t z-10 overflow-hidden ${HOJA[forma]}`}
             style={{ height: fixedHeight ? height : undefined, maxHeight: fixedHeight ? undefined : height }}
           >
             {/* Grabber Bar & Handle touch area (amplia área táctil para arrastrar hacia abajo) */}
             <div
-              className="w-full flex flex-col items-center pt-3 pb-2 touch-none cursor-grab active:cursor-grabbing select-none shrink-0 group"
+              className={`w-full flex flex-col items-center pt-3 pb-2 touch-none cursor-grab active:cursor-grabbing select-none shrink-0 group ${forma === 'ventana' ? 'md:hidden' : ''}`}
               onPointerDown={(e) => dragControls.start(e)}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
@@ -142,7 +173,7 @@ export const IOSModal: React.FC<IOSModalProps> = ({
                   handleTouchEnd(e);
                 }
               }}
-              className={`px-5 pt-0.5 pb-3 flex items-center justify-between border-b ${apariencia?.borde ?? 'border-slate-100 dark:border-neutral-800/80'} touch-none select-none shrink-0 cursor-grab active:cursor-grabbing`}
+              className={`px-5 pt-0.5 pb-3 flex items-center justify-between border-b ${apariencia?.borde ?? 'border-slate-100 dark:border-neutral-800/80'} touch-none select-none shrink-0 cursor-grab active:cursor-grabbing ${ANCHO_CONTENIDO[forma]} ${forma === 'ventana' ? 'md:pt-4' : ''}`}
             >
               <div className="pointer-events-none">
                 <h3 className={`text-lg font-bold ${apariencia?.titulo ?? 'text-slate-900 dark:text-white'} tracking-tight`}>
@@ -166,7 +197,7 @@ export const IOSModal: React.FC<IOSModalProps> = ({
             </div>
 
             {/* Content scrollable area. Con color de texto propio: lo que no dice su color no queda negro en modo oscuro */}
-            <div className={`p-5 overflow-y-auto overscroll-contain hide-scrollbar flex-1 space-y-4 ${apariencia ? '' : 'text-slate-900 dark:text-neutral-100'}`}>
+            <div className={`p-5 overflow-y-auto overscroll-contain hide-scrollbar flex-1 space-y-4 ${ANCHO_CONTENIDO[forma]} ${apariencia ? '' : 'text-slate-900 dark:text-neutral-100'}`}>
               {children}
             </div>
           </motion.div>
