@@ -165,8 +165,8 @@ export const IOSModal: React.FC<IOSModalProps> = ({
               </button>
             </div>
 
-            {/* Content scrollable area */}
-            <div className="p-5 overflow-y-auto overscroll-contain hide-scrollbar flex-1 space-y-4">
+            {/* Content scrollable area. Con color de texto propio: lo que no dice su color no queda negro en modo oscuro */}
+            <div className={`p-5 overflow-y-auto overscroll-contain hide-scrollbar flex-1 space-y-4 ${apariencia ? '' : 'text-slate-900 dark:text-neutral-100'}`}>
               {children}
             </div>
           </motion.div>

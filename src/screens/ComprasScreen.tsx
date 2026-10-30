@@ -90,7 +90,7 @@ export const ComprasScreen: React.FC = () => {
           </div>
         }
       />
-      <PageContent className="space-y-3 pb-6">
+      <PageContent className="space-y-3 pb-6 text-slate-900 dark:text-neutral-100">
         {abierto ? (
           <DetallePedido key={abierto} id={abierto} onVolver={() => { setAbierto(null); setVuelta((v) => v + 1); }} onCambio={() => setVuelta((v) => v + 1)} onAbrir={setAbierto} />
         ) : (

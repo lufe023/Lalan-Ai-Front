@@ -166,7 +166,7 @@ export const BuscadorOpciones: React.FC = () => {
         else navigateTo('settings');
       } },
       ...gruposPara(rol).map((g): Opcion => ({
-        id: `ajustes-${g.id}`, titulo: g.titulo, donde: 'Ajustes', palabras: `configuracion ${g.resumen}`,
+        id: `ajustes-${g.id}`, titulo: g.titulo, donde: 'Ajustes', palabras: `configuracion ${g.resumen} ${g.palabras ?? ''}`,
         icono: g.icono, color: g.color, ir: ajustes(g.id),
       })),
     ];

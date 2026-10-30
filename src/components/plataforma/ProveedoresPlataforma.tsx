@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, Copy, Loader2, Plus, Search, Trash2, X } from 'lucide-react';
-import { api } from '../../services/api';
+import { Building2, Check, Copy, Loader2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { api, subirArchivo } from '../../services/api';
 import { baseProductosApi } from '../../services/saberProductos';
 import { useApp } from '../../context/AppContext';
 import { IOSModal } from '../ui/IOSModal';
@@ -12,9 +12,9 @@ import { botonPrincipal, botonSuave, campo, etiqueta } from '../compras/piezas';
 
 type Estado = 'borrador' | 'publicado' | 'solicitud' | 'rechazado';
 interface ProveedorLalan {
-  id: string; nombre: string; rnc: string | null; contacto: string | null; whatsapp: string | null; correo: string | null; telefono: string | null;
+  id: string; nombre: string; rnc: string | null; direccion: string | null; contacto: string | null; whatsapp: string | null; correo: string | null; telefono: string | null;
   web: string | null; descripcion: string | null; pais: string; ciudades: string[]; marcas: string[]; productos: string[];
-  estado: Estado; origen: 'plataforma' | 'registro'; creadoEn: string; salones: number; productosNombres: string[];
+  estado: Estado; origen: 'plataforma' | 'registro' | 'salon'; creadoEn: string; salones: number; productosNombres: string[];
 }
 interface Interruptor { activo: boolean; salones: Record<string, boolean> }
 
@@ -101,6 +101,8 @@ export const ProveedoresPlataforma: React.FC = () => {
         </div>
       </div>
 
+      <RegistroDgii />
+
       {/* Enlace para que se registren */}
       <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/50 flex flex-wrap items-center gap-2 text-[0.8125rem]">
         <span className="flex-1 min-w-[14rem] text-slate-600 dark:text-neutral-300">Los proveedores se registran solos en <b className="break-all">{urlRegistroProveedor()}</b>. Llegan en «Se registraron» y no se sugieren hasta que los publicas.</span>
@@ -148,9 +150,68 @@ export const ProveedoresPlataforma: React.FC = () => {
 
 const lista = (t: string) => t.split(',').map((x) => x.trim()).filter(Boolean);
 
+interface EstadoDgii { estado: 'nunca' | 'importando' | 'listo' | 'fallo'; archivo?: string; filas?: number; empezo?: string; termino?: string; error?: string | null; total: number }
+
+/**
+ * El registro de contribuyentes de la DGII: se sube el archivo tal como se
+ * descarga (ZIP, TXT o CSV) y los salones lo encuentran al escribir el nombre
+ * o el RNC de un proveedor. Cada carga reemplaza la anterior.
+ */
+const RegistroDgii: React.FC = () => {
+  const { showToast } = useApp();
+  const [e, setE] = useState<EstadoDgii | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const cargar = useCallback(() => { api.get<EstadoDgii>('/plataforma/proveedores/dgii').then(setE).catch(() => setE(null)); }, []);
+  useEffect(() => { cargar(); }, [cargar]);
+  // Mientras importa, se mira cada 4 segundos
+  useEffect(() => {
+    if (e?.estado !== 'importando') return;
+    const t = window.setInterval(cargar, 4000);
+    return () => window.clearInterval(t);
+  }, [e?.estado, cargar]);
+
+  const subir = async (archivo: File) => {
+    setSubiendo(true);
+    try {
+      const d = new FormData();
+      d.append('archivo', archivo);
+      setE(await subirArchivo<EstadoDgii>('/plataforma/proveedores/dgii', d));
+    } catch (err) { showToast('No se pudo subir', (err as Error).message, 'warning'); }
+    finally { setSubiendo(false); }
+  };
+  const ocupado = subiendo || e?.estado === 'importando';
+  const cuando = (iso?: string) => (iso ? new Date(iso).toLocaleString('es-DO', { dateStyle: 'medium', timeStyle: 'short' }) : '');
+
+  return (
+    <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-2">
+      <div className="flex items-start gap-3">
+        <span className="grid place-items-center size-9 rounded-xl shrink-0 bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><Building2 className="w-4 h-4" /></span>
+        <span className="flex-1 min-w-0 text-[0.8125rem]">
+          <b className="text-slate-900 dark:text-white">Empresas de la DGII</b>
+          <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400">
+            Al registrar un proveedor, el salón escribe el nombre o el RNC y Lalan le ofrece la empresa con sus datos. Sube el archivo de contribuyentes
+            (<a className="font-semibold text-[var(--primary)]" href="https://dgii.gov.do/app/WebApps/Consultas/RNC/DGII_RNC.zip" target="_blank" rel="noreferrer">DGII_RNC.zip</a>) tal como se descarga.
+          </span>
+        </span>
+      </div>
+      <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">
+        {!e ? '…'
+          : e.estado === 'importando' ? <span className="inline-flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando {e.archivo}: {(e.filas ?? 0).toLocaleString('es-DO')} empresas hasta ahora…</span>
+            : e.estado === 'fallo' ? <span className="text-rose-600 dark:text-rose-400">No se pudo cargar {e.archivo}: {e.error}</span>
+              : e.total ? <>{e.total.toLocaleString('es-DO')} empresas activas{e.termino ? ` · cargadas el ${cuando(e.termino)}` : ''}{e.archivo ? ` de ${e.archivo}` : ''}</>
+                : 'Todavía no se ha cargado.'}
+      </p>
+      <label className={`${botonSuave} ${ocupado ? 'opacity-60 pointer-events-none' : 'cursor-pointer'} inline-flex`}>
+        {subiendo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} {e?.total ? 'Subir uno más nuevo' : 'Subir el archivo'}
+        <input type="file" className="sr-only" accept=".zip,.txt,.csv" disabled={ocupado} onChange={(ev) => { const a = ev.target.files?.[0]; ev.target.value = ''; if (a) void subir(a); }} />
+      </label>
+    </div>
+  );
+};
+
 const EditorProveedorLalan: React.FC<{ proveedor: ProveedorLalan | 'nuevo' | null; onClose: () => void; onGuardado: () => void }> = ({ proveedor, onClose, onGuardado }) => {
   const { showToast } = useApp();
-  const [f, setF] = useState({ nombre: '', rnc: '', contacto: '', whatsapp: '', correo: '', telefono: '', web: '', descripcion: '', pais: 'DO', ciudades: '', marcas: '', estado: 'borrador' as Estado });
+  const [f, setF] = useState({ nombre: '', rnc: '', direccion: '', contacto: '', whatsapp: '', correo: '', telefono: '', web: '', descripcion: '', pais: 'DO', ciudades: '', marcas: '', estado: 'borrador' as Estado });
   const [productos, setProductos] = useState<string[]>([]);
   const [genericos, setGenericos] = useState<{ id: string; nombre: string }[]>([]);
   const [buscar, setBuscar] = useState('');
@@ -160,11 +221,11 @@ const EditorProveedorLalan: React.FC<{ proveedor: ProveedorLalan | 'nuevo' | nul
     if (!proveedor) return;
     baseProductosApi.base().then((b) => setGenericos(b.productos.map((p) => ({ id: p.id, nombre: p.nombre })))).catch(() => setGenericos([]));
     if (proveedor === 'nuevo') {
-      setF({ nombre: '', rnc: '', contacto: '', whatsapp: '', correo: '', telefono: '', web: '', descripcion: '', pais: 'DO', ciudades: '', marcas: '', estado: 'borrador' });
+      setF({ nombre: '', rnc: '', direccion: '', contacto: '', whatsapp: '', correo: '', telefono: '', web: '', descripcion: '', pais: 'DO', ciudades: '', marcas: '', estado: 'borrador' });
       setProductos([]);
     } else {
       const p = proveedor;
-      setF({ nombre: p.nombre, rnc: p.rnc ?? '', contacto: p.contacto ?? '', whatsapp: p.whatsapp ?? '', correo: p.correo ?? '', telefono: p.telefono ?? '', web: p.web ?? '', descripcion: p.descripcion ?? '', pais: p.pais, ciudades: p.ciudades.join(', '), marcas: p.marcas.join(', '), estado: p.estado });
+      setF({ nombre: p.nombre, rnc: p.rnc ?? '', direccion: p.direccion ?? '', contacto: p.contacto ?? '', whatsapp: p.whatsapp ?? '', correo: p.correo ?? '', telefono: p.telefono ?? '', web: p.web ?? '', descripcion: p.descripcion ?? '', pais: p.pais, ciudades: p.ciudades.join(', '), marcas: p.marcas.join(', '), estado: p.estado });
       setProductos(p.productos);
     }
   }, [proveedor]);
@@ -185,7 +246,7 @@ const EditorProveedorLalan: React.FC<{ proveedor: ProveedorLalan | 'nuevo' | nul
   };
 
   return (
-    <IOSModal isOpen={!!proveedor} onClose={onClose} title={proveedor === 'nuevo' ? 'Nuevo proveedor de Lalan' : proveedor.nombre} subtitle={proveedor !== 'nuevo' && proveedor.origen === 'registro' ? 'Se registró solo' : 'Lista de Plataforma'}>
+    <IOSModal isOpen={!!proveedor} onClose={onClose} title={proveedor === 'nuevo' ? 'Nuevo proveedor de Lalan' : proveedor.nombre} subtitle={proveedor !== 'nuevo' && proveedor.origen === 'registro' ? 'Se registró solo' : proveedor !== 'nuevo' && proveedor.origen === 'salon' ? 'Lo dio de alta un salón' : 'Lista de Plataforma'}>
       <div className="space-y-3 p-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <label className="sm:col-span-2"><span className={etiqueta}>Nombre</span><input className={campo} {...t('nombre')} /></label>
@@ -195,6 +256,7 @@ const EditorProveedorLalan: React.FC<{ proveedor: ProveedorLalan | 'nuevo' | nul
           <label><span className={etiqueta}>Correo</span><input className={campo} type="email" {...t('correo')} /></label>
           <label><span className={etiqueta}>Teléfono</span><input className={campo} {...t('telefono')} /></label>
           <label><span className={etiqueta}>Web</span><input className={campo} {...t('web')} /></label>
+          <label className="sm:col-span-2"><span className={etiqueta}>Dirección</span><input className={campo} {...t('direccion')} /></label>
           <label><span className={etiqueta}>País (dos letras)</span><input className={campo} maxLength={2} {...t('pais')} /></label>
           <label><span className={etiqueta}>Ciudades (separadas por coma; vacío = todo el país)</span><input className={campo} placeholder="Santo Domingo, Santiago" {...t('ciudades')} /></label>
           <label className="sm:col-span-2"><span className={etiqueta}>Marcas que distribuye (separadas por coma)</span><input className={campo} placeholder="OPI, L'Oréal" {...t('marcas')} /></label>

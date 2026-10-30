@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Check, Loader2, Package, ShoppingCart, Truck } from 'lucide-react';
+import { CalendarClock, Check, Loader2, Package, ShoppingCart, Truck, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { EtiquetaSede } from '../ui/CopiarASede';
 import { Aparecer } from '../ui/movimiento';
-import { comprasApi, cantidadTexto, unidadTexto, type PorPedir as Fila } from '../../services/compras';
+import { comprasApi, cantidadTexto, unidadTexto, type PorPedir as Fila, type Proveedor } from '../../services/compras';
 import { ProveedoresDelProducto } from './ProveedoresDelProducto';
-import { botonPrincipal } from './piezas';
+import { FichaProveedor } from './Proveedores';
+import { botonPrincipal, botonSuave, campo } from './piezas';
 
 /**
  * Lo que hay que pedir en cada sede: lo que bajó de su mínimo y lo que no
  * alcanza para las citas de la semana, menos lo que ya viene pedido. Se
  * marca lo que se quiere y Lalan arma un pedido por proveedor. Lo que no
- * tiene proveedor dice "¿a quién se lo compras?" ahí mismo.
+ * tiene proveedor dice "¿a quién se lo compras?" ahí mismo. Varios marcados
+ * pueden ir al mismo proveedor de un toque: queda anotado que se lo vende.
  */
 export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => void; recarga?: number }> = ({ sede, onArmados, recarga }) => {
   const { showToast } = useApp();
@@ -19,6 +21,10 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
   const [armando, setArmando] = useState(false);
   const [producto, setProducto] = useState<{ id: string; name: string; unit?: string } | null>(null);
+  const [proveedores, setProveedores] = useState<Proveedor[] | null>(null);
+  const [aQuien, setAQuien] = useState('');
+  const [asignando, setAsignando] = useState(false);
+  const [nuevo, setNuevo] = useState(false);
   const clave = (f: Fila) => `${f.sede.id}:${f.productId}`;
 
   const cargar = useCallback(() => {
@@ -26,6 +32,8 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
       setFilas(r);
       setMarcadas(new Set(r.filter((f) => f.proveedor).map(clave)));
     }).catch(() => setFilas([]));
+    // También la lista de proveedores: uno pudo darse de alta desde un producto
+    comprasApi.proveedores(sede).then(setProveedores).catch(() => setProveedores([]));
   }, [sede]);
   useEffect(() => { cargar(); }, [cargar, recarga]);
 
@@ -65,6 +73,29 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
     );
   }
   const cuantas = (filas ?? []).filter((f) => marcadas.has(clave(f)) && f.proveedor).length;
+  const marcadasTodas = (filas ?? []).filter((f) => marcadas.has(clave(f)));
+  const sinProveedor = marcadasTodas.filter((f) => !f.proveedor).length;
+
+  /**
+   * Los marcados van al proveedor elegido: se anota que él lo vende (el
+   * preferido si no tenía ninguno) y así salen en un solo pedido.
+   */
+  const asignar = async (p: { id: string; nombre: string; currencyCode?: string | null }) => {
+    const cambian = marcadasTodas.filter((f) => f.proveedor?.id !== p.id);
+    if (!cambian.length) return;
+    setAsignando(true);
+    try {
+      const productos = [...new Set(cambian.map((f) => f.productId))];
+      for (const productId of productos) {
+        const tenia = cambian.find((f) => f.productId === productId)?.proveedor;
+        await comprasApi.guardarVinculo({ proveedorId: p.id, productId, factor: 1, preferido: !tenia });
+      }
+      setFilas((l) => l?.map((f) => (marcadas.has(clave(f)) ? { ...f, proveedor: { id: p.id, nombre: p.nombre, precio: null, currencyCode: p.currencyCode ?? null, unidadCompra: null, factor: 1 } } : f)) ?? l);
+      showToast(`Se los pides a ${p.nombre}`, `${productos.length === 1 ? 'Quedó anotado que te lo vende' : `Quedó anotado que te vende estos ${productos.length}`}. Arma el pedido para pedirle precio.`, 'success');
+      setAQuien('');
+    } catch (e) { showToast('No se pudo', (e as Error).message, 'warning'); }
+    finally { setAsignando(false); }
+  };
 
   return (
     <div className="space-y-3">
@@ -79,7 +110,7 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
             const k = clave(f);
             return (
               <div key={k} className="flex items-start gap-2.5 py-1.5 border-t border-slate-100 dark:border-neutral-800 first:border-0">
-                <input type="checkbox" className="mt-1 size-4 accent-[var(--primary)]" disabled={!f.proveedor} checked={marcadas.has(k)} aria-label={`Pedir ${f.nombre}`}
+                <input type="checkbox" className="mt-1 size-4 accent-[var(--primary)]" checked={marcadas.has(k)} aria-label={`Pedir ${f.nombre}`}
                   onChange={(e) => setMarcadas((m) => { const n = new Set(m); if (e.target.checked) n.add(k); else n.delete(k); return n; })} />
                 <div className="flex-1 min-w-0 text-[0.8125rem]">
                   <p className="font-semibold text-slate-900 dark:text-white">{f.nombre}
@@ -99,10 +130,36 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
           })}
         </Aparecer>
       ))}
+      {marcadasTodas.length > 0 && (
+        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/70 dark:border-neutral-700 space-y-2">
+          <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-slate-400" />
+            {sinProveedor
+              ? <span><b>{sinProveedor === 1 ? '1 marcado no tiene' : `${sinProveedor} marcados no tienen`} proveedor.</b> Elige a quién se los pides.</span>
+              : <span>¿Todo a un mismo proveedor? Elige a quién y sale en un solo pedido.</span>}
+          </p>
+          <div className="flex gap-2">
+            <select className={campo} aria-label="Pedírselo a" value={aQuien} disabled={asignando}
+              onChange={(e) => {
+                if (e.target.value === '__nuevo') { setNuevo(true); return; }
+                const p = proveedores?.find((x) => x.id === e.target.value);
+                setAQuien(e.target.value);
+                if (p) void asignar(p);
+              }}>
+              <option value="">Pedírselos ({marcadasTodas.length}) a…</option>
+              {proveedores?.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              <option value="__nuevo">+ Nuevo proveedor…</option>
+            </select>
+            {asignando && <span className={botonSuave}><Loader2 className="w-4 h-4 animate-spin" /></span>}
+          </div>
+        </div>
+      )}
       <button type="button" disabled={!cuantas || armando} onClick={() => void armar()} className={`${botonPrincipal} w-full py-3`}>
         {armando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />} Armar {cuantas === 1 ? 'el pedido' : 'los pedidos'} ({cuantas})
       </button>
       <ProveedoresDelProducto producto={producto} onClose={() => { setProducto(null); cargar(); }} />
+      <FichaProveedor id={nuevo ? 'nuevo' : null} onClose={() => setNuevo(false)} onCambio={() => undefined}
+        onCreado={(p) => { setProveedores((l) => [...(l ?? []), p]); void asignar(p); }} />
     </div>
   );
 };

@@ -78,6 +78,7 @@ import { LoQueLalanSabe } from '../components/ajustes/LoQueLalanSabe';
 import { puedeHablarConLalan } from '../components/lalan/PantallaLalan';
 import { QuioscosSalon } from '../components/ajustes/QuioscosSalon';
 import { AjustesVitrina } from '../components/ajustes/AjustesVitrina';
+import { CorreoDeCompras } from '../components/compras/CorreoDeCompras';
 import { enSoporte } from '../services/soporte';
 import { DisenadorRecibo } from '../components/ajustes/DisenadorRecibo';
 
@@ -1493,6 +1494,7 @@ export const SettingsScreen: React.FC = () => {
           </>
         )}
         {seccion === 'vitrina' && <AjustesVitrina />}
+        {seccion === 'correo' && <CorreoDeCompras />}
         {seccion === 'caja' && (
           <>
         <AjustesFiao />

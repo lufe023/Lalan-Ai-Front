@@ -4,6 +4,7 @@ import { IOSModal } from '../ui/IOSModal';
 import { useApp } from '../../context/AppContext';
 import { comprasApi, type Pedido } from '../../services/compras';
 import { botonPrincipal, botonSuave, botonWhatsapp, campo, etiqueta } from './piezas';
+import { EnlaceCorreoSalon } from './CorreoDeCompras';
 
 /**
  * Mandar el pedido: se ve el mensaje tal como le llega al proveedor y se
@@ -96,6 +97,9 @@ export const EnviarPedido: React.FC<{
             <input className={campo} type="email" placeholder="ventas@proveedor.com" value={correo} onChange={(e) => setCorreo(e.target.value)} />
           </label>
         )}
+
+        {/* El correo sale con el nombre del salón; la respuesta llega al correo que se conectó en Ajustes */}
+        <EnlaceCorreoSalon onIr={onClose} />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
           <button type="button" disabled={!!enviando || cargando || (faltaWhatsapp && !whatsapp.trim())} onClick={() => void mandar('whatsapp')} className={botonWhatsapp}>

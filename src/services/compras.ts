@@ -81,6 +81,8 @@ export interface Pedido {
   subtotal: number; impuestos: number; total: number; totalBase: number | null;
   fechaLimite: string | null; entregaEsperada: string | null; confirmadaEn: string | null; recibidaEn: string | null;
   referenciaProveedor: string | null; terminos: string | null; origen: string;
+  /** Dónde se entrega y quién lo recibe (sale en la hoja y en el mensaje) */
+  entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null;
   manejaLalan: boolean; esperaDuena: boolean; preguntaDuena: string | null; creadoEn: string; seEdita: boolean;
   lineas: LineaPedido[]; historial: Evento[];
   adjuntos: { id: string; nombre: string; tipo: string; tamano: number; creadoEn: string }[];
@@ -104,6 +106,12 @@ export interface Sugerencia {
   descripcion: string | null; ciudades: string[]; marcas: string[]; productos: { id: string; nombre: string }[];
 }
 
+/** Lo que encuentra la búsqueda al registrar un proveedor */
+export interface EmpresasEncontradas {
+  plataforma: { id: string; nombre: string; rnc: string | null; direccion: string | null; web: string | null; contacto: string | null; whatsapp: string | null; correo: string | null; telefono: string | null; yaLoTienes: boolean }[];
+  dgii: { rnc: string; nombre: string; comercial: string | null; actividad: string | null; yaLoTienes: boolean }[];
+}
+
 export interface LineaNueva { productId: string; cantidad: number; precio?: number | null; impuestoPct?: number | null; descripcion?: string | null }
 
 export const conSede = (ruta: string, sede?: string) => (sede ? `${ruta}${ruta.includes('?') ? '&' : '?'}sede=${sede}` : ruta);
@@ -116,6 +124,7 @@ export const comprasApi = {
   quitarCorreo: () => api.delete<CorreoCompras>('/compras/correo'),
   guardarAjustes: (a: Partial<AjustesCompras>) => api.put<AjustesCompras>('/compras/ajustes', a),
 
+  empresas: (q: string) => api.get<EmpresasEncontradas>(`/compras/empresas?q=${encodeURIComponent(q)}`),
   proveedores: (sede?: string) => api.get<Proveedor[]>(conSede('/compras/proveedores', sede)),
   proveedor: (id: string) => api.get<DetalleProveedor>(`/compras/proveedores/${id}`),
   crearProveedor: (p: Partial<Proveedor>) => api.post<Proveedor>('/compras/proveedores', p),
@@ -139,7 +148,7 @@ export const comprasApi = {
   },
   pedido: (id: string) => api.get<Pedido>(`/compras/ordenes/${id}`),
   crear: (d: { proveedorId: string; locationId?: string | null; lineas: LineaNueva[]; origen?: string }) => api.post<Pedido>('/compras/ordenes', d),
-  editar: (id: string, d: Partial<{ proveedorId: string; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null }>) =>
+  editar: (id: string, d: Partial<{ proveedorId: string; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null; entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null }>) =>
     api.patch<Pedido>(`/compras/ordenes/${id}`, d),
   estado: (id: string, estado: EstadoCompra, motivo?: string) => api.post<Pedido>(`/compras/ordenes/${id}/estado`, { estado, motivo }),
   duplicar: (id: string) => api.post<Pedido>(`/compras/ordenes/${id}/duplicar`, {}),
