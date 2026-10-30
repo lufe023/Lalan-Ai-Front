@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue } from 'motion/react';
-import { Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -22,9 +22,11 @@ import { iniciarGuia } from '../guias/GuiaEnCurso';
 import { guiaPorId } from '../../data/guias';
 import { descargarPlan, MisPlanes } from './MisPlanes';
 import { VerComo } from '../minitutoriales/VerComo';
+import { usePlan } from '../../context/PlanContext';
+import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO } from '../../services/compras';
 
 interface Accion {
-  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo'; resumen: string;
+  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo' | 'compra'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
   /** "Llévame": la tarea a la que lleva y en qué sede */
   guia?: GuiaTarjeta | null;
@@ -32,7 +34,10 @@ interface Accion {
   documento?: DocumentoTarjeta | null;
   /** "Ver cómo": un minitutorial con fotos de algo que se hace fuera de la app */
   tutorial?: TutorialTarjeta | null;
+  /** Repetir una compra: el pedido de antes y, ya confirmada, el borrador nuevo */
+  compra?: CompraTarjeta | null;
 }
+interface CompraTarjeta { ordenId: string; numero: string; nuevoId: string | null; nuevoNumero: string | null }
 interface TutorialTarjeta { tema: string; nombre: string }
 interface DocumentoTarjeta { id: string; titulo: string; sede: string }
 interface GuiaTarjeta { id: string; nombre: string; sedeId: string | null; sede: string | null }
@@ -133,6 +138,10 @@ const contarUsoDeVoz = () => { try { localStorage.setItem(CLAVE_USOS, String(uso
 export const PantallaLalan: React.FC = () => {
   const { currentUser } = useAuth();
   const { navigateTo, activeConversationId, setActiveConversationId, recargarCatalogo, currentScreen } = useApp();
+  const { tieneModulo } = usePlan();
+  const { puede } = useAuth();
+  // El botón de la factura: quien registra compras y con Compras en su plan (va con Inventario)
+  const puedeFactura = tieneModulo('inventario') && puede('compras.gestionar');
   const [abierta, setAbierta] = useState(false);
   const burbuja = useEnBurbuja();
   // La esfera del teléfono tirada al zafacón con Lalan cerrada: se guarda solo un rato. En el teléfono no hay
@@ -494,6 +503,22 @@ export const PantallaLalan: React.FC = () => {
     setActiveConversationId(id);
   };
 
+  /** Un pedido de Compras: Lalan se hace burbuja y Compras lo abre */
+  const abrirPedido = (id: string) => {
+    minimizar();
+    try { sessionStorage.setItem(ABRIR_PEDIDO, id); } catch { /* nada */ }
+    navigateTo('compras');
+    window.dispatchEvent(new Event(EVENTO_ABRIR_PEDIDO));
+  };
+
+  /** La factura de lo que compró: Compras abre «Pásale la factura a Lalan» (foto o PDF) */
+  const pasarFactura = () => {
+    minimizar();
+    try { sessionStorage.setItem(ABRIR_FACTURA, '1'); } catch { /* nada */ }
+    navigateTo('compras');
+    window.dispatchEvent(new Event(EVENTO_ABRIR_FACTURA));
+  };
+
   /** "Llévame": Lalan se hace burbuja (sigue oyendo) y la app señala dónde tocar */
   const llevame = (g: GuiaTarjeta) => {
     minimizar();
@@ -781,7 +806,7 @@ export const PantallaLalan: React.FC = () => {
                           <div className="px-5 py-3.5 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm">
                             <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
                           </div>
-                          {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} />}
+                          {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} />}
                           <div className="pl-2"><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
                         </div>
                       </div>
@@ -811,6 +836,12 @@ export const PantallaLalan: React.FC = () => {
                     <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…"
                       onFocus={() => { if (escucha.estado === 'escuchando') escucha.terminar(false); setEscribiendo(true); }}
                       className="flex-1 min-w-0 bg-transparent py-2.5 text-[0.9375rem] focus:outline-none" />
+                    {puedeFactura && (
+                      <button type="button" onClick={pasarFactura} aria-label="Pasarle una factura" title="Pásale la factura de lo que compraste"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 cursor-pointer text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-700">
+                        <Receipt className="w-5 h-5" />
+                      </button>
+                    )}
                     <button type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" title="Hablarle con la voz"
                       className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition-colors ${modo === 'escuchando' ? 'bg-[var(--primary)]/15 text-[var(--primary)]' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-700'}`}>
                       <Mic className="w-5 h-5" />
@@ -842,7 +873,7 @@ export const PantallaLalan: React.FC = () => {
                 m.deLalan ? (
                   <div key={m.id} className="space-y-2.5 max-w-[92%]">
                     <p className="text-[1.0625rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
-                    {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} />}
+                    {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} />}
                     <Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} />
                   </div>
                 ) : (
@@ -876,6 +907,12 @@ export const PantallaLalan: React.FC = () => {
                   </button>
                   <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…" autoFocus
                     className="flex-1 min-w-0 px-4 py-3 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-[0.9375rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
+                  {puedeFactura && (
+                    <button type="button" onClick={pasarFactura} aria-label="Pasarle una factura" title="Pásale la factura de lo que compraste"
+                      className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800">
+                      <Receipt className="w-5 h-5" />
+                    </button>
+                  )}
                   <button type="submit" disabled={!texto.trim() || modo === 'pensando'} aria-label="Enviar"
                     className="w-11 h-11 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shrink-0 disabled:opacity-40 cursor-pointer">
                     {modo === 'pensando' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
@@ -1024,10 +1061,13 @@ const Calificar: React.FC<{ util: boolean | null; onCambio: (u: boolean | null) 
   );
 };
 
-const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a: Accion, si: boolean) => void; onVerChat: (id: string) => void }> = ({ accion, ocupada, onResolver, onVerChat }) => {
+const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a: Accion, si: boolean) => void; onVerChat: (id: string) => void; onAbrirPedido: (id: string) => void }> = ({ accion, ocupada, onResolver, onVerChat, onAbrirPedido }) => {
   // Servicios, rendimientos y lo que Lalan recuerda de ella se GUARDAN; lo demás se MANDA a una clienta
   const delSalon = accion.tipo === 'servicio' || accion.tipo === 'rendimiento' || accion.tipo === 'recuerdo';
-  const titulo = accion.tipo === 'recuerdo' ? '¿Me acuerdo de esto? Solo entre tú y yo'
+  // Repetir una compra deja un borrador en Compras: nada sale al proveedor sin ella
+  const compra = accion.tipo === 'compra' ? accion.compra ?? null : null;
+  const titulo = compra ? 'Repetir una compra'
+    : accion.tipo === 'recuerdo' ? '¿Me acuerdo de esto? Solo entre tú y yo'
     : accion.tipo === 'indicacion' ? 'Indicación para Lalan en el chat'
     : accion.tipo === 'servicio' ? 'Servicio del salón'
     : accion.tipo === 'rendimiento' ? 'Lo que rinde un producto'
@@ -1036,11 +1076,16 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
     <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm p-3.5 space-y-2.5">
       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">{titulo}</div>
       <p className="text-[0.875rem] leading-snug text-slate-700 dark:text-neutral-200">{accion.resumen.replace(/^(Indicación para Lalan en el chat de |Mensaje para )/, '')}</p>
+      {compra && accion.estado === 'pendiente' && (
+        <button type="button" onClick={() => onAbrirPedido(compra.ordenId)} className="text-[0.8125rem] font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">
+          <ShoppingCart className="w-4 h-4" /> Ver {compra.numero}
+        </button>
+      )}
       {accion.estado === 'pendiente' ? (
         <div className="flex items-center gap-2">
           <button type="button" disabled={ocupada} onClick={() => onResolver(accion, true)}
             className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer">
-            {ocupada ? <Loader2 className="w-4 h-4 animate-spin" /> : delSalon ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />} {accion.tipo === 'recuerdo' ? 'Sí, acuérdate' : delSalon ? 'Sí, guárdalo' : 'Sí, mándalo'}
+            {ocupada ? <Loader2 className="w-4 h-4 animate-spin" /> : delSalon || compra ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />} {compra ? 'Sí, déjalo listo' : accion.tipo === 'recuerdo' ? 'Sí, acuérdate' : delSalon ? 'Sí, guárdalo' : 'Sí, mándalo'}
           </button>
           <button type="button" disabled={ocupada} onClick={() => onResolver(accion, false)}
             className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.875rem] font-semibold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
@@ -1050,8 +1095,13 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
       ) : (
         <div className="flex items-center justify-between gap-2 text-[0.8125rem]">
           <span className={`font-semibold ${accion.estado === 'hecha' ? 'text-emerald-600' : accion.estado === 'fallida' ? 'text-rose-600' : 'text-slate-400'}`}>
-            {accion.estado === 'hecha' ? (delSalon ? 'Guardado' : 'Enviado') : accion.estado === 'fallida' ? `No salió${accion.resultado ? `: ${accion.resultado}` : ''}` : delSalon ? 'No se guardó' : 'No se mandó'}
+            {accion.estado === 'hecha' ? (compra ? 'En borrador' : delSalon ? 'Guardado' : 'Enviado') : accion.estado === 'fallida' ? `No salió${accion.resultado ? `: ${accion.resultado}` : ''}` : compra ? 'No se preparó' : delSalon ? 'No se guardó' : 'No se mandó'}
           </span>
+          {compra?.nuevoId && (
+            <button type="button" onClick={() => onAbrirPedido(compra.nuevoId!)} className="font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">
+              <ShoppingCart className="w-4 h-4" /> Abrir {compra.nuevoNumero}
+            </button>
+          )}
           {accion.conversacionId && (
             <button type="button" onClick={() => onVerChat(accion.conversacionId!)} className="font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">
               <MessageSquareText className="w-4 h-4" /> Ver el chat
@@ -1066,13 +1116,13 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
 /** La tarjeta que va bajo la respuesta de Lalan, según lo que dejó */
 const Tarjeta: React.FC<{
   accion: Accion; ocupada: boolean; onResolver: (a: Accion, confirmar: boolean) => void; onVerChat: (id: string) => void;
-  onLlevame: (g: GuiaTarjeta) => void; onFallo: (e: unknown) => void;
-}> = ({ accion, ocupada, onResolver, onVerChat, onLlevame, onFallo }) => {
+  onLlevame: (g: GuiaTarjeta) => void; onFallo: (e: unknown) => void; onAbrirPedido: (id: string) => void;
+}> = ({ accion, ocupada, onResolver, onVerChat, onLlevame, onFallo, onAbrirPedido }) => {
   if (accion.guia) return <TarjetaGuia guia={accion.guia} onLlevame={onLlevame} />;
   if (accion.documento) return <TarjetaDocumento documento={accion.documento} onFallo={onFallo} />;
   if (accion.tutorial) return <TarjetaTutorial tutorial={accion.tutorial} />;
   if (accion.tipo === 'guia' || accion.tipo === 'documento' || accion.tipo === 'tutorial') return null;
-  return <TarjetaAccion accion={accion} ocupada={ocupada} onResolver={onResolver} onVerChat={onVerChat} />;
+  return <TarjetaAccion accion={accion} ocupada={ocupada} onResolver={onResolver} onVerChat={onVerChat} onAbrirPedido={onAbrirPedido} />;
 };
 
 /** Un plan que Lalan dejó guardado: se descarga en PDF y queda en Mis planes */

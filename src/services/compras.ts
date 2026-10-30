@@ -264,9 +264,79 @@ export const comprasApi = {
     window.open(url, '_blank');
   },
 
+  /** Lalan lee la factura (fotos o PDF) y la deja lista para revisar. No guarda nada */
+  leerFactura: (archivos: File[], sede?: string) => {
+    const f = new FormData();
+    archivos.forEach((a) => f.append('archivos', a));
+    if (sede) f.append('sede', sede);
+    return subirArchivo<PropuestaFactura>('/compras/factura/leer', f);
+  },
+  /** La factura revisada: compra confirmada, inventario de la sede, pago o por pagar, y la factura adjunta */
+  registrarFactura: (datos: RegistrarFactura, archivos: File[]) => {
+    const f = new FormData();
+    archivos.forEach((a) => f.append('archivos', a));
+    f.append('datos', JSON.stringify(datos));
+    return subirArchivo<Pedido>('/compras/factura', f);
+  },
+
   sugerencias: (productId?: string) => api.get<{ activo: boolean; sugerencias: Sugerencia[]; sinPais?: boolean }>(`/compras/sugerencias${productId ? `?productId=${productId}` : ''}`),
   adoptar: (id: string, productos: string[]) => api.post<{ proveedorId: string }>(`/compras/sugerencias/${id}/agregar`, { productos }),
 };
+
+/** Un renglón de la factura como lo entendió Lalan, con el producto del salón si lo reconoció */
+export interface RenglonFactura {
+  descripcion: string;
+  codigo: string | null;
+  cantidad: number;
+  /** Por unidad, sin impuesto */
+  precio: number;
+  impuestoPct: number;
+  importe: number | null;
+  unidadCompra: string | null;
+  factor: number;
+  productId: string | null;
+  producto: string | null;
+  reconocidoPor: 'codigo' | 'nombre' | null;
+  /** Si no fue seguro: los más parecidos, para elegir con un toque */
+  candidatos: { id: string; nombre: string }[];
+  /** Lo que costaba la última vez con este proveedor (solo si cambió) */
+  precioAnterior: number | null;
+}
+
+/** Lo que Lalan leyó de la factura, listo para que la dueña lo revise */
+export interface PropuestaFactura {
+  sede: { id: string; nombre: string };
+  proveedor: {
+    id: string | null; nombre: string; nuevo: boolean; por: 'rnc' | 'nombre' | null; rnc?: string | null;
+    telefono?: string | null; correo?: string | null; direccion?: string | null; plataformaId?: string | null; nombreEnFactura?: string | null;
+    noVendeEnSede: boolean; condicionesPago: string | null;
+  };
+  referencia: string | null; numero: string | null; ncf: string | null; fecha: string | null;
+  moneda: string; monedaEnFactura: string | null;
+  pagada: boolean | null; formaPago: string | null; condiciones: string | null;
+  renglones: RenglonFactura[];
+  totales: { subtotal: number; impuestos: number; total: number; leido: { subtotal: number | null; impuestos: number | null; descuento: number | null; total: number | null }; cuadra: boolean | null };
+  /** Esta factura ya se registró antes */
+  yaRegistrada: { id: string; numero: string; creadoEn: string } | null;
+  sinLeer: string[];
+}
+
+export interface RegistrarFactura {
+  locationId: string | null;
+  proveedorId: string | null;
+  proveedorNuevo: { nombre: string; rnc?: string | null; telefono?: string | null; correo?: string | null; direccion?: string | null; plataformaId?: string | null } | null;
+  referencia: string | null;
+  fecha: string | null;
+  currencyCode: string;
+  condicionesPago: string | null;
+  renglones: {
+    productId: string | null; nuevo: { nombre: string; vende: boolean; precioVenta: number | null } | null;
+    descripcion: string; codigo: string | null; unidadCompra: string | null; factor: number; cantidad: number; precio: number; impuestoPct: number;
+  }[];
+  recibir: boolean;
+  pagada: boolean;
+  formaPago: string | null;
+}
 
 /** Para abrir un pedido al llegar a Compras desde otra pantalla (Mi semana, Catálogo, un aviso) */
 /** El correo del salón que Lalan usa para compras (la contraseña nunca vuelve) */
@@ -277,6 +347,10 @@ export type CorreoCompras =
 export const ABRIR_PEDIDO = 'lalan_abrir_pedido';
 /** La notificación de un pedido pide abrirlo con la pantalla ya abierta */
 export const EVENTO_ABRIR_PEDIDO = 'lalan:abrir-pedido';
+/** Compras abre «Registrar factura» al llegar (desde la pantalla de Lalan) */
+export const ABRIR_FACTURA = 'lalan_abrir_factura';
+/** Con Compras ya abierta, lo mismo */
+export const EVENTO_ABRIR_FACTURA = 'lalan:abrir-factura';
 /** La pestaña de Compras con la que abrir ("por-pedir", "por-pagar") */
 export const VISTA_COMPRAS = 'lalan_vista_compras';
 
