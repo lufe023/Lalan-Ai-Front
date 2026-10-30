@@ -14,6 +14,7 @@ import { DetallePedido } from '../components/compras/DetallePedido';
 import { ListaProveedores } from '../components/compras/Proveedores';
 import { PorPedir } from '../components/compras/PorPedir';
 import { AjustesCompras } from '../components/compras/AjustesCompras';
+import { NovedadesProveedores } from '../components/compras/NovedadesProveedores';
 import { PastillaEstado, botonPrincipal, campo, etiqueta, fechaCorta } from '../components/compras/piezas';
 
 type Vista = 'pedidos' | 'por-pedir' | 'proveedores';
@@ -111,6 +112,8 @@ export const ComprasScreen: React.FC = () => {
 
             {vista === 'pedidos' && (
               <>
+                {/* Lo que ofrecieron los proveedores o si quieren un servicio: la dueña decide aquí */}
+                <NovedadesProveedores recarga={vuelta} />
                 {/* Los números de arriba: cada uno filtra */}
                 {resumen && (
                   <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-1 px-1 [&>*]:flex-1 [&>*]:min-w-[8.25rem] [&>*]:shrink-0">

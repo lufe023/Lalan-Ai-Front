@@ -106,6 +106,13 @@ export interface Sugerencia {
   descripcion: string | null; ciudades: string[]; marcas: string[]; productos: { id: string; nombre: string }[];
 }
 
+/** Lo que un proveedor ofreció fuera de un pedido, o que quiere un servicio */
+export interface NovedadProveedor {
+  id: string; tipo: 'producto' | 'promocion' | 'servicio'; titulo: string; detalle: string | null;
+  precio: number | null; currencyCode: string | null; vence: string | null; canal: 'whatsapp' | 'correo'; creadoEn: string; ordenId: string | null;
+  proveedor: { id: string; nombre: string; whatsapp: string | null; correo: string | null };
+}
+
 /** Lo que encuentra la búsqueda al registrar un proveedor */
 export interface EmpresasEncontradas {
   plataforma: { id: string; nombre: string; rnc: string | null; direccion: string | null; web: string | null; contacto: string | null; whatsapp: string | null; correo: string | null; telefono: string | null; yaLoTienes: boolean }[];
@@ -124,6 +131,10 @@ export const comprasApi = {
   quitarCorreo: () => api.delete<CorreoCompras>('/compras/correo'),
   guardarAjustes: (a: Partial<AjustesCompras>) => api.put<AjustesCompras>('/compras/ajustes', a),
 
+  novedades: () => api.get<NovedadProveedor[]>('/compras/novedades'),
+  enlazarNovedad: (id: string, d: { productId: string; precio?: number | null; nuevo?: boolean }) => api.post<{ ok: true }>(`/compras/novedades/${id}/enlazar`, d),
+  descartarNovedad: (id: string) => api.post<{ ok: true }>(`/compras/novedades/${id}/descartar`, {}),
+  atenderComoCliente: (id: string) => api.post<{ ok: true; escrito: boolean }>(`/compras/novedades/${id}/como-cliente`, {}),
   empresas: (q: string) => api.get<EmpresasEncontradas>(`/compras/empresas?q=${encodeURIComponent(q)}`),
   proveedores: (sede?: string) => api.get<Proveedor[]>(conSede('/compras/proveedores', sede)),
   proveedor: (id: string) => api.get<DetalleProveedor>(`/compras/proveedores/${id}`),
