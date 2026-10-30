@@ -9,6 +9,7 @@ import { loungeAudio } from '../utils/loungeAudio';
 import { api, subirArchivo, urlDeFoto } from '../services/api';
 import { alRecibir, alConectar } from '../services/socket';
 import { conSedeLocal, sedeLocal } from '../services/sedeLocal';
+import { EVENTO_IR } from '../services/avisos';
 import { ABRIR_PEDIDO, EVENTO_ABRIR_PEDIDO } from '../services/compras';
 import { PeticionCancion, componerCola, indicesDePeticiones } from '../utils/peticiones';
 import {
@@ -94,7 +95,7 @@ export interface LoungeEvent {
 }
 
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'conversiones-report' | 'sala' | 'plataforma' | 'informes' | 'mi-semana' | 'compras';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'conversiones-report' | 'sala' | 'plataforma' | 'informes' | 'mi-semana' | 'compras' | 'avisos' | 'mi-actividad';
 
 // ═══════════════════════════════════════════════════════════════════
 //  SALA Y TURNOS
@@ -948,19 +949,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return (sessionStorage.getItem('lalan.pantallaActual') as ScreenName) || 'dashboard';
     } catch { return 'dashboard'; }
   });
-  /* Con la app ya abierta, la notificación le pide ir a una pantalla */
-  useEffect(() => {
-    /* Lo que hay que abrir dentro de la pantalla (el informe o el chat de la notificación) */
-    const abrirDentro = (aviso?: string | null, conversacion?: string | null) => {
+  /* Lo que hay que abrir dentro de la pantalla (el informe, el chat, la cita de la notificación) */
+  const abrirDentro = (aviso?: string | null, conversacion?: string | null) => {
       // «Pidió fotos de un servicio que no tiene»: abre ese servicio en el catálogo para subirlas
       if (aviso?.startsWith('servicio:')) setCatalogDeepLink({ serviceId: aviso.slice('servicio:'.length) });
+      // Una cita o una clienta: la Agenda y Clientas las abren al montarse (ABRIR_CITA, ABRIR_CLIENTA)
+      else if (aviso?.startsWith('cita:')) { try { sessionStorage.setItem('lalan.abrirCita', aviso.slice('cita:'.length)); } catch { /* nada */ } }
+      else if (aviso?.startsWith('clienta:')) { try { sessionStorage.setItem('lalan.abrirClienta', aviso.slice('clienta:'.length)); } catch { /* nada */ } }
       // «Lalan entró a tu salón»: abre Ajustes en esa sección (Mi cuenta → Lalan en tu salón)
       // Un proveedor contestó o Lalan espera tu sí: abre ese pedido en Compras
       else if (aviso?.startsWith('pedido:')) { try { sessionStorage.setItem(ABRIR_PEDIDO, aviso.slice('pedido:'.length)); } catch { /* nada */ } window.dispatchEvent(new Event(EVENTO_ABRIR_PEDIDO)); }
       else if (aviso?.startsWith('ajustes:')) { try { sessionStorage.setItem('lalan_ajustes_seccion', aviso.slice('ajustes:'.length)); } catch { /* nada */ } }
       else if (aviso) { try { sessionStorage.setItem('lalan.abrirAviso', aviso); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-aviso')); }
       if (conversacion) setActiveConversationId(conversacion);
-    };
+  };
+  /* Con la app ya abierta, la notificación le pide ir a una pantalla */
+  useEffect(() => {
     try {
       const u = new URL(window.location.href);
       if (u.searchParams.has('ir')) {
@@ -993,6 +997,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setScreenHistory(h => [...h, currentScreen]);
     setCurrentScreen('catalog');
   }, [currentScreen]);
+  /* La campana y Mi actividad piden ir a una pantalla: como tocar el push, pero dejando volver con Atrás */
+  const abrirDentroRef = useRef(abrirDentro);
+  abrirDentroRef.current = abrirDentro;
+  useEffect(() => {
+    const ir = (e: Event) => {
+      const d = (e as CustomEvent<{ pantalla?: string; aviso?: string | null; conversacion?: string | null }>).detail ?? {};
+      if (!d.pantalla) return;
+      navigateTo(d.pantalla as ScreenName);
+      abrirDentroRef.current(d.aviso, d.conversacion);
+    };
+    window.addEventListener(EVENTO_IR, ir);
+    return () => window.removeEventListener(EVENTO_IR, ir);
+  }, [navigateTo]);
   const goBack = useCallback(() => {
     setScreenHistory(h => {
       const prev = h[h.length - 1];

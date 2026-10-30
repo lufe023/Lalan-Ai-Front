@@ -16,6 +16,7 @@ import {
   MapPin,
   ChevronDown,
   Search,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -24,6 +25,7 @@ import { UserRole } from '../../types';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 import { ListaSedes, useNombreSede } from './ListaSedes';
 import { abrirBuscador } from './BuscadorOpciones';
+import { CampanaAvisos } from '../avisos/CampanaAvisos';
 
 interface IOSHeaderProps {
   title: string;
@@ -43,7 +45,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
   largeTitle = true,
 }) => {
   const { currentUser, logout } = useAuth();
-  const { triggerSplash } = useApp();
+  const { triggerSplash, navigateTo } = useApp();
   const { isDark, setThemeMode } = useTheme();
   // Deslizar desde el borde izquierdo o clic derecho = Atrás
   useIrAtras(onBack, showBack);
@@ -139,11 +141,15 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
           <button
             id="ios-header-palette-button"
             onClick={() => setShowThemeModal(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-neutral-800/80 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] transition ios-touch cursor-pointer shadow-2xs"
+            /* En el teléfono no cabe junto a la campana: los colores están en Ajustes → Apariencia */
+            className="hidden sm:flex w-8 h-8 rounded-full items-center justify-center bg-slate-100 dark:bg-neutral-800/80 text-slate-600 dark:text-neutral-300 hover:text-[var(--primary)] transition ios-touch cursor-pointer shadow-2xs"
             title="Personalizar Tema & Colores"
           >
             <Palette className="w-4 h-4" />
           </button>
+
+          {/* La campana: avisos sin leer, junto a la foto */}
+          {currentUser && <CampanaAvisos />}
 
           {/* User avatar + menu */}
           {currentUser && (
@@ -199,6 +205,18 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
                       <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 mb-1 max-h-[min(50vh,calc(100dvh-18rem))] overflow-y-auto">
                         <ListaSedes alElegir={() => setShowUserMenu(false)} />
                       </div>
+                    )}
+
+                    {/* Lo que hizo en Lalan (la dueña, también lo de su equipo) */}
+                    {currentUser.role !== 'especialista' && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowUserMenu(false); navigateTo('mi-actividad'); }}
+                        className="w-full min-h-[44px] flex items-center gap-2 px-2 rounded-lg text-[0.8125rem] font-semibold text-slate-700 dark:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800 border-t border-slate-200 dark:border-neutral-800 transition cursor-pointer"
+                      >
+                        <Activity className="w-4 h-4 text-[var(--primary)]" />
+                        <span>Mi actividad</span>
+                      </button>
                     )}
 
                     <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 flex flex-wrap items-center justify-between gap-1">

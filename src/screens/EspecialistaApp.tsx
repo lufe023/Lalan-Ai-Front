@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { EVENTO_IR } from '../services/avisos';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   CalendarDays, Scissors, UserRound, Loader2, ChevronDown, AlertTriangle, Heart, History, StickyNote,
@@ -148,7 +149,11 @@ export const EspecialistaApp: React.FC = () => {
       void cargar();
     };
     navigator.serviceWorker?.addEventListener('message', alAviso);
+    // Tocó un aviso en la campana: lo mismo que tocar el del teléfono
+    const desdeCampana = (ev: Event) => alAviso({ data: { tipo: 'ir', ...((ev as CustomEvent).detail ?? {}) } } as MessageEvent);
+    window.addEventListener(EVENTO_IR, desdeCampana);
     return () => {
+      window.removeEventListener(EVENTO_IR, desdeCampana);
       window.clearInterval(t);
       document.removeEventListener('visibilitychange', alVolver);
       navigator.serviceWorker?.removeEventListener('message', alAviso);
