@@ -309,6 +309,8 @@ export interface RenglonFactura {
 
 /** Lo que Lalan leyó de la factura, listo para que la dueña lo revise */
 export interface PropuestaFactura {
+  /** Qué papel era: con una orden de compra o una cotización no se da por recibido */
+  documento: 'factura' | 'orden' | 'cotizacion' | 'conduce';
   sede: { id: string; nombre: string };
   proveedor: {
     id: string | null; nombre: string; nuevo: boolean; por: 'rnc' | 'nombre' | null; rnc?: string | null;

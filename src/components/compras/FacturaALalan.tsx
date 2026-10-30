@@ -9,6 +9,7 @@ import {
   FORMAS_DE_PAGO, cantidadTexto, comprasApi, dinero, type FormaDePago, type Pedido, type PropuestaFactura, type Proveedor, type RenglonFactura,
 } from '../../services/compras';
 import { botonPrincipal, botonSuave, campo, etiqueta } from './piezas';
+import { EscaneoFactura } from './EscaneoFactura';
 
 /** Un renglón como lo va dejando la dueña: el producto del salón, o uno nuevo */
 interface Fila extends RenglonFactura {
@@ -48,6 +49,8 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
   const [referencia, setReferencia] = useState('');
   const [fecha, setFecha] = useState('');
   const [recibir, setRecibir] = useState(true);
+  /** Por qué no se pudo leer lo último que mandó: queda a la vista, no en un aviso que se va */
+  const [noSeLeyo, setNoSeLeyo] = useState<string | null>(null);
   const [pagada, setPagada] = useState(false);
   const [forma, setForma] = useState<FormaDePago>('efectivo');
   const [condiciones, setCondiciones] = useState('');
@@ -57,7 +60,7 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
 
   useEffect(() => {
     if (!abierto) return;
-    setPaso('elegir'); setP(null); setFilas([]); setArchivos([]); setSedeId(sede || '');
+    setPaso('elegir'); setP(null); setFilas([]); setArchivos([]); setSedeId(sede || ''); setNoSeLeyo(null);
     comprasApi.proveedores().then(setProveedores).catch(() => setProveedores([]));
   }, [abierto, sede]);
   // Con una sola sede (o atada a una) no se pregunta
@@ -68,7 +71,7 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
 
   const leer = async (lista: File[]) => {
     if (!lista.length) return;
-    setArchivos(lista); setPaso('leyendo');
+    setArchivos(lista); setPaso('leyendo'); setNoSeLeyo(null);
     try {
       const r = await comprasApi.leerFactura(lista, sedeId || undefined);
       setP(r);
@@ -76,7 +79,8 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
       setNuevoProv(r.proveedor.nuevo ? r.proveedor.nombre : '');
       setReferencia(r.referencia ?? '');
       setFecha(r.fecha ?? '');
-      setRecibir(true);
+      // Una orden de compra o una cotización no dicen que ya llegó
+      setRecibir(r.documento !== 'orden' && r.documento !== 'cotizacion');
       setPagada(r.pagada === true);
       setForma((FORMAS_DE_PAGO.find((f) => f.id === r.formaPago)?.id) ?? 'efectivo');
       setCondiciones(r.condiciones ?? r.proveedor.condicionesPago ?? '');
@@ -87,7 +91,7 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
       })));
       setPaso('revisar');
     } catch (e) {
-      showToast('No pude leer la factura', (e as Error).message, 'warning');
+      setNoSeLeyo((e as Error).message);
       setPaso('elegir');
     }
   };
@@ -150,13 +154,27 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
             <Bot className="w-5 h-5 shrink-0 mt-0.5" />
             <p>Tómale una foto a la factura o súbela en PDF. Yo leo el proveedor, los productos y los precios; tú solo revisas y me dices que sí.</p>
           </div>
+          {noSeLeyo && (
+            <div role="alert" className="flex gap-2 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-[0.8125rem] text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <p><b>No pude leer {archivos.length === 1 ? archivos[0].name : 'lo que me mandaste'}.</b> {noSeLeyo}</p>
+            </div>
+          )}
           {sedes.length > 1 && (
-            <label className="block"><span className={etiqueta}>¿En qué sede entra lo que compraste?</span>
-              <select className={campo} value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
-                <option value="">Elige la sede</option>
-                {sedes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
+            <div role="radiogroup" aria-label="Sede">
+              <span className={etiqueta}>¿En qué sede entra lo que compraste?</span>
+              {/* Botones y no una lista: el nombre completo de cada sede, de un toque */}
+              <div className="flex flex-wrap gap-2 mt-1">
+                {sedes.map((s) => (
+                  <button key={s.id} type="button" role="radio" aria-checked={sedeId === s.id} onClick={() => setSedeId(s.id)}
+                    className={`px-3 py-2 rounded-xl text-[0.8125rem] font-semibold border transition-colors cursor-pointer ${sedeId === s.id
+                      ? 'bg-[var(--primary)] border-[var(--primary)] text-white'
+                      : 'bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200'}`}>
+                    {sedeId === s.id && <Check className="w-3.5 h-3.5 inline -mt-0.5 mr-1" />}{s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" disabled={faltaSede} onClick={() => foto.current?.click()} className={`${botonPrincipal} flex-col py-5`}>
@@ -166,14 +184,14 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
               <FileUp className="w-6 h-6" /> Subir PDF o foto
             </button>
           </div>
-          <p className="text-[0.6875rem] text-slate-500">Si la factura tiene varias páginas, súbelas juntas (hasta 5 archivos).</p>
+          <p className="text-[0.6875rem] text-slate-500">También leo órdenes de compra, cotizaciones y conduces. Si tiene varias páginas, súbelas juntas (hasta 5 archivos).</p>
         </div>
       )}
 
       {paso === 'leyendo' && (
-        <div className="py-14 flex flex-col items-center text-center gap-3 text-slate-600 dark:text-neutral-300">
-          <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
-          <p className="text-[0.875rem] font-semibold">Lalan está leyendo la factura…</p>
+        <div className="py-8 flex flex-col items-center text-center gap-3 text-slate-600 dark:text-neutral-300">
+          <EscaneoFactura archivos={archivos} />
+          <p className="text-[0.875rem] font-semibold flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin text-violet-600" /> Lalan está leyendo la factura…</p>
           <p className="text-[0.75rem] text-slate-500">Busco al proveedor y tus productos. Tarda unos segundos.</p>
         </div>
       )}
@@ -188,6 +206,14 @@ export const FacturaALalan: React.FC<{ abierto: boolean; sede?: string; onClose:
                 {onAbrirPedido && <button type="button" onClick={() => onAbrirPedido(p.yaRegistrada!.id)} className="block mt-1 font-bold text-[var(--primary)] cursor-pointer">Abrir {p.yaRegistrada.numero}</button>}
               </div>
             </div>
+          )}
+          {(p.documento === 'orden' || p.documento === 'cotizacion' || p.documento === 'conduce') && (
+            <p className="flex gap-2 p-3 rounded-2xl bg-violet-50 dark:bg-violet-950/30 text-[0.8125rem] text-violet-900 dark:text-violet-200">
+              <Bot className="w-4 h-4 shrink-0 mt-0.5" />
+              {p.documento === 'conduce'
+                ? 'Es un conduce: dice lo que llegó. Cuando te llegue la factura, adjúntala a este pedido en vez de registrarla otra vez.'
+                : `Es ${p.documento === 'orden' ? 'una orden de compra' : 'una cotización'}, no una factura: la dejo como pedido sin recibir. Si ya te llegó, marca «Ya lo tengo aquí».`}
+            </p>
           )}
           {p.sinLeer.length > 0 && <p className="text-[0.75rem] text-amber-700">No pude abrir: {p.sinLeer.join(', ')}.</p>}
 

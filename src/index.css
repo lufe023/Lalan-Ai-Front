@@ -254,6 +254,13 @@ html, body, #root {
   .entrar-suave, .fondo-hoja, .subir-hoja { animation: none; }
 }
 
+/* La luz que recorre la factura mientras Lalan la lee: baja y vuelve a empezar */
+@keyframes lalan-escanear {
+  from { top: -4rem; }
+  to { top: 100%; }
+}
+.escanear-luz { animation: lalan-escanear 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+
 /* iOS Safari le da al campo de fecha un ancho mínimo propio y se sale de su
    tarjeta en el teléfono: que respete el ancho del contenedor */
 input[type="date"],
