@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, Bot, Check, ChevronRight, Copy, FileText, Loader2, Mail, MessageCircle, PackageCheck, Paperclip, Plus, Printer,
-  Search, Send, Trash2, X,
+  Scale, Search, Send, Trash2, X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
@@ -28,7 +28,7 @@ const aRenglones = (p: Pedido): Renglon[] => p.lineas.map((l) => ({
  * abajo, en el teléfono) el historial con todo lo que se habló, se mandó y
  * se adjuntó, y por dónde.
  */
-export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambio: () => void; onAbrir: (id: string) => void }> = ({ id, onVolver, onCambio, onAbrir }) => {
+export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambio: () => void; onAbrir: (id: string) => void; onComparar?: (comparacionId: string) => void }> = ({ id, onVolver, onCambio, onAbrir, onComparar }) => {
   const { showToast, products, navigateToCatalog } = useApp();
   const { confirmar, modalConfirmar } = useConfirmar();
   const [p, setP] = useState<Pedido | null>(null);
@@ -151,6 +151,15 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
         <PastillaEstado estado={p.estado} />
         {p.manejaLalan && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300"><Bot className="w-3 h-3" /> Lo lleva Lalan</span>}
       </div>
+
+      {/* ── Parte de una comparación: la decisión se toma viendo a todos los proveedores ── */}
+      {p.comparacionId && onComparar && (
+        <button type="button" onClick={() => onComparar(p.comparacionId!)} className="w-full p-3 rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary)]/5 flex items-center gap-2 text-left cursor-pointer">
+          <Scale className="w-4 h-4 text-[var(--primary)] shrink-0" />
+          <span className="flex-1 text-[0.8125rem] text-slate-800 dark:text-neutral-200">Lo mismo se les pidió a otros proveedores. Compara los precios y elige ahí.</span>
+          <span className="text-[0.8125rem] font-bold text-[var(--primary)] flex items-center gap-0.5">Comparar <ChevronRight className="w-4 h-4" /></span>
+        </button>
+      )}
 
       {/* ── Lalan pregunta: el sí de la dueña, donde se decide ── */}
       {p.esperaDuena && (

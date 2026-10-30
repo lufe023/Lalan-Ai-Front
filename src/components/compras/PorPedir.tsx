@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Check, Loader2, Package, ShoppingCart, Truck, Users } from 'lucide-react';
+import { CalendarClock, Check, Loader2, Package, Scale, ShoppingCart, Truck, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { EtiquetaSede } from '../ui/CopiarASede';
 import { Aparecer } from '../ui/movimiento';
 import { comprasApi, cantidadTexto, unidadTexto, type PorPedir as Fila, type Proveedor } from '../../services/compras';
 import { ProveedoresDelProducto } from './ProveedoresDelProducto';
 import { FichaProveedor } from './Proveedores';
+import { CompararPrecios } from './CompararPrecios';
 import { botonPrincipal, botonSuave, campo } from './piezas';
 
 /**
@@ -15,7 +16,7 @@ import { botonPrincipal, botonSuave, campo } from './piezas';
  * tiene proveedor dice "¿a quién se lo compras?" ahí mismo. Varios marcados
  * pueden ir al mismo proveedor de un toque: queda anotado que se lo vende.
  */
-export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => void; recarga?: number }> = ({ sede, onArmados, recarga }) => {
+export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => void; onComparar: (comparacionId: string) => void; recarga?: number }> = ({ sede, onArmados, onComparar, recarga }) => {
   const { showToast } = useApp();
   const [filas, setFilas] = useState<Fila[] | null>(null);
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
@@ -25,6 +26,7 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
   const [aQuien, setAQuien] = useState('');
   const [asignando, setAsignando] = useState(false);
   const [nuevo, setNuevo] = useState(false);
+  const [comparar, setComparar] = useState(false);
   const clave = (f: Fila) => `${f.sede.id}:${f.productId}`;
 
   const cargar = useCallback(() => {
@@ -123,7 +125,7 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
                   </p>
                 </div>
                 {f.proveedor
-                  ? <span className="text-[0.75rem] text-slate-600 dark:text-neutral-300 flex items-center gap-1 shrink-0 max-w-[40%] truncate"><Truck className="w-3.5 h-3.5 text-slate-400" />{f.proveedor.nombre}</span>
+                  ? <span className="text-[0.75rem] text-slate-600 dark:text-neutral-300 flex items-center gap-1 shrink-0 max-w-[40%] truncate"><Truck className="w-3.5 h-3.5 text-slate-400" />{f.proveedor.nombre}{f.opciones.length > 1 && <span className="text-slate-400"> +{f.opciones.length - 1}</span>}</span>
                   : <button type="button" onClick={() => setProducto({ id: f.productId, name: f.nombre, unit: f.unidad })} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer shrink-0">¿A quién se lo compras?</button>}
               </div>
             );
@@ -154,9 +156,17 @@ export const PorPedir: React.FC<{ sede?: string; onArmados: (ids: string[]) => v
           </div>
         </div>
       )}
-      <button type="button" disabled={!cuantas || armando} onClick={() => void armar()} className={`${botonPrincipal} w-full py-3`}>
-        {armando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />} Armar {cuantas === 1 ? 'el pedido' : 'los pedidos'} ({cuantas})
-      </button>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button type="button" disabled={!cuantas || armando} onClick={() => void armar()} className={`${botonPrincipal} flex-1 py-3`}>
+          {armando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />} Armar {cuantas === 1 ? 'el pedido' : 'los pedidos'} ({cuantas})
+        </button>
+        {/* Lo mismo a varios proveedores: Lalan pide precio a todos y la dueña elige viendo la comparación */}
+        <button type="button" disabled={!marcadasTodas.length || armando} onClick={() => setComparar(true)} className={`${botonSuave} flex-1 py-3`} title="Pídele lo mismo a varios proveedores y elige el mejor precio">
+          <Scale className="w-4 h-4" /> Comparar precios
+        </button>
+      </div>
+      <CompararPrecios abierto={comparar} filas={marcadasTodas} proveedores={proveedores ?? []} onClose={() => setComparar(false)}
+        onCreada={(ids) => { setComparar(false); if (ids.length) onComparar(ids[0]); }} />
       <ProveedoresDelProducto producto={producto} onClose={() => { setProducto(null); cargar(); }} />
       <FichaProveedor id={nuevo ? 'nuevo' : null} onClose={() => setNuevo(false)} onCambio={() => undefined}
         onCreado={(p) => { setProveedores((l) => [...(l ?? []), p]); void asignar(p); }} />
