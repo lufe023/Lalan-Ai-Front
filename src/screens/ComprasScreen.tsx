@@ -9,16 +9,17 @@ import { PageContent } from '../components/ui/PageContent';
 import { SelectorSede } from '../components/ui/SelectorSede';
 import { ItemAnimado, ListaAnimada } from '../components/ui/movimiento';
 import { useSedes } from '../hooks/useSedes';
-import { ABRIR_PEDIDO, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, comprasApi, dinero, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
+import { ABRIR_PEDIDO, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
 import { DetallePedido } from '../components/compras/DetallePedido';
 import { ListaProveedores } from '../components/compras/Proveedores';
 import { PorPedir } from '../components/compras/PorPedir';
 import { AjustesCompras } from '../components/compras/AjustesCompras';
 import { NovedadesProveedores } from '../components/compras/NovedadesProveedores';
+import { PorPagarVista } from '../components/compras/PorPagar';
 import { PastillaEstado, botonPrincipal, campo, etiqueta, fechaCorta } from '../components/compras/piezas';
 
-type Vista = 'pedidos' | 'por-pedir' | 'proveedores';
-type Filtro = '' | 'borrador' | 'cotizacion_enviada' | 'atrasadas' | 'sin_recibir' | 'recepcion_atrasada' | 'tu_si';
+type Vista = 'pedidos' | 'por-pedir' | 'proveedores' | 'por-pagar';
+type Filtro = '' | 'borrador' | 'cotizacion_enviada' | 'atrasadas' | 'sin_recibir' | 'recepcion_atrasada' | 'tu_si' | 'pago_vencido';
 
 /**
  * Compras, como el módulo de Odoo pero guiado: arriba los números que
@@ -44,6 +45,19 @@ export const ComprasScreen: React.FC = () => {
     };
     window.addEventListener(EVENTO_ABRIR_PEDIDO, abrir);
     return () => window.removeEventListener(EVENTO_ABRIR_PEDIDO, abrir);
+  }, []);
+  // El aviso de un pago por vencer abre «Por pagar»
+  useEffect(() => {
+    const revisar = () => {
+      try {
+        if (sessionStorage.getItem('lalan.abrirAviso') !== 'por-pagar') return;
+        sessionStorage.removeItem('lalan.abrirAviso');
+        setAbierto(null); setVista('por-pagar');
+      } catch { /* nada */ }
+    };
+    revisar();
+    window.addEventListener('lalan:abrir-aviso', revisar);
+    return () => window.removeEventListener('lalan:abrir-aviso', revisar);
   }, []);
   const [filtro, setFiltro] = useState<Filtro>('');
   const [q, setQ] = useState('');
@@ -71,6 +85,7 @@ export const ComprasScreen: React.FC = () => {
     { id: 'sin_recibir' as Filtro, n: resumen.sinRecibir, texto: 'Sin recibir' },
     { id: 'recepcion_atrasada' as Filtro, n: resumen.recepcionAtrasada, texto: 'Recepción atrasada', alerta: true },
     ...(resumen.esperanTuSi ? [{ id: 'tu_si' as Filtro, n: resumen.esperanTuSi, texto: 'Esperan tu sí', lalan: true }] : []),
+    ...(resumen.pagosVencidos ? [{ id: 'pago_vencido' as Filtro, n: resumen.pagosVencidos, texto: 'Pago vencido', alerta: true }] : []),
   ] : [], [resumen]);
 
   const abrir = (id: string) => { setAbierto(id); setVista('pedidos'); };
@@ -102,12 +117,13 @@ export const ComprasScreen: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <div className="flex-1">
                 <IOSSegmentedControl id="compras-vista" value={vista} onChange={(v) => setVista(v as Vista)} size="sm"
-                  options={[{ id: 'pedidos', label: 'Pedidos' }, { id: 'por-pedir', label: 'Por pedir' }, { id: 'proveedores', label: 'Proveedores' }]} />
+                  options={[{ id: 'pedidos', label: 'Pedidos' }, { id: 'por-pedir', label: 'Por pedir' }, { id: 'por-pagar', label: 'Por pagar' }, { id: 'proveedores', label: 'Proveedores' }]} />
               </div>
               {vista === 'pedidos' && <button type="button" onClick={() => setNuevo(true)} className={botonPrincipal}><Plus className="w-4 h-4" /> Nuevo pedido</button>}
             </div>
 
             {vista === 'por-pedir' && <PorPedir sede={sede || undefined} recarga={vuelta} onArmados={(ids) => { setVuelta((v) => v + 1); if (ids.length === 1) abrir(ids[0]); else { setFiltro('borrador'); setVista('pedidos'); } }} />}
+            {vista === 'por-pagar' && <PorPagarVista sede={sede || undefined} recarga={vuelta} onAbrir={abrir} />}
             {vista === 'proveedores' && <ListaProveedores sede={sede || undefined} recarga={vuelta} onAbrirPedido={abrir} />}
 
             {vista === 'pedidos' && (
@@ -174,7 +190,10 @@ export const ComprasScreen: React.FC = () => {
                               {sedes.length > 1 && <td className="px-3 py-2.5 text-slate-500">{o.sede.nombre}</td>}
                               <td className="px-3 py-2.5 text-slate-500">{o.manejaLalan || o.origen === 'lalan' ? <span className="inline-flex items-center gap-1 text-violet-600"><Bot className="w-3.5 h-3.5" /> Lalan</span> : o.creadoPor ?? '—'}</td>
                               <td className={`px-3 py-2.5 ${o.atrasada ? 'text-rose-600 font-semibold' : 'text-slate-500'}`}>{fechaDeFila(o)}</td>
-                              <td className="px-3 py-2.5 text-right font-bold tabular-nums">{dinero(simbolo(o.currencyCode), o.total)}</td>
+                              <td className="px-3 py-2.5 text-right font-bold tabular-nums">
+                                {dinero(simbolo(o.currencyCode), o.total)}
+                                {o.cuenta && o.cuenta.debe >= 0.005 && <span className={`block text-[0.6875rem] font-semibold ${colorVence(o.cuenta.diasParaVencer)}`}>debes {dinero(simbolo(o.currencyCode), o.cuenta.debe)}</span>}
+                              </td>
                               <td className="px-3 py-2.5"><span className="flex items-center gap-1.5"><PastillaEstado estado={o.estado} />{o.esperaDuena && <span title="Espera tu sí" className="text-violet-600"><Bot className="w-3.5 h-3.5" /></span>}</span></td>
                             </tr>
                           ))}
@@ -194,6 +213,9 @@ export const ComprasScreen: React.FC = () => {
                             <span className="font-bold text-[0.8125rem] text-slate-900 dark:text-white tabular-nums">{dinero(simbolo(o.currencyCode), o.total)}</span>
                           </div>
                           {o.esperaDuena && <p className="mt-1 text-[0.75rem] font-semibold text-violet-600 flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> Lalan espera tu sí</p>}
+                          {o.cuenta && o.cuenta.debe >= 0.005 && (
+                            <p className={`mt-1 text-[0.75rem] font-semibold ${colorVence(o.cuenta.diasParaVencer)}`}>Debes {dinero(simbolo(o.currencyCode), o.cuenta.debe)} · {textoVence(o.cuenta)}</p>
+                          )}
                         </ItemAnimado>
                       ))}
                     </ListaAnimada>
