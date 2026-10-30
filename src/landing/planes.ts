@@ -13,6 +13,7 @@
  */
 import { API } from './api';
 import { botonOferta, detalleOferta, partesOferta, type OfertaTexto } from './textoOferta';
+import { abrirEjemplo, cargarEjemplos, type Ejemplo } from './ejemplos';
 
 interface PlanPublico {
   clave: string;
@@ -31,8 +32,24 @@ interface PlanPublico {
   oferta?: OfertaTexto | null;
 }
 
-/** Lo que todos los planes traen: se muestra completo solo en el primero */
-const BASICO = ['Lalan responde y agenda en WhatsApp', 'Entiende notas de voz', 'Agenda, especialistas y zonas', 'Ficha de cada clienta y sus gustos', 'Avisos a la dueña por WhatsApp', 'Métricas'];
+/**
+ * Lo que todos los planes traen: se muestra completo solo en el primero. Los
+ * ids son los de LO_BASICO en el servidor (planes.contrato.ts), para colgarles
+ * ejemplos desde Plataforma.
+ */
+const BASICO: { id: string; nombre: string }[] = [
+  { id: 'base_whatsapp', nombre: 'Lalan responde y agenda en WhatsApp' },
+  { id: 'base_notas_voz', nombre: 'Entiende notas de voz' },
+  { id: 'base_agenda', nombre: 'Agenda, especialistas y zonas' },
+  { id: 'base_clientas', nombre: 'Ficha de cada clienta y sus gustos' },
+  { id: 'base_avisos', nombre: 'Avisos a la dueña por WhatsApp' },
+  { id: 'base_metricas', nombre: 'Métricas' },
+];
+
+/** Los ejemplos por característica (Plataforma → Planes → Ejemplos, más los de serie) */
+let ejemplos: Record<string, Ejemplo[]> = {};
+/** El nombre de cada característica, para el título del visor */
+const nombres = new Map<string, string>();
 
 const escapar = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const numero = (n: number) => n.toLocaleString('es-DO');
@@ -106,10 +123,18 @@ function tarjeta(p: PlanPublico, destacado: boolean): string {
   // Cada cosa nueva con su explicación corta (solo el nombre dejaba las tarjetas como vacías).
   // Si el plan suma muchas, van solo los nombres: la lista ya es larga
   const conDetalle = p.suma.length <= 4;
-  const nuevo = (m: PlanPublico['suma'][number]) => `<li class="nuevo"><span><b>${escapar(m.nombre)}</b>${conDetalle && m.descripcion ? `<small>${escapar(primeraFrase(m.descripcion))}</small>` : ''}</span></li>`;
+  // Lo que tiene un ejemplo se toca y abre la foto o el video ahí mismo
+  const conEjemplo = (id: string, nombre: string, contenido: string) => {
+    const lista = ejemplos[id];
+    if (!lista?.length) return contenido;
+    nombres.set(id, nombre);
+    const tipo = lista.some((e) => e.video) ? 'Ver video' : 'Ver ejemplo';
+    return `<button type="button" class="ver-ejemplo" data-ejemplo="${escapar(id)}" data-plan-clave="${escapar(p.clave)}" data-plan-nombre="${escapar(p.nombre)}">${contenido}<span class="ver">${tipo}</span></button>`;
+  };
+  const nuevo = (m: PlanPublico['suma'][number]) => `<li class="nuevo">${conEjemplo(m.id, m.nombre, `<span><b>${escapar(m.nombre)}</b>${conDetalle && m.descripcion ? `<small>${escapar(primeraFrase(m.descripcion))}</small>` : ''}</span>`)}</li>`;
   const items = p.anterior
     ? [`<li class="base">Todo lo del ${escapar(p.anterior)}</li>`, ...p.suma.map(nuevo)]
-    : [...BASICO.map((t) => `<li>${escapar(t)}</li>`), ...p.suma.map(nuevo)];
+    : [...BASICO.map((b) => `<li>${conEjemplo(b.id, b.nombre, `<span>${escapar(b.nombre)}</span>`)}</li>`), ...p.suma.map(nuevo)];
   const o = p.oferta;
   return `<article class="plan${destacado ? ' destacado' : ''}">
     ${destacado ? '<span class="sello-plan">Recomendado</span>' : ''}
@@ -138,14 +163,24 @@ function decirOferta() {
 }
 
 /** El botón de cada plan deja ese plan elegido en el formulario (y dice su oferta) */
+function elegirPlan(clave: string) {
+  const select = document.getElementById('p-plan') as HTMLSelectElement | null;
+  if (!select) return;
+  if ([...select.options].some((o) => o.value === clave)) select.value = clave;
+  decirOferta();
+}
+
 function alElegir(contenedor: Element) {
   contenedor.addEventListener('click', (e) => {
+    const ver = (e.target as Element).closest<HTMLButtonElement>('button[data-ejemplo]');
+    if (ver) {
+      const id = ver.dataset.ejemplo ?? '';
+      const plan = ver.dataset.planClave ? { clave: ver.dataset.planClave, nombre: ver.dataset.planNombre ?? '' } : null;
+      abrirEjemplo(nombres.get(id) ?? '', ejemplos[id] ?? [], plan, elegirPlan);
+      return;
+    }
     const boton = (e.target as Element).closest<HTMLAnchorElement>('a[data-plan]');
-    const select = document.getElementById('p-plan') as HTMLSelectElement | null;
-    if (!boton || !select) return;
-    const clave = boton.dataset.plan ?? '';
-    if ([...select.options].some((o) => o.value === clave)) select.value = clave;
-    decirOferta();
+    if (boton) elegirPlan(boton.dataset.plan ?? '');
   });
   document.getElementById('p-plan')?.addEventListener('change', decirOferta);
 }
@@ -211,7 +246,9 @@ export async function iniciarPlanes(): Promise<void> {
   contenedor.style.setProperty('--columnas', String(Math.min(4, contenedor.querySelectorAll('.plan').length) || 3));
   puntos(contenedor);
   try {
-    const r = await fetch(`${API}/public/landing/planes`);
+    // Los ejemplos no frenan las tarjetas: si fallan, salen sin ellos
+    const [r, conEjemplos] = await Promise.all([fetch(`${API}/public/landing/planes`), cargarEjemplos()]);
+    ejemplos = conEjemplos;
     if (!r.ok) return;
     const planes = (await r.json()) as PlanPublico[];
     if (!Array.isArray(planes) || !planes.length) return;

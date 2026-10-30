@@ -5,6 +5,7 @@ import { NOMBRE_RECURSO, RECURSOS, type AlAgotarse, type CatalogoModulos, type C
 import { CostoRealIa } from './CostoRealIa';
 import { IOSToggle } from '../ui/IOSToggle';
 import { PaginaYOfertas } from './OfertasPlanes';
+import { EjemplosPlanes } from './EjemplosPlanes';
 
 const GRUPOS: { id: string; nombre: string }[] = [
   { id: 'atencion', nombre: 'Atención' }, { id: 'salon', nombre: 'El salón' }, { id: 'dinero', nombre: 'Dinero' }, { id: 'experiencia', nombre: 'Experiencia' },
@@ -238,6 +239,7 @@ export const PlanesPlataforma: React.FC = () => {
     <div className="space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <CostoRealIa planes={planes} />
       <PaginaYOfertas planes={planes} onGuardado={() => void cargar()} />
+      <EjemplosPlanes planes={planes} />
       <div className="flex flex-wrap gap-2">
         {planes.map((p) => (
           <button key={p.id} type="button" onClick={() => setElegido(p.id)}
