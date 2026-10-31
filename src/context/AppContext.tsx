@@ -44,6 +44,9 @@ export interface SaleItem {
   discountPercent?: number | null;
   lineTotal: number;
   notes?: string | null;
+  /** Quién hizo el servicio o vendió el producto: su comisión va con la línea */
+  staffId?: string | null;
+  staffName?: string | null;
 }
 
 /** El consumo de la cita: cortesías y ventas en el mismo documento */
@@ -418,6 +421,8 @@ interface AppContextType {
   removeSaleItem: (itemId: string) => Promise<void>;
   setSaleItemQty: (itemId: string, quantity: number) => Promise<void>;
   toggleSaleItemCourtesy: (itemId: string) => Promise<void>;
+  /** Cambia quién hizo una línea (su comisión va con ella) */
+  setSaleItemStaff: (itemId: string, staffId: string | null) => Promise<void>;
   setSalePriceList: (priceListId: string | null) => Promise<void>;
   // Monedas y billetes
   currencies: Currency[];
@@ -2571,6 +2576,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [activeSale]);
 
+  const setSaleItemStaff = useCallback(async (itemId: string, staffId: string | null) => {
+    if (!activeSale) return;
+    const quien = staffId ? (especialistas ?? []).find(e => e.id === staffId) : null;
+    // Se ve al instante; si el servidor dice que no, vuelve como estaba
+    setActiveSale(v => !v ? v : ({
+      ...v, items: v.items.map(i => i.id === itemId ? { ...i, staffId, staffName: quien?.name ?? null } : i),
+    }));
+    try {
+      setActiveSale(await api.patch<Sale>(`/sales/${activeSale.id}/items/${itemId}/staff`, { staffId }));
+    } catch (e: any) {
+      setActiveSale(activeSale);
+      showToast('No se pudo cambiar quién lo hizo', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    }
+    // `especialistas` se declara más abajo: se lee al tocar, no al pintar
+  }, [activeSale]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setSalePriceList = useCallback(async (priceListId: string | null) => {
     if (!activeSale) return;
     setSaleBusy(true);
@@ -3054,7 +3075,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeLoungeClient, loungeClients, setLoungeClients, toggleLoungeClient,
       bienvenida, cerrarBienvenida,
       activeSale, saleBusy, openSale, addSaleItem, removeSaleItem,
-      setSaleItemQty, toggleSaleItemCourtesy, setSalePriceList, paySale, closeSale, dejarFiao, refrescarComanda,
+      setSaleItemQty, toggleSaleItemCourtesy, setSaleItemStaff, setSalePriceList, paySale, closeSale, dejarFiao, refrescarComanda,
       sala, salaCargando, loadSala,
       zonas, loadZonas, guardarZona, eliminarZona,
       especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista,
