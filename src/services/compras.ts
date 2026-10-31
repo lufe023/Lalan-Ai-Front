@@ -249,6 +249,8 @@ export const comprasApi = {
   /** Lalan le contesta al proveedor con lo que dice la dueña (literal: sale tal cual) */
   indicar: (id: string, texto: string, literal = false) => api.post<Pedido>(`/compras/ordenes/${id}/indicar`, { texto, literal }),
   /** Lalan le pide precio al proveedor y sigue ella la conversación */
+  /** «Encárgaselo a Lalan»: busca quién lo vende (los tuyos y su lista), arma los borradores de la sede y pide precio a todos */
+  encargar: (locationId: string, productIds: string[]) => api.post<Encargo>('/compras/encargar', { locationId, productIds }),
   lalanPide: (id: string) => api.post<{ canal: 'whatsapp' | 'correo'; orden: Pedido }>(`/compras/ordenes/${id}/lalan-pide`, {}),
   adjuntar: (id: string, archivos: File[]) => {
     const f = new FormData();
@@ -357,6 +359,23 @@ export const EVENTO_ABRIR_PEDIDO = 'lalan:abrir-pedido';
 export const ABRIR_FACTURA = 'lalan_abrir_factura';
 /** Con Compras ya abierta, lo mismo */
 export const EVENTO_ABRIR_FACTURA = 'lalan:abrir-factura';
+/** Lo que hizo Lalan con un encargo de Por pedir */
+export interface Encargo {
+  /** comparacion: es de la ronda para comparar precios */
+  ordenes: { id: string; proveedor: string; comparacion: boolean }[];
+  comparacionId: string | null;
+  pidio: { whatsapp: number; correo: number };
+  /** Proveedores de la lista de Lalan que agregó para pedirles */
+  encontrados: string[];
+  /** Productos para los que no encontró a nadie */
+  sinQuien: string[];
+  /** Borradores a proveedores sin WhatsApp ni correo: los manda la dueña */
+  sinCanal: { id: string; proveedor: string }[];
+}
+
+/** Avisos de lo que falta: abren «Por pedir» de esa sede (todo marcado) o sus borradores */
+export const AVISO_POR_PEDIR = 'por-pedir:';
+export const AVISO_BORRADORES = 'borradores:';
 /** La pestaña de Compras con la que abrir ("por-pedir", "por-pagar") */
 export const VISTA_COMPRAS = 'lalan_vista_compras';
 
