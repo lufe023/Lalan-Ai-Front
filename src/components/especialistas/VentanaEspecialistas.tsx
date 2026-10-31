@@ -9,9 +9,10 @@ import { EspecialistasEquipo } from '../ajustes/EspecialistasEquipo';
 import { PlantillaPermisosEspecialista } from '../ajustes/EntradaEspecialista';
 import { ComoSePaga } from './ComoSePaga';
 import { PagosEspecialistas } from './PagosEspecialistas';
+import { ProductosEspecialistas } from './ProductosEspecialistas';
 import { pagos } from '../../services/pagosEspecialistas';
 
-type Pestana = 'personas' | 'pago' | 'pagos' | 'permisos';
+type Pestana = 'personas' | 'pago' | 'productos' | 'pagos' | 'permisos';
 
 /**
  * Especialistas, en su propia ventana: ya no cabía en Equipo. Quiénes son,
@@ -38,7 +39,7 @@ export const VentanaEspecialistas: React.FC<{ abierta: boolean; onCerrar: () => 
   const irAPago = (staffId: string) => { setEnfocar(staffId); setPestana('pago'); };
 
   return (
-    <IOSModal isOpen={abierta} onClose={onCerrar} title="Especialistas" subtitle="Quiénes son, cómo se les paga y sus cortes" forma="angosta" height="92%">
+    <IOSModal isOpen={abierta} onClose={onCerrar} title="Especialistas" subtitle="Quiénes son, cómo se les paga, su producto y sus cortes" forma="angosta" height="92%">
       <div className="space-y-3 pb-6">
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
@@ -50,6 +51,7 @@ export const VentanaEspecialistas: React.FC<{ abierta: boolean; onCerrar: () => 
               options={[
                 { id: 'personas', label: 'Personas' },
                 { id: 'pago', label: 'Cómo se paga' },
+                { id: 'productos', label: 'Productos' },
                 { id: 'pagos', label: 'Pagos' },
                 { id: 'permisos', label: 'Permisos' },
               ]}
@@ -62,6 +64,7 @@ export const VentanaEspecialistas: React.FC<{ abierta: boolean; onCerrar: () => 
 
         {pestana === 'personas' && <EspecialistasEquipo sinPlantillaPermisos etiquetasPago={etiquetas} onPago={irAPago} />}
         {pestana === 'pago' && <ComoSePaga sede={sedeId} enfocar={enfocar} />}
+        {pestana === 'productos' && <ProductosEspecialistas sede={sedeId} onConfigurar={irAPago} />}
         {pestana === 'pagos' && <PagosEspecialistas sede={sedeId} onConfigurar={irAPago} onCerrarVentana={onCerrar} />}
         {pestana === 'permisos' && <PlantillaPermisosEspecialista />}
       </div>

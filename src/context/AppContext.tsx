@@ -966,6 +966,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Ya cotizaron los proveedores de una comparación: abre la comparación, donde se elige
       else if (aviso?.startsWith('comparacion:')) { try { sessionStorage.setItem(ABRIR_PEDIDO, aviso); } catch { /* nada */ } window.dispatchEvent(new Event(EVENTO_ABRIR_PEDIDO)); }
       else if (aviso?.startsWith('pedido:')) { try { sessionStorage.setItem(ABRIR_PEDIDO, aviso.slice('pedido:'.length)); } catch { /* nada */ } window.dispatchEvent(new Event(EVENTO_ABRIR_PEDIDO)); }
+      // Renta automática: abre Equipo → Especialistas → Pagos con su recibo abierto
+      else if (aviso?.startsWith('pagos-especialistas:')) {
+        try {
+          sessionStorage.setItem('lalan_ajustes_seccion', 'equipo');
+          sessionStorage.setItem('lalan.abrirEspecialistas', 'pagos');
+          sessionStorage.setItem('lalan.abrirPagoDe', aviso.slice('pagos-especialistas:'.length));
+        } catch { /* nada */ }
+        window.dispatchEvent(new CustomEvent('lalan:abrir-especialistas', { detail: 'pagos' }));
+      }
       else if (aviso?.startsWith('ajustes:')) { try { sessionStorage.setItem('lalan_ajustes_seccion', aviso.slice('ajustes:'.length)); } catch { /* nada */ } }
       else if (aviso) { try { sessionStorage.setItem('lalan.abrirAviso', aviso); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-aviso')); }
       if (conversacion) setActiveConversationId(conversacion);

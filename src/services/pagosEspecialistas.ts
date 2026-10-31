@@ -8,6 +8,17 @@ import { api } from './api';
 
 export type Modalidad = 'sueldo' | 'comision' | 'mixto' | 'mayor_de' | 'alquiler';
 export type Periodo = 'semanal' | 'quincenal' | 'mensual';
+export type ModoProducto = 'salon' | 'monto' | 'porcentaje' | 'costo' | 'propio';
+export interface Escalon { desde: number; porcentaje: number }
+
+export const MODOS_PRODUCTO: { id: ModoProducto; nombre: string; explica: string }[] = [
+  { id: 'salon', nombre: 'El salón', explica: 'Lo pone el salón y no se le cobra.' },
+  { id: 'monto', nombre: 'Le cobro un monto por servicio', explica: 'Se le descuenta un monto fijo por cada servicio que hace.' },
+  { id: 'porcentaje', nombre: 'Le cobro un %', explica: 'Se le descuenta un % de cada servicio, aparte de su comisión.' },
+  { id: 'costo', nombre: 'Le cobro lo que cuesta', explica: 'Se le descuenta lo que cuesta la receta de cada servicio que hace.' },
+  { id: 'propio', nombre: 'Ella trae el suyo', explica: 'Sus servicios no gastan del almacén del salón.' },
+];
+
 export type TipoDeduccion = 'porcentaje' | 'escalones' | 'monto' | 'prestamo' | 'una_vez';
 
 export const MODALIDADES: { id: Modalidad; nombre: string; explica: string }[] = [
@@ -47,6 +58,11 @@ export interface Acuerdo {
   rentaMonto?: number | null;
   propinasCompletas: boolean;
   currencyCode?: string;
+  modoProducto?: ModoProducto;
+  cargoProducto?: number | null;
+  escalones?: Escalon[];
+  escalonesProgresivos?: boolean;
+  rentaAutomatica?: boolean;
   reglas?: ReglaComision[];
   etiqueta?: string;
 }
@@ -87,7 +103,7 @@ export interface Deduccion {
 
 export interface LineaRecibo {
   id?: string;
-  tipo: 'sueldo' | 'comision_servicio' | 'comision_producto' | 'propina' | 'cobrado_propio' | 'renta' | 'deduccion' | 'adelanto' | 'ajuste' | 'aporte_salon';
+  tipo: 'sueldo' | 'comision_servicio' | 'comision_producto' | 'propina' | 'cobrado_propio' | 'renta' | 'deduccion' | 'adelanto' | 'ajuste' | 'aporte_salon' | 'producto' | 'producto_entregado';
   concepto: string;
   monto: number;
   base?: number | null;
@@ -120,6 +136,7 @@ export interface Borrador {
   productos?: number;
   facturado?: number;
   avisos?: string[];
+  escalon?: { porcentaje: number; desde: number; siguiente?: { desde: number; porcentaje: number; falta: number } | null } | null;
 }
 
 export interface FilaResumen {
@@ -166,6 +183,31 @@ export interface Corte {
   lineas?: LineaRecibo[];
 }
 
+export interface Entrega {
+  id: string; staffId: string; productId: string; productName: string; cantidad: number; unidad: string;
+  costoUnitario: number | null; aEstante: boolean; cobrar: boolean; montoCobro: number | null;
+  debiaTener: number | null; corteId: string | null; nota?: string | null; createdAt: string; createdByName?: string | null;
+}
+
+export interface UsoProducto { productId: string; nombre: string; unidad: string; cantidad: number; costo: number | null }
+
+export interface FilaProductos {
+  staff: { id: string; name: string; role: string };
+  desde: string; hasta: string;
+  modoProducto: ModoProducto; cargoProducto: number | null; sinAcuerdo: boolean;
+  servicios: number;
+  uso: UsoProducto[];
+  costoUso: number;
+  entregas: Entrega[];
+  estante: { productId: string; nombre: string; unidad: string; cantidad: number }[];
+  avisos: { productId: string; texto: string }[];
+}
+
+export interface Productos { sede: { id: string; nombre: string }; currencyCode: string; filas: FilaProductos[] }
+
+export interface MiCorteSede extends Borrador { cortes: { id: string; desde: string; hasta: string; estado: 'cerrado' | 'pagado'; neto: number; pagadoEn?: string | null; medio?: string | null }[] }
+export interface MiCorte { staff: { id: string; name: string }; sedes: MiCorteSede[] }
+
 const conSede = (ruta: string, sede?: string, extra?: Record<string, string | undefined>) => {
   const q = new URLSearchParams();
   if (sede) q.set('sede', sede);
@@ -195,6 +237,14 @@ export const pagos = {
   cerrar: (staffId: string, sede?: string, fecha?: string) => api.post<Corte>(`${R}/cortes`, { staffId, sede: sede || undefined, fecha }),
   cortes: (sede?: string, staffId?: string) => api.get<Corte[]>(conSede(`${R}/cortes`, sede, { staffId })),
   corte: (id: string) => api.get<Corte>(`${R}/cortes/${id}`),
+  productos: (sede?: string, fecha?: string) => api.get<Productos>(conSede(`${R}/productos`, sede, { fecha })),
+  entregar: (sede: string | undefined, e: { staffId: string; productId: string; cantidad: number; aEstante?: boolean; cobrar?: boolean; montoCobro?: number | null; nota?: string | null }) =>
+    api.post<Entrega>(`${R}/entregas`, { ...e, locationId: sede || undefined }),
+  anularEntrega: (id: string) => api.delete(`${R}/entregas/${id}`),
+
+  mios: (fecha?: string) => api.get<MiCorte>(conSede('/especialista/pagos', undefined, { fecha })),
+  miCorte: (id: string) => api.get<Corte>(`/especialista/pagos/cortes/${id}`),
+
   pagar: (id: string, medio: 'efectivo' | 'transferencia' | 'otro', referencia?: string) =>
     api.post<Corte>(`${R}/cortes/${id}/pagar`, { medio, referencia }),
 };
@@ -230,4 +280,13 @@ export const NOMBRE_LINEA: Record<LineaRecibo['tipo'], string> = {
   adelanto: 'Adelanto',
   ajuste: 'Ajuste',
   aporte_salon: 'Aporte del salón',
+  producto: 'Producto',
+  producto_entregado: 'Producto entregado',
 };
+
+/** "1,5 unidades", "30 ml" */
+export function cantidad(n: number, unidad?: string | null): string {
+  const v = Number(n.toFixed(2)).toLocaleString('es-DO');
+  if (!unidad || unidad === 'unit') return `${v} ${n === 1 ? 'unidad' : 'unidades'}`;
+  return `${v} ${unidad}`;
+}
