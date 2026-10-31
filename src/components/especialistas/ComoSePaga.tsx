@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { IOSToggle } from '../ui/IOSToggle';
 import {
-  Acuerdo, Acuerdos, Deduccion, MODALIDADES, Modalidad, PERIODOS, TIPOS_DEDUCCION, TipoDeduccion, pagos,
+  Acuerdo, Acuerdos, Deduccion, MODALIDADES, MODOS_PRODUCTO, Modalidad, PERIODOS, TIPOS_DEDUCCION, TipoDeduccion, pagos,
 } from '../../services/pagosEspecialistas';
 
 const CAMPO = 'min-w-0 px-2.5 py-2 sm:py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] sm:text-xs text-slate-900 dark:text-white';
@@ -20,6 +20,7 @@ const chip = (on: boolean) =>
 const NUEVO: Acuerdo = {
   modalidad: 'comision', periodo: 'quincenal', comisionServicio: 50, comisionProducto: 10,
   baseComision: 'cobrado', propinasCompletas: true, reglas: [],
+  modoProducto: 'salon', escalones: [], escalonesProgresivos: false, rentaAutomatica: true,
 };
 
 const numero = (v: string) => (v.trim() === '' ? null : Number(v));
@@ -39,6 +40,7 @@ const FormAcuerdo: React.FC<{
   const [masOpciones, setMasOpciones] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [nuevaRegla, setNuevaRegla] = useState({ serviceId: '', porcentaje: '' });
+  const [nuevoEscalon, setNuevoEscalon] = useState({ desde: '', porcentaje: '' });
   useEffect(() => { setA(inicial ?? NUEVO); }, [inicial]);
 
   const m = a.modalidad;
@@ -111,6 +113,33 @@ const FormAcuerdo: React.FC<{
             Lo que cobre por tu caja a su nombre es de ella: Lalan se lo suma y le resta la renta.
           </p>
         )}
+        {m === 'alquiler' && (
+          <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/50">
+            <div>
+              <p className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">Renta automática</p>
+              <p className="text-[0.6875rem] text-slate-400">Al terminar cada periodo, Lalan cierra su corte y te avisa cuánto debe.</p>
+            </div>
+            <IOSToggle checked={a.rentaAutomatica ?? true} onChange={v => set({ rentaAutomatica: v })} ariaLabel="Renta automática" />
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">4. ¿Quién pone el producto de sus servicios?</p>
+        <div className="flex flex-wrap gap-1.5">
+          {MODOS_PRODUCTO.map(x => (
+            <button key={x.id} type="button" aria-pressed={(a.modoProducto ?? 'salon') === x.id} onClick={() => set({ modoProducto: x.id, cargoProducto: x.id === a.modoProducto ? a.cargoProducto : null })} className={chip((a.modoProducto ?? 'salon') === x.id)}>
+              {x.nombre}
+            </button>
+          ))}
+        </div>
+        <p className="text-[0.6875rem] text-slate-400">{MODOS_PRODUCTO.find(x => x.id === (a.modoProducto ?? 'salon'))?.explica}</p>
+        {(a.modoProducto === 'monto' || a.modoProducto === 'porcentaje') && (
+          <label className="block space-y-0.5 sm:w-1/3">
+            <span className="text-[0.6875rem] text-slate-500">{a.modoProducto === 'monto' ? `Por cada servicio (${simbolo})` : '% de cada servicio'}</span>
+            <input type="number" min={0} max={a.modoProducto === 'porcentaje' ? 100 : undefined} inputMode="decimal" value={a.cargoProducto ?? ''} onChange={e => set({ cargoProducto: numero(e.target.value) })} className={`${CAMPO} w-full`} />
+          </label>
+        )}
       </div>
 
       <button type="button" onClick={() => setMasOpciones(v => !v)} aria-expanded={masOpciones} className="flex items-center gap-1 text-[0.75rem] font-semibold text-[var(--primary)] cursor-pointer">
@@ -134,6 +163,46 @@ const FormAcuerdo: React.FC<{
             </div>
             <IOSToggle checked={a.propinasCompletas} onChange={v => set({ propinasCompletas: v })} ariaLabel="Las propinas son de ella" />
           </div>
+          {llevaComision && (
+            <div className="space-y-1.5">
+              <p className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">Escalones: gana más si factura más</p>
+              <p className="text-[0.6875rem] text-slate-400">Por lo que factura en servicios en el periodo. Debajo del primero vale el {a.comisionServicio ?? 0} %.</p>
+              {(a.escalones ?? []).map((e, i) => (
+                <div key={`${e.desde}-${i}`} className="flex items-center gap-2 text-[0.75rem]">
+                  <span className="flex-1 min-w-0 text-slate-700 dark:text-neutral-200">Desde {simbolo}{e.desde.toLocaleString('es-DO')}</span>
+                  <span className="font-bold tabular-nums">{e.porcentaje} %</span>
+                  <button type="button" aria-label={`Quitar el escalón desde ${e.desde}`} onClick={() => set({ escalones: (a.escalones ?? []).filter(x => x !== e) })} className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center cursor-pointer">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                <input type="number" min={0} inputMode="decimal" placeholder={`Desde ${simbolo}`} aria-label="Desde cuánto facturado" value={nuevoEscalon.desde} onChange={e => setNuevoEscalon(p => ({ ...p, desde: e.target.value }))} className={`${CAMPO} flex-1`} />
+                <input type="number" min={0} max={100} placeholder="%" aria-label="Porcentaje del escalón" value={nuevoEscalon.porcentaje} onChange={e => setNuevoEscalon(p => ({ ...p, porcentaje: e.target.value }))} className={`${CAMPO} w-16`} />
+                <button
+                  type="button"
+                  disabled={!Number(nuevoEscalon.desde) || nuevoEscalon.porcentaje === ''}
+                  onClick={() => {
+                    const nuevos = [...(a.escalones ?? []).filter(x => x.desde !== Number(nuevoEscalon.desde)), { desde: Number(nuevoEscalon.desde), porcentaje: Number(nuevoEscalon.porcentaje) }];
+                    set({ escalones: nuevos.sort((x, y) => x.desde - y.desde) });
+                    setNuevoEscalon({ desde: '', porcentaje: '' });
+                  }}
+                  className="h-8 px-2.5 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] text-[0.75rem] font-bold disabled:opacity-40 cursor-pointer"
+                >
+                  Añadir
+                </button>
+              </div>
+              {!!a.escalones?.length && (
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <div>
+                    <p className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">Cada tramo paga su %</p>
+                    <p className="text-[0.6875rem] text-slate-400">{a.escalonesProgresivos ? 'Solo lo que pasa de cada escalón paga el % más alto.' : 'Apagado: el escalón que alcanza paga todo el periodo.'}</p>
+                  </div>
+                  <IOSToggle checked={!!a.escalonesProgresivos} onChange={v => set({ escalonesProgresivos: v })} ariaLabel="Cada tramo paga su porcentaje" />
+                </div>
+              )}
+            </div>
+          )}
           {llevaComision && (
             <div className="space-y-1.5">
               <p className="text-[0.75rem] font-semibold text-slate-700 dark:text-neutral-200">Servicios con otro %</p>

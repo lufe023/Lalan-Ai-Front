@@ -34,7 +34,18 @@ export const PagosEspecialistas: React.FC<{
     catch (e: any) { showToast('No se pudo cargar', e?.message ?? '', 'warning'); }
   }, [sede, fecha, showToast]);
   useEffect(() => { void cargar(); }, [cargar]);
-
+  // Un aviso (renta automática) pide abrir el recibo de una especialista
+  // Viene como "staffId:YYYY-MM-DD" (el día dice de qué periodo es el corte)
+  const [pedida, setPedida] = useState<string | null>(() => {
+    try { return sessionStorage.getItem('lalan.abrirPagoDe'); } catch { return null; }
+  });
+  useEffect(() => {
+    if (!pedida) return;
+    try { sessionStorage.removeItem('lalan.abrirPagoDe'); } catch { /* nada */ }
+    const [id, dia] = pedida.split(':');
+    if (dia && /^\d{4}-\d{2}-\d{2}$/.test(dia)) setFecha(dia);
+    if (id !== pedida) setPedida(id || null);
+  }, [pedida]);
   const abrir = useCallback(async (staffId: string) => {
     if (abierto === staffId) { setAbierto(null); setRecibo(null); return; }
     setAbierto(staffId);
@@ -42,6 +53,15 @@ export const PagosEspecialistas: React.FC<{
     try { setRecibo(await pagos.borrador(staffId, sede || undefined, fecha)); }
     catch (e: any) { showToast('No se pudo abrir', e?.message ?? '', 'warning'); }
   }, [abierto, sede, fecha, showToast]);
+
+  useEffect(() => {
+    if (!pedida || pedida.includes(':') || !resumen) return;
+    const fila = resumen.filas.find(f => f.staff.id === pedida);
+    // Espera a que cargue el periodo pedido
+    if (fecha && fila?.desde && !(fila.desde <= fecha && fecha <= (fila.hasta ?? fecha))) return;
+    if (fila) void abrir(pedida);
+    setPedida(null);
+  }, [pedida, resumen, abrir, fecha]);
 
   const refrescar = async (staffId: string) => {
     await cargar();
@@ -170,6 +190,7 @@ export const PagosEspecialistas: React.FC<{
                   {!b && <p className="py-3 text-center text-[0.75rem] text-slate-400">Calculando…</p>}
                   {b && (
                     <>
+                      {b.escalon && <BarraEscalon escalon={b.escalon} plata={plata} />}
                       {(b.avisos ?? []).map(a => (
                         <p key={a} className="flex items-start gap-1.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-[0.75rem] text-amber-800 dark:text-amber-200">
                           <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {a}
@@ -256,6 +277,23 @@ export const PagosEspecialistas: React.FC<{
         {!!resumen && !filas.length && (
           <p className="py-6 text-center text-[0.75rem] text-slate-400">No hay especialistas en esta sede.</p>
         )}
+      </div>
+    </div>
+  );
+};
+
+/** En qué escalón de comisión va y cuánto le falta para el próximo */
+export const BarraEscalon: React.FC<{ escalon: NonNullable<Borrador['escalon']>; plata: (n: number) => string }> = ({ escalon, plata }) => {
+  const sig = escalon.siguiente;
+  const pct = sig ? Math.max(4, Math.min(100, ((sig.desde - sig.falta) / sig.desde) * 100)) : 100;
+  return (
+    <div className="p-2.5 rounded-xl bg-[var(--primary)]/5 space-y-1.5">
+      <p className="text-[0.75rem] text-slate-700 dark:text-neutral-200">
+        Va en el escalón de <span className="font-bold">{escalon.porcentaje} %</span>
+        {sig ? <> · le faltan <span className="font-bold tabular-nums">{plata(sig.falta)}</span> en servicios para el {sig.porcentaje} %</> : ' · el más alto'}
+      </p>
+      <div className="h-1.5 rounded-full bg-slate-200 dark:bg-neutral-700 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Avance al próximo escalón">
+        <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

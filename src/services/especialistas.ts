@@ -6,7 +6,7 @@ export type ClavePermiso =
   | 'alergiasYGustos' | 'notasClienta' | 'visitasPasadas'
   | 'marcarEstado' | 'llamarEnPizarra' | 'confirmarCitas' | 'reagendarCitas' | 'cancelarCitas' | 'verPrecios'
   | 'fotosPropias' | 'fotosTodas'
-  | 'chatearConClientas' | 'verChatAnterior' | 'plantillasPagas' | 'sugerenciasLalan';
+  | 'chatearConClientas' | 'verChatAnterior' | 'plantillasPagas' | 'sugerenciasLalan' | 'verSusPagos';
 
 export type MapaPermisos = Record<ClavePermiso, boolean>;
 

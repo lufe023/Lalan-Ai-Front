@@ -3,7 +3,7 @@ import { EVENTO_IR } from '../services/avisos';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   CalendarDays, Scissors, UserRound, Loader2, ChevronDown, AlertTriangle, Heart, History, StickyNote,
-  Play, CheckCircle2, CalendarClock, XCircle, Megaphone, Check, LogOut, ShieldCheck, RefreshCw, Zap, X, MessageCircle, ShieldAlert,
+  Play, CheckCircle2, CalendarClock, XCircle, Megaphone, Check, LogOut, ShieldCheck, RefreshCw, Zap, X, MessageCircle, ShieldAlert, Wallet,
 } from 'lucide-react';
 import { quickAuth } from '../services/quickAuth';
 import { IOSHeader } from '../components/ui/IOSHeader';
@@ -16,19 +16,21 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { miAgendaApi, misChatsApi, type EstadoCita, type FichaClienta, type MiChat, type MiChatResumen, type MiCita, type MiPerfil } from '../services/especialistas';
 import { ChatDeEspecialista } from '../components/especialista/ChatDeEspecialista';
+import { MisPagos } from '../components/especialista/MisPagos';
 import { ListaAvisosAlergia } from '../components/agenda/AvisosAlergia';
 import { getChannelBadge, horaDeMensaje } from '../components/chats/VentanaChat';
 
-type Pestana = 'citas' | 'chats' | 'servicios' | 'cuenta';
+type Pestana = 'citas' | 'chats' | 'servicios' | 'pagos' | 'cuenta';
 /** `corto` es lo que cabe en la barra con cuatro pestañas en un teléfono */
 const PESTANAS: { id: Pestana; label: string; corto: string; icon: React.ElementType }[] = [
   { id: 'citas', label: 'Mis citas', corto: 'Citas', icon: CalendarDays },
   { id: 'chats', label: 'Mis chats', corto: 'Chats', icon: MessageCircle },
   { id: 'servicios', label: 'Mis servicios', corto: 'Servicios', icon: Scissors },
+  { id: 'pagos', label: 'Mis pagos', corto: 'Pagos', icon: Wallet },
   { id: 'cuenta', label: 'Mi cuenta', corto: 'Cuenta', icon: UserRound },
 ];
 /** Lo que abre una notificación: los avisos de chats van a sus chats */
-const PESTANA_DE_AVISO: Record<string, Pestana> = { 'mis-citas': 'citas', 'mis-chats': 'chats' };
+const PESTANA_DE_AVISO: Record<string, Pestana> = { 'mis-citas': 'citas', 'mis-chats': 'chats', 'mis-pagos': 'pagos' };
 /** Cuántos días de citas se traen de una vez */
 const DIAS = 14;
 const MS_DIA = 86_400_000;
@@ -162,7 +164,7 @@ export const EspecialistaApp: React.FC = () => {
 
   const reemplazar = (c: MiCita) => setCitas(l => (l ?? []).map(x => (x.id === c.id ? c : x)));
   const conChats = !!perfil?.permisos.chatearConClientas || chats.length > 0;
-  const pestanas = PESTANAS.filter(p => p.id !== 'chats' || conChats);
+  const pestanas = PESTANAS.filter(p => (p.id !== 'chats' || conChats) && (p.id !== 'pagos' || perfil?.permisos.verSusPagos !== false));
   const porContestar = chats.filter(c => c.teEspera && !c.pausado).length;
 
   /** "Escribirle" desde una cita: abre (o retoma) el chat con esa clienta */
@@ -199,10 +201,12 @@ export const EspecialistaApp: React.FC = () => {
             const activa = pestana === p.id;
             return (
               <button key={p.id} role="tab" aria-selected={activa} aria-label={p.label} type="button" onClick={() => setPestana(p.id)}
-                className={`relative flex-1 min-h-[36px] rounded-lg flex items-center justify-center gap-1.5 text-[0.8125rem] font-semibold transition cursor-pointer ${
+                className={`relative flex-1 min-w-0 min-h-[36px] rounded-lg flex items-center justify-center font-semibold transition cursor-pointer ${
+                  pestanas.length > 4 ? 'flex-col gap-0.5 py-1 text-[0.6875rem]' : 'gap-1.5 text-[0.8125rem]'
+                } ${
                   activa ? 'bg-white dark:bg-neutral-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-neutral-400'
                 }`}>
-                <p.icon className="w-4 h-4" /> <span className="hidden min-[380px]:inline">{pestanas.length > 3 ? p.corto : p.label}</span>
+                <p.icon className="w-4 h-4 shrink-0" /> <span className={pestanas.length > 4 ? 'truncate max-w-full' : 'hidden min-[380px]:inline'}>{pestanas.length > 3 ? p.corto : p.label}</span>
                 {p.id === 'chats' && porContestar > 0 && (
                   <span className="absolute -top-1 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold flex items-center justify-center">{porContestar}</span>
                 )}
@@ -226,6 +230,7 @@ export const EspecialistaApp: React.FC = () => {
         )}
         {pestana === 'chats' && <MisChats chats={chats} onAbrir={id => setChatAbierto({ id })} />}
         {pestana === 'servicios' && perfil && <MisServicios perfil={perfil} />}
+        {pestana === 'pagos' && <MisPagos />}
         {pestana === 'cuenta' && (
           <>
             <AccesoRapido />
