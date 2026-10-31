@@ -9,7 +9,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { SelectorSede } from '../components/ui/SelectorSede';
 import { ItemAnimado, ListaAnimada } from '../components/ui/movimiento';
 import { useSedes } from '../hooks/useSedes';
-import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
+import { ABRIR_FACTURA, ABRIR_PEDIDO, AVISO_BORRADORES, AVISO_POR_PEDIR, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
 import { DetallePedido } from '../components/compras/DetallePedido';
 import { FacturaALalan } from '../components/compras/FacturaALalan';
 import { ComparacionPrecios } from '../components/compras/ComparacionPrecios';
@@ -56,21 +56,33 @@ export const ComprasScreen: React.FC = () => {
     window.addEventListener(EVENTO_ABRIR_PEDIDO, abrir);
     return () => window.removeEventListener(EVENTO_ABRIR_PEDIDO, abrir);
   }, []);
-  // El aviso de un pago por vencer abre «Por pagar»
+  const [filtro, setFiltro] = useState<Filtro>('');
+  const [q, setQ] = useState('');
+  // Lo que la dueña marca para pedir al llegar desde un aviso (todo lo que falta en esa sede)
+  const [marcarSede, setMarcarSede] = useState<string | null>(null);
+  // Los avisos de Compras abren donde se resuelve: «Por pagar», «Por pedir» de una sede o sus borradores
   useEffect(() => {
     const revisar = () => {
       try {
-        if (sessionStorage.getItem('lalan.abrirAviso') !== 'por-pagar') return;
-        sessionStorage.removeItem('lalan.abrirAviso');
-        setAbierto(null); setComparando(null); setVista('por-pagar');
+        const aviso = sessionStorage.getItem('lalan.abrirAviso');
+        if (!aviso) return;
+        if (aviso === 'por-pagar') {
+          sessionStorage.removeItem('lalan.abrirAviso');
+          setAbierto(null); setComparando(null); setVista('por-pagar');
+        } else if (aviso.startsWith(AVISO_POR_PEDIR)) {
+          sessionStorage.removeItem('lalan.abrirAviso');
+          const s = aviso.slice(AVISO_POR_PEDIR.length);
+          setAbierto(null); setComparando(null); setSede(s); setMarcarSede(`${s}|${Date.now()}`); setVista('por-pedir');
+        } else if (aviso.startsWith(AVISO_BORRADORES)) {
+          sessionStorage.removeItem('lalan.abrirAviso');
+          setAbierto(null); setComparando(null); setSede(aviso.slice(AVISO_BORRADORES.length)); setFiltro('borrador'); setQ(''); setVista('pedidos');
+        }
       } catch { /* nada */ }
     };
     revisar();
     window.addEventListener('lalan:abrir-aviso', revisar);
     return () => window.removeEventListener('lalan:abrir-aviso', revisar);
   }, []);
-  const [filtro, setFiltro] = useState<Filtro>('');
-  const [q, setQ] = useState('');
   const [lista, setLista] = useState<FilaPedido[] | null>(null);
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [nuevo, setNuevo] = useState(false);
@@ -161,7 +173,7 @@ export const ComprasScreen: React.FC = () => {
               )}
             </div>
 
-            {vista === 'por-pedir' && <PorPedir sede={sede || undefined} recarga={vuelta} onArmados={(ids) => { setVuelta((v) => v + 1); if (ids.length === 1) abrir(ids[0]); else { setFiltro('borrador'); setVista('pedidos'); } }}
+            {vista === 'por-pedir' && <PorPedir sede={sede || undefined} recarga={vuelta} marcarSede={marcarSede} onArmados={(ids) => { setVuelta((v) => v + 1); if (ids.length === 1) abrir(ids[0]); else { setFiltro('borrador'); setVista('pedidos'); } }}
               onComparar={(cid) => { setVuelta((v) => v + 1); setVista('pedidos'); setComparando(cid); }} />}
             {vista === 'por-pagar' && <PorPagarVista sede={sede || undefined} recarga={vuelta} onAbrir={abrir} />}
             {vista === 'proveedores' && <ListaProveedores sede={sede || undefined} recarga={vuelta} onAbrirPedido={abrir} />}

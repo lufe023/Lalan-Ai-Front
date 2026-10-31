@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalendarDays, FileText, MapPin, MessageSquareText, ShoppingCart, UserRound, Wallet } from 'lucide-react';
-import { botonDe, horaDe, type Aviso, type GrupoAviso } from '../../services/avisos';
+import { avisoDe, botonDe, horaDe, type Aviso, type GrupoAviso } from '../../services/avisos';
 
 /** Icono y color de cada grupo (los mismos en la campana y en la pantalla Avisos) */
 export const ICONO_GRUPO: Record<GrupoAviso, { icono: React.ElementType; color: string }> = {
@@ -35,18 +35,21 @@ export const FilaAviso: React.FC<Props> = ({ aviso: a, onAbrir, onLeer, conSede 
         <Icono className="w-[18px] h-[18px]" />
       </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className={`text-[0.8125rem] leading-snug text-slate-900 dark:text-white ${a.leida ? 'font-medium' : 'font-bold'}`}>{a.titulo}</p>
-          <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 whitespace-nowrap shrink-0 mt-0.5">{horaDe(a.creadoEn)}</span>
-        </div>
-        <p className="text-[0.75rem] text-slate-600 dark:text-neutral-400 mt-0.5 line-clamp-2">{a.cuerpo}</p>
+        {/* Tocar el aviso entero lleva al mismo lugar que su botón (en el teléfono es lo natural) */}
+        <button type="button" onClick={() => onAbrir(a)} className="block w-full text-left cursor-pointer">
+          <span className="flex items-start justify-between gap-2">
+            <span className={`text-[0.8125rem] leading-snug text-slate-900 dark:text-white ${a.leida ? 'font-medium' : 'font-bold'}`}>{a.titulo}</span>
+            <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 whitespace-nowrap shrink-0 mt-0.5">{horaDe(a.creadoEn)}</span>
+          </span>
+          <span className="block text-[0.75rem] text-slate-600 dark:text-neutral-400 mt-0.5 line-clamp-2">{a.cuerpo}</span>
+        </button>
         <div className="flex flex-wrap items-center gap-2 mt-2">
           <button
             type="button"
             onClick={() => onAbrir(a)}
             className="min-h-[32px] px-3 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold cursor-pointer hover:opacity-90 transition"
           >
-            {botonDe(a.ir, a.aviso)}
+            {botonDe(a.ir, avisoDe(a))}
           </button>
           {!a.leida && onLeer && (
             <button

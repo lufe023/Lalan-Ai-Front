@@ -81,8 +81,21 @@ export const EVENTO_AVISOS = 'lalan:avisos';
 /** Pedirle a la app que vaya a una pantalla y abra algo dentro (lo mismo que tocar el push) */
 export const EVENTO_IR = 'lalan:ir';
 
-export function irA(destino: { ir: string | null; aviso?: string | null; conversacion?: string | null }) {
-  window.dispatchEvent(new CustomEvent(EVENTO_IR, { detail: { pantalla: destino.ir || 'dashboard', aviso: destino.aviso ?? null, conversacion: destino.conversacion ?? null } }));
+export function irA(destino: { ir: string | null; aviso?: string | null; conversacion?: string | null; titulo?: string; sede?: { id: string } | null }) {
+  window.dispatchEvent(new CustomEvent(EVENTO_IR, { detail: { pantalla: destino.ir || 'dashboard', aviso: avisoDe(destino), conversacion: destino.conversacion ?? null } }));
+}
+
+/**
+ * Qué abre el aviso dentro de la pantalla. Los «Por pedir» guardados antes de
+ * que llevaran a la sede se reconocen por el título y abren lo mismo.
+ */
+export function avisoDe(a: { ir: string | null; aviso?: string | null; titulo?: string; sede?: { id: string } | null }): string | null {
+  if (a.aviso) return a.aviso;
+  if (a.ir === 'compras' && a.sede?.id && a.titulo) {
+    if (a.titulo.startsWith('Por pedir en ')) return `por-pedir:${a.sede.id}`;
+    if (a.titulo.startsWith('Te armé ')) return `borradores:${a.sede.id}`;
+  }
+  return null;
 }
 
 /** El botón de cada aviso dice adónde lleva */
@@ -92,6 +105,8 @@ export function botonDe(ir: string | null, aviso: string | null): string {
   if (aviso?.startsWith('comparacion:')) return 'Comparar precios';
   if (aviso?.startsWith('servicio:')) return 'Subir fotos';
   if (aviso?.startsWith('clienta:')) return 'Ver ficha';
+  if (aviso?.startsWith('por-pedir:')) return 'Armar el pedido';
+  if (aviso?.startsWith('borradores:')) return 'Revisar pedidos';
   switch (ir) {
     case 'chats': return 'Abrir chat';
     case 'calendar': return 'Ir a la agenda';
