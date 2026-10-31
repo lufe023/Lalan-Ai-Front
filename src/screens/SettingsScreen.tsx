@@ -4,25 +4,21 @@ import { AjustesAdelanto } from '../components/ajustes/AjustesAdelanto';
 import { AjustesFiao } from '../components/ajustes/AjustesFiao';
 import { AvisoSedeActiva } from '../components/ui/AvisoSedeActiva';
 import { CopiarDeSede } from '../components/ui/CopiarDeSede';
-import { recibeCitas } from '../utils/recibeCitas';
 import { RESORTE } from '../components/ui/movimiento';
 import { AnimatePresence, motion } from 'motion/react';
-import {
-  KeyRound,
+import { 
   Palette,
   Sun,
   Moon,
   Laptop,
   MessageSquare,
-  Clock,
-  MapPin,
+  Clock, 
   Phone,
   Shield,
   RotateCcw,
   LogOut,
   Terminal,
-  Sparkles,
-  Check,
+  Sparkles, 
   Building,
   Save,
   SlidersHorizontal,
@@ -36,10 +32,7 @@ import {
   Music,
   Bot,
   ChevronRight,
-  Zap,
-  CalendarClock,
-  CalendarCheck,
-  CalendarOff,
+  Zap,   
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { CatalogoEnOtraMoneda } from '../components/ajustes/CatalogoEnOtraMoneda';
@@ -66,10 +59,7 @@ import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPedida } from '../components/ajustes/MenuAjustes';
 import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
-import { HorarioEspecialista } from '../components/ajustes/HorarioEspecialista';
-import { AvatarEspecialista, FotoEspecialista } from '../components/ajustes/FotoEspecialista';
-import { EntradaEspecialista, PlantillaPermisosEspecialista } from '../components/ajustes/EntradaEspecialista';
-import { useEncuadres } from '../hooks/useEncuadres';
+import { EspecialistasEquipo } from '../components/ajustes/EspecialistasEquipo';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
@@ -114,14 +104,7 @@ export const SettingsScreen: React.FC = () => {
     isCustomPalette,
     isDark,
   } = useTheme();
-  const { ponerPaleta, sedes: sedesDelSalon, varias: variasSedes, actual: sedeActual } = useSedeActiva();
-  // La fila de especialista con sus sedes abiertas (con varias sedes)
-  const [sedesAbiertas, setSedesAbiertas] = useState<string | null>(null);
-  /** La especialista cuya entrada a Lalan (y permisos) está abierta */
-  const [entradaDe, setEntradaDe] = useState<string | null>(null);
-  /** De quién está abierta la foto (debajo de su fila) */
-  const [fotoDe, setFotoDe] = useState<string | null>(null);
-  const { encuadres, guardar: guardarEncuadre } = useEncuadres();
+  const { ponerPaleta, varias: variasSedes, actual: sedeActual } = useSedeActiva();
 
   const {
     settings,
@@ -207,7 +190,6 @@ export const SettingsScreen: React.FC = () => {
   /* Igual que el servidor: si alguna zona activa ya marcó sus servicios, una
      sin marcar no atiende nada (si ninguna marcó, todas hacen de todo) */
   const zonasConServicios = (zonas ?? []).some(z => z.active && !z.sinServicios && (z.serviceCategories ?? []).length > 0);
-  const [nuevaPersona, setNuevaPersona] = useState({ name: '', role: '', zoneId: '' });
   useEffect(() => { void loadZonas?.(); void loadEspecialistas?.(); }, []);
 
   // Pantalla de pared: token, enlace y su QR
@@ -314,8 +296,6 @@ export const SettingsScreen: React.FC = () => {
   });
 
   const [showLogsModal, setShowLogsModal] = useState(false);
-  /** La especialista cuyo horario y ausencias se están viendo */
-  const [horarioDe, setHorarioDe] = useState<string | null>(null);
   /* La actividad reciente de los chats, de la base: si aquí no aparece
      nada, es que no está llegando nada (antes había eventos inventados) */
   const [actividad, setActividad] = useState<EventoActividad[] | null>(null);
@@ -512,6 +492,8 @@ export const SettingsScreen: React.FC = () => {
         {seccion === 'equipo' && (
           <>
         {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <UsuariosSalon />}
+        {/* Las especialistas son un rol del equipo: se gestionan aquí, junto a quién entra a la app */}
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <EspecialistasEquipo />}
         {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <AvisosEquipo />}
           </>
         )}
@@ -890,236 +872,29 @@ export const SettingsScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* SECTION 3.45: ESPECIALISTAS */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">
-          <div className="flex items-center gap-1.5">
-            <Scissors className="w-4 h-4 text-[var(--primary)]" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-              Especialistas
-            </h2>
-          </div>
-          <p className="text-[0.75rem] text-slate-400 leading-relaxed">
-            Cada una con su foto, su especialidad y su zona. Toca la carita para
-            subir su foto: es la que sale en tu Vitrina. La zona es la que decide a
-            qué cola entra un turno cuando no se elige a mano. Con el reloj
-            pones su horario (si no es el del salón) y los días que no viene.
-            Con el calendario dices si recibe citas: bartender, recepción o caja
-            no reciben, salvo que lo enciendas.
-          </p>
-
-          <div className="space-y-2">
-            {(especialistas ?? []).map(e => (
-              <React.Fragment key={e.id}>
-              <div
-                className={`p-2.5 rounded-xl border flex items-center gap-2 ${
-                  e.active
-                    ? 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200 dark:border-neutral-700'
-                    : 'bg-slate-50/50 dark:bg-neutral-800/20 border-dashed border-slate-200 dark:border-neutral-800 opacity-60'
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setFotoDe(fotoDe === e.id ? null : e.id)}
-                  aria-label={e.fotoId ? `Foto de ${e.name}` : `Subir la foto de ${e.name}`}
-                  aria-expanded={fotoDe === e.id}
-                  title={e.fotoId ? 'Cambiar o acomodar su foto' : 'Subir su foto para la Vitrina'}
-                  className={`shrink-0 rounded-full transition cursor-pointer ${fotoDe === e.id ? 'ring-2 ring-[var(--primary)] ring-offset-1 ring-offset-white dark:ring-offset-neutral-900' : 'hover:opacity-80'}`}
-                >
-                  <AvatarEspecialista fotoId={e.fotoId} nombre={e.name} encuadre={e.fotoId ? encuadres[e.fotoId] : null} />
-                </button>
-                <input
-                  key={`n-${e.id}-${e.name}`}
-                  defaultValue={e.name}
-                  onBlur={ev => {
-                    const v = ev.target.value.trim();
-                    if (v && v !== e.name) void guardarEspecialista({ id: e.id, name: v });
-                  }}
-                  className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-xs font-semibold text-slate-900 dark:text-white"
-                />
-                <input
-                  key={`r-${e.id}-${e.role}`}
-                  defaultValue={e.role}
-                  onBlur={ev => {
-                    const v = ev.target.value.trim();
-                    if (v && v !== e.role) void guardarEspecialista({ id: e.id, name: e.name, role: v });
-                  }}
-                  placeholder="Especialidad"
-                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-600 dark:text-neutral-300"
-                />
-                <select
-                  value={e.zoneId ?? ''}
-                  onChange={ev => guardarEspecialista({ id: e.id, name: e.name, zoneId: ev.target.value || null })}
-                  className="w-28 shrink-0 px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-600 dark:text-neutral-300"
-                >
-                  <option value="">Sin zona</option>
-                  {(zonas ?? []).filter(z => z.active).map(z => (
-                    <option key={z.id} value={z.id}>{z.prefix} · {z.name}</option>
-                  ))}
-                </select>
-                {(() => {
-                  const recibe = recibeCitas(e.atiendeCitas, e.role);
-                  const porOficio = typeof e.atiendeCitas !== 'boolean';
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => void guardarEspecialista({ id: e.id, name: e.name, atiendeCitas: !recibe })}
-                      aria-pressed={recibe}
-                      aria-label={recibe ? `${e.name} recibe citas` : `${e.name} no recibe citas`}
-                      title={`${recibe ? 'Recibe citas' : 'No recibe citas: Lalan nunca se la asigna'}${porOficio ? ' (por su especialidad)' : ''}. Toca para cambiarlo.`}
-                      className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
-                        recibe ? 'text-emerald-600 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'
-                      }`}
-                    >
-                      {recibe ? <CalendarCheck className="w-3.5 h-3.5" /> : <CalendarOff className="w-3.5 h-3.5" />}
-                    </button>
-                  );
-                })()}
-                {variasSedes && (
-                  <button
-                    type="button"
-                    onClick={() => setSedesAbiertas(sedesAbiertas === e.id ? null : e.id)}
-                    aria-label={`Sedes donde trabaja ${e.name}`}
-                    title="En qué sedes trabaja"
-                    className={`shrink-0 h-7 px-2 rounded-lg flex items-center gap-1 text-[0.6875rem] font-bold transition cursor-pointer ${
-                      (e.sedes?.length ?? 0) > 1 ? 'text-[var(--primary)] bg-[var(--primary)]/10' : 'text-slate-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
-                    }`}
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                    {e.sedes?.length ? e.sedes.length : 'Todas'}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setEntradaDe(entradaDe === e.id ? null : e.id)}
-                  aria-label={`Entrada a Lalan de ${e.name}`}
-                  aria-expanded={entradaDe === e.id}
-                  title="Entrada a Lalan y sus permisos"
-                  className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
-                    entradaDe === e.id ? 'text-[var(--primary)] bg-[var(--primary)]/10' : 'text-slate-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
-                  }`}
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHorarioDe(e.id)}
-                  aria-label={`Horario de ${e.name}`}
-                  title="Horario y días que no viene"
-                  className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
-                    e.horarioSemanal ? 'text-[var(--primary)] bg-[var(--primary)]/10' : 'text-slate-400 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
-                  }`}
-                >
-                  <CalendarClock className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => eliminarEspecialista(e.id)}
-                  className="shrink-0 w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              {/* Su foto: la de la Vitrina y el quiosco */}
-              {fotoDe === e.id && (
-                <div className="ml-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700">
-                  <FotoEspecialista
-                    persona={e}
-                    encuadre={e.fotoId ? encuadres[e.fotoId] : null}
-                    onEncuadre={guardarEncuadre}
-                    onCambio={loadEspecialistas}
-                  />
-                </div>
-              )}
-              {/* Su entrada a Lalan: ve sus citas y lo que se le permita */}
-              {entradaDe === e.id && (
-                <div className="ml-2 p-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700">
-                  <EntradaEspecialista staffId={e.id} nombre={e.name} telefono={e.phone ?? null} activa={e.active} />
-                </div>
-              )}
-              {/* En qué sedes trabaja: la primera que se marca es la suya */}
-              {variasSedes && sedesAbiertas === e.id && (
-                <div className="ml-2 p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 space-y-2">
-                  <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
-                    ¿En qué sedes trabaja {e.name.split(' ')[0]}? Lalan solo le da citas en las sedes marcadas.
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {sedesDelSalon.map(sd => {
-                      const marcada = (e.sedes ?? []).includes(sd.id);
-                      return (
-                        <button
-                          key={sd.id}
-                          type="button"
-                          aria-pressed={marcada}
-                          onClick={() => {
-                            const actuales = e.sedes ?? [];
-                            const nuevas = marcada ? actuales.filter(x => x !== sd.id) : [...actuales, sd.id];
-                            void guardarEspecialista({ id: e.id, name: e.name, sedes: nuevas });
-                          }}
-                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.75rem] font-semibold border transition cursor-pointer ${
-                            marcada ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'bg-slate-50 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 border-slate-200 dark:border-neutral-700'
-                          }`}
-                        >
-                          {marcada && <Check className="w-3 h-3" />} {sd.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {!(e.sedes ?? []).length && (
-                    <p className="text-[0.6875rem] text-slate-400">Sin ninguna marcada trabaja en todas las sedes.</p>
-                  )}
-                </div>
-              )}
-              </React.Fragment>
-            ))}
-            {!(especialistas ?? []).length && (
-              <p className="py-3 text-center text-[0.75rem] text-slate-400">
-                Todavía no hay nadie dado de alta.
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              value={nuevaPersona.name}
-              onChange={ev => setNuevaPersona(p => ({ ...p, name: ev.target.value }))}
-              placeholder="Nombre"
-              className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs text-slate-900 dark:text-white"
-            />
-            <input
-              value={nuevaPersona.role}
-              onChange={ev => setNuevaPersona(p => ({ ...p, role: ev.target.value }))}
-              placeholder="Especialidad"
-              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
-            />
-            <select
-              value={nuevaPersona.zoneId}
-              onChange={ev => setNuevaPersona(p => ({ ...p, zoneId: ev.target.value }))}
-              className="w-28 shrink-0 px-2 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white"
-            >
-              <option value="">Sin zona</option>
-              {(zonas ?? []).filter(z => z.active).map(z => (
-                <option key={z.id} value={z.id}>{z.prefix} · {z.name}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              disabled={!nuevaPersona.name.trim()}
-              onClick={async () => {
-                const ok = await guardarEspecialista({
-                  name: nuevaPersona.name,
-                  role: nuevaPersona.role,
-                  zoneId: nuevaPersona.zoneId || null,
-                });
-                if (ok) setNuevaPersona({ name: '', role: '', zoneId: '' });
-              }}
-              className="shrink-0 px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              Añadir
-            </button>
-          </div>
-        </div>
-
-        <PlantillaPermisosEspecialista />
+        {/* Las especialistas ahora son parte del Equipo (son un rol): aquí solo el enlace */}
+        <button
+          type="button"
+          onClick={() => {
+            abrirSeccion('equipo');
+            // Directo a las especialistas, no al principio de Equipo
+            window.setTimeout(() => document.getElementById('ajustes-especialistas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 450);
+          }}
+          className="w-full p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs flex items-center gap-3 text-left cursor-pointer hover:border-[var(--primary)] transition"
+        >
+          <Scissors className="w-5 h-5 shrink-0 text-[var(--primary)]" />
+          <span className="flex-1 min-w-0">
+            <span className="block text-[0.875rem] font-bold text-slate-900 dark:text-white">
+              Especialistas{(especialistas ?? []).length ? ` (${(especialistas ?? []).filter(e => e.active).length})` : ''}
+            </span>
+            <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400">
+              Su foto, zona, horario, entrada a Lalan y permisos están en Equipo.
+            </span>
+          </span>
+          <span className="shrink-0 text-[0.75rem] font-bold text-[var(--primary)] flex items-center gap-0.5">
+            Ir a Equipo <ChevronRight className="w-4 h-4" />
+          </span>
+        </button>
 
           </>
         )}
@@ -1907,16 +1682,6 @@ export const SettingsScreen: React.FC = () => {
         </AnimatePresence>
       </PageContent>
 
-      {horarioDe && (() => {
-        const persona = (especialistas ?? []).find(x => x.id === horarioDe);
-        return persona ? (
-          <HorarioEspecialista
-            persona={persona}
-            semanaSalon={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
-            onCerrar={() => setHorarioDe(null)}
-          />
-        ) : null;
-      })()}
 
 
       {/* Actividad reciente de los chats */}

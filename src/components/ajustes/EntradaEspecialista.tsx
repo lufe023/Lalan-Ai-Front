@@ -187,7 +187,7 @@ export const EntradaEspecialista: React.FC<{ staffId: string; nombre: string; te
   );
 };
 
-/** Con qué permisos arranca cada especialista a la que se le da entrada (Ajustes → El salón, y Equipo → Roles) */
+/** Con qué permisos arranca cada especialista a la que se le da entrada (Ajustes → Equipo, y Equipo → Roles) */
 export const PlantillaPermisosEspecialista: React.FC<{ sinMarco?: boolean }> = ({ sinMarco }) => {
   const { showToast } = useApp();
   const { confirmar, modalConfirmar } = useConfirmar();
