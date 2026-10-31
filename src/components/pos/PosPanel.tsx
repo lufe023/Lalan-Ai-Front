@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
   Coffee, Receipt, Search, X, Plus, Minus, Gift, Tag, Split, UserPlus,
-  ChevronDown, Printer, UserCheck,
+  ChevronDown, Printer, UserCheck, UserRound,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { imprimirRecibo } from '../../utils/recibo';
@@ -39,7 +39,8 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
     products, services, appointments, clients, navigateTo, showToast, settings,
     activeLoungeClient,
     activeSale, saleBusy, openSale, addSaleItem, removeSaleItem,
-    setSaleItemQty, toggleSaleItemCourtesy, setSalePriceList, paySale, closeSale,
+    setSaleItemQty, toggleSaleItemCourtesy, setSaleItemStaff, setSalePriceList, paySale, closeSale,
+    especialistas, loadEspecialistas,
     openFolios, loadOpenFolios, selectFolio, newCounterFolio, moveSaleItem,
     asignarClientaAFolio, cerrarFolio,
     priceLists, loadPriceLists,
@@ -64,6 +65,10 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
 
   const [mostrarListas, setMostrarListas] = useState(false);
   const [moviendo, setMoviendo] = useState<string | null>(null);
+  /** La línea a la que se le está eligiendo quién la hizo (su comisión) */
+  const [quienDe, setQuienDe] = useState<string | null>(null);
+  useEffect(() => { if (!especialistas?.length) void loadEspecialistas?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const delEquipo = (especialistas ?? []).filter(e => e.active);
   const [cartaTipo, setCartaTipo] = useState<Vendible['grupo']>('beverage');
   const [cartaBusca, setCartaBusca] = useState('');
   const [verTodo, setVerTodo] = useState(false);
@@ -653,6 +658,23 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                           <span className="font-semibold text-slate-800 dark:text-neutral-200 truncate">
                             {it.label}
                           </span>
+                          {/* Quién lo hizo: de aquí sale su comisión */}
+                          {it.kind !== 'courtesy' && delEquipo.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setQuienDe(quienDe === it.id ? null : it.id)}
+                              aria-expanded={quienDe === it.id}
+                              title={it.staffName ? `Lo hizo ${it.staffName}: su comisión va con esta línea. Toca para cambiarlo.` : '¿Quién lo hizo? Para su comisión'}
+                              className={`shrink-0 flex items-center gap-1 text-[0.6875rem] px-1.5 py-0.5 rounded-full font-bold transition ${
+                                it.staffName
+                                  ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                                  : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                              }`}
+                            >
+                              <UserRound className="w-3 h-3" />
+                              {it.staffName ? it.staffName.split(' ')[0] : '¿Quién?'}
+                            </button>
+                          )}
                           {prepagado && (
                             <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-extrabold">
                               PAGADO EN LÍNEA
@@ -713,6 +735,35 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                             <X className="w-3 h-3" />
                           </button>
                         </div>
+                        {quienDe === it.id && (
+                          <div className="w-full flex flex-wrap items-center gap-1 pt-2 pl-1">
+                            <span className="text-[0.6875rem] text-slate-400 mr-1">¿Quién lo hizo?</span>
+                            {delEquipo.map(e => (
+                              <button
+                                key={e.id}
+                                disabled={saleBusy}
+                                aria-pressed={it.staffId === e.id}
+                                onClick={async () => { await setSaleItemStaff(it.id, e.id); setQuienDe(null); }}
+                                className={`px-2 py-1 rounded-lg text-[0.6875rem] font-bold transition disabled:opacity-40 ${
+                                  it.staffId === e.id
+                                    ? 'bg-[var(--primary)] text-white'
+                                    : 'bg-[var(--primary)]/5 text-[var(--primary)] hover:bg-[var(--primary)]/10'
+                                }`}
+                              >
+                                {e.name}
+                              </button>
+                            ))}
+                            {!!it.staffId && (
+                              <button
+                                disabled={saleBusy}
+                                onClick={async () => { await setSaleItemStaff(it.id, null); setQuienDe(null); }}
+                                className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[0.6875rem] font-bold disabled:opacity-40"
+                              >
+                                Nadie
+                              </button>
+                            )}
+                          </div>
+                        )}
                         {moviendo === it.id && (
                           <div className="w-full flex flex-wrap items-center gap-1 pt-2 pl-1">
                             <span className="text-[0.6875rem] text-slate-400 mr-1">Pasar a:</span>

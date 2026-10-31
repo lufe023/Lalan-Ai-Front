@@ -59,7 +59,7 @@ import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPedida } from '../components/ajustes/MenuAjustes';
 import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
-import { EspecialistasEquipo } from '../components/ajustes/EspecialistasEquipo';
+import { TarjetaEspecialistas } from '../components/especialistas/VentanaEspecialistas';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
@@ -492,8 +492,8 @@ export const SettingsScreen: React.FC = () => {
         {seccion === 'equipo' && (
           <>
         {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <UsuariosSalon />}
-        {/* Las especialistas son un rol del equipo: se gestionan aquí, junto a quién entra a la app */}
-        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <EspecialistasEquipo />}
+        {/* Las especialistas son un rol del equipo: su ventana propia (personas, pagos, permisos) se abre aquí */}
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <TarjetaEspecialistas />}
         {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <AvisosEquipo />}
           </>
         )}
