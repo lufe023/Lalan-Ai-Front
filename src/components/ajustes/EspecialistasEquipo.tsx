@@ -19,7 +19,13 @@ const CAMPO = 'min-w-0 px-2.5 py-2 sm:py-1.5 rounded-lg bg-white dark:bg-neutral
  * En el teléfono cada fila se parte en tres renglones (quién es, qué hace,
  * sus botones con nombre) para que nada quede cortado ni escondido.
  */
-export const EspecialistasEquipo: React.FC = () => {
+export const EspecialistasEquipo: React.FC<{
+  /** La plantilla de permisos va aparte (en la ventana Especialistas tiene su pestaña) */
+  sinPlantillaPermisos?: boolean;
+  /** Cómo se le paga a cada una ("Comisión 50 %"): se ve en su fila y lleva a cambiarlo */
+  etiquetasPago?: Record<string, string>;
+  onPago?: (staffId: string) => void;
+}> = ({ sinPlantillaPermisos = false, etiquetasPago, onPago }) => {
   const { settings, zonas, loadZonas, especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista } = useApp();
   const { sedes: sedesDelSalon, varias: variasSedes } = useSedeActiva();
   const { encuadres, guardar: guardarEncuadre } = useEncuadres();
@@ -80,14 +86,14 @@ export const EspecialistasEquipo: React.FC = () => {
             return (
               <React.Fragment key={e.id}>
                 <div
-                  className={`p-2.5 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-2 ${
+                  className={`p-2.5 rounded-xl border flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 ${
                     e.active
                       ? 'bg-slate-50 dark:bg-neutral-800/60 border-slate-200 dark:border-neutral-700'
                       : 'bg-slate-50/50 dark:bg-neutral-800/20 border-dashed border-slate-200 dark:border-neutral-800 opacity-60'
                   }`}
                 >
                   {/* Quién es: foto y nombre */}
-                  <div className="flex items-center gap-2 min-w-0 sm:flex-1">
+                  <div className="flex items-center gap-2 min-w-0 sm:flex-1 sm:min-w-[11rem]">
                     <button
                       type="button"
                       onClick={() => setFotoDe(fotoDe === e.id ? null : e.id)}
@@ -138,6 +144,20 @@ export const EspecialistasEquipo: React.FC = () => {
 
                   {/* Sus botones: en el teléfono con nombre, para saber qué hace cada uno */}
                   <div className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap sm:gap-2">
+                    {etiquetasPago?.[e.id] && (
+                      <button
+                        type="button"
+                        onClick={() => onPago?.(e.id)}
+                        title="Cómo se le paga. Toca para cambiarlo"
+                        className={`shrink-0 h-9 sm:h-7 px-2.5 rounded-full text-[0.6875rem] font-bold transition cursor-pointer ${
+                          etiquetasPago[e.id] === 'Sin acuerdo de pago'
+                            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                            : 'bg-[var(--primary)]/10 text-[var(--primary)] hover:bg-[var(--primary)]/15'
+                        }`}
+                      >
+                        {etiquetasPago[e.id]}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => void guardarEspecialista({ id: e.id, name: e.name, atiendeCitas: !recibe })}
@@ -305,7 +325,7 @@ export const EspecialistasEquipo: React.FC = () => {
         </div>
       </div>
 
-      <PlantillaPermisosEspecialista />
+      {!sinPlantillaPermisos && <PlantillaPermisosEspecialista />}
 
       {persona && (
         <HorarioEspecialista
