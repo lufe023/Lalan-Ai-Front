@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, CalendarClock, Check, Loader2, Package, Scale, ShoppingCart, Truck, Users } from 'lucide-react';
+import { Bot, CalendarClock, Check, ChevronDown, Loader2, Package, Scale, ShoppingCart, Truck, Users } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { usePlan } from '../../context/PlanContext';
 import { EtiquetaSede } from '../ui/CopiarASede';
 import { Aparecer } from '../ui/movimiento';
+import { IOSModal } from '../ui/IOSModal';
 import { comprasApi, cantidadTexto, unidadTexto, type PorPedir as Fila, type Proveedor } from '../../services/compras';
 import { ProveedoresDelProducto } from './ProveedoresDelProducto';
 import { FichaProveedor } from './Proveedores';
@@ -32,6 +33,13 @@ export const PorPedir: React.FC<{
   // Compras automáticas: Lalan busca proveedores y les escribe ella
   const lalanCompra = usePlan().tieneModulo('compras_lalan') && puede('compras.gestionar');
   const [encargando, setEncargando] = useState(false);
+  // El proveedor de una fila, solo para este pedido: el preferido no cambia
+  const [eligiendo, setEligiendo] = useState<Fila | null>(null);
+  const elegirEstaVez = (f: Fila, o: Fila['opciones'][number]) => {
+    setFilas((l) => l?.map((x) => (clave(x) === clave(f) ? { ...x, proveedor: o } : x)) ?? l);
+    setMarcadas((m) => new Set(m).add(clave(f)));
+    setEligiendo(null);
+  };
   const [filas, setFilas] = useState<Fila[] | null>(null);
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
   const [armando, setArmando] = useState(false);
@@ -231,7 +239,12 @@ export const PorPedir: React.FC<{
                   </p>
                 </div>
                 {f.proveedor
-                  ? <span className="text-[0.75rem] text-slate-600 dark:text-neutral-300 flex items-center gap-1 shrink-0 max-w-[40%] truncate"><Truck className="w-3.5 h-3.5 text-slate-400" />{f.proveedor.nombre}{f.opciones.length > 1 && <span className="text-slate-400"> +{f.opciones.length - 1}</span>}</span>
+                  ? <button type="button" onClick={() => setEligiendo(f)} title="Elegir a quién se lo pides esta vez" aria-label={`Proveedor de ${f.nombre}: ${f.proveedor.nombre}. Cambiar`}
+                      className="text-[0.75rem] text-slate-600 dark:text-neutral-300 flex items-center gap-1 shrink-0 max-w-[45%] px-2 py-1 -my-1 rounded-lg border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] cursor-pointer">
+                      <Truck className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="truncate">{f.proveedor.nombre}</span>
+                      {f.opciones.length > 1 && <span className="text-[var(--primary)] font-bold shrink-0">+{f.opciones.length - 1}</span>}
+                      <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                    </button>
                   : <button type="button" onClick={() => setProducto({ id: f.productId, name: f.nombre, unit: f.unidad })} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer shrink-0">¿A quién se lo compras?</button>}
               </div>
             );
@@ -256,6 +269,30 @@ export const PorPedir: React.FC<{
       </div>
       <CompararPrecios abierto={comparar} filas={marcadasTodas} proveedores={proveedores ?? []} onClose={() => setComparar(false)}
         onCreada={(ids) => { setComparar(false); if (ids.length) onComparar(ids[0]); }} />
+      <IOSModal isOpen={!!eligiendo} onClose={() => setEligiendo(null)} title="¿A quién se lo pides esta vez?" subtitle={eligiendo ? `${eligiendo.nombre} · faltan ${cantidadTexto(eligiendo.faltan)} ${unidadTexto(eligiendo.unidad)}` : undefined} fixedHeight={false}>
+        {eligiendo && (
+          <div className="space-y-2 p-1">
+            {eligiendo.opciones.map((o, i) => {
+              const actual = eligiendo.proveedor?.id === o.id;
+              return (
+                <button key={o.id} type="button" onClick={() => elegirEstaVez(eligiendo, o)}
+                  className={`w-full p-3 rounded-2xl border text-left flex items-center gap-2.5 cursor-pointer ${actual ? 'border-[var(--primary)] bg-[var(--primary)]/[0.06]' : 'border-slate-200/80 dark:border-neutral-800 hover:border-[var(--primary)]'}`}>
+                  <Truck className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-bold text-[0.8125rem] text-slate-900 dark:text-white truncate">{o.nombre}{i === 0 && <span className="ml-1.5 text-[0.6875rem] font-semibold text-amber-600">el de siempre</span>}</span>
+                    <span className="block text-[0.75rem] text-slate-500">{o.precio != null ? `${o.precio.toLocaleString('es-DO')} ${o.currencyCode ?? ''}${o.unidadCompra ? ` por ${o.unidadCompra}` : ''}` : 'sin precio anotado'}</span>
+                  </span>
+                  {actual && <Check className="w-4 h-4 text-[var(--primary)] shrink-0" />}
+                </button>
+              );
+            })}
+            <p className="text-[0.75rem] text-slate-500 px-1">Solo cambia este pedido. Tu proveedor de siempre sigue igual.</p>
+            <button type="button" onClick={() => { const f = eligiendo; setEligiendo(null); setProducto({ id: f.productId, name: f.nombre, unit: f.unidad }); }} className={`${botonSuave} w-full`}>
+              Otro proveedor…
+            </button>
+          </div>
+        )}
+      </IOSModal>
       <ProveedoresDelProducto producto={producto} onClose={() => { setProducto(null); cargar(); }} />
       <FichaProveedor id={nuevo ? 'nuevo' : null} onClose={() => setNuevo(false)} onCambio={() => undefined}
         onCreado={(p) => { setProveedores((l) => [...(l ?? []), p]); void asignar(p); }} />
