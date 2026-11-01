@@ -379,6 +379,21 @@ export default function App() {
   const [slugVitrina, setSlugVitrina] = React.useState<string | null>(slugDeVitrina);
   const [vitrinaCorta, setVitrinaCorta] = React.useState(direccionDeVitrina);
 
+  /*
+   * La Vitrina, el registro de proveedores y "pide tu canción" se desplazan
+   * con la página entera, no dentro del marco de la app. En el iPhone con la
+   * app instalada, la página está fija (alto de la pantalla, sin desplazarse)
+   * para que el marco no se corra; aquí eso dejaba la Vitrina sin poder bajar
+   * con el dedo. Con esta marca la página vuelve a desplazarse normal.
+   */
+  const paginaSuelta = !tokenPantalla && !tokenReproductor && !quiosco
+    && !!(vitrinaCorta || slugVitrina || registroProveedor || tokenPedirCancion);
+  React.useLayoutEffect(() => {
+    const raiz = document.documentElement;
+    raiz.classList.toggle('pagina-suelta', paginaSuelta);
+    return () => { raiz.classList.remove('pagina-suelta'); };
+  }, [paginaSuelta]);
+
   React.useEffect(() => {
     const alCambiar = () => {
       setTokenPantalla(tokenDePantalla());

@@ -172,6 +172,18 @@ html.is-ios.is-standalone body {
   overflow: hidden;
   overscroll-behavior: none;
 }
+/* Páginas que se desplazan enteras (Vitrina, registro de proveedores, pedir
+   canción): aunque se abran desde la app instalada, la página baja con el
+   dedo como en Safari. La marca la pone App.tsx. */
+html.is-ios.is-standalone.pagina-suelta,
+html.is-ios.is-standalone.pagina-suelta body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
+}
+
 html.is-ios.is-standalone .marco-app {
   position: absolute;
   inset: auto;
