@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { BotonAtras } from '../ui/BotonAtras';
 import { motion } from 'motion/react';
 import { AlertTriangle, Bot, Eye, Loader2, LogOut, Send, ShieldAlert, Sparkles, UserCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -32,8 +33,6 @@ function comoMensaje(m: MensajeDeMiChat): ChatMessage {
 export const ChatDeEspecialista: React.FC<{ chatId: string; inicial?: MiChat | null; onCerrar: () => void }> = ({ chatId, inicial, onCerrar }) => {
   const { showToast } = useApp();
   const { confirmar, modalConfirmar } = useConfirmar();
-  // Deslizar desde el borde izquierdo o clic derecho = Volver a sus chats
-  useIrAtras(onCerrar);
   const [chat, setChat] = useState<MiChat | null>(inicial ?? null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -124,7 +123,8 @@ export const ChatDeEspecialista: React.FC<{ chatId: string; inicial?: MiChat | n
       {modalConfirmar}
       <div className="px-4 pb-3 glass-nav border-b border-slate-200/70 dark:border-neutral-800/80 flex items-center gap-2.5 shrink-0"
         style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 8px), 52px))' }}>
-        <button onClick={onCerrar} aria-label="Volver" className="text-[var(--primary)] text-xs font-bold -ml-1 pr-1 cursor-pointer shrink-0">←<span className="hidden sm:inline"> Volver</span></button>
+        {/* Deslizar desde el borde izquierdo o clic derecho = volver a sus chats */}
+        <BotonAtras onVolver={onCerrar} texto="Volver" textoSoloEnPc />
         <div className="min-w-0 flex-1">
           <h4 className="text-[0.875rem] font-bold text-slate-900 dark:text-white truncate">{chat?.clienta ?? '…'}</h4>
           <div className="flex items-center gap-1.5">{chat && getChannelBadge(chat.canal as CommunicationChannel)}</div>

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BotonAtras } from '../ui/BotonAtras';
 import { FondoVivo } from '../ui/FondoVivo';
 import { AnimatePresence, motion } from 'motion/react';
-import { ChevronLeft, PartyPopper, Sparkles, X } from 'lucide-react';
+import { PartyPopper, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { abrirLalan } from '../lalan/PantallaLalan';
@@ -79,8 +80,6 @@ export const Bienvenida: React.FC = () => {
     irA(lista[Math.min(lista.indexOf(pantalla) + 1, lista.length - 1)]);
   };
   const atras = () => irA(orden[Math.max(indice - 1, 0)]);
-  // Deslizar desde el borde o clic derecho = el paso anterior
-  useIrAtras(atras, abierta && indice > 0, { enDialogo: true });
 
   const cerrar = () => {
     if (!estado?.terminada) posponerBienvenida();
@@ -139,9 +138,8 @@ export const Bienvenida: React.FC = () => {
           {/* Arriba: volver, cuánto falta y salir */}
           <div className="relative shrink-0 px-4 pb-3 border-b border-slate-200/50 dark:border-white/5 bg-white/40 dark:bg-black/20 backdrop-blur-md" style={{ paddingTop: 'var(--header-safe-pt, max(calc(env(safe-area-inset-top, 0px) + 12px), 16px))' }}>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={atras} disabled={indice <= 0} aria-label="Atrás" className="p-1.5 -ml-1.5 rounded-lg text-slate-500 disabled:opacity-0 cursor-pointer">
-                <ChevronLeft className="w-5 h-5" />
-              </button>
+              {/* Deslizar desde el borde o clic derecho = el paso anterior */}
+              <BotonAtras onVolver={atras} texto={null} activo={abierta && indice > 0} enDialogo tono="suave" className="p-1.5" />
               <div className="flex-1 text-center">
                 <div className="text-[0.8125rem] font-bold text-slate-900 dark:text-white">{pasoActual?.nombre ?? 'Configurar mi salón'}</div>
                 {estado && <div className="text-[0.6875rem] text-slate-400">Tu salón está al {estado.porcentaje} %</div>}

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useIrAtras } from '../../hooks/useIrAtras';
+import { BotonAtras } from './BotonAtras';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sun,
   Moon,
-  ChevronLeft,
   Sparkles,
   ShieldCheck,
   UserCheck,
@@ -47,8 +46,6 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
   const { currentUser, logout } = useAuth();
   const { triggerSplash, navigateTo } = useApp();
   const { isDark, setThemeMode } = useTheme();
-  // Deslizar desde el borde izquierdo o clic derecho = Atrás
-  useIrAtras(onBack, showBack);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const nombreSede = useNombreSede();
@@ -79,14 +76,7 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
     >
       <div className="flex items-center justify-between min-h-[40px]">
         {showBack ? (
-          <button
-            id="ios-header-back-btn"
-            onClick={onBack}
-            className="flex items-center gap-1 text-[var(--primary)] font-medium text-sm ios-touch cursor-pointer py-1 -ml-1 pr-2"
-          >
-            <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
-            <span>Atrás</span>
-          </button>
+          <BotonAtras id="ios-header-back-btn" onVolver={() => onBack?.()} activo={!!onBack} />
         ) : (
           <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
             <div className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0" />

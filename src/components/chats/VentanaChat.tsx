@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { BotonAtras } from '../ui/BotonAtras';
 import { FotoClienta } from '../ui/FotoClienta';
 import { GrabadorVoz } from './GrabadorVoz';
 import { AdjuntarMedio } from './AdjuntarMedio';
@@ -113,8 +114,6 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
   const activeConversation = conversations.find(c => c.id === conversacionId);
   const { currentUser } = useAuth();
   const esSuperAdmin = currentUser?.role === 'super_admin';
-  // Deslizar desde el borde izquierdo o clic derecho = Volver a la lista de chats
-  useIrAtras(onCerrar, !flotante);
   const puedeAutorizarTurno = esSuperAdmin || currentUser?.role === 'admin';
   const activeConversationId = conversacionId;
 
@@ -476,13 +475,8 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         >
           {/* Lo de la clienta cede espacio; el interruptor del bot nunca se sale de la pantalla */}
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <button
-              onClick={onCerrar}
-              aria-label="Volver"
-              className="text-[var(--primary)] text-xs font-bold -ml-1 pr-1 ios-touch cursor-pointer shrink-0 whitespace-nowrap"
-            >
-              ←<span className="hidden sm:inline"> Volver</span>
-            </button>
+            {/* Deslizar desde el borde izquierdo o clic derecho = volver a la lista de chats */}
+            <BotonAtras onVolver={onCerrar} texto="Volver" textoSoloEnPc />
             <div className="relative shrink-0">
               <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-9 h-9 text-xs border border-white/60" />
               <span
