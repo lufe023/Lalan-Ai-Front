@@ -49,6 +49,8 @@
              debe desplazarse nunca (si se corre, la app sube y el menú baja). */
           if (isIOS && isStandalone) {
             var raiz = document.documentElement;
+            /* La Vitrina y las otras páginas sueltas sí se desplazan (App.tsx) */
+            var suelta = function () { return raiz.classList.contains('pagina-suelta'); };
             var escribiendo = function () {
               var el = document.activeElement;
               return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
@@ -66,9 +68,9 @@
             document.addEventListener('focusin', fijarAlto);
             /* Al cerrar el teclado, todo vuelve a su sitio */
             document.addEventListener('focusout', function () {
-              setTimeout(function () { if (!escribiendo()) { fijarAlto(); window.scrollTo(0, 0); } }, 100);
+              setTimeout(function () { if (!escribiendo()) { fijarAlto(); if (!suelta()) window.scrollTo(0, 0); } }, 100);
             });
-            window.addEventListener('scroll', function () { if (!escribiendo() && window.scrollY !== 0) window.scrollTo(0, 0); }, { passive: true });
+            window.addEventListener('scroll', function () { if (!suelta() && !escribiendo() && window.scrollY !== 0) window.scrollTo(0, 0); }, { passive: true });
           }
         } catch (e) {}
       })();
