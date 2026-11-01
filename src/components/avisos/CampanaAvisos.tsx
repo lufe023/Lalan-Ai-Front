@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { BotonAtras } from '../ui/BotonAtras';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bell, CheckCheck, ChevronLeft, Loader2, Settings2 } from 'lucide-react';
+import { Bell, CheckCheck, Loader2, Settings2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useSedeActiva } from '../../context/SedeActivaContext';
@@ -149,9 +150,9 @@ export const CampanaAvisos: React.FC = () => {
             >
               <div className="flex items-center justify-between gap-2 px-3 sm:px-4 pt-3 pb-2">
                 <div className="flex items-center gap-1 min-w-0">
-                  <button type="button" onClick={() => setAbierta(false)} className="sm:hidden w-9 h-9 -ml-1 flex items-center justify-center text-[var(--primary)] cursor-pointer" aria-label="Cerrar avisos">
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
+                  {/* El atrás de siempre: en el teléfono también se cierra deslizando desde el borde,
+                      y en la computadora con el clic derecho */}
+                  <BotonAtras onVolver={() => setAbierta(false)} texto={null} ariaLabel="Cerrar avisos" enDialogo className="sm:hidden w-9 h-9 justify-center" />
                   <h2 className="text-base font-bold text-slate-900 dark:text-white">Avisos</h2>
                 </div>
                 <button

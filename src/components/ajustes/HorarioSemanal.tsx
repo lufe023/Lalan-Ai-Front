@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { BotonAtras } from '../ui/BotonAtras';
 import { CalendarDays, Check, Moon, Plus, X } from 'lucide-react';
 import { IOSModal } from '../ui/IOSModal';
 import { IOSToggle } from '../ui/IOSToggle';
@@ -119,7 +120,6 @@ export const HorarioSemanal: React.FC<{
   const [editando, setEditando] = useState<DiaDeHorario | null>(null);
   const habitual = useMemo(() => jornadaHabitual(semana), [semana]);
   // Con el día abierto en el mismo lugar, deslizar o clic derecho vuelve a la semana
-  useIrAtras(() => setEditando(null), enLinea && !!editando, { enDialogo: true });
 
   const cambiarAbierto = (dia: number, abierto: boolean) =>
     onGuardar(semana.map(d => (d.dia === dia ? { ...d, abierto } : d)));
@@ -133,9 +133,7 @@ export const HorarioSemanal: React.FC<{
   if (enLinea && editando) {
     return (
       <div className="space-y-3">
-        <button type="button" onClick={() => setEditando(null)} className="text-[0.8125rem] font-bold text-[var(--primary)] ios-touch">
-          ‹ Volver a la semana
-        </button>
+        <BotonAtras onVolver={() => setEditando(null)} texto="Volver a la semana" enDialogo />
         <p className="text-[1rem] font-bold text-slate-900 dark:text-white">{nombreDe(editando.dia)}</p>
         <ContenidoDia dia={editando} habitual={habitual} semana={semana} onGuardar={guardarDia} persona={persona} />
       </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Loader2, MailCheck, CheckCircle2, MessageCircle } from 'lucide-react';
+import { BotonAtras } from './BotonAtras';
+import { Loader2, MailCheck, CheckCircle2, MessageCircle } from 'lucide-react';
 import { api } from '../../services/api';
 import { useIrAtras } from '../../hooks/useIrAtras';
 
@@ -13,7 +14,6 @@ const campo = 'w-full px-3.5 py-3 rounded-xl bg-white dark:bg-neutral-900 border
 /** ¿Olvidaste tu clave? Un código al correo y una clave nueva, sin llamar a nadie */
 export const RecuperarClave: React.FC<{ emailInicial?: string; onVolver: (email?: string) => void }> = ({ emailInicial = '', onVolver }) => {
   const [paso, setPaso] = useState<Paso>('correo');
-  useIrAtras(() => onVolver());
   const [email, setEmail] = useState(emailInicial);
   const [codigo, setCodigo] = useState('');
   const [nueva, setNueva] = useState('');
@@ -43,9 +43,7 @@ export const RecuperarClave: React.FC<{ emailInicial?: string; onVolver: (email?
 
   return (
     <div className="space-y-4">
-      <button type="button" onClick={() => onVolver()} className="flex items-center gap-1 text-[0.8125rem] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer">
-        <ArrowLeft className="w-3.5 h-3.5" /> Volver a iniciar sesión
-      </button>
+      <BotonAtras onVolver={() => onVolver()} texto="Volver a iniciar sesión" tono="suave" />
 
       {paso === 'correo' && (
         <form onSubmit={pedir} className="space-y-3">

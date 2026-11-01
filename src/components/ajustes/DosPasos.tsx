@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BotonAtras } from '../ui/BotonAtras';
 import QRCode from 'qrcode';
 import { Check, Copy, Loader2, Mail, ShieldCheck, Smartphone } from 'lucide-react';
 import { api } from '../../services/api';
@@ -12,7 +13,6 @@ const soloCifras = (v: string) => v.replace(/\D/g, '').slice(0, 6);
 /** Al entrar, tras la clave: el código de la app o uno por correo */
 export const PasoDelCodigo: React.FC<{ reto: RetoDosPasos; onListo: () => void; onVolver: () => void }> = ({ reto, onListo, onVolver }) => {
   const { completarDosPasos } = useAuth();
-  useIrAtras(onVolver);
   const [codigo, setCodigo] = useState('');
   const [porCorreo, setPorCorreo] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -64,7 +64,7 @@ export const PasoDelCodigo: React.FC<{ reto: RetoDosPasos; onListo: () => void; 
           </button>
         )}
         {porCorreo && <button type="button" onClick={() => { setPorCorreo(false); setCodigo(''); }} className="font-semibold text-[var(--primary)] cursor-pointer">Usar la app de códigos</button>}
-        <button type="button" onClick={onVolver} className="text-slate-400 cursor-pointer">Volver</button>
+        <BotonAtras onVolver={onVolver} texto="Volver" tono="suave" />
       </div>
     </form>
   );

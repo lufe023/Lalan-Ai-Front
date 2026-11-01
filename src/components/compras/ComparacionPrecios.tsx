@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Bot, Check, ChevronRight, HandCoins, Loader2, MessageCircle, Scale, Send, Trophy, X } from 'lucide-react';
+import { BotonAtras } from '../ui/BotonAtras';
+import { Bot, Check, ChevronRight, HandCoins, Loader2, MessageCircle, Scale, Send, Trophy, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
@@ -55,7 +56,7 @@ export const ComparacionPrecios: React.FC<{ id: string; onVolver: () => void; on
   if (error) {
     return (
       <div className="space-y-3">
-        <button type="button" onClick={onVolver} className="flex items-center gap-1 text-[0.8125rem] font-bold text-[var(--primary)] cursor-pointer"><ArrowLeft className="w-4 h-4" /> Pedidos</button>
+        <BotonAtras onVolver={onVolver} texto="Pedidos" />
         <p className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[0.8125rem]">{error}</p>
       </div>
     );
@@ -146,7 +147,7 @@ export const ComparacionPrecios: React.FC<{ id: string; onVolver: () => void; on
     <div className="space-y-3">
       {modalConfirmar}
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={onVolver} className="flex items-center gap-1 text-[0.8125rem] font-bold text-[var(--primary)] cursor-pointer"><ArrowLeft className="w-4 h-4" /> Pedidos</button>
+        <BotonAtras onVolver={onVolver} texto="Pedidos" />
         <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
         <span className="font-bold text-[0.9375rem] text-slate-900 dark:text-white flex items-center gap-1.5"><Scale className="w-4 h-4 text-[var(--primary)]" /> Comparar precios</span>
         <EtiquetaSede locationId={c.sede.id} />

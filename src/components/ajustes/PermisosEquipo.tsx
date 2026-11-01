@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Loader2, Lock, Minus, RotateCcw, ShieldCheck } from 'lucide-react';
+import { BotonAtras } from '../ui/BotonAtras';
+import { Check, ChevronRight, Loader2, Lock, Minus, RotateCcw, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { IOSToggle } from '../ui/IOSToggle';
 import { useConfirmar } from '../ui/ModalConfirmar';
@@ -135,15 +136,10 @@ export const FilaRol: React.FC<{
 );
 
 /** Arriba del detalle de un rol: volver a la lista */
-export const VolverALista: React.FC<{ onVolver: () => void }> = ({ onVolver }) => {
+export const VolverALista: React.FC<{ onVolver: () => void }> = ({ onVolver }) => (
   // Deslizar desde el borde o clic derecho también vuelve a la lista
-  useIrAtras(onVolver);
-  return (
-    <button type="button" onClick={onVolver} className="flex items-center gap-1 text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">
-      <ChevronLeft className="w-4 h-4" /> Todos los roles
-    </button>
-  );
-};
+  <BotonAtras onVolver={onVolver} texto="Todos los roles" tamano="chico" />
+);
 
 /** En la fila de una persona: lo que puede ella, si la dueña quiere algo distinto al resto de su rol */
 export const PermisosDePersona: React.FC<{ id: string; nombre: string; catalogo: CatalogoPermisosRol }> = ({ id, nombre, catalogo }) => {

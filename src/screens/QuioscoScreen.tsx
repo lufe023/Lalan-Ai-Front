@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BotonAtras } from '../components/ui/BotonAtras';
 import { FondoVivo } from '../components/ui/FondoVivo';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowBigUp, Check, ChevronLeft, Clock, Coffee, Delete, Heart, Loader2, Pencil, Plus, Printer, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowBigUp, Check, Clock, Coffee, Delete, Heart, Loader2, Pencil, Plus, Printer, RotateCcw, Sparkles, X } from 'lucide-react';
 import QRCode from 'qrcode';
 import { ErrorPublico, urlDeFoto } from '../services/api';
 import { Busqueda, InicioQuiosco, ResultadoLlegada, quioscoApi, tokenQuiosco, urlAprobarQuiosco } from '../services/quiosco';
@@ -213,8 +214,8 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
     setHistorial((h) => h.slice(0, -1));
     setPaso(previo);
   };
-  // Lo mismo que el botón "Atrás" de arriba: deslizar desde el borde izquierdo
-  useIrAtras(atras, paso !== 'inicio' && paso !== 'final' && paso !== 'enviando' && historial.length > 0);
+  // El botón "Atrás" de arriba trae también deslizar desde el borde izquierdo
+  const puedeVolver = paso !== 'inicio' && paso !== 'final' && paso !== 'enviando' && historial.length > 0;
 
   const categoriaElegida = useMemo(
     () => datos?.servicios.find((s) => s.id === r.servicios[0])?.categoria ?? null,
@@ -291,11 +292,7 @@ const Recepcion: React.FC<{ onDesvincular: () => void }> = ({ onDesvincular }) =
       {/* Arriba: volver, avance y el salón (mantener pulsado el nombre para desvincular) */}
       <header className="shrink-0 flex items-center gap-4 px-6 sm:px-10 pt-6 pb-2 h-20">
         <div className="w-28">
-          {paso !== 'inicio' && paso !== 'final' && paso !== 'enviando' && historial.length > 0 && (
-            <button type="button" onClick={atras} className="flex items-center gap-1 text-lg font-semibold text-slate-500 dark:text-neutral-400 active:scale-95 transition-transform cursor-pointer">
-              <ChevronLeft className="w-6 h-6" /> Atrás
-            </button>
-          )}
+          <BotonAtras onVolver={atras} activo={puedeVolver} tamano="grande" tono="suave" />
         </div>
         <div className="flex-1 flex justify-center">
           {paso !== 'inicio' && paso !== 'final' && (
