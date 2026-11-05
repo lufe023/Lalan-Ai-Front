@@ -21,7 +21,11 @@ import type { Conversation } from '../../types';
 const PEDIDO_VIGENTE_MS = 48 * 60 * 60 * 1000;
 
 interface Estado { hasta: string | null; por: string | null; pedido: string | null }
-type Respuesta = { fueraDeHorarioHasta: string | null; fueraDeHorarioPor: string | null; aviso?: string | null };
+type Respuesta = {
+  fueraDeHorarioHasta: string | null; fueraDeHorarioPor: string | null; aviso?: string | null;
+  /** Un backend sin `aviso` dice así que la ventana de 24 h está cerrada */
+  lalanLeEscribe?: boolean; motivo?: string;
+};
 
 /**
  * Lo que la dueña decide en una tarjeta se avisa a la otra (la de arriba y la
@@ -57,9 +61,10 @@ function useTurnoEspecial(conversacion: Conversation) {
     try {
       const r = await api.post<Respuesta>(`/chat/panel/conversaciones/${conversacion.id}/fuera-de-horario`, { autorizar });
       avisarDecision(conversacion.id, { hasta: r.fueraDeHorarioHasta, por: r.fueraDeHorarioPor, pedido: null });
-      if (r.aviso) {
-        // El permiso quedó, pero Lalan no pudo escribirle (canal apagado o sin conectar)
-        showToast(autorizar ? 'Turno autorizado' : 'Listo', `${r.aviso} Escríbele tú a ${nombre}.`, 'warning');
+      const aviso = r.aviso ?? (r.lalanLeEscribe === false ? r.motivo ?? null : null);
+      if (aviso) {
+        // Quedó decidido, pero Lalan no pudo escribirle (más de 24 h, canal apagado o sin conectar)
+        showToast(autorizar ? 'Turno autorizado' : 'Listo', /escr[ií]bele t[uú]/i.test(aviso) ? aviso : `${aviso} Escríbele tú a ${nombre}.`, 'warning');
       } else if (autorizar) {
         showToast('Turno autorizado', pedido ? `Lalan le agenda ese turno a ${nombre} y se lo confirma.` : `Lalan le pregunta a ${nombre} qué día y hora le conviene.`, 'success');
       } else {
@@ -80,7 +85,7 @@ function useTurnoEspecial(conversacion: Conversation) {
  * Arriba del chat, donde se ve al entrar: lo que pidió la clienta y los dos
  * botones para decidir. Es lo que abre el aviso del teléfono.
  */
-export const PedidoFueraDeHorario: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean }> = ({ conversacion, puedeAutorizar }) => {
+export const PedidoFueraDeHorario: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; ventanaCerrada?: boolean }> = ({ conversacion, puedeAutorizar, ventanaCerrada = false }) => {
   const { navigateTo } = useApp();
   const t = useTurnoEspecial(conversacion);
   if (!t.pedido || t.vigente) return null;
@@ -117,7 +122,9 @@ export const PedidoFueraDeHorario: React.FC<{ conversacion: Conversation; puedeA
             </button>
           </div>
           <p className="mt-2 text-[0.6875rem] text-violet-700/80 dark:text-violet-300/80 leading-snug">
-            Con el sí, Lalan se lo agenda y se lo confirma. Con el no, se lo dice con cariño y le ofrece otra hora.{' '}
+            {ventanaCerrada
+              ? `Pasaron más de 24 horas: Lalan no puede escribirle ahora. Con el sí, se lo ofrece cuando ${t.nombre} vuelva a escribir.`
+              : 'Con el sí, Lalan se lo agenda y se lo confirma. Con el no, se lo dice con cariño y le ofrece otra hora.'}{' '}
             <button type="button" onClick={irAlHorarioExtra} className="font-bold underline cursor-pointer">
               ¿Te pasa seguido? Abre un horario extra
             </button>
@@ -134,7 +141,7 @@ export const PedidoFueraDeHorario: React.FC<{ conversacion: Conversation; puedeA
  * Abajo del chat: el turno autorizado (y quitarlo), o darle permiso a mano
  * cuando la clienta lo pidió hablando con una persona.
  */
-export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; children?: React.ReactNode }> = ({ conversacion, puedeAutorizar, children }) => {
+export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; ventanaCerrada?: boolean; children?: React.ReactNode }> = ({ conversacion, puedeAutorizar, ventanaCerrada = false, children }) => {
   const t = useTurnoEspecial(conversacion);
   // Con un pedido por decidir, la tarjeta de arriba ya tiene los botones
   const porDecidir = !!t.pedido && !t.vigente;
@@ -163,7 +170,7 @@ export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutoriza
       ) : conPermiso ? (
         <>
           <CalendarClock className="w-3.5 h-3.5 shrink-0" />
-          <span className="flex-1 min-w-0">¿Quiere venir fuera de tu horario?</span>
+          <span className="flex-1 min-w-0">¿Quiere venir fuera de tu horario?{ventanaCerrada ? ' Lalan se lo ofrece cuando vuelva a escribir.' : ''}</span>
           <button type="button" disabled={!!t.ocupado} onClick={() => void t.decidir(true)}
             title={`Durante 24 horas Lalan puede ofrecerle a ${t.nombre} horas fuera del horario`}
             className="shrink-0 px-2.5 py-1 rounded-lg bg-violet-600 text-white font-bold disabled:opacity-50 cursor-pointer">

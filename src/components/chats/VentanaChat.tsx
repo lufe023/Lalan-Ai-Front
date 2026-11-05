@@ -12,6 +12,7 @@ import { CommunicationChannel, ChatStatus, ChatMessage } from '../../types';
 import { IOSToggle } from '../ui/IOSToggle';
 import { ContenidoMensaje, OrigenDelChat, ReaccionDeMensaje } from './ContenidoMensaje';
 import { PedidoFueraDeHorario, TurnoEspecial } from './TurnoEspecial';
+import { VentanaCerrada } from './VentanaCerrada';
 import { ClientaDelChat } from './ClientaDelChat';
 import { SedeDelChat } from './SedeDelChat';
 import { EspecialistaDelChat } from './EspecialistaDelChat';
@@ -283,7 +284,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         {!minimizada && (
           <>
         {/* Lo que pidió fuera de horario, con el sí y el no, donde se ve al entrar */}
-        <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} />
+        <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
           <OrigenDelChat mensajes={hilo} />
@@ -453,14 +454,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
         <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
         <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
-        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
+        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>
-        {ventanaCerrada && (
-          <p className="px-4 pb-2 text-[0.6875rem] text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-950">
-            Pasaron más de 24 horas desde su último mensaje: WhatsApp no deja escribirle hasta que ella vuelva a escribir.
-          </p>
-        )}
+        {ventanaCerrada && <VentanaCerrada conversacion={activeConversation} />}
           </>
         )}
       </section>
@@ -526,7 +523,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         </div>
 
         {/* Lo que pidió fuera de horario, con el sí y el no, donde se ve al entrar */}
-        <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} />
+        <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
           <OrigenDelChat mensajes={hilo} />
@@ -696,14 +693,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
         <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
         <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
-        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
+        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>
-        {ventanaCerrada && (
-          <p className="px-4 pb-2 text-[0.6875rem] text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-950">
-            Pasaron más de 24 horas desde su último mensaje: WhatsApp no deja escribirle hasta que ella vuelva a escribir.
-          </p>
-        )}
+        {ventanaCerrada && <VentanaCerrada conversacion={activeConversation} />}
       </div>
     </div>
   );
