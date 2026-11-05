@@ -27,6 +27,7 @@ import {
   Star,
   Settings,
   Contact,
+  MessageCircleHeart,
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
 import { AlergiasEnGrupos } from '../components/clientes/AlergiasEnGrupos';
@@ -178,6 +179,7 @@ export const ClientsScreen: React.FC = () => {
     beautyNotes: string;
     medicalOrAllergyNotes: string;
     trato: TratoCliente | null;
+    tratoPersonal: string;
   }>({
     name: '',
     phone: '',
@@ -188,6 +190,7 @@ export const ClientsScreen: React.FC = () => {
     beautyNotes: '',
     medicalOrAllergyNotes: '',
     trato: null,
+    tratoPersonal: '',
   });
 
   // Filter Clients
@@ -256,6 +259,7 @@ export const ClientsScreen: React.FC = () => {
       beautyNotes: '',
       medicalOrAllergyNotes: '',
       trato: null,
+      tratoPersonal: '',
     });
     setShowAddModal(true);
   };
@@ -272,6 +276,7 @@ export const ClientsScreen: React.FC = () => {
       beautyNotes: client.beautyNotes || '',
       medicalOrAllergyNotes: client.medicalOrAllergyNotes || '',
       trato: client.trato ?? null,
+      tratoPersonal: client.tratoPersonal ?? '',
     });
     setShowAddModal(true);
   };
@@ -311,6 +316,7 @@ export const ClientsScreen: React.FC = () => {
           beautyNotes: formData.beautyNotes.trim(),
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
           trato: formData.trato,
+          tratoPersonal: formData.tratoPersonal.trim(),
         });
         setSelectedClient({
           ...selectedClient,
@@ -322,6 +328,7 @@ export const ClientsScreen: React.FC = () => {
           beautyNotes: formData.beautyNotes.trim(),
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
           trato: formData.trato,
+          tratoPersonal: formData.tratoPersonal.trim() || null,
         });
       } else {
         const created = await addClient({
@@ -336,6 +343,7 @@ export const ClientsScreen: React.FC = () => {
           beautyNotes: formData.beautyNotes.trim(),
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
           trato: formData.trato,
+          tratoPersonal: formData.tratoPersonal.trim() || null,
           totalVisits: 0,
           totalSpent: 0,
         });
@@ -825,6 +833,21 @@ export const ClientsScreen: React.FC = () => {
 
             <ElegirFotoDeCanal clienta={selectedClient} onCambio={avatar => setSelectedClient(c => (c ? { ...c, avatar } : c))} />
 
+            {/* Cómo le habla el salón (de su chat o de la entrevista de voz): Lalan lo usa solo con ella */}
+            {selectedClient.tratoPersonal && (
+              <button
+                type="button"
+                onClick={() => handleOpenEdit(selectedClient)}
+                className="w-full p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 text-left flex items-start gap-2 ios-touch cursor-pointer"
+              >
+                <MessageCircleHeart className="w-4 h-4 text-purple-500 shrink-0 mt-px" />
+                <span className="min-w-0">
+                  <span className="text-[0.6875rem] uppercase font-bold text-purple-700 dark:text-purple-300 block">Cómo le hablas</span>
+                  <span className="text-[0.8125rem] text-slate-800 dark:text-slate-100">{selectedClient.tratoPersonal}</span>
+                </span>
+              </button>
+            )}
+
             {/* Tags Container */}
             <div>
               <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block mb-1.5">
@@ -1266,6 +1289,23 @@ export const ClientsScreen: React.FC = () => {
             </div>
             <p className="mt-1 text-[0.6875rem] text-slate-400">
               Lalan lo anota sola cuando lo deja claro en el chat. Sin saber, habla en neutro.
+            </p>
+            {/* El trato propio: sale de su chat importado o de la entrevista de «Cómo habla tu salón» */}
+            <label htmlFor="trato-personal" className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mt-3 mb-1">
+              Cómo le hablas tú
+              <span className="ml-1 font-normal text-slate-400">(opcional)</span>
+            </label>
+            <input
+              id="trato-personal"
+              type="text"
+              maxLength={300}
+              placeholder="De tú, le digo «mi reina», es de confianza"
+              value={formData.tratoPersonal}
+              onChange={e => setFormData({ ...formData, tratoPersonal: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition"
+            />
+            <p className="mt-1 text-[0.6875rem] text-slate-400">
+              Lalan le habla así solo a ella. Vacío: usa la voz general del salón.
             </p>
           </div>
 

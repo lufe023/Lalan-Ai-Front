@@ -230,6 +230,8 @@ export interface Client {
   priceListId?: string;  // lista de precios asignada (undefined = default)
   /** Cómo le habla Lalan. Sin valor: neutro (o masculino si el salón es solo barbería) */
   trato?: TratoCliente | null;
+  /** Cómo le habla el salón a ella (de tú, "mi reina"…). Lalan lo usa solo con ella. Vacío: la voz general */
+  tratoPersonal?: string | null;
 }
 
 export type TratoCliente = 'femenino' | 'masculino';

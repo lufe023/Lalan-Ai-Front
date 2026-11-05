@@ -727,6 +727,7 @@ function mapApiClient(c: any): Client {
     registeredDate: c.registeredAt ? String(c.registeredAt).slice(0, 10) : new Date().toISOString().slice(0, 10),
     priceListId: c.priceListId,
     trato: c.trato ?? null,
+    tratoPersonal: c.tratoPersonal ?? null,
     sedes: Array.isArray(c.sedes) ? c.sedes : [],
   };
 }
@@ -1226,6 +1227,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       medicalOrAllergyNotes: data.medicalOrAllergyNotes || undefined,
       hospitalityPrefs: data.hospitality,
       trato: data.trato || undefined,
+      tratoPersonal: data.tratoPersonal?.trim() || undefined,
     });
     const client = mapApiClient(res);
     setClients(c => [client, ...c]);
@@ -1244,6 +1246,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.medicalOrAllergyNotes !== undefined)  payload.medicalOrAllergyNotes = updated.medicalOrAllergyNotes || undefined;
     if (updated.hospitality !== undefined)            payload.hospitalityPrefs = updated.hospitality;
     if (updated.trato !== undefined)                  payload.trato = updated.trato || null;
+    if (updated.tratoPersonal !== undefined)          payload.tratoPersonal = updated.tratoPersonal?.trim() || null;
     const res = await api.patch<any>(`/clients/${id}`, payload);
     setClients(c => c.map(x => x.id === id ? mapApiClient(res) : x));
   }, []);

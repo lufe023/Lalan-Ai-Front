@@ -26,7 +26,7 @@ export const GRUPOS_AJUSTES: Grupo[] = [
   { id: 'plan', titulo: 'Mi plan', resumen: 'Lo que incluye y cuánto llevas usado este mes', icono: Sparkles, color: 'bg-amber-500', roles: ADMINISTRACION },
   { id: 'equipo', titulo: 'Equipo', resumen: 'Quién entra a la app, tus especialistas (foto, horario, permisos) y a quién le llega cada aviso', icono: Users, color: 'bg-sky-500', roles: ADMINISTRACION, palabras: 'especialistas estilistas barberos manicuristas personal empleados horario ausencias vacaciones permisos entrada' },
   { id: 'salon', titulo: 'El salón', resumen: 'Horario de la semana, citas y zonas', icono: Store, color: 'bg-emerald-500', roles: ADMINISTRACION },
-  { id: 'chats', titulo: 'Lalan en los chats', resumen: 'Conectar WhatsApp, Instagram y Messenger; mensajes automáticos', icono: Bot, color: 'bg-purple-500', roles: ADMINISTRACION },
+  { id: 'chats', titulo: 'Lalan en los chats', resumen: 'Conectar WhatsApp, Instagram y Messenger; cómo habla tu salón; mensajes automáticos', icono: Bot, color: 'bg-purple-500', roles: ADMINISTRACION, palabras: 'voz tono adn como hablo trato tu usted entrevista notas de voz exportar chats suena a bot' },
   { id: 'sala', titulo: 'Sala y Lounge', resumen: 'Pantalla de turnos, quiosco de llegada y canciones que piden las clientas', icono: Monitor, color: 'bg-indigo-500', roles: ADMINISTRACION },
   { id: 'vitrina', titulo: 'Vitrina', resumen: 'Tu página para que las clientas reserven solas: bloques, colores y enlace', icono: Globe, color: 'bg-fuchsia-500', roles: ADMINISTRACION },
   { id: 'caja', titulo: 'Caja', resumen: 'Fiao, monedas, billetes, recibos e impresión', icono: Wallet, color: 'bg-teal-500', roles: ADMINISTRACION },
