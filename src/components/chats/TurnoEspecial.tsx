@@ -13,7 +13,7 @@ import type { Conversation } from '../../types';
  * hora libre. Solo la dueña o la administración lo autorizan; el resto del
  * equipo ve que está autorizado.
  */
-export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; children?: React.ReactNode }> = ({ conversacion, puedeAutorizar, children }) => {
+export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; ventanaCerrada?: boolean; children?: React.ReactNode }> = ({ conversacion, puedeAutorizar, ventanaCerrada = false, children }) => {
   const { showToast } = useApp();
   const [estado, setEstado] = useState<{ hasta: string | null; por: string | null } | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -26,11 +26,14 @@ export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutoriza
   const cambiar = async (autorizar: boolean) => {
     setOcupado(true);
     try {
-      const r = await api.post<{ fueraDeHorarioHasta: string | null; fueraDeHorarioPor: string | null }>(
+      const r = await api.post<{ fueraDeHorarioHasta: string | null; fueraDeHorarioPor: string | null; lalanLeEscribe?: boolean; motivo?: string }>(
         `/chat/panel/conversaciones/${conversacion.id}/fuera-de-horario`, { autorizar });
       setEstado({ hasta: r.fueraDeHorarioHasta, por: r.fueraDeHorarioPor });
-      showToast(autorizar ? 'Turno especial autorizado' : 'Autorización quitada',
-        autorizar ? 'Lalan le preguntará qué día y hora le conviene.' : 'Lalan vuelve a agendar solo dentro del horario.', 'success');
+      if (!autorizar) showToast('Autorización quitada', 'Lalan vuelve a agendar solo dentro del horario.', 'success');
+      else if (r.lalanLeEscribe) showToast('Turno especial autorizado', 'Lalan le preguntará qué día y hora le conviene.', 'success');
+      // Fuera de las 24 h Lalan no puede escribirle: el permiso queda para cuando ella escriba
+      else showToast('Autorizado, pero Lalan no le escribe ahora',
+        r.motivo ?? 'Cuando la clienta vuelva a escribir, Lalan le ofrece el turno.', 'warning');
     } catch (e: any) {
       showToast('No se pudo cambiar', e?.message ?? 'Inténtalo de nuevo.', 'warning');
     } finally {
@@ -50,7 +53,9 @@ export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutoriza
           {por ? ` por ${por}` : ''} · hasta {cuando}
         </span>
       ) : (
-        <span className="flex-1 min-w-0">¿Pide un turno fuera de horario?</span>
+        <span className="flex-1 min-w-0">
+          ¿Pide un turno fuera de horario?{ventanaCerrada ? ' Lalan se lo ofrece cuando vuelva a escribir.' : ''}
+        </span>
       )}
       {puedeAutorizar && (
         <button type="button" disabled={ocupado} onClick={() => void cambiar(!vigente)}

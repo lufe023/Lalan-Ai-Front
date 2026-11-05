@@ -12,6 +12,7 @@ import { CommunicationChannel, ChatStatus, ChatMessage } from '../../types';
 import { IOSToggle } from '../ui/IOSToggle';
 import { ContenidoMensaje, OrigenDelChat, ReaccionDeMensaje } from './ContenidoMensaje';
 import { TurnoEspecial } from './TurnoEspecial';
+import { VentanaCerrada } from './VentanaCerrada';
 import { ClientaDelChat } from './ClientaDelChat';
 import { SedeDelChat } from './SedeDelChat';
 import { EspecialistaDelChat } from './EspecialistaDelChat';
@@ -451,14 +452,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
         <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
         <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
-        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
+        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>
-        {ventanaCerrada && (
-          <p className="px-4 pb-2 text-[0.6875rem] text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-950">
-            Pasaron más de 24 horas desde su último mensaje: WhatsApp no deja escribirle hasta que ella vuelva a escribir.
-          </p>
-        )}
+        {ventanaCerrada && <VentanaCerrada conversacion={activeConversation} />}
           </>
         )}
       </section>
@@ -692,14 +689,10 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
         <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
         <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
-        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno}>
+        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}>
           {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
         </TurnoEspecial>
-        {ventanaCerrada && (
-          <p className="px-4 pb-2 text-[0.6875rem] text-amber-700 dark:text-amber-300 bg-white dark:bg-neutral-950">
-            Pasaron más de 24 horas desde su último mensaje: WhatsApp no deja escribirle hasta que ella vuelva a escribir.
-          </p>
-        )}
+        {ventanaCerrada && <VentanaCerrada conversacion={activeConversation} />}
       </div>
     </div>
   );
