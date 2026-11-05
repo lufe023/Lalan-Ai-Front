@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CalendarClock, Check, Clock, Sparkles, X } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -23,10 +23,26 @@ const PEDIDO_VIGENTE_MS = 48 * 60 * 60 * 1000;
 interface Estado { hasta: string | null; por: string | null; pedido: string | null }
 type Respuesta = { fueraDeHorarioHasta: string | null; fueraDeHorarioPor: string | null; aviso?: string | null };
 
+/**
+ * Lo que la dueña decide en una tarjeta se avisa a la otra (la de arriba y la
+ * de abajo del mismo chat), sin esperar a que el chat se vuelva a cargar.
+ */
+const EVENTO_TURNO = 'lalan:turno-especial';
+const avisarDecision = (id: string, estado: Estado) =>
+  window.dispatchEvent(new CustomEvent(EVENTO_TURNO, { detail: { id, estado } }));
+
 /** El estado del turno especial de un chat, con lo que la dueña acaba de decidir encima */
 function useTurnoEspecial(conversacion: Conversation) {
   const { showToast } = useApp();
   const [estado, setEstado] = useState<Estado | null>(null);
+  useEffect(() => {
+    const oir = (e: Event) => {
+      const d = (e as CustomEvent<{ id: string; estado: Estado }>).detail;
+      if (d?.id === conversacion.id) setEstado(d.estado);
+    };
+    window.addEventListener(EVENTO_TURNO, oir);
+    return () => window.removeEventListener(EVENTO_TURNO, oir);
+  }, [conversacion.id]);
   const [ocupado, setOcupado] = useState<'si' | 'no' | null>(null);
   const hasta = estado ? estado.hasta : conversacion.fueraDeHorarioHasta ?? null;
   const por = estado ? estado.por : conversacion.fueraDeHorarioPor ?? null;
@@ -40,7 +56,7 @@ function useTurnoEspecial(conversacion: Conversation) {
     setOcupado(autorizar ? 'si' : 'no');
     try {
       const r = await api.post<Respuesta>(`/chat/panel/conversaciones/${conversacion.id}/fuera-de-horario`, { autorizar });
-      setEstado({ hasta: r.fueraDeHorarioHasta, por: r.fueraDeHorarioPor, pedido: null });
+      avisarDecision(conversacion.id, { hasta: r.fueraDeHorarioHasta, por: r.fueraDeHorarioPor, pedido: null });
       if (r.aviso) {
         // El permiso quedó, pero Lalan no pudo escribirle (canal apagado o sin conectar)
         showToast(autorizar ? 'Turno autorizado' : 'Listo', `${r.aviso} Escríbele tú a ${nombre}.`, 'warning');
