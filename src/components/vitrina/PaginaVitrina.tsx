@@ -1544,9 +1544,45 @@ function Chat({ datos }: { datos: DatosVitrina }) {
   );
 }
 
+/**
+ * Las horas libres de un día. Las del horario extra (el rato que la dueña
+ * abrió antes de abrir o después de cerrar) van aparte y marcadas: son un
+ * espacio especial, no el horario de siempre.
+ */
+function HorasDelDia({ horas, extra, hora, elegir }: { horas: string[]; extra: string[]; hora: string | null; elegir: (h: string) => void }) {
+  const normales = horas.filter((h) => !extra.includes(h));
+  const boton = (h: string, i: number, especial: boolean) => (
+    <motion.button
+      key={h} type="button" onClick={() => elegir(h)} aria-pressed={hora === h}
+      aria-label={especial ? `${horaBonita(h)}, horario extendido` : undefined}
+      initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.02 }}
+      className={`rounded-xl py-3 text-sm font-medium tabular-nums transition ${hora === h
+        ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]'
+        : especial ? 'border border-dashed border-[var(--v-p)] bg-[var(--v-tinte)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
+    >
+      {horaBonita(h)}
+    </motion.button>
+  );
+  return (
+    <div className="space-y-3">
+      {!!normales.length && <div className="grid grid-cols-3 gap-2 @2xl:grid-cols-4">{normales.map((h, i) => boton(h, i, false))}</div>}
+      {!!extra.length && (
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 text-sm font-semibold">
+            <Sparkles className="size-4 text-[var(--v-p)]" /> Horario extendido
+          </p>
+          <p className="-mt-1 text-xs text-[var(--v-suave)]">Fuera del horario de siempre: el salón te abre este espacio especial.</p>
+          <div className="grid grid-cols-3 gap-2 @2xl:grid-cols-4">{extra.map((h, i) => boton(h, normales.length + i, true))}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ───────────── Tu reserva ───────────── */
 
-interface EstadoHoras { cargando: boolean; horas: string[]; cerrado: boolean; error: string | null }
+/** `extra`: las horas del horario extra que la dueña abrió (fuera del de siempre), dentro de `horas` */
+interface EstadoHoras { cargando: boolean; horas: string[]; extra: string[]; cerrado: boolean; error: string | null }
 
 /** Lo que eligió en cada pregunta del Lounge: de la lista y lo que escribió */
 interface RespuestaGusto { ids: string[]; otra: string }
@@ -1662,7 +1698,7 @@ function PanelReserva({
   const [contacto, setContacto] = useState(leerContacto);
   const [nota, setNota] = useState('');
   const [respuestas, setRespuestas] = useState<Record<string, RespuestaGusto>>({});
-  const [estado, setEstado] = useState<EstadoHoras>({ cargando: false, horas: [], cerrado: false, error: null });
+  const [estado, setEstado] = useState<EstadoHoras>({ cargando: false, horas: [], extra: [], cerrado: false, error: null });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recargar, setRecargar] = useState(0);
@@ -1800,15 +1836,15 @@ function PanelReserva({
     const mismaHora = consulta.current === nueva;
     consulta.current = nueva;
     if (!mismaHora) { setHora(null); setHoraPerdida(null); horaRef.current = null; perdidaRef.current = null; }
-    if (previa || !slug || !ids) { setEstado({ cargando: false, horas: [], cerrado: false, error: null }); return; }
+    if (previa || !slug || !ids) { setEstado({ cargando: false, horas: [], extra: [], cerrado: false, error: null }); return; }
     const mio = ++turno.current;
     setEstado((e) => ({ ...e, cargando: true, error: null }));
     const q = new URLSearchParams({ fecha, servicios: ids });
     if (especialistas.replace(/,/g, '')) q.set('especialistas', especialistas);
-    publicRequest<{ fecha: string; cerrado: boolean; horas: string[] }>(`/vitrina/publica/${encodeURIComponent(slug)}/horas?${q}`)
+    publicRequest<{ fecha: string; cerrado: boolean; horas: string[]; extra?: string[] }>(`/vitrina/publica/${encodeURIComponent(slug)}/horas?${q}`)
       .then((r) => {
         if (mio !== turno.current) return;
-        setEstado({ cargando: false, horas: r.horas, cerrado: r.cerrado, error: null });
+        setEstado({ cargando: false, horas: r.horas, extra: r.extra ?? [], cerrado: r.cerrado, error: null });
         // Si eligió a otra persona y a esa hora sí está libre, la hora vuelve sola
         const quiere = horaRef.current ?? perdidaRef.current;
         if (!quiere) return;
@@ -1817,7 +1853,7 @@ function PanelReserva({
         setHoraPerdida(libre ? null : quiere);
       })
       .catch((e: unknown) => {
-        if (mio === turno.current) setEstado({ cargando: false, horas: [], cerrado: false, error: e instanceof ErrorPublico ? e.message : 'No se pudieron cargar las horas' });
+        if (mio === turno.current) setEstado({ cargando: false, horas: [], extra: [], cerrado: false, error: e instanceof ErrorPublico ? e.message : 'No se pudieron cargar las horas' });
       });
   }, [previa, slug, ids, fecha, especialistas, recargar]);
 
@@ -1963,17 +1999,7 @@ function PanelReserva({
             ) : !estado.horas.length ? (
               <p className="py-2 text-sm text-[var(--v-suave)]">No quedan horas libres ese día{conAlguien ? ' con quien elegiste' : ''}. Prueba otro día{conAlguien ? ' o «Quien esté libre»' : ''}.</p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 @2xl:grid-cols-4">
-                {estado.horas.map((h, i) => (
-                  <motion.button
-                    key={h} type="button" onClick={() => setHora(h)} aria-pressed={hora === h}
-                    initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.02 }}
-                    className={`rounded-xl py-3 text-sm font-medium tabular-nums transition ${hora === h ? 'bg-[var(--v-p)] text-[var(--v-sobre-p)]' : 'border border-[var(--v-borde)] bg-[var(--v-sup)]'}`}
-                  >
-                    {horaBonita(h)}
-                  </motion.button>
-                ))}
-              </div>
+              <HorasDelDia horas={estado.horas} extra={estado.extra} hora={hora} elegir={setHora} />
             )}
           </div>
         );
