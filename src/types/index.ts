@@ -374,6 +374,9 @@ export interface Conversation {
   /** La dueña autorizó que Lalan le agende fuera del horario, hasta esta hora */
   fueraDeHorarioHasta?: string | null;
   fueraDeHorarioPor?: string | null;
+  /** Lo que pidió fuera de horario («jueves a las 7:30 p. m., manicure»), esperando el sí o el no de la dueña */
+  fueraDeHorarioPedido?: string | null;
+  fueraDeHorarioPedidoEn?: string | null;
   /** En pausa por posible spam hasta esta hora: Lalan no contesta, no se guardan archivos */
   silenciadaHasta?: string | null;
   /** Bloqueada por el salón: no se guarda nada de lo que mande */
@@ -492,6 +495,23 @@ export interface MotivoAusencia {
   emoji: string;
 }
 
+/**
+ * Horario extra de la sede: un rato fuera del horario normal que la dueña
+ * abre como último recurso. La Vitrina y Lalan lo ofrecen solo mientras
+ * esté encendido (y donde ella diga).
+ */
+export interface HorarioExtra {
+  activo: boolean;
+  /** Minutos antes de abrir (0 = no) */
+  antesMin: number;
+  /** Minutos después de cerrar */
+  despuesMin: number;
+  /** Solo cuando el horario normal de ese día ya está lleno */
+  soloSiLleno: boolean;
+  enVitrina: boolean;
+  enChat: boolean;
+}
+
 export interface SalonBusinessSettings {
   salonName: string;
   tagline: string;
@@ -504,6 +524,8 @@ export interface SalonBusinessSettings {
   closingTime: string; // e.g. "20:00"
   /** Cada día con su horario (cerrar un jueves, media jornada el sábado…) */
   horarioSemanal: DiaDeHorario[];
+  /** El rato extra que la dueña abre a voluntad (antes de abrir o después de cerrar), por sede */
+  horarioExtra: HorarioExtra;
   // Appointment timing & buffer parameters
   bufferTimeMinutes: number; // Tiempo de descanso / preparación entre cita y cita (ej. 5, 10, 15 min)
   defaultAppointmentDurationMinutes: number; // Tiempo que dura una cita estándar (ej. 60 min)

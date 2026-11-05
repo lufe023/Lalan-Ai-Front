@@ -11,7 +11,7 @@ import { useApp } from '../../context/AppContext';
 import { CommunicationChannel, ChatStatus, ChatMessage } from '../../types';
 import { IOSToggle } from '../ui/IOSToggle';
 import { ContenidoMensaje, OrigenDelChat, ReaccionDeMensaje } from './ContenidoMensaje';
-import { TurnoEspecial } from './TurnoEspecial';
+import { PedidoFueraDeHorario, TurnoEspecial } from './TurnoEspecial';
 import { VentanaCerrada } from './VentanaCerrada';
 import { ClientaDelChat } from './ClientaDelChat';
 import { SedeDelChat } from './SedeDelChat';
@@ -283,6 +283,8 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         </div>
         {!minimizada && (
           <>
+        {/* Lo que pidió fuera de horario, con el sí y el no, donde se ve al entrar */}
+        <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
           <OrigenDelChat mensajes={hilo} />
@@ -520,6 +522,8 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           </div>
         </div>
 
+        {/* Lo que pidió fuera de horario, con el sí y el no, donde se ve al entrar */}
+        <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
           <OrigenDelChat mensajes={hilo} />

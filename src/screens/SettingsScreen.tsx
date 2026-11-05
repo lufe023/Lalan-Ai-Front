@@ -59,6 +59,7 @@ import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPedida } from '../components/ajustes/MenuAjustes';
 import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
+import { HorarioExtra } from '../components/ajustes/HorarioExtra';
 import { TarjetaEspecialistas } from '../components/especialistas/VentanaEspecialistas';
 import { VozDelSalon } from '../components/ajustes/VozDelSalon';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
@@ -584,6 +585,15 @@ export const SettingsScreen: React.FC = () => {
             <HorarioSemanal
               semana={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
               onGuardar={horarioSemanal => updateSettings({ horarioSemanal })}
+            />
+          </div>
+
+          <div data-guia="horario-extra" id="horario-extra" className="pt-2 border-t border-slate-200/60 dark:border-neutral-800">
+            <HorarioExtra
+              valor={settings.horarioExtra}
+              semana={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
+              sede={variasSedes ? sedeActual?.name ?? null : null}
+              onGuardar={horarioExtra => updateSettings({ horarioExtra })}
             />
           </div>
 

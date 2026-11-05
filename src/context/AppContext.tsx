@@ -870,6 +870,7 @@ function mapApiConversation(c: any): Conversation {
     lastMessageAt: c.lastMessageAt ?? undefined,
     windowExpiresAt: c.windowExpiresAt ?? null,
     fueraDeHorarioHasta: c.fueraDeHorarioHasta ?? null, fueraDeHorarioPor: c.fueraDeHorarioPor ?? null,
+    fueraDeHorarioPedido: c.fueraDeHorarioPedido ?? null, fueraDeHorarioPedidoEn: c.fueraDeHorarioPedidoEn ?? null,
     silenciadaHasta: c.silenciadaHasta ?? null, bloqueada: !!c.bloqueada, bloqueadaPor: c.bloqueadaPor ?? null,
     especialista: c.especialista ? { userId: c.especialista.id, nombre: c.especialista.name, staffId: c.especialista.staffId ?? null } : null,
     especialistaDesde: c.especialistaDesde ?? null, especialistaPor: c.especialistaPor ?? null,
