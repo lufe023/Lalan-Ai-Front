@@ -252,14 +252,21 @@ const Entrevista: React.FC<{
   const [escrito, setEscrito] = useState('');
   const [pensando, setPensando] = useState(false);
   const [entendido, setEntendido] = useState<(Propuesta & { transcrito: string }) | null>(null);
+  const [aceptando, setAceptando] = useState(false);
   const p = preguntas[i];
+  // La pregunta que está en pantalla: una respuesta que llega tarde de otra se descarta
+  const actual = useRef(p?.id);
+  actual.current = p?.id;
 
   const mandar = async (f: FormData) => {
-    f.append('preguntaId', p.id);
+    const deCual = p.id;
+    f.append('preguntaId', deCual);
     if (sede) f.append('sede', sede);
     setPensando(true);
     try {
-      setEntendido(await subirArchivo<Propuesta & { transcrito: string }>('/voz-salon/entrevista', f, { deLaCadena: true }));
+      const r = await subirArchivo<Propuesta & { transcrito: string }>('/voz-salon/entrevista', f, { deLaCadena: true });
+      if (actual.current !== deCual) return;
+      setEntendido(r);
       setEscrito('');
     } catch (e) { showToast('No te entendí', mensajeDe(e, 'Inténtalo otra vez.'), 'warning'); }
     finally { setPensando(false); }
@@ -269,9 +276,12 @@ const Entrevista: React.FC<{
   const siguiente = () => { setEntendido(null); setI((n) => Math.min(preguntas.length - 1, n + 1)); };
 
   const aceptar = async () => {
-    if (!entendido) return;
-    await onAceptar(entendido, entendido.cambios[0] ?? 'Lo anoté en tu guía.');
-    siguiente();
+    if (!entendido || aceptando) return;
+    setAceptando(true);
+    try {
+      await onAceptar(entendido, entendido.cambios[0] ?? 'Lo anoté en tu guía.');
+      siguiente();
+    } finally { setAceptando(false); }
   };
 
   if (!p) return null;
@@ -306,10 +316,10 @@ const Entrevista: React.FC<{
           ) : (
             <p className="text-[0.8125rem] text-slate-700 dark:text-slate-200">No saqué nada nuevo de esto. Puedes repetirlo con otras palabras o seguir.</p>
           )}
-          <TratosDeClientas tratos={entendido.tratos} />
+          <TratosDeClientas key={entendido.transcrito} tratos={entendido.tratos} />
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={siguiente} className={SECUNDARIO}><X className="w-4 h-4" /> No, así no</button>
-            <button type="button" onClick={aceptar} disabled={!entendido.cambios.length} className={PRINCIPAL}><Check className="w-4 h-4" /> Está bien</button>
+            <button type="button" onClick={aceptar} disabled={!entendido.cambios.length || aceptando} className={PRINCIPAL}><Check className="w-4 h-4" /> Está bien</button>
           </div>
         </div>
       ) : (
@@ -574,16 +584,26 @@ const Probar: React.FC<{ voz: Voz; onEjemplo: (e: Ejemplo) => void }> = ({ voz, 
   const [libres, setLibres] = useState<string[]>([]);
   const [intentos, setIntentos] = useState<Record<string, Intento>>({});
   // Los mensajes reales (de sus chats) y los que ella escribe para probar
-  const casos = useMemo(() => [...libres.map((clienta) => ({ clienta, salon: '' })), ...voz.casos], [libres, voz.casos]);
+  // Uno por mensaje: el estado de cada prueba va por el texto de la clienta
+  const casos = useMemo(() => {
+    const vistos = new Set<string>();
+    return [...libres.map((clienta) => ({ clienta, salon: '' })), ...voz.casos].filter((c) => !vistos.has(c.clienta) && !!vistos.add(c.clienta));
+  }, [libres, voz.casos]);
+  // La última prueba pedida de cada mensaje: una respuesta vieja que llega después no la pisa
+  const turno = useRef<Record<string, number>>({});
 
   const poner = (k: string, v: Partial<Intento>) => setIntentos((x) => ({ ...x, [k]: { respuesta: null, pensando: false, corrigiendo: false, correccion: '', listo: false, ...x[k], ...v } }));
   const probar = async (mensaje: string) => {
+    const mio = (turno.current[mensaje] ?? 0) + 1;
+    turno.current[mensaje] = mio;
     poner(mensaje, { pensando: true, listo: false, corrigiendo: false });
     try {
       // Con la guía tal como está en pantalla, aunque no la haya guardado
       const r = await apiCadena.post<{ respuesta: string }>('/voz-salon/probar', { mensaje, sede: voz.sede, guia: voz.guia, ejemplos: voz.ejemplos });
+      if (turno.current[mensaje] !== mio) return;
       poner(mensaje, { respuesta: r.respuesta, pensando: false });
     } catch (e) {
+      if (turno.current[mensaje] !== mio) return;
       poner(mensaje, { pensando: false });
       showToast('No pude probar', mensajeDe(e, 'Inténtalo otra vez.'), 'warning');
     }
