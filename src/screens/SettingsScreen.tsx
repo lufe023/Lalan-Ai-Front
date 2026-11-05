@@ -60,6 +60,7 @@ import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPe
 import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { TarjetaEspecialistas } from '../components/especialistas/VentanaEspecialistas';
+import { VozDelSalon } from '../components/ajustes/VozDelSalon';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
@@ -934,6 +935,9 @@ export const SettingsScreen: React.FC = () => {
             <Terminal className="w-4 h-4 text-slate-400 shrink-0" />
           </button>
         </div>
+
+        {/* Que Lalan escriba como la dueña: entrevista por voz, chats exportados y prueba */}
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <VozDelSalon />}
 
         {/* SECTION 2: AUTOMATED WELCOME & OFF-HOURS MESSAGES */}
         <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs space-y-3">

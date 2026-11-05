@@ -288,6 +288,7 @@ export const apiCadena = {
   post:  <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body), headers: DE_LA_CADENA }),
   patch: <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'PATCH', body: JSON.stringify(body), headers: DE_LA_CADENA }),
   put:   <T>(path: string, body: unknown) => apiFetch<T>(path, { method: 'PUT', body: JSON.stringify(body), headers: DE_LA_CADENA }),
+  delete: <T>(path: string) => apiFetch<T>(path, { method: 'DELETE', headers: DE_LA_CADENA }),
 };
 
 /**
@@ -319,9 +320,10 @@ export async function blobProtegido(path: string): Promise<string> {
 }
 
 /** Subir un archivo (multipart) con la sesión: notas de voz del chat */
-export async function subirArchivo<T>(path: string, formulario: FormData): Promise<T> {
+export async function subirArchivo<T>(path: string, formulario: FormData, opciones?: { deLaCadena?: boolean }): Promise<T> {
+  // deLaCadena: sin la sede activa, como apiCadena (la sede va en el formulario)
   const pedir = () => fetch(`${BASE_URL}${path}`, {
-    method: 'POST', body: formulario, headers: cabecerasDeSesion(), credentials: 'include',
+    method: 'POST', body: formulario, headers: cabecerasDeSesion(opciones?.deLaCadena ? DE_LA_CADENA : undefined), credentials: 'include',
   });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
