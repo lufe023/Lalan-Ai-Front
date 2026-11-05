@@ -30,7 +30,7 @@ export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutoriza
         `/chat/panel/conversaciones/${conversacion.id}/fuera-de-horario`, { autorizar });
       setEstado({ hasta: r.fueraDeHorarioHasta, por: r.fueraDeHorarioPor });
       if (!autorizar) showToast('Autorización quitada', 'Lalan vuelve a agendar solo dentro del horario.', 'success');
-      else if (r.lalanLeEscribe) showToast('Turno especial autorizado', 'Lalan le preguntará qué día y hora le conviene.', 'success');
+      else if (r.lalanLeEscribe !== false) showToast('Turno especial autorizado', 'Lalan le preguntará qué día y hora le conviene.', 'success');
       // Fuera de las 24 h Lalan no puede escribirle: el permiso queda para cuando ella escriba
       else showToast('Autorizado, pero Lalan no le escribe ahora',
         r.motivo ?? 'Cuando la clienta vuelva a escribir, Lalan le ofrece el turno.', 'warning');
