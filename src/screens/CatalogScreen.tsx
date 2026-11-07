@@ -46,6 +46,7 @@ const TIPOS_DE_PRODUCTO: { id: TipoDeProducto; label: string; emoji: string; ayu
 const tipoDe = (f: { preparedToOrder: boolean; supplyOnly: boolean }): TipoDeProducto => (f.preparedToOrder ? 'preparado' : f.supplyOnly ? 'insumo' : 'venta');
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
+import { SeccionHoja } from '../components/ui/SeccionHoja';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
 import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria';
@@ -1192,13 +1193,7 @@ export const CatalogScreen: React.FC = () => {
           <div className={editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : 'space-y-5'}>
 
             {/* SECTION: Información del Servicio */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-                <div className="w-6 h-6 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
-                  <Sparkles className="w-3.5 h-3.5" />
-                </div>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">Información del Servicio</span>
-              </div>
+            <SeccionHoja indice={0} color="primario" icono={<Sparkles />} titulo="Información del servicio" detalle="Nombre, fotos, categoría y cuánto dura">
 
               <div>
                 <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -1282,18 +1277,10 @@ export const CatalogScreen: React.FC = () => {
                   className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
                 />
               </div>
-            </div>
+            </SeccionHoja>
 
             {/* SECTION: Tabla de Precios */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                    <Tag className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="font-bold text-xs text-slate-800 dark:text-white">Tabla de Precios</span>
-                </div>
-              </div>
+            <SeccionHoja indice={1} color="verde" icono={<Tag />} titulo="Precios" detalle="Moneda y variantes: corto, largo, retoque…">
               <MonedaDelPrecio value={serviceForm.currencyCode} onChange={c => setServiceForm({ ...serviceForm, currencyCode: c })} ejemplo={serviceForm.priceTiers[0]?.price ?? serviceForm.price} />
               <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Agrega variantes: corto o largo, retoque… Las que son solo para el salón (VIP, precio interno) márcalas así: la
@@ -1330,16 +1317,10 @@ export const CatalogScreen: React.FC = () => {
                 conVitrina={tieneModulo('vitrina') && serviceForm.enVitrina && serviceForm.vitrinaPrecio === 'exacto'}
                 nombreBase="Precio base"
               />
-            </div>
+            </SeccionHoja>
 
             {/* SECTION: Ícono */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-                <div className="w-6 h-6 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center text-sm leading-none">
-                  {serviceForm.icon || '✨'}
-                </div>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">Ícono del Servicio</span>
-              </div>
+            <SeccionHoja indice={2} color="violeta" icono={serviceForm.icon || '✨'} titulo="Ícono del servicio" detalle="Cómo se ve en la lista y en la Vitrina">
               <div className="grid grid-cols-10 gap-1">
                 {['💅','💇‍♀️','💆‍♀️','🦶','✨','💎','🌸','🪷','🌺','🧖‍♀️','💄','👄','💋','🌹','🍃','🌿','🪻','🧴','🪨','🕯️','🛁','🧼','💫','⭐','🌟','🎀','🎁','🌙','☀️','🦋'].map(emoji => (
                   <button
@@ -1356,7 +1337,7 @@ export const CatalogScreen: React.FC = () => {
                   </button>
                 ))}
               </div>
-            </div>
+            </SeccionHoja>
 
             {/* SECTION: Bot IA */}
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-500/8 dark:bg-purple-500/10 border border-purple-500/20">
@@ -1432,13 +1413,7 @@ export const CatalogScreen: React.FC = () => {
         <form onSubmit={handleSaveProduct} className="space-y-0 text-xs">
 
           {/* SECTION: Información básica */}
-          <div className="space-y-3 mb-5">
-            <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-              <div className="w-6 h-6 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
-                <ShoppingBag className="w-3.5 h-3.5" />
-              </div>
-              <span className="font-bold text-xs text-slate-800 dark:text-white">Información del Producto</span>
-            </div>
+          <SeccionHoja indice={0} color="primario" icono={<ShoppingBag />} titulo="Información del producto" detalle="Nombre, fotos, categoría y cómo se maneja" className="mb-5">
 
             <div>
               <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -1537,16 +1512,10 @@ export const CatalogScreen: React.FC = () => {
                 className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
               />
             </div>
-          </div>
+          </SeccionHoja>
 
           {productForm.preparedToOrder ? (
-            <div className="space-y-3 mb-5">
-              <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-                <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                  <Layers className="w-3.5 h-3.5" />
-                </div>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">Receta (una porción)</span>
-              </div>
+            <SeccionHoja indice={1} color="ambar" icono={<Layers />} titulo="Receta (una porción)" detalle="Lo que sale del inventario cada vez que se sirve" className="mb-5">
               <RecetaDelPreparado
                 productoId={editingProductId}
                 receta={productForm.receta}
@@ -1557,17 +1526,11 @@ export const CatalogScreen: React.FC = () => {
                 moneda={productForm.currencyCode || base}
                 productos={products}
               />
-            </div>
+            </SeccionHoja>
           ) : (
             <>
           {/* SECTION: Stock & Medidas */}
-          <div className="space-y-3 mb-5">
-            <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-              <div className="w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                <Package className="w-3.5 h-3.5" />
-              </div>
-              <span className="font-bold text-xs text-slate-800 dark:text-white">Stock & Medidas</span>
-            </div>
+          <SeccionHoja indice={1} color="azul" icono={<Package />} titulo="Existencias y medidas" detalle="Cuánto hay en cada sede y en qué se mide" className="mb-5">
 
             <div>
               <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -1689,20 +1652,12 @@ export const CatalogScreen: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
+          </SeccionHoja>
             </>
           )}
 
           {/* SECTION: Precios de Venta */}
-          <div className="space-y-3 mb-5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <Tag className="w-3.5 h-3.5" />
-                </div>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">Precios de Venta</span>
-              </div>
-            </div>
+          <SeccionHoja indice={2} color="verde" icono={<Tag />} titulo="Precios de venta" detalle="Lo que cobra cada sede" className="mb-5">
             {variasSedes && (() => {
               // El precio es de la sede activa; en "Todas las sedes", el del salón
               const p = editingProductId ? products.find(x => x.id === editingProductId) : undefined;
@@ -1749,16 +1704,10 @@ export const CatalogScreen: React.FC = () => {
               nombreBase="Precio al público"
               ejemploNombre="Ej: Mayorista, después de la cita"
             />
-          </div>
+          </SeccionHoja>
 
           {/* SECTION: Costo & Rentabilidad */}
-          <div className="space-y-3 mb-5">
-            <div className="flex items-center gap-2 pb-1.5 border-b border-slate-100 dark:border-neutral-800">
-              <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                <DollarSign className="w-3.5 h-3.5" />
-              </div>
-              <span className="font-bold text-xs text-slate-800 dark:text-white">Costo & Rentabilidad</span>
-            </div>
+          <SeccionHoja indice={3} color="ambar" icono={<DollarSign />} titulo="Costo y ganancia" detalle="Lo que te cuesta y cuánto te queda" className="mb-5">
             {productForm.preparedToOrder ? (() => {
               const c = costoDePorcion(productForm.receta, products, enBase, Number(productForm.extraCostPerServing) || 0);
               const tier = productForm.priceTiers.find(t => t.isDefault) ?? productForm.priceTiers[0];
@@ -1892,7 +1841,7 @@ export const CatalogScreen: React.FC = () => {
             )}
             </>
             )}
-          </div>
+          </SeccionHoja>
 
           {/* SECTION: Bot IA */}
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-500/8 dark:bg-purple-500/10 border border-purple-500/20 mb-5">
