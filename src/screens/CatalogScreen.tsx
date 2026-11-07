@@ -46,7 +46,7 @@ const TIPOS_DE_PRODUCTO: { id: TipoDeProducto; label: string; emoji: string; ayu
 const tipoDe = (f: { preparedToOrder: boolean; supplyOnly: boolean }): TipoDeProducto => (f.preparedToOrder ? 'preparado' : f.supplyOnly ? 'insumo' : 'venta');
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
-import { SeccionHoja } from '../components/ui/SeccionHoja';
+import { SeccionHoja, SeccionesHoja } from '../components/ui/SeccionHoja';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
 import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria';
@@ -1191,9 +1191,10 @@ export const CatalogScreen: React.FC = () => {
 
           {/* ── CONFIG TAB (default) ──────────────────────────────────── */}
           <div className={editingServiceId && serviceModalTab === 'recipe' ? 'hidden' : 'space-y-5'}>
+          <SeccionesHoja className="space-y-5">
 
             {/* SECTION: Información del Servicio */}
-            <SeccionHoja indice={0} color="primario" icono={<Sparkles />} titulo="Información del servicio" detalle="Nombre, fotos, categoría y cuánto dura">
+            <SeccionHoja indice={0} icono={<Sparkles />} titulo="Información del servicio" corto="Información" detalle="Nombre, fotos, categoría y cuánto dura">
 
               <div>
                 <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -1280,7 +1281,7 @@ export const CatalogScreen: React.FC = () => {
             </SeccionHoja>
 
             {/* SECTION: Tabla de Precios */}
-            <SeccionHoja indice={1} color="verde" icono={<Tag />} titulo="Precios" detalle="Moneda y variantes: corto, largo, retoque…">
+            <SeccionHoja indice={1} icono={<Tag />} titulo="Precios" corto="Precios" detalle="Moneda y variantes: corto, largo, retoque…">
               <MonedaDelPrecio value={serviceForm.currencyCode} onChange={c => setServiceForm({ ...serviceForm, currencyCode: c })} ejemplo={serviceForm.priceTiers[0]?.price ?? serviceForm.price} />
               <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                 Agrega variantes: corto o largo, retoque… Las que son solo para el salón (VIP, precio interno) márcalas así: la
@@ -1320,7 +1321,7 @@ export const CatalogScreen: React.FC = () => {
             </SeccionHoja>
 
             {/* SECTION: Ícono */}
-            <SeccionHoja indice={2} color="violeta" icono={serviceForm.icon || '✨'} titulo="Ícono del servicio" detalle="Cómo se ve en la lista y en la Vitrina">
+            <SeccionHoja indice={2} icono={serviceForm.icon || '✨'} titulo="Ícono del servicio" corto="Ícono" detalle="Cómo se ve en la lista y en la Vitrina">
               <div className="grid grid-cols-10 gap-1">
                 {['💅','💇‍♀️','💆‍♀️','🦶','✨','💎','🌸','🪷','🌺','🧖‍♀️','💄','👄','💋','🌹','🍃','🌿','🪻','🧴','🪨','🕯️','🛁','🧼','💫','⭐','🌟','🎀','🎁','🌙','☀️','🦋'].map(emoji => (
                   <button
@@ -1380,6 +1381,7 @@ export const CatalogScreen: React.FC = () => {
               </div>
             )}
 
+          </SeccionesHoja>
           </div>{/* end config tab */}
 
           <button
@@ -1411,9 +1413,10 @@ export const CatalogScreen: React.FC = () => {
         subtitle="Inventario y Precios de Venta"
       >
         <form onSubmit={handleSaveProduct} className="space-y-0 text-xs">
+        <SeccionesHoja>
 
           {/* SECTION: Información básica */}
-          <SeccionHoja indice={0} color="primario" icono={<ShoppingBag />} titulo="Información del producto" detalle="Nombre, fotos, categoría y cómo se maneja" className="mb-5">
+          <SeccionHoja indice={0} icono={<ShoppingBag />} titulo="Información del producto" corto="Información" detalle="Nombre, fotos, categoría y cómo se maneja">
 
             <div>
               <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -1515,7 +1518,7 @@ export const CatalogScreen: React.FC = () => {
           </SeccionHoja>
 
           {productForm.preparedToOrder ? (
-            <SeccionHoja indice={1} color="ambar" icono={<Layers />} titulo="Receta (una porción)" detalle="Lo que sale del inventario cada vez que se sirve" className="mb-5">
+            <SeccionHoja indice={1} icono={<Layers />} titulo="Receta (una porción)" corto="Receta" detalle="Lo que sale del inventario cada vez que se sirve">
               <RecetaDelPreparado
                 productoId={editingProductId}
                 receta={productForm.receta}
@@ -1530,7 +1533,7 @@ export const CatalogScreen: React.FC = () => {
           ) : (
             <>
           {/* SECTION: Stock & Medidas */}
-          <SeccionHoja indice={1} color="azul" icono={<Package />} titulo="Existencias y medidas" detalle="Cuánto hay en cada sede y en qué se mide" className="mb-5">
+          <SeccionHoja indice={1} icono={<Package />} titulo="Existencias y medidas" corto="Existencias" detalle="Cuánto hay en cada sede y en qué se mide">
 
             <div>
               <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -1657,7 +1660,7 @@ export const CatalogScreen: React.FC = () => {
           )}
 
           {/* SECTION: Precios de Venta */}
-          <SeccionHoja indice={2} color="verde" icono={<Tag />} titulo="Precios de venta" detalle="Lo que cobra cada sede" className="mb-5">
+          <SeccionHoja indice={2} icono={<Tag />} titulo="Precios de venta" corto="Precios" detalle="Lo que cobra cada sede">
             {variasSedes && (() => {
               // El precio es de la sede activa; en "Todas las sedes", el del salón
               const p = editingProductId ? products.find(x => x.id === editingProductId) : undefined;
@@ -1707,7 +1710,7 @@ export const CatalogScreen: React.FC = () => {
           </SeccionHoja>
 
           {/* SECTION: Costo & Rentabilidad */}
-          <SeccionHoja indice={3} color="ambar" icono={<DollarSign />} titulo="Costo y ganancia" detalle="Lo que te cuesta y cuánto te queda" className="mb-5">
+          <SeccionHoja indice={3} icono={<DollarSign />} titulo="Costo y ganancia" corto="Ganancia" detalle="Lo que te cuesta y cuánto te queda">
             {productForm.preparedToOrder ? (() => {
               const c = costoDePorcion(productForm.receta, products, enBase, Number(productForm.extraCostPerServing) || 0);
               const tier = productForm.priceTiers.find(t => t.isDefault) ?? productForm.priceTiers[0];
@@ -1908,6 +1911,7 @@ export const CatalogScreen: React.FC = () => {
               editingProductId ? '✓ Guardar Cambios del Producto' : '🛍️ Guardar Producto en Catálogo'
             )}
           </button>
+        </SeccionesHoja>
         </form>
      
       </IOSModal>
