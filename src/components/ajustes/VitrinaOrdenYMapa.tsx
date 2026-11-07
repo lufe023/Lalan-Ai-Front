@@ -72,7 +72,7 @@ export const OrdenCatalogo: React.FC<{
         <p className="flex items-center gap-2 text-[0.8125rem] text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</p>
       ) : !lista.length ? (
         <p className={AYUDA}>
-          {que === 'servicios' ? 'No hay servicios publicados en esta sede.' : 'No hay productos a la vista: publícalos en Catálogo, ten existencias en esta sede y deja visible el bloque «Productos».'}
+          {que === 'servicios' ? 'No hay servicios publicados en esta sede.' : 'No hay productos a la vista: publícalos en Catálogo, recibe mercancía en esta sede al menos una vez y deja visible el bloque «Productos».'}
         </p>
       ) : (
         <Reorder.Group axis="y" values={lista.map((x) => x.id)} onReorder={poner} layoutScroll
