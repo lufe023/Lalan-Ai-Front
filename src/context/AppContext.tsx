@@ -785,6 +785,8 @@ function mapApiProduct(p: any): SalonProduct {
     receta: (p.receta as LineaDeReceta[] | undefined) ?? [],
     costoReceta: p.costoReceta ?? null,
     costoRecetaCompleto: p.costoRecetaCompleto ?? null,
+    extraCostPerServing: p.extraCostPerServing != null ? Number(p.extraCostPerServing) : null,
+    costoPorcion: p.costoPorcion ?? null,
     porcionesPosibles: p.porcionesPosibles ?? null,
   };
 }
@@ -1347,6 +1349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       enVitrina: data.enVitrina, vitrinaPrecio: data.vitrinaPrecio,
       preparedToOrder: data.preparedToOrder ?? false,
       supplyOnly: data.supplyOnly ?? false,
+      extraCostPerServing: data.extraCostPerServing ?? undefined,
     });
     const creado = mapApiProduct(res);
     setProducts(p => [...p, creado]);
@@ -1383,6 +1386,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.preparedToOrder !== undefined) payload.preparedToOrder = updated.preparedToOrder;
     if (updated.currencyCode !== undefined)    payload.currencyCode = updated.currencyCode;
     if (updated.supplyOnly !== undefined)      payload.supplyOnly = updated.supplyOnly;
+    if (updated.extraCostPerServing !== undefined) payload.extraCostPerServing = updated.extraCostPerServing ?? 0;
     const res = await api.patch<any>(`/products/${id}`, payload);
     setProducts(p => p.map(x => x.id === id ? mapApiProduct(res) : x));
   }, []);

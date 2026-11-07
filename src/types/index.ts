@@ -126,6 +126,8 @@ export interface LineaDeReceta {
   notes?: string | null;
   unidadDelInsumo?: string;
   contenidoDelInsumo?: number | null;
+  /** En qué viene el contenido del insumo (ml, g, oz, L) */
+  unidadDelContenido?: string | null;
 }
 
 export interface SalonProduct {
@@ -178,6 +180,10 @@ export interface SalonProduct {
   /** Preparados: lo que cuesta una porción según sus insumos */
   costoReceta?: number | null;
   costoRecetaCompleto?: boolean | null;
+  /** Preparados: «otros por porción» (hielo, servilleta), en la moneda del salón */
+  extraCostPerServing?: number | null;
+  /** Preparados: lo que cuesta una porción con todo (receta + otros), en la moneda del salón */
+  costoPorcion?: number | null;
   /** Preparados: porciones que alcanzan con lo que hay */
   porcionesPosibles?: number | null;
 }
