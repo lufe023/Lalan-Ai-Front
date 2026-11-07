@@ -49,7 +49,9 @@ import { IOSModal } from '../components/ui/IOSModal';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
 import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria';
-import { RecetaDelPreparado } from '../components/catalogo/RecetaDelPreparado';
+import { RecetaDelPreparado, costoDePorcion } from '../components/catalogo/RecetaDelPreparado';
+import { GananciaDelPreparado } from '../components/catalogo/GananciaDelPreparado';
+import { PASTILLA_DE_NIVEL, nivelDeGanancia } from '../utils/ganancia';
 import { QueProductoEs, type VinculoPendiente } from '../components/catalogo/QueProductoEs';
 import { RiesgosDeReceta } from '../components/catalogo/RiesgosDeReceta';
 import { saberProductosApi } from '../services/saberProductos';
@@ -124,7 +126,7 @@ export const CatalogScreen: React.FC = () => {
     comprasApi.resumenProductos().then(setProveedoresDe).catch(() => setProveedoresDe({}));
   }, []);
   const [cargandoFactura, setCargandoFactura] = useState(false);
-  const { base, dinero, enSuMoneda, esExtranjera } = useDinero();
+  const { base, dinero, enSuMoneda, esExtranjera, enBase } = useDinero();
   const iconoCategoria = (kind: 'service' | 'product', key: string) => categoriaPorClave(kind, key)?.icon || '✨';
   const primeraCategoria = (kind: 'service' | 'product') => {
     const c = categoriasDe(kind)[0];
@@ -227,6 +229,8 @@ export const CatalogScreen: React.FC = () => {
     preparedToOrder: boolean;
     supplyOnly: boolean;
     receta: LineaDeReceta[];
+    /** Preparados: «otros por porción», en la moneda del salón */
+    extraCostPerServing: string;
     currencyCode: string;
     enVitrina: boolean;
     vitrinaPrecio: ModoPrecioVitrina;
@@ -253,6 +257,7 @@ export const CatalogScreen: React.FC = () => {
     preparedToOrder: false,
     supplyOnly: false,
     receta: [],
+    extraCostPerServing: '',
     currencyCode: '',
     enVitrina: true,
     vitrinaPrecio: 'exacto',
@@ -404,6 +409,7 @@ export const CatalogScreen: React.FC = () => {
       preparedToOrder: false,
       supplyOnly: false,
       receta: [],
+      extraCostPerServing: '',
       enVitrina: true,
       vitrinaPrecio: 'exacto',
     });
@@ -439,6 +445,7 @@ export const CatalogScreen: React.FC = () => {
       preparedToOrder: !!product.preparedToOrder,
       supplyOnly: !!product.supplyOnly,
       receta: product.receta ?? [],
+      extraCostPerServing: product.extraCostPerServing ? String(product.extraCostPerServing) : '',
       enVitrina: product.enVitrina !== false,
       vitrinaPrecio: product.vitrinaPrecio ?? 'exacto',
     });
@@ -583,6 +590,8 @@ export const CatalogScreen: React.FC = () => {
         lotStrategy: productForm.lotStrategy,
         preparedToOrder: productForm.preparedToOrder,
         supplyOnly: productForm.supplyOnly,
+        // Solo cuenta en lo preparado; vacío = nada
+        ...(productForm.preparedToOrder ? { extraCostPerServing: Number(productForm.extraCostPerServing) || 0 } : {}),
       };
       let id = editingProductId;
       if (editingProductId) {
@@ -845,7 +854,12 @@ export const CatalogScreen: React.FC = () => {
                 const tiers = opcionesDe(product.priceTiers, 'Precio PVP', product.basePrice);
                 const desde = Math.min(...tiers.map(t => t.price));
                 const bajo = product.minStock != null && product.stock <= product.minStock;
-                const margen = product.costPrice != null && product.basePrice > 0 ? (product.basePrice - product.costPrice) / product.basePrice : null;
+                // Un preparado cuesta lo que dice su receta (ya en la moneda del salón); lo demás, su costo de compra
+                const costoTarjeta = product.preparedToOrder
+                  ? (product.receta?.length ? product.costoPorcion ?? product.costoReceta ?? null : null)
+                  : product.costPrice ?? null;
+                const precioTarjeta = product.preparedToOrder ? (enBase(product.basePrice, product.currencyCode) ?? product.basePrice) : product.basePrice;
+                const margen = costoTarjeta != null && precioTarjeta > 0 ? (precioTarjeta - costoTarjeta) / precioTarjeta : null;
                 return (
                   <TarjetaCatalogo
                     key={product.id}
@@ -906,6 +920,7 @@ export const CatalogScreen: React.FC = () => {
                       <span aria-hidden>·</span>
                       {product.preparedToOrder ? (
                         <span className="font-medium text-amber-600 dark:text-amber-400" title="Se prepara al momento: su inventario son sus insumos">
+                          {product.porcionesPosibles != null && product.minStock != null && product.minStock > 0 && product.porcionesPosibles <= product.minStock && '⚠️ '}
                           🧑‍🍳 Preparado{product.porcionesPosibles != null ? ` · alcanza para ${product.porcionesPosibles}` : ' · sin receta'}
                         </span>
                       ) : (
@@ -930,11 +945,7 @@ export const CatalogScreen: React.FC = () => {
                         aproximado={esExtranjera(product.currencyCode) ? dinero(desde, product.currencyCode) : null}
                         nota={tiers.length > 1 ? `${tiers.length} precios` : null}
                         extra={margen != null && (
-                          <span className={`text-[0.625rem] font-extrabold px-1.5 py-0.5 rounded-full ${
-                            margen >= 0.35 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
-                              : margen >= 0.15 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
-                              : 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400'
-                          }`} title="Lo que le ganas sobre el costo">
+                          <span className={`text-[0.625rem] font-extrabold px-1.5 py-0.5 rounded-full ${PASTILLA_DE_NIVEL[nivelDeGanancia(margen, !!product.preparedToOrder)]}`} title={product.preparedToOrder ? 'Lo que te queda de cada porción, con el costo de su receta' : 'Lo que le ganas sobre el costo'}>
                             {Math.round(margen * 100)}% margen
                           </span>
                         )}
@@ -1540,6 +1551,8 @@ export const CatalogScreen: React.FC = () => {
                 productoId={editingProductId}
                 receta={productForm.receta}
                 onChange={receta => setProductForm({ ...productForm, receta })}
+                otros={productForm.extraCostPerServing}
+                onOtros={v => setProductForm(prev => ({ ...prev, extraCostPerServing: v }))}
                 precio={productForm.basePrice}
                 moneda={productForm.currencyCode || base}
                 productos={products}
@@ -1746,6 +1759,29 @@ export const CatalogScreen: React.FC = () => {
               </div>
               <span className="font-bold text-xs text-slate-800 dark:text-white">Costo & Rentabilidad</span>
             </div>
+            {productForm.preparedToOrder ? (() => {
+              const c = costoDePorcion(productForm.receta, products, enBase, Number(productForm.extraCostPerServing) || 0);
+              const tier = productForm.priceTiers.find(t => t.isDefault) ?? productForm.priceTiers[0];
+              const precioSalon = tier?.price ?? productForm.basePrice;
+              // Con varias sedes, lo que cobra cada una (puede ser propio); con una, el precio sin más
+              const precios = variasSedes && !sedeActual && productoPorSede && tier
+                ? sedesDelSalon.map(sd => {
+                    const x = productoPorSede[sd.id]?.[tier.id];
+                    return { id: sd.id, nombre: sd.name, precio: x?.modo === 'propio' ? x.precio : precioSalon };
+                  })
+                : [{ id: 'salon', nombre: variasSedes && sedeActual ? sedeActual.name : null, precio: precioSalon }];
+              return (
+                <GananciaDelPreparado
+                  costo={c.total} insumos={c.insumos} otros={c.otros} faltanCostos={c.faltanCostos}
+                  sinReceta={productForm.receta.length === 0}
+                  moneda={productForm.currencyCode || base}
+                  precios={precios}
+                  minStock={productForm.minStock}
+                  onMinStock={v => setProductForm(prev => ({ ...prev, minStock: v }))}
+                />
+              );
+            })() : (
+            <>
             <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-relaxed">
               ¿Cuánto te costó comprar este producto? Con ese dato calculamos automáticamente tu ganancia real por servicio y por venta.
             </p>
@@ -1854,6 +1890,8 @@ export const CatalogScreen: React.FC = () => {
                 </div>
               </div>
             )}
+            </>
+            )}
           </div>
 
           {/* SECTION: Bot IA */}
@@ -1867,7 +1905,9 @@ export const CatalogScreen: React.FC = () => {
                   Recomendar con Bot IA
                 </span>
                 <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-                  El bot lo sugiere cuando clientas preguntan por cuidados
+                  {productForm.preparedToOrder
+                    ? 'Lalan lo ofrece cuando preguntan qué hay para tomar o picar'
+                    : 'Lalan lo sugiere cuando preguntan por cuidados o productos'}
                 </span>
               </div>
             </div>
