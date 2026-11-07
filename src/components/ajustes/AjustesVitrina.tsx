@@ -597,8 +597,8 @@ const Publicados: React.FC<{ cfg: ConfigVitrina }> = ({ cfg }) => {
         {p.serviciosPublicados} de {p.servicios} servicios · {p.productosPublicados} de {p.productos} productos
       </p>
       <p className={AYUDA}>
-        Se elige en Catálogo con el interruptor «Sale en la Vitrina» de cada servicio, producto y oferta. Los productos solo
-        salen si hay existencias en esta sede, y los precios son los de esta sede.
+        Se elige en Catálogo con el interruptor «Sale en la Vitrina» de cada servicio, producto y oferta. Un producto sale
+        aunque hoy esté en cero, si esta sede lo maneja, y los precios son los de esta sede.
       </p>
     </div>
   );

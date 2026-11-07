@@ -160,7 +160,7 @@ export interface SalonProduct {
   masFotos?: string[];
   description: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
-  /** Sale en la Vitrina, si hay existencias en la sede */
+  /** Sale en la Vitrina de las sedes que lo manejan, aunque esté en cero */
   enVitrina?: boolean;
   /** Cómo se ve el precio en la Vitrina (aparte de la asistente) */
   vitrinaPrecio?: ModoPrecioAsistente;
