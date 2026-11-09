@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet } from 'lucide-react';
+import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet, Sparkles } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
 import { IOSToggle } from '../ui/IOSToggle';
 import { api } from '../../services/api';
@@ -12,6 +12,7 @@ import { CanalesCliente } from './CanalesCliente';
 import { EditorCanales } from './EditorCanales';
 import { LineasTelefonicas } from './LineasTelefonicas';
 import { InstruccionesLalan } from './InstruccionesLalan';
+import { MediosDelEjemplo, SalonEjemplo } from './SalonEjemplo';
 
 /** Lo que llega de una aplicación al piloto para llenar el formulario */
 export interface PrellenadoNegocio { aplicacionId?: string; salon?: string; nombre?: string; telefono?: string; ciudad?: string; planClave?: string | null }
@@ -445,6 +446,19 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         </div>
       </div>
 
+      {!soloSoporte && (
+        <div className={`p-3 rounded-xl border space-y-3 ${d.esEjemplo ? 'border-[var(--primary)]/40 bg-[var(--primary)]/5' : 'border-slate-200 dark:border-neutral-700'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[0.8125rem] font-bold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-[var(--primary)]" /> Salón de ejemplo</div>
+              <p className="text-[0.75rem] text-slate-500">Para presentar Lalán: se puede rellenar con datos de ejemplo y queda fuera de las estadísticas. Nunca lo marques en un salón de verdad.</p>
+            </div>
+            <IOSToggle checked={!!d.esEjemplo} onChange={(v) => void guardar({ esEjemplo: v })} ariaLabel="Salón de ejemplo" />
+          </div>
+          {d.esEjemplo && <MediosDelEjemplo negocioId={d.id} />}
+        </div>
+      )}
+
       {!soloSoporte && <div className="space-y-1.5">
         <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Tus notas (el salón no las ve)</div>
         <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} className={campo} />
@@ -462,6 +476,7 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
   const [planes, setPlanes] = useState<PlanLalan[]>([]);
   const [catalogo, setCatalogo] = useState<CatalogoModulos | null>(null);
   const [creando, setCreando] = useState(false);
+  const [ejemplo, setEjemplo] = useState(false);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [clave, setClave] = useState<ClaveNueva | null>(null);
   const [error, setError] = useState('');
@@ -487,8 +502,14 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
     <div className="space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <div className="flex items-center justify-between">
         <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400">{lista.length} {lista.length === 1 ? 'cliente' : 'clientes'} · {lista.filter((n) => n.activo).length} activos</p>
-        {!creando && !soloSoporte && <button type="button" onClick={() => { setCreando(true); setAbierto(null); }} className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer"><Plus className="w-4 h-4" /> Nuevo cliente</button>}
+        {!creando && !ejemplo && !soloSoporte && (
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => { setEjemplo(true); setAbierto(null); }} className="px-3 py-2 rounded-xl border border-[var(--primary)]/50 text-[var(--primary)] text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer hover:bg-[var(--primary)]/5"><Sparkles className="w-4 h-4" /> Preparar salón de ejemplo</button>
+            <button type="button" onClick={() => { setCreando(true); setAbierto(null); }} className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer"><Plus className="w-4 h-4" /> Nuevo cliente</button>
+          </div>
+        )}
       </div>
+      {ejemplo && <SalonEjemplo onCerrar={() => setEjemplo(false)} onCambio={() => void cargar()} onAbrirFicha={(id) => { setEjemplo(false); setAbierto(id); }} />}
       {clave && <ClaveParaCompartir {...clave} onListo={() => setClave(null)} />}
       {creando && (
         <FormNuevo planes={planes} prellenado={prellenado}
@@ -516,6 +537,7 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
               {n.promoHasta && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-emerald-100 text-emerald-700">Promoción hasta {fecha(n.promoHasta)}</span>}
               {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
               {!n.activo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-rose-100 text-rose-700">Suspendido</span>}
+              {n.esEjemplo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-violet-100 text-violet-700">De ejemplo</span>}
               {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}
             </div>
             <UsoDelPlan uso={n.uso} limites={n.limites} compacto />
