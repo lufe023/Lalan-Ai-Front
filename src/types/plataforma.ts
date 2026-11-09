@@ -224,6 +224,8 @@ export interface NegocioResumen {
   nombre: string;
   slug: string;
   activo: boolean;
+  /** Salón de ejemplo para presentar Lalán */
+  esEjemplo?: boolean;
   creadoEn: string;
   plan: { id: string; nombre: string } | null;
   excepciones: number;
@@ -241,6 +243,8 @@ export interface NegocioDetalle {
   nombre: string;
   slug: string;
   activo: boolean;
+  /** Salón de ejemplo para presentar Lalán */
+  esEjemplo?: boolean;
   creadoEn: string;
   notasPlataforma: string | null;
   plan: { id: string; nombre: string } | null;
