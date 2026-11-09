@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Sparkles, X, Loader2, Check, Copy, FileDown, ExternalLink, ImagePlus, Upload, Store, Scissors, Flower2, Hand, Brush, Building2, AlertCircle,
+  ShieldCheck, Music, Coffee, ListChecks,
 } from 'lucide-react';
 import { api, descargarArchivo, subirArchivo, urlCortaDeVitrina } from '../../services/api';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
@@ -32,7 +33,16 @@ interface Resultado {
   };
   vitrinas: { sede: string; direccion: string }[];
   factura: string;
+  canales?: { canal: string; cuenta: string; sede: string | null; todasLasSedes: boolean; activo: boolean; intacto: boolean }[];
+  lounge?: {
+    musica: number; enMenu: number; gustosPuestos: number;
+    sinProducto: { valor: string; tipo: 'bebida' | 'snack'; clientas: number }[];
+    agotado: { producto: string; sede: string } | null;
+  };
+  recorrido?: { alergia: string | null; nueva: string | null; atrasadas: number };
 }
+
+const NOMBRE_CANAL: Record<string, string> = { whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger' };
 
 interface Destinos {
   servicios: { id: string; nombre: string; fotos: number }[];
@@ -120,7 +130,12 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
             ))}
           </div>
           {rellenar
-            ? <p className="text-[0.75rem] text-slate-500">Se completa lo que le falte (sedes, equipo, clientas, suplidor) y se llena la agenda de esta semana en los huecos libres. No se borra nada.</p>
+            ? (
+              <div className="text-[0.75rem] text-slate-500 space-y-1">
+                <p>Se completa lo que le falte (sedes, equipo, clientas, gustos del Lounge, suplidor) y se llena la agenda de esta semana en los huecos libres. No se borra nada.</p>
+                <p className="flex items-start gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" /> El WhatsApp, Instagram y Messenger que ya tenga conectados no se tocan: siguen conectados. Al terminar te los muestro.</p>
+              </div>
+            )
             : !op.ejemplos.length && <p className="text-[0.75rem] text-slate-500">¿Ya tienes tu salón de ejemplo? Ábrelo en la lista y márcalo como «Salón de ejemplo» para poder rellenarlo desde aquí.</p>}
         </div>
 
@@ -192,6 +207,17 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
           </div>
         )}
 
+        <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 text-[0.75rem] text-slate-600 dark:text-neutral-300 space-y-1">
+          <div className="font-bold text-slate-700 dark:text-neutral-100">Lo que se siembra para la demo</div>
+          <ul className="list-disc pl-4 space-y-0.5">
+            <li>90 días de visitas pagadas y la agenda de hoy a 7 días, con {negocio?.masculino ? 'un cliente' : 'una clienta'} con alergia y {negocio?.masculino ? 'uno nuevo' : 'una nueva'} mañana.</li>
+            <li>El Lounge completo: cada {negocio?.masculino ? 'cliente' : 'clienta'} con su música (artistas y géneros), su bebida y su snack. Unos están en el menú del salón y otros no, para que Lalán sugiera qué vender.</li>
+            <li>Una bebida del menú agotada en la primera sede y dos insumos por pedir.</li>
+            <li>Cuatro chats de Lalán: reserva por WhatsApp, precio por Instagram, fuera de horario por Messenger y «quiero hablar con una persona».</li>
+            <li>Los recordatorios de estas citas ya salen como enviados: los teléfonos son inventados y no se gasta nada si el salón tiene WhatsApp conectado.</li>
+          </ul>
+        </div>
+
         <label className="flex items-center gap-2 text-[0.8125rem] font-semibold">
           <input type="checkbox" checked={f.vitrina} onChange={(e) => setF({ ...f, vitrina: e.target.checked })} className="accent-[var(--primary)]" /> Publicar la Vitrina de cada sede
         </label>
@@ -252,6 +278,23 @@ const Listo: React.FC<{ r: Resultado; onCerrar: () => void; onAbrirFicha: () => 
       </div>
       {s.porPedir.length > 0 && <p className="text-[0.8125rem]"><b>Por pedir en la primera sede:</b> {s.porPedir.join(' y ')}. Suplidor: {s.suplidor}.</p>}
 
+      {r.canales && r.canales.length > 0 && (
+        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 space-y-1">
+          <div className="text-[0.8125rem] font-bold flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300"><ShieldCheck className="w-4 h-4" /> Canales conectados: siguen igual</div>
+          <ul className="text-[0.75rem] text-emerald-900 dark:text-emerald-200 space-y-0.5">
+            {r.canales.map((c) => (
+              <li key={`${c.canal}-${c.cuenta}`}>
+                <b>{NOMBRE_CANAL[c.canal] ?? c.canal}</b> · {c.cuenta}{c.todasLasSedes ? ' · todas las sedes' : c.sede ? ` · ${c.sede}` : ''}{!c.activo ? ' · apagado' : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {r.lounge && <LoungeDelEjemplo l={r.lounge} />}
+
+      <Recorrido r={r} />
+
       <div className="flex flex-wrap gap-2">
         {r.vitrinas.map((v) => (
           <a key={v.direccion} href={urlCortaDeVitrina(v.direccion.replace(/^\//, ''))} target="_blank" rel="noreferrer"
@@ -265,6 +308,100 @@ const Listo: React.FC<{ r: Resultado; onCerrar: () => void; onAbrirFicha: () => 
       </div>
 
       <MediosDelEjemplo negocioId={r.negocioId} factura={r.factura} />
+    </div>
+  );
+};
+
+/** Lo que el Lounge tiene para enseñar: lo que piden y no hay es lo que Lalán sugiere vender */
+const LoungeDelEjemplo: React.FC<{ l: NonNullable<Resultado['lounge']> }> = ({ l }) => (
+  <div className="space-y-1.5">
+    <div className={`${titulo} flex items-center gap-1.5`}><Music className="w-3.5 h-3.5" /> El Lounge</div>
+    <p className="text-[0.8125rem]">
+      {l.musica} gustos de música, {l.enMenu} bebidas y snacks del menú que ya les gustan{l.gustosPuestos ? ` (${l.gustosPuestos} gustos nuevos en esta vuelta)` : ''}.
+    </p>
+    {l.sinProducto.length > 0 && (
+      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
+        <div className="text-[0.8125rem] font-bold flex items-center gap-1.5 text-amber-900 dark:text-amber-200"><Coffee className="w-4 h-4" /> Te lo piden y no lo tienes</div>
+        <ul className="mt-1 text-[0.75rem] text-amber-900 dark:text-amber-100 space-y-0.5">
+          {l.sinProducto.map((g) => <li key={g.valor}><b>{g.valor}</b> ({g.tipo}): {g.clientas} {g.clientas === 1 ? 'persona' : 'personas'}</li>)}
+        </ul>
+        {l.agotado && <p className="mt-1 text-[0.75rem] text-amber-900 dark:text-amber-100">Y se acabó <b>{l.agotado.producto}</b> en {l.agotado.sede}.</p>}
+      </div>
+    )}
+  </div>
+);
+
+/**
+ * El paso a paso de la demo con lo que se sembró: qué abrir, en qué orden,
+ * qué decir y qué dato concreto va a ver la dueña en cada pantalla.
+ */
+const Recorrido: React.FC<{ r: Resultado }> = ({ r }) => {
+  const s = r.resumen;
+  const l = r.lounge;
+  const rc = r.recorrido;
+  const whatsapp = r.canales?.find((c) => c.canal === 'whatsapp' && c.activo);
+  const top = l?.sinProducto.slice(0, 2).map((g) => `${g.valor} (${g.clientas})`).join(' y ');
+  const pasos: { donde: string; que: string; dato?: string }[] = [
+    {
+      donde: 'Antes de la llamada',
+      que: 'Entra con el acceso de arriba en otra ventana (o en incógnito) y deja abierta la Agenda. Ten a mano el teléfono con tu WhatsApp: harás de suplidor.',
+      dato: whatsapp ? `El WhatsApp ${whatsapp.cuenta} está conectado: pídele a la dueña que le escriba a Lalán en vivo.` : 'Sin WhatsApp conectado, enseña los chats de ejemplo (y conecta uno en Ajustes → Canales si quieres el chat en vivo).',
+    },
+    {
+      donde: 'Chats',
+      que: `Abre los ${s.chats} chats de Lalán: la reserva por WhatsApp (agenda sola y pregunta música y bebida), el precio por Instagram (manda la Vitrina), el de fuera de horario por Messenger y el que pide hablar con una persona.`,
+      dato: 'Di: «Lalán contesta, agenda y te avisa solo cuando de verdad te necesita».',
+    },
+    {
+      donde: 'Agenda y Mi semana',
+      que: `Enseña las ${s.citasDeLaSemana} citas de la semana y luego Mi semana.`,
+      dato: [
+        rc?.alergia ? `Mañana viene ${rc.alergia}: sale el aviso de su alergia en la cita.` : null,
+        rc?.nueva ? `${rc.nueva} viene por primera vez.` : null,
+        rc?.atrasadas ? `${rc.atrasadas} ya se pasaron de su ritmo: salen en «Por volver».` : null,
+      ].filter(Boolean).join(' '),
+    },
+    {
+      donde: 'Lounge',
+      que: 'Abre el Lounge y toca una clienta que llega: su música suena, y su bebida y su snack del menú se sirven con un toque.',
+      dato: l ? `${l.musica} gustos de música y ${l.enMenu} gustos que el menú ya cumple.` : undefined,
+    },
+    {
+      donde: 'Informes → «Te lo piden y no lo tienes»',
+      que: 'Aquí está la venta que se le escapa: lo que sus clientas piden y el salón no tiene.',
+      dato: [top ? `Lo más pedido: ${top}.` : null, l?.agotado ? `Y se le acabó ${l.agotado.producto} en ${l.agotado.sede}.` : null, 'Di: «Lalán te dice qué comprar porque lo pidieron tus clientas».'].filter(Boolean).join(' '),
+    },
+    {
+      donde: 'Compras → Por pedir',
+      que: 'Abre el aviso de Por pedir y toca «Encárgaselo a Lalán».',
+      dato: s.porPedir.length ? `Se acabaron ${s.porPedir.join(' y ')}. El pedido de precio le llega a ${s.suplidor}: contesta tú desde tu WhatsApp.` : `El pedido de precio le llega a ${s.suplidor}.`,
+    },
+    {
+      donde: 'Pásale la factura a Lalán',
+      que: 'Descarga la factura de abajo antes de la llamada y súbela en Compras (o pásasela a Lalán en su chat).',
+      dato: 'Reconoce al suplidor, suma al inventario de la sede, avisa del precio que subió y crea el producto nuevo.',
+    },
+    {
+      donde: 'Vitrina',
+      que: r.vitrinas.length ? 'Abre la Vitrina desde el botón de abajo: así la ven sus clientas desde Instagram o WhatsApp.' : 'La Vitrina no se publicó en esta vuelta.',
+      dato: 'Cierra con: «Lalán trabaja por ti; tú solo atiendes».',
+    },
+  ];
+  return (
+    <div className="space-y-1.5">
+      <div className={`${titulo} flex items-center gap-1.5`}><ListChecks className="w-3.5 h-3.5" /> Tu recorrido de la demo, paso a paso</div>
+      <ol className="space-y-1.5">
+        {pasos.map((p, i) => (
+          <li key={p.donde} className="flex gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800">
+            <span className="w-6 h-6 rounded-full bg-[var(--primary)] text-white text-[0.75rem] font-bold flex items-center justify-center shrink-0 tabular-nums">{i + 1}</span>
+            <div className="min-w-0 text-[0.8125rem] space-y-0.5">
+              <div className="font-bold">{p.donde}</div>
+              <div className="text-slate-600 dark:text-neutral-300">{p.que}</div>
+              {p.dato && <div className="text-[0.75rem] text-[var(--primary)] font-semibold">{p.dato}</div>}
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 };
