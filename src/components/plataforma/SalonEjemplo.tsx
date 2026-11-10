@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Sparkles, X, Loader2, Check, Copy, FileDown, ExternalLink, ImagePlus, Upload, Store, Scissors, Flower2, Hand, Brush, Building2, AlertCircle,
-  ShieldCheck, Music, Coffee, ListChecks,
+  ShieldCheck, Music, Coffee, ListChecks, Leaf,
 } from 'lucide-react';
 import { api, descargarArchivo, subirArchivo, urlCortaDeVitrina } from '../../services/api';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
@@ -30,6 +30,7 @@ interface Resultado {
   resumen: {
     servicios: number; especialistas: number; clientas: number; productos: number; porPedir: string[]; suplidor: string;
     visitasPasadas: number; ventas: number; citasDeLaSemana: number; chats: number;
+    planesDeSeguimiento?: number; plantillasDePlan?: number;
   };
   vitrinas: { sede: string; direccion: string }[];
   factura: string;
@@ -39,7 +40,10 @@ interface Resultado {
     sinProducto: { valor: string; tipo: 'bebida' | 'snack'; clientas: number }[];
     agotado: { producto: string; sede: string } | null;
   };
-  recorrido?: { alergia: string | null; nueva: string | null; atrasadas: number };
+  recorrido?: {
+    alergia: string | null; nueva: string | null; atrasadas: number;
+    planConAviso?: string | null; planAtrasado?: string | null; planPorTerminar?: string | null;
+  };
 }
 
 const NOMBRE_CANAL: Record<string, string> = { whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger' };
@@ -56,7 +60,7 @@ const tarjeta = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slat
 const titulo = 'text-[0.75rem] font-bold uppercase tracking-wider text-slate-500';
 const chip = (activo: boolean) => `px-3 py-2 rounded-xl border text-[0.8125rem] font-semibold flex items-center gap-1.5 cursor-pointer transition ${activo ? 'bg-[var(--primary)] text-white border-[var(--primary)]' : 'border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 hover:border-[var(--primary)]/50'}`;
 
-const ICONO_NEGOCIO: Record<string, React.FC<{ className?: string }>> = { salon: Store, unas: Hand, barberia: Scissors, spa: Flower2, peluqueria: Brush };
+const ICONO_NEGOCIO: Record<string, React.FC<{ className?: string }>> = { salon: Store, unas: Hand, barberia: Scissors, spa: Flower2, peluqueria: Brush, capilar: Leaf };
 
 /** Un número del 1 al N con botones (más rápido que escribirlo) */
 const Cuantos: React.FC<{ valor: number; opciones: number[]; onChange: (n: number) => void; etiqueta: string }> = ({ valor, opciones, onChange, etiqueta }) => (
@@ -361,6 +365,15 @@ const Recorrido: React.FC<{ r: Resultado }> = ({ r }) => {
         rc?.atrasadas ? `${rc.atrasadas} ya se pasaron de su ritmo: salen en «Por volver».` : null,
       ].filter(Boolean).join(' '),
     },
+    ...(s.planesDeSeguimiento ? [{
+      donde: 'Planes de seguimiento (Mi semana y la ficha)',
+      que: `${s.planesDeSeguimiento} clientas van en un tratamiento de varias sesiones. En Mi semana sale quién avisó algo y quién se atrasó; toca una y abre su ficha con el plan.`,
+      dato: [
+        rc?.planConAviso ? `${rc.planConAviso} le contestó algo a Lalán que hay que atender: sale con sus palabras.` : null,
+        rc?.planAtrasado ? `${rc.planAtrasado} no vino a su sesión: sale como atrasada.` : null,
+        rc?.planPorTerminar ? `${rc.planPorTerminar} va casi al final: enseña cómo bajó la caída en la gráfica.` : null,
+      ].filter(Boolean).join(' ') || undefined,
+    }] : []),
     {
       donde: 'Lounge',
       que: 'Abre el Lounge y toca una clienta que llega: su música suena, y su bebida y su snack del menú se sirven con un toque.',

@@ -99,7 +99,7 @@ export interface CatalogosPiloto { tiposNegocio: Opcion[]; queAutomatizar: Opcio
 export type ClaveModulo =
   | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
   | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco' | 'vitrina' | 'fotos_clientes'
-  | 'compras' | 'compras_lalan';
+  | 'compras' | 'compras_lalan' | 'planes_seguimiento';
 
 export type GrupoModulo = 'atencion' | 'salon' | 'dinero' | 'experiencia';
 export interface ModuloCatalogo {
