@@ -100,6 +100,8 @@ export interface SalonService {
   color: string;
   popular?: boolean;
   description?: string;
+  /** Lo que Lalán dice para recomendarlo en los chats */
+  lalanDice?: string;
   aiAvailable: boolean; // Accessible by the AI Chat Bot to offer
   /** Sale en la Vitrina (la página pública de reservas) */
   enVitrina?: boolean;
@@ -159,6 +161,8 @@ export interface SalonProduct {
   /** Las demás fotos del carrusel, en orden, después de `fotoId` (hasta 10 en total) */
   masFotos?: string[];
   description: string;
+  /** Lo que Lalán dice para recomendarlo en los chats */
+  lalanDice?: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
   /** Sale en la Vitrina de las sedes que lo manejan, aunque esté en cero */
   enVitrina?: boolean;

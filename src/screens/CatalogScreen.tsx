@@ -53,6 +53,7 @@ import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria'
 import { RecetaDelPreparado, costoDePorcion } from '../components/catalogo/RecetaDelPreparado';
 import { GananciaDelPreparado } from '../components/catalogo/GananciaDelPreparado';
 import { PASTILLA_DE_NIVEL, nivelDeGanancia } from '../utils/ganancia';
+import { QueDiceLalan } from '../components/catalogo/QueDiceLalan';
 import { QueProductoEs, type VinculoPendiente } from '../components/catalogo/QueProductoEs';
 import { RiesgosDeReceta } from '../components/catalogo/RiesgosDeReceta';
 import { saberProductosApi } from '../services/saberProductos';
@@ -183,6 +184,7 @@ export const CatalogScreen: React.FC = () => {
     icon: string;
     color: string;
     description: string;
+    lalanDice: string;
     aiAvailable: boolean;
     priceTiers: PriceTier[];
     currencyCode: string;
@@ -198,6 +200,7 @@ export const CatalogScreen: React.FC = () => {
     icon: 'Sparkles',
     color: '#e11d48',
     description: '',
+    lalanDice: '',
     aiAvailable: true,
     priceTiers: [
       { id: 'tier_1', name: 'Precio Estándar / Regular', price: 35, isDefault: true, description: 'Servicio completo estándar' },
@@ -220,6 +223,7 @@ export const CatalogScreen: React.FC = () => {
     unitQty: string;
     unitQtyUnit: string;
     description: string;
+    lalanDice: string;
     aiAvailable: boolean;
     priceTiers: PriceTier[];
     costPrice: string;
@@ -246,6 +250,7 @@ export const CatalogScreen: React.FC = () => {
     unitQty: '',
     unitQtyUnit: 'ml',
     description: '',
+    lalanDice: '',
     aiAvailable: true,
     priceTiers: [
       { id: 'ptier_1', name: 'Precio Venta Público (PVP)', price: 20, isDefault: true, description: 'Venta individual estándar' },
@@ -320,6 +325,7 @@ export const CatalogScreen: React.FC = () => {
       icon: 'Sparkles',
       color: '#e11d48',
       description: '',
+      lalanDice: '',
       aiAvailable: true,
       priceTiers: tiersIniciales,
       aiPrecio: 'exacto',
@@ -351,6 +357,7 @@ export const CatalogScreen: React.FC = () => {
       icon: service.icon,
       color: service.color,
       description: service.description || '',
+      lalanDice: service.lalanDice || '',
       aiAvailable: service.aiAvailable,
       priceTiers: (() => {
         const valid = (service.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t));
@@ -397,6 +404,7 @@ export const CatalogScreen: React.FC = () => {
       unitQty: '',
       unitQtyUnit: 'ml',
       description: '',
+      lalanDice: '',
       aiAvailable: true,
       priceTiers: [
         { id: `ptier_${Date.now()}_1`, name: 'Precio Venta al Público (PVP)', price: 20, isDefault: true },
@@ -433,6 +441,7 @@ export const CatalogScreen: React.FC = () => {
       unitQty: product.unitQty != null ? String(product.unitQty) : '',
       unitQtyUnit: product.unitQtyUnit ?? 'ml',
       description: product.description,
+      lalanDice: product.lalanDice || '',
       aiAvailable: product.aiAvailable,
       priceTiers: (() => {
         const valid = (product.priceTiers ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t));
@@ -503,6 +512,7 @@ export const CatalogScreen: React.FC = () => {
           price: serviceForm.price,
           durationMinutes: serviceForm.durationMinutes,
           description: serviceForm.description,
+          lalanDice: serviceForm.lalanDice,
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
           aiPrecio: serviceForm.aiPrecio,
@@ -536,6 +546,7 @@ export const CatalogScreen: React.FC = () => {
           icon: serviceForm.icon,
           color: serviceForm.color,
           description: serviceForm.description,
+          lalanDice: serviceForm.lalanDice,
           aiAvailable: serviceForm.aiAvailable,
           priceTiers: serviceForm.priceTiers,
           aiPrecio: serviceForm.aiPrecio,
@@ -580,6 +591,7 @@ export const CatalogScreen: React.FC = () => {
         unitQty: productForm.unitQty !== '' ? Number(productForm.unitQty) : undefined,
         unitQtyUnit: productForm.unitQty !== '' ? productForm.unitQtyUnit : undefined,
         description: productForm.description,
+        lalanDice: productForm.lalanDice,
         aiAvailable: productForm.aiAvailable,
         priceTiers: productForm.priceTiers,
         enVitrina: productForm.enVitrina,
@@ -1278,6 +1290,12 @@ export const CatalogScreen: React.FC = () => {
                   className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
                 />
               </div>
+
+              <QueDiceLalan
+                key={editingServiceId ?? 'nuevo'}
+                tipo="servicio" nombre={serviceForm.name} categoria={serviceForm.categoryName} descripcion={serviceForm.description}
+                value={serviceForm.lalanDice} onChange={t => setServiceForm(prev => ({ ...prev, lalanDice: t }))}
+              />
             </SeccionHoja>
 
             {/* SECTION: Tabla de Precios */}
@@ -1515,6 +1533,15 @@ export const CatalogScreen: React.FC = () => {
                 className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
               />
             </div>
+
+            {!productForm.supplyOnly && !productForm.preparedToOrder && (
+              <QueDiceLalan
+                key={editingProductId ?? 'nuevo'}
+                tipo="producto" nombre={productForm.name} categoria={productForm.categoryName} descripcion={productForm.description}
+                productoId={editingProductId}
+                value={productForm.lalanDice} onChange={t => setProductForm(prev => ({ ...prev, lalanDice: t }))}
+              />
+            )}
           </SeccionHoja>
 
           {productForm.preparedToOrder ? (
