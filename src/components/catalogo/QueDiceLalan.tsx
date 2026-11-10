@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ExternalLink, Film, Link2, Loader2, RefreshCw, Store, Upload, X } from 'lucide-react';
+import { Check, ExternalLink, Film, Link2, Loader2, RefreshCw, Sparkles, Store, Upload, X } from 'lucide-react';
 import { api, blobProtegido, subirArchivo } from '../../services/api';
 import { EsferaLalan } from '../lalan/EsferaLalan';
+import { VideoProcesando, VistaVideo, miniaturaDeYoutube } from './VideoProcesando';
 
 const LARGO = 1200;
 /** Cuánto espera a que la dueña deje de escribir el nombre antes de pedírselo a Lalán */
@@ -12,6 +13,9 @@ const SOLA_MAX = 2;
 interface Sugerencia { texto: string; fuentes: { titulo: string; url: string }[]; deMercado: string | null; video?: 'youtube' | 'instagram' | 'archivo' }
 
 const DE_VIDEO: Record<NonNullable<Sugerencia['video']>, string> = { youtube: 'el video de YouTube', instagram: 'tu post de Instagram', archivo: 'tu video' };
+
+/** Botón pequeño de las ayudas de Lalán bajo el texto */
+const BOTON_AYUDA = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900 text-purple-700 dark:text-purple-300 text-[0.6875rem] font-bold cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 transition';
 
 const etiqueta = 'block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide';
 
@@ -37,13 +41,17 @@ export const QueDiceLalan: React.FC<{
   onChange: (texto: string) => void;
   /** Pone el video en el carrusel de la Vitrina (el mismo camino que «Fotos y videos») */
   onPonerEnVitrina?: (archivo: File) => Promise<void>;
-}> = ({ tipo, nombre, categoria, descripcion, productoId, value, onChange, onPonerEnVitrina }) => {
+  /** false = Lalán no propone sola (interruptor del catálogo); solo cuando la dueña lo pide */
+  sugiereSola?: boolean;
+}> = ({ tipo, nombre, categoria, descripcion, productoId, value, onChange, onPonerEnVitrina, sugiereSola = true }) => {
   const [sugerencia, setSugerencia] = useState<Sugerencia | null>(null);
   const [pensando, setPensando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conVideo, setConVideo] = useState(false);
   const [enlace, setEnlace] = useState('');
   const [leyendo, setLeyendo] = useState<string | null>(null);
+  /** La miniatura que se anima mientras Lalán ve el video */
+  const [vista, setVista] = useState<VistaVideo | null>(null);
   const archivoRef = useRef<HTMLInputElement>(null);
   /** El último video que leyó Lalán: el mismo puede ir a la Vitrina */
   const [ultimoVideo, setUltimoVideo] = useState<{ archivo?: File; enlace?: string; origen: 'youtube' | 'instagram' | 'archivo' } | null>(null);
@@ -54,7 +62,7 @@ export const QueDiceLalan: React.FC<{
   const vacio = !value.trim();
   const listoParaPedir = nombre.trim().length >= 3;
 
-  const pedir = async () => {
+  const pedir = async (auto = false) => {
     if (!listoParaPedir || pensando) return;
     setPensando(true);
     setError(null);
@@ -65,8 +73,10 @@ export const QueDiceLalan: React.FC<{
         categoria: categoria?.trim() || undefined,
         descripcion: descripcion?.trim() || undefined,
         productoId: productoId || undefined,
+        auto: auto || undefined,
       });
-      setSugerencia(r);
+      // Con el interruptor apagado el servidor no gasta IA y no trae texto
+      setSugerencia(r?.texto?.trim() ? r : null);
     } catch (e: any) {
       setError(e?.message || 'Lalán no pudo pensar ahora mismo. Inténtalo en un momento.');
     } finally {
@@ -75,13 +85,17 @@ export const QueDiceLalan: React.FC<{
   };
 
   /** Lalán aprende de un video: un enlace (Instagram o YouTube) o un archivo del teléfono */
-  const pedirConVideo = async (archivo?: File) => {
+  const pedirConVideo = async (archivo?: File, enlaceDado?: string) => {
     if (!listoParaPedir || pensando) return;
-    const link = enlace.trim();
+    const link = (enlaceDado ?? enlace).trim();
     if (!archivo && !link) return;
     setPensando(true);
     setError(null);
     setLeyendo(archivo ? 'tu video' : /youtu/i.test(link) ? 'el video de YouTube' : 'tu post de Instagram');
+    const urlLocal = archivo ? URL.createObjectURL(archivo) : undefined;
+    setVista(archivo ? { tipo: 'archivo', url: urlLocal }
+      : /youtu/i.test(link) ? { tipo: 'youtube', url: miniaturaDeYoutube(link) }
+      : { tipo: 'instagram' });
     pedidoPara.current = nombre.trim();
     try {
       const datos: Record<string, string | undefined> = {
@@ -111,8 +125,55 @@ export const QueDiceLalan: React.FC<{
     } finally {
       setPensando(false);
       setLeyendo(null);
+      setVista(null);
+      if (urlLocal) URL.revokeObjectURL(urlLocal);
     }
   };
+
+  /* Arrastrar un video (o el enlace de un reel o de YouTube) sobre el bloque.
+     Sin esto el navegador abre el archivo en otra pestaña. */
+  const [arrastrando, setArrastrando] = useState(false);
+  const capas = useRef(0);
+  const traeVideo = (e: React.DragEvent) => {
+    const tipos = Array.from(e.dataTransfer?.types ?? []);
+    return tipos.includes('Files') || tipos.includes('text/uri-list');
+  };
+  const alEntrar = (e: React.DragEvent) => {
+    if (!traeVideo(e)) return;
+    e.preventDefault();
+    capas.current += 1;
+    setArrastrando(true);
+  };
+  const alSalir = () => {
+    capas.current = Math.max(0, capas.current - 1);
+    if (!capas.current) setArrastrando(false);
+  };
+  const alSoltar = (e: React.DragEvent) => {
+    if (!traeVideo(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    capas.current = 0;
+    setArrastrando(false);
+    if (!listoParaPedir) { setError('Escribe primero el nombre, así Lalán sabe de qué es el video.'); return; }
+    const archivo = Array.from(e.dataTransfer.files ?? [])[0];
+    if (archivo) {
+      if (!archivo.type.startsWith('video/')) { setError('Eso no es un video. Arrastra un video o el enlace de tu reel o de YouTube.'); return; }
+      void pedirConVideo(archivo);
+      return;
+    }
+    const link = (e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')).split('\n')[0].trim();
+    if (/^https?:\/\//i.test(link)) void pedirConVideo(undefined, link);
+  };
+
+  // Un video soltado fuera del bloque, dentro de la hoja, tampoco abre otra pestaña
+  useEffect(() => {
+    const frenar = (e: DragEvent) => {
+      if (Array.from(e.dataTransfer?.types ?? []).includes('Files')) e.preventDefault();
+    };
+    window.addEventListener('dragover', frenar);
+    window.addEventListener('drop', frenar);
+    return () => { window.removeEventListener('dragover', frenar); window.removeEventListener('drop', frenar); };
+  }, []);
 
   /** El mismo video al carrusel de la Vitrina: el subido tal cual; el reel, traído de su Instagram */
   const ponerEnVitrina = async () => {
@@ -141,12 +202,12 @@ export const QueDiceLalan: React.FC<{
 
   // Vacío y con nombre: Lalán lo propone sola cuando la dueña deja de escribir el nombre
   useEffect(() => {
-    if (!vacio || !listoParaPedir || sugerencia || pensando || solas.current >= SOLA_MAX) return;
+    if (!sugiereSola || !vacio || !listoParaPedir || sugerencia || pensando || solas.current >= SOLA_MAX) return;
     if (pedidoPara.current === nombre.trim()) return;
-    const t = setTimeout(() => { solas.current += 1; void pedir(); }, ESPERA_MS);
+    const t = setTimeout(() => { solas.current += 1; void pedir(true); }, ESPERA_MS);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vacio, nombre, listoParaPedir]);
+  }, [vacio, nombre, listoParaPedir, sugiereSola]);
 
   // Si cambia el nombre, la sugerencia de antes ya no es de este producto
   useEffect(() => {
@@ -161,7 +222,20 @@ export const QueDiceLalan: React.FC<{
   };
 
   return (
-    <div>
+    <div
+      onDragEnter={alEntrar}
+      onDragOver={e => { if (traeVideo(e)) e.preventDefault(); }}
+      onDragLeave={alSalir}
+      onDrop={alSoltar}
+      className={`relative rounded-xl transition ${arrastrando ? 'ring-2 ring-purple-500 ring-offset-4 ring-offset-white dark:ring-offset-neutral-900' : ''}`}
+    >
+      {arrastrando && (
+        <div className="absolute inset-0 z-10 rounded-xl bg-purple-600/10 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-600 text-white text-[0.75rem] font-bold shadow">
+            <Film className="w-4 h-4" /> Suelta el video y Lalán lo ve
+          </span>
+        </div>
+      )}
       <label className={etiqueta}>
         Qué dice Lalán <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(lo usa en los chats para recomendar{tipo === 'producto' ? 'lo y venderlo' : 'lo'})</span>
       </label>
@@ -176,20 +250,15 @@ export const QueDiceLalan: React.FC<{
         className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
       />
 
-      {!vacio && !pensando && !sugerencia && !error && listoParaPedir && (
-        <button type="button" onClick={() => void pedir()}
-          className="mt-1.5 text-[0.6875rem] font-semibold text-purple-700 dark:text-purple-300 hover:underline cursor-pointer">
-          Pedirle a Lalán otra versión
-        </button>
-      )}
-
       {(pensando || sugerencia || error || (vacio && listoParaPedir)) && (
         <div className="mt-2 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900 flex items-start gap-2.5">
           <span className="relative w-7 h-7 flex items-center justify-center shrink-0">
             <EsferaLalan modo={pensando ? 'pensando' : 'reposo'} tamano={26} />
           </span>
           <div className="flex-1 min-w-0">
-            {pensando ? (
+            {pensando && vista ? (
+              <VideoProcesando vista={vista} />
+            ) : pensando ? (
               <p className="text-[0.75rem] font-semibold text-purple-700 dark:text-purple-300 py-1">
                 {leyendo ? `Lalán está viendo ${leyendo}… puede tardar un minuto.` : `Lalán está buscando qué decir de «${nombre.trim()}»…`}
               </p>
@@ -283,7 +352,7 @@ export const QueDiceLalan: React.FC<{
           </div>
           <button type="button" onClick={() => archivoRef.current?.click()}
             className="w-full py-2 rounded-lg border border-dashed border-slate-300 dark:border-neutral-600 text-[0.6875rem] font-semibold text-slate-600 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-900 inline-flex items-center justify-center gap-1.5 cursor-pointer">
-            <Upload className="w-3.5 h-3.5" /> O sube un video de tu teléfono
+            <Upload className="w-3.5 h-3.5" /> O sube un video (también puedes arrastrarlo aquí)
           </button>
           <input ref={archivoRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-m4v" className="hidden"
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void pedirConVideo(f); }} />
@@ -292,10 +361,17 @@ export const QueDiceLalan: React.FC<{
           </p>
         </div>
       ) : (
-        <button type="button" onClick={() => setConVideo(true)}
-          className="mt-1.5 inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-purple-700 dark:text-purple-300 hover:underline cursor-pointer">
-          <Film className="w-3.5 h-3.5" /> Pásale un video a Lalán
-        </button>
+        /* Las dos ayudas de Lalán, como botones iguales en una fila (no enlaces pegados) */
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {!vacio && !sugerencia && !error && (
+            <button type="button" onClick={() => void pedir()} className={BOTON_AYUDA}>
+              <Sparkles className="w-3.5 h-3.5" /> Pedirle otra versión
+            </button>
+          )}
+          <button type="button" onClick={() => setConVideo(true)} className={BOTON_AYUDA}>
+            <Film className="w-3.5 h-3.5" /> Pásale un video
+          </button>
+        </div>
       ))}
     </div>
   );

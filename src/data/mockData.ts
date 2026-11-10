@@ -951,6 +951,7 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   aiTone: 'friendly_luxury',
   aiAgentName: 'Lalan',
   aiSuggestWhenPaused: true,
+  lalanSugiereFichas: true,
   aiPrompt: null,
   aiPromptSalon: null,
   alertsEnabled: false,

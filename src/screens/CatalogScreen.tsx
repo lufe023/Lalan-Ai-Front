@@ -47,6 +47,7 @@ const tipoDe = (f: { preparedToOrder: boolean; supplyOnly: boolean }): TipoDePro
 import { IOSHeader } from '../components/ui/IOSHeader';
 import { IOSModal } from '../components/ui/IOSModal';
 import { SeccionHoja, SeccionesHoja } from '../components/ui/SeccionHoja';
+import { IOSToggle } from '../components/ui/IOSToggle';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
 import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria';
@@ -116,6 +117,8 @@ export const CatalogScreen: React.FC = () => {
     guardarRecetaProducto,
     galeriaServicio,
     galeriaProducto,
+    settings,
+    updateSettings,
   } = useApp();
   const { varias: variasSedes, actual: sedeActual, sedes: sedesDelSalon } = useSedeActiva();
   const sedeDelStockInicial = useSedeDelStock();
@@ -712,6 +715,25 @@ export const CatalogScreen: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Sugerencias de «Qué dice Lalán» en las fichas: es de todo el salón, como el catálogo */}
+        <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[0.75rem] font-bold text-slate-900 dark:text-white">
+              Sugerencias de {settings.aiAgentName || 'Lalán'} en las fichas
+            </div>
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+              Al crear o editar un producto o servicio con «Qué dice {settings.aiAgentName || 'Lalán'}» vacío, te propone el texto sola.
+              Cada sugerencia consume IA; apagado, solo te sugiere cuando se lo pides.
+            </p>
+          </div>
+          <IOSToggle
+            id="toggle-sugerencias-fichas"
+            checked={settings.lalanSugiereFichas !== false}
+            onChange={val => updateSettings({ lalanSugiereFichas: val })}
+            activeColor="#9333ea"
+          />
+        </div>
         </>)}
 
         {activeTab === 'ofertas' && <OfertasCatalogo servicios={services} />}
@@ -1293,6 +1315,7 @@ export const CatalogScreen: React.FC = () => {
 
               <QueDiceLalan
                 key={editingServiceId ?? 'nuevo'}
+                sugiereSola={settings.lalanSugiereFichas !== false}
                 tipo="servicio" nombre={serviceForm.name} categoria={serviceForm.categoryName} descripcion={serviceForm.description}
                 value={serviceForm.lalanDice} onChange={t => setServiceForm(prev => ({ ...prev, lalanDice: t }))}
                 onPonerEnVitrina={async (archivo) => {
@@ -1544,6 +1567,7 @@ export const CatalogScreen: React.FC = () => {
             {!productForm.supplyOnly && !productForm.preparedToOrder && (
               <QueDiceLalan
                 key={editingProductId ?? 'nuevo'}
+                sugiereSola={settings.lalanSugiereFichas !== false}
                 tipo="producto" nombre={productForm.name} categoria={productForm.categoryName} descripcion={productForm.description}
                 productoId={editingProductId}
                 value={productForm.lalanDice} onChange={t => setProductForm(prev => ({ ...prev, lalanDice: t }))}
