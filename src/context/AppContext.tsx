@@ -965,6 +965,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Una cita o una clienta: la Agenda y Clientas las abren al montarse (ABRIR_CITA, ABRIR_CLIENTA)
       else if (aviso?.startsWith('cita:')) { try { sessionStorage.setItem('lalan.abrirCita', aviso.slice('cita:'.length)); } catch { /* nada */ } }
       else if (aviso?.startsWith('clienta:')) { try { sessionStorage.setItem('lalan.abrirClienta', aviso.slice('clienta:'.length)); } catch { /* nada */ } }
+      // Una clienta en plan de seguimiento contó algo: su ficha con el plan abierto
+      else if (aviso?.startsWith('plan:')) { try { sessionStorage.setItem('lalan.abrirClienta', aviso.slice('plan:'.length)); sessionStorage.setItem('lalan.abrirPlan', aviso.slice('plan:'.length)); } catch { /* nada */ } }
       // «Lalan entró a tu salón»: abre Ajustes en esa sección (Mi cuenta → Lalan en tu salón)
       // Un proveedor contestó o Lalan espera tu sí: abre ese pedido en Compras
       // Ya cotizaron los proveedores de una comparación: abre la comparación, donde se elige

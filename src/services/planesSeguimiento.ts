@@ -38,12 +38,14 @@ export interface PasoDelPlan {
   indice: number; dia: number; tipo: TipoPaso; titulo: string; fecha: string; hecho: boolean; hechoEn: string | null;
   serviceId: string | null; servicio: string | null; duracion: number | null; mensaje: string | null;
   appointmentId: string | null; agendada: Agendada | null;
+  /** Mensaje de Lalán: cuándo salió y por dónde, o por qué no pudo salir solo */
+  enviadoEn?: string | null; enviadoPor?: 'chat' | 'plantilla' | null; noSalio?: string | null;
 }
 export interface EntradaBitacora {
   id: string; fecha: string; tipo: TipoEntrada; autor: string | null; paso: number | null; nota: string;
   mediciones: Record<string, number | string> | null; alerta: boolean; appointmentId: string | null;
 }
-export interface PagoPlan { id: string; fecha: string; monto: number; metodo: string; por: string | null; enCaja: boolean }
+export interface PagoPlan { id: string; fecha: string; monto: number; metodo: string; por: string | null; enCaja: boolean; saleId?: string | null }
 
 export interface PlanCompleto extends ResumenPlan {
   especialista: string | null;
