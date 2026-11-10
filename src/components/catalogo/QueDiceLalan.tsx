@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
-import { api } from '../../services/api';
+import { Check, ExternalLink, Film, Link2, Loader2, RefreshCw, Store, Upload, X } from 'lucide-react';
+import { api, blobProtegido, subirArchivo } from '../../services/api';
 import { EsferaLalan } from '../lalan/EsferaLalan';
 
 const LARGO = 1200;
@@ -9,7 +9,9 @@ const ESPERA_MS = 1500;
 /** Lalán propone sola hasta estas veces por hoja abierta; después, solo con el botón */
 const SOLA_MAX = 2;
 
-interface Sugerencia { texto: string; fuentes: { titulo: string; url: string }[]; deMercado: string | null }
+interface Sugerencia { texto: string; fuentes: { titulo: string; url: string }[]; deMercado: string | null; video?: 'youtube' | 'instagram' | 'archivo' }
+
+const DE_VIDEO: Record<NonNullable<Sugerencia['video']>, string> = { youtube: 'el video de YouTube', instagram: 'tu post de Instagram', archivo: 'tu video' };
 
 const etiqueta = 'block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide';
 
@@ -19,6 +21,10 @@ const etiqueta = 'block text-[0.6875rem] font-semibold text-slate-400 dark:text-
  * sola (como las respuestas sugeridas en los chats): con lo que Plataforma
  * sabe del producto y, si es de una marca, lo que la marca dice en la web.
  * La dueña lo usa con un toque, pide otro o lo escribe ella.
+ *
+ * También puede pasarle un video: un reel o post de su Instagram, uno de
+ * YouTube o uno de su teléfono. Lalán saca lo que se dice y se ve y escribe
+ * con eso.
  */
 export const QueDiceLalan: React.FC<{
   tipo: 'producto' | 'servicio';
@@ -29,10 +35,20 @@ export const QueDiceLalan: React.FC<{
   productoId?: string | null;
   value: string;
   onChange: (texto: string) => void;
-}> = ({ tipo, nombre, categoria, descripcion, productoId, value, onChange }) => {
+  /** Pone el video en el carrusel de la Vitrina (el mismo camino que «Fotos y videos») */
+  onPonerEnVitrina?: (archivo: File) => Promise<void>;
+}> = ({ tipo, nombre, categoria, descripcion, productoId, value, onChange, onPonerEnVitrina }) => {
   const [sugerencia, setSugerencia] = useState<Sugerencia | null>(null);
   const [pensando, setPensando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conVideo, setConVideo] = useState(false);
+  const [enlace, setEnlace] = useState('');
+  const [leyendo, setLeyendo] = useState<string | null>(null);
+  const archivoRef = useRef<HTMLInputElement>(null);
+  /** El último video que leyó Lalán: el mismo puede ir a la Vitrina */
+  const [ultimoVideo, setUltimoVideo] = useState<{ archivo?: File; enlace?: string; origen: 'youtube' | 'instagram' | 'archivo' } | null>(null);
+  const [vitrina, setVitrina] = useState<'nada' | 'subiendo' | 'puesto'>('nada');
+  const [errorVitrina, setErrorVitrina] = useState<string | null>(null);
   const solas = useRef(0);
   const pedidoPara = useRef('');
   const vacio = !value.trim();
@@ -55,6 +71,71 @@ export const QueDiceLalan: React.FC<{
       setError(e?.message || 'Lalán no pudo pensar ahora mismo. Inténtalo en un momento.');
     } finally {
       setPensando(false);
+    }
+  };
+
+  /** Lalán aprende de un video: un enlace (Instagram o YouTube) o un archivo del teléfono */
+  const pedirConVideo = async (archivo?: File) => {
+    if (!listoParaPedir || pensando) return;
+    const link = enlace.trim();
+    if (!archivo && !link) return;
+    setPensando(true);
+    setError(null);
+    setLeyendo(archivo ? 'tu video' : /youtu/i.test(link) ? 'el video de YouTube' : 'tu post de Instagram');
+    pedidoPara.current = nombre.trim();
+    try {
+      const datos: Record<string, string | undefined> = {
+        tipo, nombre: nombre.trim(),
+        categoria: categoria?.trim() || undefined,
+        descripcion: descripcion?.trim() || undefined,
+        productoId: productoId || undefined,
+        enlace: archivo ? undefined : link,
+      };
+      let r: Sugerencia;
+      if (archivo) {
+        const form = new FormData();
+        for (const [k, v] of Object.entries(datos)) if (v) form.append(k, v);
+        form.append('archivo', archivo);
+        r = await subirArchivo<Sugerencia>('/lalan-dice/sugerir-video', form);
+      } else {
+        r = await api.post<Sugerencia>('/lalan-dice/sugerir-video', datos);
+      }
+      setSugerencia(r);
+      setUltimoVideo({ archivo, enlace: archivo ? undefined : link, origen: r.video ?? (archivo ? 'archivo' : 'instagram') });
+      setVitrina('nada');
+      setErrorVitrina(null);
+      setConVideo(false);
+      setEnlace('');
+    } catch (e: any) {
+      setError(e?.message || 'Lalán no pudo leer ese video. Prueba con otro.');
+    } finally {
+      setPensando(false);
+      setLeyendo(null);
+    }
+  };
+
+  /** El mismo video al carrusel de la Vitrina: el subido tal cual; el reel, traído de su Instagram */
+  const ponerEnVitrina = async () => {
+    if (!onPonerEnVitrina || !ultimoVideo || ultimoVideo.origen === 'youtube') return;
+    setVitrina('subiendo');
+    setErrorVitrina(null);
+    try {
+      let archivo = ultimoVideo.archivo;
+      if (!archivo && ultimoVideo.enlace) {
+        const local = await blobProtegido(`/lalan-dice/video-instagram?enlace=${encodeURIComponent(ultimoVideo.enlace)}`);
+        try {
+          const blob = await (await fetch(local)).blob();
+          archivo = new File([blob], 'instagram.mp4', { type: 'video/mp4' });
+        } finally {
+          URL.revokeObjectURL(local);
+        }
+      }
+      if (!archivo) throw new Error('No se encontró el video.');
+      await onPonerEnVitrina(archivo);
+      setVitrina('puesto');
+    } catch (e: any) {
+      setVitrina('nada');
+      setErrorVitrina(e?.message || 'No se pudo poner el video en la Vitrina.');
     }
   };
 
@@ -110,14 +191,15 @@ export const QueDiceLalan: React.FC<{
           <div className="flex-1 min-w-0">
             {pensando ? (
               <p className="text-[0.75rem] font-semibold text-purple-700 dark:text-purple-300 py-1">
-                Lalán está buscando qué decir de «{nombre.trim()}»…
+                {leyendo ? `Lalán está viendo ${leyendo}… puede tardar un minuto.` : `Lalán está buscando qué decir de «${nombre.trim()}»…`}
               </p>
             ) : sugerencia ? (
               <>
                 <div className="text-[0.6875rem] font-bold text-purple-700 dark:text-purple-300">Lalán sugiere decir:</div>
                 <p className="text-[0.75rem] text-slate-700 dark:text-neutral-200 whitespace-pre-wrap">{sugerencia.texto}</p>
-                {(sugerencia.deMercado || sugerencia.fuentes.length > 0) && (
+                {(sugerencia.video || sugerencia.deMercado || sugerencia.fuentes.length > 0) && (
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                    {sugerencia.video && <span className="inline-flex items-center gap-0.5"><Film className="w-3 h-3" /> Salió de {DE_VIDEO[sugerencia.video]}</span>}
                     {sugerencia.deMercado && <span>Usó lo que Lalán sabe de «{sugerencia.deMercado}»</span>}
                     {sugerencia.fuentes.map(f => (
                       <a key={f.url} href={f.url} target="_blank" rel="noopener noreferrer"
@@ -152,6 +234,69 @@ export const QueDiceLalan: React.FC<{
           )}
         </div>
       )}
+
+      {ultimoVideo && onPonerEnVitrina && !pensando && (
+        ultimoVideo.origen === 'youtube' ? (
+          <p className="mt-1.5 block text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+            Un video de YouTube no se puede poner en tu Vitrina: si es tuyo, súbelo desde «Fotos y videos».
+          </p>
+        ) : vitrina === 'puesto' ? (
+          <p className="mt-1.5 flex items-center gap-1 text-[0.6875rem] font-semibold text-emerald-700 dark:text-emerald-400">
+            <Check className="w-3.5 h-3.5" /> Listo: el video ya está en la Vitrina, en «Fotos y videos»
+          </p>
+        ) : (
+          <button type="button" onClick={() => void ponerEnVitrina()} disabled={vitrina === 'subiendo'}
+            className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-purple-200 dark:border-purple-900 text-purple-700 dark:text-purple-300 text-[0.6875rem] font-bold cursor-pointer disabled:opacity-60">
+            {vitrina === 'subiendo' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Store className="w-3.5 h-3.5" />}
+            {vitrina === 'subiendo' ? 'Poniéndolo en la Vitrina…' : 'Usar este video en la Vitrina'}
+          </button>
+        )
+      )}
+      {errorVitrina && <p className="mt-1 text-[0.6875rem] text-rose-600 dark:text-rose-400">{errorVitrina}</p>}
+
+      {listoParaPedir && !pensando && (conVideo ? (
+        <div className="mt-2 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">Pásale un video a Lalán</span>
+            <button type="button" onClick={() => { setConVideo(false); setEnlace(''); }} aria-label="Cerrar"
+              className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-neutral-700 cursor-pointer">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+            Un reel o post de tu Instagram, un video de YouTube o uno de tu teléfono. Lalán escucha lo que se dice y escribe con eso.
+          </p>
+          <div className="flex gap-1.5">
+            <div className="flex-1 min-w-0 relative">
+              <Link2 className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="url" inputMode="url" value={enlace} onChange={e => setEnlace(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void pedirConVideo(); } }}
+                placeholder="Pega el enlace de Instagram o YouTube"
+                className="w-full pl-8 pr-2.5 py-2 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              />
+            </div>
+            <button type="button" onClick={() => void pedirConVideo()} disabled={!enlace.trim()}
+              className="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[0.6875rem] font-bold cursor-pointer disabled:opacity-40 shrink-0">
+              Leer
+            </button>
+          </div>
+          <button type="button" onClick={() => archivoRef.current?.click()}
+            className="w-full py-2 rounded-lg border border-dashed border-slate-300 dark:border-neutral-600 text-[0.6875rem] font-semibold text-slate-600 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-900 inline-flex items-center justify-center gap-1.5 cursor-pointer">
+            <Upload className="w-3.5 h-3.5" /> O sube un video de tu teléfono
+          </button>
+          <input ref={archivoRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/3gpp,video/x-m4v" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void pedirConVideo(f); }} />
+          <p className="text-[0.625rem] text-slate-400 dark:text-neutral-500">
+            De Instagram solo se leen los posts de tu cuenta conectada. Si el video es de otra cuenta, descárgalo y súbelo.
+          </p>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setConVideo(true)}
+          className="mt-1.5 inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-purple-700 dark:text-purple-300 hover:underline cursor-pointer">
+          <Film className="w-3.5 h-3.5" /> Pásale un video a Lalán
+        </button>
+      ))}
     </div>
   );
 };

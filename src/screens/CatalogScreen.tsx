@@ -1295,6 +1295,13 @@ export const CatalogScreen: React.FC = () => {
                 key={editingServiceId ?? 'nuevo'}
                 tipo="servicio" nombre={serviceForm.name} categoria={serviceForm.categoryName} descripcion={serviceForm.description}
                 value={serviceForm.lalanDice} onChange={t => setServiceForm(prev => ({ ...prev, lalanDice: t }))}
+                onPonerEnVitrina={async (archivo) => {
+                  // El mismo camino que «Fotos y videos»: sin guardar todavía, queda pendiente con las demás fotos
+                  if (!editingServiceId) { setFotosNuevoServicio(l => [...l, videoPendiente(archivo, l.length)]); return; }
+                  const listo = await galeriaServicio(editingServiceId, { video: archivo });
+                  await cargarVideos();
+                  if (listo.id !== editingServiceId) setEditingServiceId(listo.id);
+                }}
               />
             </SeccionHoja>
 
@@ -1540,6 +1547,11 @@ export const CatalogScreen: React.FC = () => {
                 tipo="producto" nombre={productForm.name} categoria={productForm.categoryName} descripcion={productForm.description}
                 productoId={editingProductId}
                 value={productForm.lalanDice} onChange={t => setProductForm(prev => ({ ...prev, lalanDice: t }))}
+                onPonerEnVitrina={async (archivo) => {
+                  if (!editingProductId) { setFotosNuevoProducto(l => [...l, videoPendiente(archivo, l.length)]); return; }
+                  await galeriaProducto(editingProductId, { video: archivo });
+                  await cargarVideos();
+                }}
               />
             )}
           </SeccionHoja>
