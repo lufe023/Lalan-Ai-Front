@@ -736,7 +736,7 @@ function mapApiService(s: any): SalonService {
     id: s.id, name: s.name, category: s.category, categoryName: s.categoryName,
     price: Number(s.basePrice), currencyCode: s.currencyCode, durationMinutes: s.durationMinutes,
     icon: s.icon ?? 'sparkles', color: s.color ?? '#6366f1',
-    popular: s.popular ?? false, description: s.description,
+    popular: s.popular ?? false, description: s.description, lalanDice: s.lalanDice ?? '',
     enVitrina: s.enVitrina ?? true,
     vitrinaPrecio: s.vitrinaPrecio ?? 'exacto',
     aiAvailable: s.aiAvailable ?? true, priceTiers: ((s.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
@@ -776,7 +776,7 @@ function mapApiProduct(p: any): SalonProduct {
       alertThreshold: p.alertThreshold != null ? Number(p.alertThreshold) : undefined,
       hasLotTracking: p.hasLotTracking ?? false,
       lotStrategy: (p.lotStrategy as 'FEFO' | 'FIFO') ?? 'FEFO',
-    fotoId: p.fotoId ?? null, masFotos: Array.isArray(p.masFotos) ? p.masFotos : [], description: p.description ?? '',
+    fotoId: p.fotoId ?? null, masFotos: Array.isArray(p.masFotos) ? p.masFotos : [], description: p.description ?? '', lalanDice: p.lalanDice ?? '',
     enVitrina: p.enVitrina ?? true,
     vitrinaPrecio: p.vitrinaPrecio ?? 'exacto',
     aiAvailable: p.aiAvailable ?? true, priceTiers: ((p.priceTiers as any[]) ?? []).filter((t: any) => t && typeof t === 'object' && !Array.isArray(t)),
@@ -1264,7 +1264,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name: data.name, category: data.category, categoryName: data.categoryName,
       basePrice: data.price, currencyCode: data.currencyCode || undefined, durationMinutes: data.durationMinutes,
       icon: data.icon, color: data.color, popular: data.popular,
-      description: data.description, aiAvailable: data.aiAvailable, priceTiers: data.priceTiers,
+      description: data.description, lalanDice: data.lalanDice?.trim() || undefined, aiAvailable: data.aiAvailable, priceTiers: data.priceTiers,
       aiPrecio: data.aiPrecio,
       enVitrina: data.enVitrina, vitrinaPrecio: data.vitrinaPrecio,
     });
@@ -1283,6 +1283,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.color !== undefined)           payload.color = updated.color;
     if (updated.popular !== undefined)         payload.popular = updated.popular;
     if (updated.description !== undefined)     payload.description = updated.description || undefined;
+    // Vacío se guarda vacío: así la dueña puede borrarlo
+    if (updated.lalanDice !== undefined)       payload.lalanDice = updated.lalanDice.trim();
     if (updated.aiAvailable !== undefined)     payload.aiAvailable = updated.aiAvailable;
     if (updated.enVitrina !== undefined)       payload.enVitrina = updated.enVitrina;
     if (updated.priceTiers !== undefined)      payload.priceTiers = updated.priceTiers;
@@ -1345,6 +1347,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hasLotTracking: data.hasLotTracking ?? undefined,
       lotStrategy: data.lotStrategy ?? undefined,
       description: data.description || undefined,
+      lalanDice: data.lalanDice?.trim() || undefined,
       aiAvailable: data.aiAvailable, priceTiers: data.priceTiers ?? [],
       enVitrina: data.enVitrina, vitrinaPrecio: data.vitrinaPrecio,
       preparedToOrder: data.preparedToOrder ?? false,
@@ -1371,6 +1374,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.sku !== undefined)          payload.sku = updated.sku;
     if (updated.basePrice !== undefined)    payload.basePrice = updated.basePrice;
     if (updated.description !== undefined)  payload.description = updated.description || undefined;
+    if (updated.lalanDice !== undefined)    payload.lalanDice = updated.lalanDice.trim();
     if (updated.aiAvailable !== undefined)    payload.aiAvailable = updated.aiAvailable;
     if (updated.enVitrina !== undefined)      payload.enVitrina = updated.enVitrina;
     if (updated.vitrinaPrecio !== undefined)  payload.vitrinaPrecio = updated.vitrinaPrecio;
