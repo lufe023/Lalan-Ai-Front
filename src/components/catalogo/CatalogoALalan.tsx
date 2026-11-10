@@ -6,6 +6,7 @@ import { VideoProcesando, VistaVideo, miniaturaDeYoutube } from './VideoProcesan
 import { api, blobProtegido, subirArchivo } from '../../services/api';
 import { bienvenidaApi } from '../../services/bienvenida';
 import { reducirFoto } from '../../utils/reducirFoto';
+import { fotoGenericaComoDataUrl, fotosSugeridas } from './FotoSugerida';
 import { useApp } from '../../context/AppContext';
 import type { SalonProduct } from '../../types';
 import type { ServicioLeido } from '../../types/bienvenida';
@@ -220,7 +221,15 @@ export const CatalogoALalan: React.FC<{
           priceTiers: [{ id: `ptier_${Date.now()}`, name: 'Precio Venta Público (PVP)', price: precio, isDefault: true, description: 'Venta individual estándar' }],
         } as any);
         // La portada y el video: si fallan, el producto ya quedó creado
-        if (p.cuadro != null && cuadros[p.cuadro]) await galeriaProducto(nuevo.id, { agregar: cuadros[p.cuadro] }).catch(() => undefined);
+        if (p.cuadro != null && cuadros[p.cuadro]) {
+          await galeriaProducto(nuevo.id, { agregar: cuadros[p.cuadro] }).catch(() => undefined);
+        } else {
+          // Sin cuadro (un catálogo impreso): la foto de presentación de Plataforma, si hay una de lo que es
+          const s = await fotosSugeridas(nuevo.id).catch(() => null);
+          if (s?.fotos[0]) {
+            await fotoGenericaComoDataUrl(s.fotos[0].url).then(f => galeriaProducto(nuevo.id, { agregar: f })).catch(() => undefined);
+          }
+        }
         if (video) await galeriaProducto(nuevo.id, { video }).catch(() => undefined);
         hechos += 1;
       }

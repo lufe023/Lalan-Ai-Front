@@ -56,6 +56,7 @@ import { GananciaDelPreparado } from '../components/catalogo/GananciaDelPreparad
 import { PASTILLA_DE_NIVEL, nivelDeGanancia } from '../utils/ganancia';
 import { QueDiceLalan } from '../components/catalogo/QueDiceLalan';
 import { CatalogoALalan } from '../components/catalogo/CatalogoALalan';
+import { FotoSugerida } from '../components/catalogo/FotoSugerida';
 import { QueProductoEs, type VinculoPendiente } from '../components/catalogo/QueProductoEs';
 import { RiesgosDeReceta } from '../components/catalogo/RiesgosDeReceta';
 import { saberProductosApi } from '../services/saberProductos';
@@ -1525,6 +1526,11 @@ export const CatalogScreen: React.FC = () => {
                 encuadres={encuadres}
                 onEncuadre={guardarEncuadre}
               />
+            )}
+            {/* Sin foto: si Plataforma tiene una de presentación de lo que es, se ofrece aquí mismo */}
+            {!productForm.supplyOnly && editingProductId && !fotosGuardadas(products.find(p => p.id === editingProductId), videos).length && (
+              <FotoSugerida key={editingProductId} productoId={editingProductId}
+                onUsar={async (foto) => { await galeriaProducto(editingProductId, { agregar: foto }); }} />
             )}
 
             <SelectorDeCategoria kind="product" value={productForm.category} onChange={(key, nombre) => setProductForm({ ...productForm, category: key, categoryName: nombre })} />

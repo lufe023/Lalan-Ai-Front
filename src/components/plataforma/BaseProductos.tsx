@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, ExternalLink, FlaskConical, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Undo2 } from 'lucide-react';
 import { IOSSegmentedControl } from '../ui/IOSSegmentedControl';
 import { useConfirmar } from '../ui/ModalConfirmar';
+import { FotosDelGenerico } from './FotosDelGenerico';
 import {
   baseProductosApi, NOMBRE_NIVEL, NOMBRE_PRESENCIA, NOMBRE_RIESGO,
   type BaseProductos as Base, type Componente, type DatosComponente, type DatosComposicion, type DatosGenerico,
@@ -325,6 +326,7 @@ export const BaseProductos: React.FC = () => {
                   {p.alias.length > 0 && <p className="text-xs text-slate-500">También: {p.alias.join(', ')}</p>}
                   {p.marcas.length > 0 && <p className="text-xs text-slate-500">Marcas: {p.marcas.join(', ')}</p>}
                   {p.nota && <p className="text-xs text-slate-600 dark:text-neutral-300">{p.nota}</p>}
+                  <FotosDelGenerico genericoId={p.id} nombre={p.nombre} />
                   <ul className="space-y-1.5">
                     {p.componentes.map((f) => editando === `f:${f.id}` ? (
                       <li key={f.id}><FormComposicion generico={p} componentes={base.componentes} inicial={f} onCancelar={() => setEditando(null)} onGuardar={(d) => hecho(baseProductosApi.guardarComposicion(f.id, d))} /></li>
