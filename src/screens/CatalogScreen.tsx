@@ -55,6 +55,8 @@ import { RecetaDelPreparado, costoDePorcion } from '../components/catalogo/Recet
 import { GananciaDelPreparado } from '../components/catalogo/GananciaDelPreparado';
 import { PASTILLA_DE_NIVEL, nivelDeGanancia } from '../utils/ganancia';
 import { QueDiceLalan } from '../components/catalogo/QueDiceLalan';
+import { CatalogoALalan } from '../components/catalogo/CatalogoALalan';
+import { FotoSugerida } from '../components/catalogo/FotoSugerida';
 import { QueProductoEs, type VinculoPendiente } from '../components/catalogo/QueProductoEs';
 import { RiesgosDeReceta } from '../components/catalogo/RiesgosDeReceta';
 import { saberProductosApi } from '../services/saberProductos';
@@ -133,6 +135,7 @@ export const CatalogScreen: React.FC = () => {
   const [cargandoFactura, setCargandoFactura] = useState(false);
   const { base, dinero, enSuMoneda, esExtranjera, enBase } = useDinero();
   const iconoCategoria = (kind: 'service' | 'product', key: string) => categoriaPorClave(kind, key)?.icon || '✨';
+  const [catalogoALalan, setCatalogoALalan] = useState(false);
   const primeraCategoria = (kind: 'service' | 'product') => {
     const c = categoriasDe(kind)[0];
     return { category: c?.key ?? '', categoryName: c?.name ?? '' };
@@ -737,6 +740,21 @@ export const CatalogScreen: React.FC = () => {
         </>)}
 
         {activeTab === 'ofertas' && <OfertasCatalogo servicios={services} />}
+
+        {/* Lo que la dueña ya tiene (un video, su catálogo impreso, un PDF): Lalán lo convierte en productos y servicios */}
+        {activeTab !== 'ofertas' && (
+          <button
+            type="button"
+            onClick={() => setCatalogoALalan(true)}
+            className="w-full flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-purple-500/10 via-fuchsia-500/10 to-amber-400/10 border border-purple-300/50 dark:border-purple-800 text-left ios-touch cursor-pointer hover:border-purple-500"
+          >
+            <span className="p-2 rounded-xl bg-purple-600 text-white"><Sparkles className="w-4 h-4" /></span>
+            <span className="flex-1">
+              <span className="block text-[0.8125rem] font-bold text-slate-900 dark:text-white">Pásale a Lalán tu catálogo</span>
+              <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">Un video, fotos de tu catálogo impreso o un PDF: Lalán crea los productos y servicios, con su precio si lo trae</span>
+            </span>
+          </button>
+        )}
 
         {/* SERVICES LIST */}
         {activeTab === 'services' && (
@@ -1509,6 +1527,11 @@ export const CatalogScreen: React.FC = () => {
                 onEncuadre={guardarEncuadre}
               />
             )}
+            {/* Sin foto: si Plataforma tiene una de presentación de lo que es, se ofrece aquí mismo */}
+            {!productForm.supplyOnly && editingProductId && !fotosGuardadas(products.find(p => p.id === editingProductId), videos).length && (
+              <FotoSugerida key={editingProductId} productoId={editingProductId}
+                onUsar={async (foto) => { await galeriaProducto(editingProductId, { agregar: foto }); }} />
+            )}
 
             <SelectorDeCategoria kind="product" value={productForm.category} onChange={(key, nombre) => setProductForm({ ...productForm, category: key, categoryName: nombre })} />
 
@@ -1980,6 +2003,17 @@ export const CatalogScreen: React.FC = () => {
       </IOSModal>
       <RecibirMercancia producto={recibiendo} onClose={() => setRecibiendo(null)} />
       <ProveedoresDelProducto producto={conProveedores} onClose={() => setConProveedores(null)} onCambio={cargarProveedores} />
+      <CatalogoALalan
+        isOpen={catalogoALalan}
+        onClose={() => setCatalogoALalan(false)}
+        onAbrirProducto={id => {
+          const p = products.find(x => x.id === id);
+          if (!p) return;
+          setCatalogoALalan(false);
+          setActiveTab('products');
+          handleOpenEditProduct(p);
+        }}
+      />
       <RecibirFactura
         isOpen={cargandoFactura}
         onClose={() => setCargandoFactura(false)}

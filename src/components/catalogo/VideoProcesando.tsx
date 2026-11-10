@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Film, Instagram, Sparkles } from 'lucide-react';
 
 export interface VistaVideo {
-  tipo: 'archivo' | 'youtube' | 'instagram';
+  tipo: 'archivo' | 'youtube' | 'instagram' | 'foto';
   /** Archivo: un object URL del video. YouTube: la miniatura pública. Instagram: nada (se pinta un cuadro) */
   url?: string;
 }
@@ -14,15 +14,17 @@ export const miniaturaDeYoutube = (enlace: string): string | undefined => {
 };
 
 const PASOS = ['Mirando las escenas', 'Escuchando lo que se dice', 'Sacando lo importante', 'Escribiéndolo a su manera'];
+const PASOS_FOTO = ['Mirando la página', 'Leyendo nombres y precios', 'Separando servicios y productos', 'Poniéndolo en orden'];
 
 /**
  * Mientras Lalán ve un video: la miniatura con una luz que la recorre y los
  * pasos que va dando, para que la dueña vea que algo está pasando.
  */
 export const VideoProcesando: React.FC<{ vista: VistaVideo }> = ({ vista }) => {
+  const pasos = vista.tipo === 'foto' ? PASOS_FOTO : PASOS;
   const [paso, setPaso] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setPaso(p => (p + 1) % PASOS.length), 2600);
+    const t = setInterval(() => setPaso(p => (p + 1) % pasos.length), 2600);
     return () => clearInterval(t);
   }, []);
 
@@ -37,7 +39,7 @@ export const VideoProcesando: React.FC<{ vista: VistaVideo }> = ({ vista }) => {
       <div className="relative w-24 h-16 shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-purple-500 via-fuchsia-500 to-amber-400 shadow-md ring-1 ring-purple-300/60 dark:ring-purple-800">
         {vista.tipo === 'archivo' && vista.url ? (
           <video src={vista.url} muted autoPlay loop playsInline className="w-full h-full object-cover" />
-        ) : vista.tipo === 'youtube' && vista.url ? (
+        ) : (vista.tipo === 'youtube' || vista.tipo === 'foto') && vista.url ? (
           <img src={vista.url} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-white/90">
@@ -53,7 +55,7 @@ export const VideoProcesando: React.FC<{ vista: VistaVideo }> = ({ vista }) => {
       <div className="flex-1 min-w-0">
         <p key={paso} className="lalan-anima text-[0.75rem] font-semibold text-purple-700 dark:text-purple-300"
           style={{ animation: 'lalan-paso 0.35s ease-out' }}>
-          {PASOS[paso]}…
+          {pasos[paso % pasos.length]}…
         </p>
         <div className="mt-1.5 h-1 rounded-full bg-purple-200/70 dark:bg-purple-900/60 overflow-hidden">
           <div className="lalan-anima h-full w-2/5 rounded-full bg-gradient-to-r from-purple-500 to-fuchsia-500"
