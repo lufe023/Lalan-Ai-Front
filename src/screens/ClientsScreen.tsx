@@ -32,6 +32,7 @@ import {
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
 import { AlergiasEnGrupos } from '../components/clientes/AlergiasEnGrupos';
 import { ComoQuedo } from '../components/clientes/ComoQuedo';
+import { PlanesSeguimiento } from '../components/clientes/PlanesSeguimiento';
 import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
 import { ElegirFotoDeCanal } from '../components/clientes/ElegirFotoDeCanal';
 import { ArchivoDeContactos, entregarContactos, prepararContactos, sePuedeCompartir } from '../utils/contactos';
@@ -888,6 +889,7 @@ export const ClientsScreen: React.FC = () => {
 
             {/* Fotos y videos de cómo le quedó cada visita */}
             <ComoQuedo clienteId={selectedClient.id} />
+            <PlanesSeguimiento clienteId={selectedClient.id} clienteNombre={selectedClient.name} />
 
             {/* VIP Lounge & Preferences Card */}
             <div className="rounded-2xl border border-amber-500/30 dark:border-amber-500/20 overflow-hidden">

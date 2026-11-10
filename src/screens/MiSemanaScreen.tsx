@@ -17,6 +17,7 @@ import { HojaDelDia, OfrecerHueco, ResolverCita, hora12, type HuecoElegido, type
 import { urlDeFoto } from '../services/api';
 import { ABRIR_PEDIDO, VISTA_COMPRAS, comprasApi } from '../services/compras';
 import { usePlan } from '../context/PlanContext';
+import { PlanesDeLaSemana } from '../components/mi-semana/PlanesDeLaSemana';
 
 /* Lo que devuelve /mi-semana (mi-semana.service.ts) */
 interface Gusto { tipo: string; descripcion: string; valor: string; notas: string | null; falta: 'sin_producto' | 'se_acabo' | null; productId: string | null }
@@ -299,6 +300,9 @@ export const MiSemanaScreen: React.FC = () => {
               })}
             </Aparecer>
           )}
+
+          {/* ── Clientas en plan de seguimiento ── */}
+          {!filtro && tieneModulo('planes_seguimiento') && <PlanesDeLaSemana sede={sede} />}
 
           {datos && !diasVisibles.length && !error && (
             <div className="py-10 text-center text-[0.875rem] text-slate-500 space-y-1">
