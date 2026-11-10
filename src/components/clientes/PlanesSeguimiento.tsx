@@ -215,7 +215,7 @@ const TarjetaPlan: React.FC<{ plan: PlanCompleto; onCambio: (p: PlanCompleto) =>
               </div>
               {plan.pagos.length > 0 && (
                 <p className="text-[0.6875rem] text-slate-500">
-                  {plan.pagos.map((x) => `${dinero(x.monto, plan.paquete!.moneda)} el ${fechaCorta(x.fecha)} (${x.metodo}${x.enCaja ? ', en caja' : ''})`).join(' · ')}
+                  {plan.pagos.map((x) => `${dinero(x.monto, plan.paquete!.moneda)} el ${fechaCorta(x.fecha)} (${x.metodo}${x.saleId ? ', venta en Caja' : x.enCaja ? ', en caja' : ''})`).join(' · ')}
                 </p>
               )}
               {plan.paquete.saldo > 0 && vivo && !pagando && (
@@ -279,7 +279,7 @@ const FilaPaso: React.FC<{ p: PasoDelPlan; plan: PlanCompleto; ocupado: boolean;
   const icono = p.tipo === 'mensaje' ? <Bot className="w-3.5 h-3.5" /> : p.tipo === 'tarea' ? <ClipboardList className="w-3.5 h-3.5" /> : <CalendarClock className="w-3.5 h-3.5" />;
   const abrirCita = (id: string) => { try { sessionStorage.setItem('lalan.abrirCita', id); } catch { /* nada */ } navigateTo('calendar'); };
   let estado: React.ReactNode;
-  if (p.hecho) estado = <span className="text-emerald-700 dark:text-emerald-400">{p.tipo === 'mensaje' ? 'Lalán le escribió' : 'Hecho'}{p.hechoEn ? ` el ${fechaCorta(p.hechoEn)}` : ''}</span>;
+  if (p.hecho) estado = <span className="text-emerald-700 dark:text-emerald-400">{p.tipo === 'mensaje' ? (p.enviadoEn ? 'Lalán le escribió' : 'Se le escribió') : 'Hecho'}{p.hechoEn ? ` el ${fechaCorta(p.hechoEn)}` : ''}{p.enviadoPor === 'plantilla' ? ' (plantilla de WhatsApp)' : ''}</span>;
   else if (p.agendada) estado = <button type="button" onClick={() => abrirCita(p.agendada!.id)} className="text-sky-700 dark:text-sky-300 font-semibold underline-offset-2 hover:underline cursor-pointer">Agendada: {horaCorta(p.agendada.startsAt)}</button>;
   else if (atrasado) estado = <span className="text-rose-700 dark:text-rose-400 font-semibold">Atrasada desde el {fechaCorta(p.fecha)}</span>;
   else if (p.tipo === 'mensaje') estado = <span className="text-slate-500">Lalán le escribe el {fechaCorta(p.fecha)}</span>;
@@ -293,6 +293,18 @@ const FilaPaso: React.FC<{ p: PasoDelPlan; plan: PlanCompleto; ocupado: boolean;
         <span className="block text-[0.8125rem] font-semibold text-slate-800 dark:text-neutral-100">{p.titulo}{p.servicio && p.servicio !== p.titulo ? <span className="font-normal text-slate-500"> · {p.servicio}</span> : null}</span>
         <span className="block text-[0.6875rem]">{estado}</span>
         {p.tipo === 'mensaje' && p.mensaje && !p.hecho && <span className="block text-[0.6875rem] text-slate-500 italic">«{p.mensaje}»</span>}
+        {/* Lalán no pudo mandarlo sola: el motivo y el botón para escribirle desde el WhatsApp del salón */}
+        {p.tipo === 'mensaje' && !p.hecho && p.noSalio && (
+          <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[0.6875rem] text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="w-3 h-3 shrink-0" /> No salió solo: {p.noSalio}
+            {plan.cliente.telefono && (
+              <a href={`https://wa.me/${plan.cliente.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${plan.cliente.nombre.split(' ')[0]} 🌿 ${p.mensaje ?? ''}`)}`} target="_blank" rel="noopener"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold">
+                <MessageCircle className="w-3 h-3" /> Escribirle yo
+              </a>
+            )}
+          </span>
+        )}
       </span>
       {vivo && !p.hecho && (
         <span className="flex gap-1 shrink-0">
@@ -444,7 +456,7 @@ const RegistrarPago: React.FC<{ saldo: number; moneda: string | null; onCancelar
           <option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option>
         </select>
       </div>
-      {metodo === 'efectivo' && <p className="text-[0.6875rem] text-slate-500">Si la caja de la sede está abierta, entra a la gaveta.</p>}
+      {<p className="text-[0.6875rem] text-slate-500">Queda como venta en Caja y sale en los informes; si la caja de la sede está abierta, entra al turno.</p>}
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancelar} className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-slate-500 cursor-pointer">Cancelar</button>
         <button type="button" disabled={guardando || !(n > 0) || n > saldo + 0.01}
