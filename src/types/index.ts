@@ -560,6 +560,8 @@ export interface SalonBusinessSettings {
   aiAgentName: string;
   /** Con la asistente pausada, ¿sigue proponiendo respuestas a la humana? */
   aiSuggestWhenPaused: boolean;
+  /** Lalán propone sola «Qué dice Lalán» en las fichas del catálogo (de todo el salón) */
+  lalanSugiereFichas?: boolean;
   /** Instrucciones propias; null = las de base del sistema */
   aiPrompt: string | null;
   /** Instrucciones para TODAS las sedes del salón (las de la sede mandan sobre estas) */

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ExternalLink, Film, Link2, Loader2, RefreshCw, Store, Upload, X } from 'lucide-react';
+import { Check, ExternalLink, Film, Link2, Loader2, RefreshCw, Sparkles, Store, Upload, X } from 'lucide-react';
 import { api, blobProtegido, subirArchivo } from '../../services/api';
 import { EsferaLalan } from '../lalan/EsferaLalan';
 
@@ -12,6 +12,9 @@ const SOLA_MAX = 2;
 interface Sugerencia { texto: string; fuentes: { titulo: string; url: string }[]; deMercado: string | null; video?: 'youtube' | 'instagram' | 'archivo' }
 
 const DE_VIDEO: Record<NonNullable<Sugerencia['video']>, string> = { youtube: 'el video de YouTube', instagram: 'tu post de Instagram', archivo: 'tu video' };
+
+/** Botón pequeño de las ayudas de Lalán bajo el texto */
+const BOTON_AYUDA = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900 text-purple-700 dark:text-purple-300 text-[0.6875rem] font-bold cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 transition';
 
 const etiqueta = 'block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide';
 
@@ -37,7 +40,9 @@ export const QueDiceLalan: React.FC<{
   onChange: (texto: string) => void;
   /** Pone el video en el carrusel de la Vitrina (el mismo camino que «Fotos y videos») */
   onPonerEnVitrina?: (archivo: File) => Promise<void>;
-}> = ({ tipo, nombre, categoria, descripcion, productoId, value, onChange, onPonerEnVitrina }) => {
+  /** false = Lalán no propone sola (interruptor del catálogo); solo cuando la dueña lo pide */
+  sugiereSola?: boolean;
+}> = ({ tipo, nombre, categoria, descripcion, productoId, value, onChange, onPonerEnVitrina, sugiereSola = true }) => {
   const [sugerencia, setSugerencia] = useState<Sugerencia | null>(null);
   const [pensando, setPensando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +59,7 @@ export const QueDiceLalan: React.FC<{
   const vacio = !value.trim();
   const listoParaPedir = nombre.trim().length >= 3;
 
-  const pedir = async () => {
+  const pedir = async (auto = false) => {
     if (!listoParaPedir || pensando) return;
     setPensando(true);
     setError(null);
@@ -65,8 +70,10 @@ export const QueDiceLalan: React.FC<{
         categoria: categoria?.trim() || undefined,
         descripcion: descripcion?.trim() || undefined,
         productoId: productoId || undefined,
+        auto: auto || undefined,
       });
-      setSugerencia(r);
+      // Con el interruptor apagado el servidor no gasta IA y no trae texto
+      setSugerencia(r?.texto?.trim() ? r : null);
     } catch (e: any) {
       setError(e?.message || 'Lalán no pudo pensar ahora mismo. Inténtalo en un momento.');
     } finally {
@@ -141,12 +148,12 @@ export const QueDiceLalan: React.FC<{
 
   // Vacío y con nombre: Lalán lo propone sola cuando la dueña deja de escribir el nombre
   useEffect(() => {
-    if (!vacio || !listoParaPedir || sugerencia || pensando || solas.current >= SOLA_MAX) return;
+    if (!sugiereSola || !vacio || !listoParaPedir || sugerencia || pensando || solas.current >= SOLA_MAX) return;
     if (pedidoPara.current === nombre.trim()) return;
-    const t = setTimeout(() => { solas.current += 1; void pedir(); }, ESPERA_MS);
+    const t = setTimeout(() => { solas.current += 1; void pedir(true); }, ESPERA_MS);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vacio, nombre, listoParaPedir]);
+  }, [vacio, nombre, listoParaPedir, sugiereSola]);
 
   // Si cambia el nombre, la sugerencia de antes ya no es de este producto
   useEffect(() => {
@@ -175,13 +182,6 @@ export const QueDiceLalan: React.FC<{
         onChange={e => onChange(e.target.value)}
         className="w-full px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition resize-none leading-relaxed"
       />
-
-      {!vacio && !pensando && !sugerencia && !error && listoParaPedir && (
-        <button type="button" onClick={() => void pedir()}
-          className="mt-1.5 text-[0.6875rem] font-semibold text-purple-700 dark:text-purple-300 hover:underline cursor-pointer">
-          Pedirle a Lalán otra versión
-        </button>
-      )}
 
       {(pensando || sugerencia || error || (vacio && listoParaPedir)) && (
         <div className="mt-2 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900 flex items-start gap-2.5">
@@ -292,10 +292,17 @@ export const QueDiceLalan: React.FC<{
           </p>
         </div>
       ) : (
-        <button type="button" onClick={() => setConVideo(true)}
-          className="mt-1.5 inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-purple-700 dark:text-purple-300 hover:underline cursor-pointer">
-          <Film className="w-3.5 h-3.5" /> Pásale un video a Lalán
-        </button>
+        /* Las dos ayudas de Lalán, como botones iguales en una fila (no enlaces pegados) */
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {!vacio && !sugerencia && !error && (
+            <button type="button" onClick={() => void pedir()} className={BOTON_AYUDA}>
+              <Sparkles className="w-3.5 h-3.5" /> Pedirle otra versión
+            </button>
+          )}
+          <button type="button" onClick={() => setConVideo(true)} className={BOTON_AYUDA}>
+            <Film className="w-3.5 h-3.5" /> Pásale un video
+          </button>
+        </div>
       ))}
     </div>
   );
