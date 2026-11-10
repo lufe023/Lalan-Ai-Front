@@ -17,6 +17,15 @@ const DE_VIDEO: Record<NonNullable<Sugerencia['video']>, string> = { youtube: 'e
 /** Botón pequeño de las ayudas de Lalán bajo el texto */
 const BOTON_AYUDA = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900 text-purple-700 dark:text-purple-300 text-[0.6875rem] font-bold cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 transition';
 
+/** Sin conexión con el servidor (o reiniciándose) el navegador dice «Failed to fetch»: eso no se le enseña a la dueña */
+const mensajeDeError = (e: any, porDefecto: string) => {
+  const m = String(e?.message ?? '');
+  if (!m || /failed to fetch|networkerror|load failed|network request failed/i.test(m)) {
+    return 'No pude conectar con Lalán ahora mismo. Toca «Otra» en un momento.';
+  }
+  return m || porDefecto;
+};
+
 const etiqueta = 'block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide';
 
 /**
@@ -78,7 +87,7 @@ export const QueDiceLalan: React.FC<{
       // Con el interruptor apagado el servidor no gasta IA y no trae texto
       setSugerencia(r?.texto?.trim() ? r : null);
     } catch (e: any) {
-      setError(e?.message || 'Lalán no pudo pensar ahora mismo. Inténtalo en un momento.');
+      setError(mensajeDeError(e, 'Lalán no pudo pensar ahora mismo. Inténtalo en un momento.'));
     } finally {
       setPensando(false);
     }
@@ -121,7 +130,7 @@ export const QueDiceLalan: React.FC<{
       setConVideo(false);
       setEnlace('');
     } catch (e: any) {
-      setError(e?.message || 'Lalán no pudo leer ese video. Prueba con otro.');
+      setError(mensajeDeError(e, 'Lalán no pudo leer ese video. Prueba con otro.'));
     } finally {
       setPensando(false);
       setLeyendo(null);
