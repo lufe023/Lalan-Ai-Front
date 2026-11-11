@@ -16,7 +16,6 @@ import {
   Layers,
   Edit2,
   PackagePlus,
-  Trash2,
   Check,
   Search,
   CheckCircle2,
@@ -26,6 +25,7 @@ import {
   Eye,
   MapPin,
   Truck,
+  Archive,
 } from 'lucide-react';
 import { RecibirMercancia, type ProductoARecibir } from '../components/inventario/RecibirMercancia';
 import { ProveedoresDelProducto } from '../components/compras/ProveedoresDelProducto';
@@ -56,6 +56,8 @@ import { GananciaDelPreparado } from '../components/catalogo/GananciaDelPreparad
 import { PASTILLA_DE_NIVEL, nivelDeGanancia } from '../utils/ganancia';
 import { QueDiceLalan } from '../components/catalogo/QueDiceLalan';
 import { CatalogoALalan } from '../components/catalogo/CatalogoALalan';
+import { ArchivadosCatalogo } from '../components/catalogo/ArchivadosCatalogo';
+import { useConfirmar } from '../components/ui/ModalConfirmar';
 import { FotoSugerida } from '../components/catalogo/FotoSugerida';
 import { QueProductoEs, type VinculoPendiente } from '../components/catalogo/QueProductoEs';
 import { RiesgosDeReceta } from '../components/catalogo/RiesgosDeReceta';
@@ -145,7 +147,30 @@ export const CatalogScreen: React.FC = () => {
   const conCompras = tieneModulo('compras');
   useEffect(() => { if (conCompras) cargarProveedores(); }, [conCompras, cargarProveedores]);
 
-  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'ofertas'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'ofertas' | 'archivados'>('services');
+  const { confirmar, modalConfirmar } = useConfirmar();
+
+  /**
+   * Archivar, nunca borrar: sus ventas, citas, compras y recetas siguen
+   * enteras y vuelve desde la pestaña «Archivados».
+   */
+  const archivar = async (tipo: 'servicio' | 'producto', id: string, nombre: string, soloAqui = false) => {
+    const ok = await confirmar({
+      titulo: soloAqui && sedeActual ? `¿Quitar «${nombre}» de ${sedeActual.name}?` : `¿Archivar «${nombre}»?`,
+      mensaje: soloAqui && sedeActual
+        ? `Deja de ofrecerse en ${sedeActual.name}; las demás sedes lo siguen ofreciendo. Su historial se guarda y lo devuelves desde «Archivados».`
+        : `Sale del catálogo, la Vitrina${tipo === 'producto' ? ', la caja' : ''} y los chats de ${settings.aiAgentName || 'Lalán'}. Sus ventas y citas se guardan enteras y lo devuelves cuando quieras desde «Archivados».`,
+      textoConfirmar: soloAqui ? 'Quitar de esta sede' : 'Archivar',
+      icono: <Archive className="w-7 h-7" aria-hidden="true" />,
+    });
+    if (!ok) return;
+    try {
+      if (tipo === 'servicio') await deleteService(id); else await deleteProduct(id);
+      showToast('Archivado', `«${nombre}» está en la pestaña Archivados`, 'success');
+    } catch (e: any) {
+      showToast('No se pudo archivar', e?.message || 'Intenta de nuevo.', 'warning');
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -646,9 +671,10 @@ export const CatalogScreen: React.FC = () => {
           activeTab === 'services'
             ? `${services.length} servicios disponibles`
             : activeTab === 'ofertas' ? 'Combos de varios servicios a un precio'
+            : activeTab === 'archivados' ? 'Lo que sacaste del catálogo, con su historial'
             : `${products.length} productos registrados`
         }
-        rightAction={activeTab === 'ofertas' ? undefined :
+        rightAction={activeTab === 'ofertas' || activeTab === 'archivados' ? undefined :
           <button
             onClick={activeTab === 'services' ? handleOpenAddService : handleOpenAddProduct}
             className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shadow-sm ios-touch cursor-pointer hover:opacity-90 transition"
@@ -667,6 +693,7 @@ export const CatalogScreen: React.FC = () => {
             { id: 'services', label: '💅 Servicios & Tarifas' },
             { id: 'products', label: '🛍️ Productos & Stock' },
             { id: 'ofertas', label: '🎁 Ofertas' },
+            { id: 'archivados', label: '🗄️ Archivados' },
           ]}
           value={activeTab}
           onChange={val => {
@@ -675,7 +702,7 @@ export const CatalogScreen: React.FC = () => {
           }}
         />
 
-        {activeTab !== 'ofertas' && (<>
+        {activeTab !== 'ofertas' && activeTab !== 'archivados' && (<>
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -740,9 +767,10 @@ export const CatalogScreen: React.FC = () => {
         </>)}
 
         {activeTab === 'ofertas' && <OfertasCatalogo servicios={services} />}
+        {activeTab === 'archivados' && <ArchivadosCatalogo />}
 
         {/* Lo que la dueña ya tiene (un video, su catálogo impreso, un PDF): Lalán lo convierte en productos y servicios */}
-        {activeTab !== 'ofertas' && (
+        {activeTab !== 'ofertas' && activeTab !== 'archivados' && (
           <button
             type="button"
             onClick={() => setCatalogoALalan(true)}
@@ -806,15 +834,10 @@ export const CatalogScreen: React.FC = () => {
                       <BotonDeTarjeta titulo="Editar servicio y precios" onClick={() => handleOpenEditService(service)}>
                         <Edit2 className="w-3.5 h-3.5" />
                       </BotonDeTarjeta>
-                      <BotonDeTarjeta titulo="Eliminar servicio" peligro onClick={() => {
-                        const soloAqui = variasSedes && sedeActual && !service.locationId;
-                        if (confirm(soloAqui
-                          ? `¿Quitar "${service.name}" de ${sedeActual.name}? Las demás sedes lo siguen ofreciendo.`
-                          : `¿Eliminar "${service.name}" del catálogo?`)) {
-                          deleteService(service.id);
-                        }
-                      }}>
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <BotonDeTarjeta titulo={variasSedes && sedeActual && !service.locationId ? `Quitar de ${sedeActual.name}` : 'Archivar servicio'} peligro onClick={() =>
+                        archivar('servicio', service.id, service.name, !!(variasSedes && sedeActual && !service.locationId))
+                      }>
+                        <Archive className="w-3.5 h-3.5" />
                       </BotonDeTarjeta>
                     </>}
                     etiquetas={<EtiquetaSede locationId={service.locationId} />}
@@ -939,12 +962,8 @@ export const CatalogScreen: React.FC = () => {
                       <BotonDeTarjeta titulo="Editar producto y precios" onClick={() => handleOpenEditProduct(product)}>
                         <Edit2 className="w-3.5 h-3.5" />
                       </BotonDeTarjeta>
-                      <BotonDeTarjeta titulo="Eliminar producto" peligro onClick={() => {
-                        if (confirm(`¿Eliminar "${product.name}" del catálogo?`)) {
-                          deleteProduct(product.id);
-                        }
-                      }}>
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <BotonDeTarjeta titulo="Archivar producto" peligro onClick={() => archivar('producto', product.id, product.name)}>
+                        <Archive className="w-3.5 h-3.5" />
                       </BotonDeTarjeta>
                     </>}
                     etiquetas={<>
@@ -2019,6 +2038,7 @@ export const CatalogScreen: React.FC = () => {
         onClose={() => setCargandoFactura(false)}
         productos={products.filter(p => !p.preparedToOrder).map(p => ({ id: p.id, name: p.name, unit: p.unit }))}
       />
+      {modalConfirmar}
     </div>
   );
 };
