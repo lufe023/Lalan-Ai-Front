@@ -105,6 +105,8 @@ export interface ServicioLeido {
   plantilla: string | null;
   plantillaNombre: string | null;
   categoria: string | null;
+  /** Con su ícono, para enseñarla (solo al leer un catálogo) */
+  categoriaNombre?: string | null;
   serviceIdExistente: string | null;
 }
 
