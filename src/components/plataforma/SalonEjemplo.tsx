@@ -30,6 +30,7 @@ interface Resultado {
   resumen: {
     servicios: number; especialistas: number; clientas: number; productos: number; porPedir: string[]; suplidor: string;
     visitasPasadas: number; ventas: number; citasDeLaSemana: number; chats: number;
+    citasDelMes?: number; cobrado90?: number; moneda?: string;
     planesDeSeguimiento?: number; plantillasDePlan?: number;
   };
   vitrinas: { sede: string; direccion: string }[];
@@ -136,7 +137,7 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
           {rellenar
             ? (
               <div className="text-[0.75rem] text-slate-500 space-y-1">
-                <p>Se completa lo que le falte (sedes, equipo, clientas, gustos del Lounge, suplidor) y se llena la agenda de esta semana en los huecos libres. No se borra nada.</p>
+                <p>Se completa lo que le falte (sedes, equipo, clientas, gustos del Lounge, suplidor) y se llena la agenda del próximo mes en los huecos libres. No se borra nada.</p>
                 <p className="flex items-start gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" /> El WhatsApp, Instagram y Messenger que ya tenga conectados no se tocan: siguen conectados. Al terminar te los muestro.</p>
               </div>
             )
@@ -214,7 +215,7 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
         <div className="p-3 rounded-xl bg-slate-50 dark:bg-neutral-800 text-[0.75rem] text-slate-600 dark:text-neutral-300 space-y-1">
           <div className="font-bold text-slate-700 dark:text-neutral-100">Lo que se siembra para la demo</div>
           <ul className="list-disc pl-4 space-y-0.5">
-            <li>90 días de visitas pagadas y la agenda de hoy a 7 días, con {negocio?.masculino ? 'un cliente' : 'una clienta'} con alergia y {negocio?.masculino ? 'uno nuevo' : 'una nueva'} mañana.</li>
+            <li>90 días de visitas pagadas (casi la mitad con producto) y la agenda de hoy a un mes, llena esta semana, con {negocio?.masculino ? 'un cliente' : 'una clienta'} con alergia y {negocio?.masculino ? 'uno nuevo' : 'una nueva'} mañana.</li>
             <li>El Lounge completo: cada {negocio?.masculino ? 'cliente' : 'clienta'} con su música (artistas y géneros), su bebida y su snack. Unos están en el menú del salón y otros no, para que Lalán sugiera qué vender.</li>
             <li>Una bebida del menú agotada en la primera sede y dos insumos por pedir.</li>
             <li>Cuatro chats de Lalán: reserva por WhatsApp, precio por Instagram, fuera de horario por Messenger y «quiero hablar con una persona».</li>
@@ -245,7 +246,9 @@ const Listo: React.FC<{ r: Resultado; onCerrar: () => void; onAbrirFicha: () => 
   };
   const s = r.resumen;
   const cifras: [number | string, string][] = [
-    [s.citasDeLaSemana, 'citas esta semana'], [s.clientas, 'clientas con gustos'], [s.visitasPasadas, 'visitas pasadas'],
+    [s.citasDeLaSemana, 'citas esta semana'], ...(s.citasDelMes ? [[s.citasDelMes, 'citas en el mes'] as [number, string]] : []),
+    ...(s.cobrado90 ? [[`${s.moneda ?? ''} ${s.cobrado90.toLocaleString('es')}`.trim(), 'cobrado en 90 días'] as [string, string]] : []),
+    [s.clientas, 'clientas con gustos'], [s.visitasPasadas, 'visitas pasadas'],
     [s.servicios, 'servicios con receta'], [s.especialistas, 'especialistas'], [s.chats, 'chats de Lalán'],
   ];
   return (
@@ -272,7 +275,7 @@ const Listo: React.FC<{ r: Resultado; onCerrar: () => void; onAbrirFicha: () => 
         </div>
       )}
 
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {cifras.map(([n, t]) => (
           <div key={t} className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800 text-center">
             <div className="text-lg font-extrabold tabular-nums">{n}</div>
