@@ -51,6 +51,7 @@ import { IOSToggle } from '../components/ui/IOSToggle';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { PageContent } from '../components/ui/PageContent';
 import { SelectorDeCategoria } from '../components/catalogo/SelectorDeCategoria';
+import { QuienLoHace } from '../components/catalogo/QuienLoHace';
 import { RecetaDelPreparado, costoDePorcion } from '../components/catalogo/RecetaDelPreparado';
 import { GananciaDelPreparado } from '../components/catalogo/GananciaDelPreparado';
 import { PASTILLA_DE_NIVEL, nivelDeGanancia } from '../utils/ganancia';
@@ -103,6 +104,7 @@ export const CatalogScreen: React.FC = () => {
     deleteService,
     toggleServiceAi,
     copiarServicio,
+    ponerEspecialistasServicio,
     preciosServicioEnSedes,
     preciosProductoEnSedes,
     products,
@@ -182,6 +184,8 @@ export const CatalogScreen: React.FC = () => {
   const [productApiError, setProductApiError] = useState('');
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  /** «Quién lo hace»: las especialistas marcadas ([] = decide la zona) */
+  const [quienes, setQuienes] = useState<string[]>([]);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   /** Producto nuevo: qué genérico eligió la dueña (se guarda después de crearlo) */
   const [vinculoNuevo, setVinculoNuevo] = useState<VinculoPendiente | null>(null);
@@ -364,6 +368,7 @@ export const CatalogScreen: React.FC = () => {
       vitrinaPrecio: 'exacto',
     });
     setSedeDelServicio(sedeActual);
+    setQuienes([]);
     // En "Todas las sedes" se elige desde ya qué cobra cada sede
     setServicioPorSede(variasSedes && !sedeActual ? preciosDeSedesDesde(tiersIniciales, sedesDelSalon, {}) : null);
     setFotosNuevoServicio([]);
@@ -378,6 +383,7 @@ export const CatalogScreen: React.FC = () => {
 
   const handleOpenEditService = (service: SalonService) => {
     setEditingServiceId(service.id);
+    setQuienes(service.especialistaIds ?? []);
     setServiceForm({
       name: service.name,
       currencyCode: service.currencyCode ?? base,
@@ -535,6 +541,9 @@ export const CatalogScreen: React.FC = () => {
     setIsSavingService(true);
     try {
       if (editingServiceId) {
+        // Antes de editar: dentro de una sede, editar separa su copia y el del salón deja de verse aquí
+        const antes = servicioEnEdicion?.especialistaIds ?? [];
+        if (antes.length !== quienes.length || quienes.some(q => !antes.includes(q))) await ponerEspecialistasServicio(editingServiceId, quienes);
         await updateService(editingServiceId, {
           name: serviceForm.name,
           category: serviceForm.category,
@@ -585,6 +594,7 @@ export const CatalogScreen: React.FC = () => {
           vitrinaPrecio: serviceForm.vitrinaPrecio,
         });
         if (servicioPorSede) await preciosServicioEnSedes(creado.id, preciosParaGuardar(serviceForm.priceTiers, sedesDelSalon, servicioPorSede));
+        if (quienes.length) await ponerEspecialistasServicio(creado.id, quienes);
         // El servicio ya quedó creado: si una foto falla, se avisa y se puede poner después
         const fallo = await subirFotos(fotosNuevoServicio, (c) => galeriaServicio(creado.id, c));
         if (fotosNuevoServicio.some(f => f.archivo)) void cargarVideos();
@@ -1314,6 +1324,8 @@ export const CatalogScreen: React.FC = () => {
               />
 
               <SelectorDeCategoria kind="service" value={serviceForm.category} onChange={(key, nombre) => setServiceForm({ ...serviceForm, category: key, categoryName: nombre })} />
+
+              <QuienLoHace category={serviceForm.category} value={quienes} onChange={setQuienes} />
 
               <div>
                 <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">

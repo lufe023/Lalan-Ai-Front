@@ -1350,11 +1350,17 @@ function AntesDespues({ antes, despues, alt }: { antes: string; despues: string;
  * servicios con ella y sigue al día y la hora. Si la dueña no deja elegir
  * especialista, se reserva igual pero con quien esté libre.
  */
+/** Quién lo hace: lo que dice el servidor (las marcadas por la dueña o su zona); si no lo dice, la zona */
+function haceElServicio(e: EspecialistaVitrina, s: ServicioVitrina) {
+  if (Array.isArray(s.quienes)) return s.quienes.includes(e.id);
+  return !e.categorias || e.categorias.includes(s.categoria);
+}
+
 function FichaEspecialista({ persona, servicios, elegidos, alternar, dinero, conElla, reservar }: {
   persona: EspecialistaVitrina; servicios: ServicioVitrina[]; elegidos: string[]; alternar: (id: string) => void; dinero: Intl.NumberFormat;
   conElla: boolean; reservar: (servicioIds: string[]) => void;
 }) {
-  const suyos = servicios.filter((s) => !persona.categorias || persona.categorias.includes(s.categoria));
+  const suyos = servicios.filter((s) => haceElServicio(persona, s));
   const marcados = suyos.filter((s) => elegidos.includes(s.id)).map((s) => s.id);
   // Empieza el lunes, como el horario de la sede; solo los días que viene
   const dias = [1, 2, 3, 4, 5, 6, 0].map((d) => persona.semana?.find((x) => x.dia === d)).filter((d): d is NonNullable<typeof d> => !!d?.abierto);
@@ -1711,7 +1717,7 @@ function PanelReserva({
   const posiblesDe = useMemo(() => {
     const m = new Map<string, EspecialistaVitrina[]>();
     for (const s of elegidos) {
-      m.set(s.id, diseno.elegirEspecialista ? datos.especialistas.filter((e) => !e.categorias || e.categorias.includes(s.categoria)) : []);
+      m.set(s.id, diseno.elegirEspecialista ? datos.especialistas.filter((e) => haceElServicio(e, s)) : []);
     }
     return m;
   }, [datos.especialistas, diseno.elegirEspecialista, elegidos]);
