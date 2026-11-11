@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ExternalLink, FileText, Film, ImagePlus, Link2, Loader2, Package, Scissors, Sparkles, Store } from 'lucide-react';
+import { Check, ChevronDown, ExternalLink, FileText, Film, ImagePlus, Link2, Loader2, Package, Scissors, Sparkles, Store } from 'lucide-react';
 import { IOSModal } from '../ui/IOSModal';
 import { IOSToggle } from '../ui/IOSToggle';
 import { VideoProcesando, VistaVideo, miniaturaDeYoutube } from './VideoProcesando';
@@ -9,6 +9,8 @@ import { reducirFoto } from '../../utils/reducirFoto';
 import { VIDEO_SUBE_ENTERO, formularioDeVideo, paginasDelPdf } from '../../utils/aligerarArchivo';
 import { fotoGenericaComoDataUrl, fotosSugeridas } from './FotoSugerida';
 import { useApp } from '../../context/AppContext';
+import { SelectorDeCategoria } from './SelectorDeCategoria';
+import type { TipoCategoria } from '../../types';
 import type { SalonProduct } from '../../types';
 import type { ServicioLeido } from '../../types/bienvenida';
 
@@ -37,8 +39,40 @@ interface FilaProducto {
 }
 interface FilaServicio {
   marcado: boolean; nombre: string; precio: string; duracion: number | null;
-  categoria: string | null; plantilla: string | null; serviceId: string | null;
+  categoria: string | null; categoriaNombre: string | null; plantilla: string | null; serviceId: string | null;
 }
+
+/**
+ * La categoría de lo que se va a crear, a la vista y con espacio: se toca y
+ * se abre ahí mismo la lista de las del salón, con «Nueva categoría».
+ */
+const CategoriaDeFila: React.FC<{
+  kind: TipoCategoria; value: string | null; nombreSugerido?: string | null; abierta: boolean;
+  onAbrir: () => void; onChange: (key: string) => void;
+}> = ({ kind, value, nombreSugerido, abierta, onAbrir, onChange }) => {
+  const { categoriaPorClave } = useApp();
+  const c = value ? categoriaPorClave(kind, value) : undefined;
+  const texto = c ? `${c.icon ?? ''} ${c.name}`.trim() : nombreSugerido || null;
+  return (
+    <div>
+      <button type="button" onClick={onAbrir} aria-expanded={abierta}
+        className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left cursor-pointer transition ${texto
+          ? 'bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700'
+          : 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800'}`}>
+        <span className="text-[0.625rem] font-bold uppercase tracking-wide text-slate-400 shrink-0">Categoría</span>
+        <span className={`flex-1 min-w-0 truncate text-[0.8125rem] font-semibold ${texto ? 'text-slate-900 dark:text-white' : 'text-amber-700 dark:text-amber-300'}`}>
+          {texto ?? 'Elige una'}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${abierta ? 'rotate-180' : ''}`} />
+      </button>
+      {abierta && (
+        <div className="mt-2">
+          <SelectorDeCategoria kind={kind} value={value ?? ''} onChange={(key) => onChange(key)} />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const mismoNombre = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -75,6 +109,8 @@ export const CatalogoALalan: React.FC<{
   const [productos, setProductos] = useState<FilaProducto[]>([]);
   const [servicios, setServicios] = useState<FilaServicio[]>([]);
   const [videoEnVitrina, setVideoEnVitrina] = useState(true);
+  /** La fila con la lista de categorías abierta («p3», «s0»): una a la vez */
+  const [categoriaAbierta, setCategoriaAbierta] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [hecho, setHecho] = useState<{ productos: number; servicios: number } | null>(null);
 
@@ -159,6 +195,7 @@ export const CatalogoALalan: React.FC<{
         precio: s.precio ? String(s.precio) : '',
         duracion: s.duracion,
         categoria: s.categoria,
+        categoriaNombre: s.categoriaNombre ?? null,
         plantilla: s.plantilla,
         serviceId: s.serviceIdExistente,
       })));
@@ -372,13 +409,11 @@ export const CatalogoALalan: React.FC<{
                           </button>
                         ) : p.marcado && (
                           <>
-                            <div className="flex gap-2">
-                              <input inputMode="decimal" value={p.precio} onChange={e => cambiarProducto(i, { precio: e.target.value })} placeholder="Precio"
-                                className={`${entrada} w-28 ${precioValido(p.precio) ? '' : 'ring-2 ring-amber-400'}`} />
-                              <select value={p.categoria} onChange={e => cambiarProducto(i, { categoria: e.target.value })} className={`${entrada} flex-1`}>
-                                {categoriasProducto.map(c => <option key={c.key} value={c.key}>{`${c.icon ?? ''} ${c.name}`.trim()}</option>)}
-                              </select>
-                            </div>
+                            <input inputMode="decimal" value={p.precio} onChange={e => cambiarProducto(i, { precio: e.target.value })} placeholder="Precio"
+                              className={`${entrada} ${precioValido(p.precio) ? '' : 'ring-2 ring-amber-400'}`} />
+                            <CategoriaDeFila kind="product" value={p.categoria || null} abierta={categoriaAbierta === `p${i}`}
+                              onAbrir={() => setCategoriaAbierta(a => (a === `p${i}` ? null : `p${i}`))}
+                              onChange={key => { cambiarProducto(i, { categoria: key }); setCategoriaAbierta(null); }} />
                             {p.lalanDice && (
                               <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400"><span className="font-bold text-purple-600 dark:text-purple-300">Lalán dirá:</span> {p.lalanDice}</p>
                             )}
@@ -408,11 +443,20 @@ export const CatalogoALalan: React.FC<{
                   <div key={i} className={`p-3 rounded-2xl border ${s.marcado ? 'bg-white dark:bg-neutral-900 border-purple-200 dark:border-purple-900' : 'bg-slate-50 dark:bg-neutral-900/40 border-slate-200 dark:border-neutral-800 opacity-80'}`}>
                     <div className="flex items-center gap-2">
                       <input value={s.nombre} onChange={e => cambiarServicio(i, { nombre: e.target.value })} className={`${entrada} font-semibold`} />
-                      <input inputMode="decimal" value={s.precio} onChange={e => cambiarServicio(i, { precio: e.target.value })} placeholder="Precio"
-                        className={`${entrada} w-24 ${!s.marcado || precioValido(s.precio) ? '' : 'ring-2 ring-amber-400'}`} />
                       <IOSToggle id={`crear-srv-${i}`} checked={s.marcado} onChange={v => cambiarServicio(i, { marcado: v })} activeColor="#9333ea" />
                     </div>
+                    {s.marcado && (
+                      <input inputMode="decimal" value={s.precio} onChange={e => cambiarServicio(i, { precio: e.target.value })} placeholder="Precio"
+                        className={`${entrada} mt-2 ${precioValido(s.precio) ? '' : 'ring-2 ring-amber-400'}`} />
+                    )}
                     {s.serviceId && s.marcado && <p className="mt-1 text-[0.6875rem] text-slate-500">Ya lo tienes: se actualiza su precio.</p>}
+                    {s.marcado && !s.serviceId && (
+                      <div className="mt-2">
+                        <CategoriaDeFila kind="service" value={s.categoria} nombreSugerido={s.categoriaNombre} abierta={categoriaAbierta === `s${i}`}
+                          onAbrir={() => setCategoriaAbierta(a => (a === `s${i}` ? null : `s${i}`))}
+                          onChange={key => { cambiarServicio(i, { categoria: key, categoriaNombre: null }); setCategoriaAbierta(null); }} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </section>
