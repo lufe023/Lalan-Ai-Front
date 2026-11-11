@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ExternalLink, Film, Link2, Loader2, RefreshCw, Sparkles, Store, Upload, X } from 'lucide-react';
 import { api, blobProtegido, subirArchivo } from '../../services/api';
+import { VIDEO_SUBE_ENTERO, formularioDeVideo } from '../../utils/aligerarArchivo';
 import { EsferaLalan } from '../lalan/EsferaLalan';
 import { VideoProcesando, VistaVideo, miniaturaDeYoutube } from './VideoProcesando';
 
@@ -116,9 +117,8 @@ export const QueDiceLalan: React.FC<{
       };
       let r: Sugerencia;
       if (archivo) {
-        const form = new FormData();
-        for (const [k, v] of Object.entries(datos)) if (v) form.append(k, v);
-        form.append('archivo', archivo);
+        // Uno pesado no sube entero: va aligerado (cuadros y audio)
+        const form = await formularioDeVideo(archivo, Object.fromEntries(Object.entries(datos).filter(([, v]) => v)));
         r = await subirArchivo<Sugerencia>('/lalan-dice/sugerir-video', form);
       } else {
         r = await api.post<Sugerencia>('/lalan-dice/sugerir-video', datos);
@@ -317,6 +317,10 @@ export const QueDiceLalan: React.FC<{
         ultimoVideo.origen === 'youtube' ? (
           <p className="mt-1.5 block text-[0.6875rem] text-slate-500 dark:text-neutral-400">
             Un video de YouTube no se puede poner en tu Vitrina: si es tuyo, súbelo desde «Fotos y videos».
+          </p>
+        ) : ultimoVideo.archivo && ultimoVideo.archivo.size > VIDEO_SUBE_ENTERO ? (
+          <p className="mt-1.5 block text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+            Ese video pesa {Math.round(ultimoVideo.archivo.size / 1048576)} MB y la Vitrina acepta hasta 100 MB. Para ponerlo, súbelo más corto desde «Fotos y videos».
           </p>
         ) : vitrina === 'puesto' ? (
           <p className="mt-1.5 flex items-center gap-1 text-[0.6875rem] font-semibold text-emerald-700 dark:text-emerald-400">

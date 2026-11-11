@@ -327,6 +327,8 @@ export async function subirArchivo<T>(path: string, formulario: FormData, opcion
   });
   let res = await pedir();
   if (res.status === 401 && (await refrescarSesion())) res = await pedir();
+  // «File too large» del servidor (o del proxy) no se le enseña así a la dueña
+  if (res.status === 413) throw new Error('Ese archivo pesa demasiado para subirlo. Prueba con uno más liviano o más corto.');
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     const m = err?.message?.message ?? err?.message ?? 'No se pudo enviar';
