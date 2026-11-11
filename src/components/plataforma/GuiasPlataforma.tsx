@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { ArrowDown, ArrowUp, Eye, ImagePlus, Loader2, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -39,6 +40,7 @@ function pasosDePlantilla(tema: string, aparato: Aparato) {
  * con su tarjeta «Ver cómo».
  */
 export const GuiasPlataforma: React.FC = () => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const { showToast } = useApp();
   const [datos, setDatos] = useState<Catalogo | null>(null);
   const [b, setB] = useState<Borrador | null>(null);
@@ -72,8 +74,8 @@ export const GuiasPlataforma: React.FC = () => {
     [pasos[i], pasos[i + d]] = [pasos[i + d], pasos[i]];
     return { ...x, pasos };
   });
-  const quitarPaso = (i: number) => {
-    if (!window.confirm(`¿Quitar el paso ${i + 1}? Se pierden su captura y sus marcas.`)) return;
+  const quitarPaso = async (i: number) => {
+    if (!(await confirmar(comoPregunta(`¿Quitar el paso ${i + 1}? Se pierden su captura y sus marcas.`)))) return;
     editar((x) => ({ ...x, pasos: x.pasos.filter((_, j) => j !== i) }));
   };
 
@@ -106,7 +108,7 @@ export const GuiasPlataforma: React.FC = () => {
     finally { setOcupado(false); }
   };
   const borrar = async () => {
-    if (!b?.id || !window.confirm(`¿Borrar «${b.titulo}» (${NOMBRE_APARATO[b.aparato]})? Se borran también sus capturas.`)) return;
+    if (!b?.id || !(await confirmar(comoPregunta(`¿Borrar «${b.titulo}» (${NOMBRE_APARATO[b.aparato]})? Se borran también sus capturas.`)))) return;
     try { await api.delete(`/plataforma/minitutoriales/${b.id}`); await cargar(); setB(null); }
     catch (e) { showToast('No se pudo borrar', (e as Error)?.message || 'Inténtalo de nuevo.', 'warning'); }
   };
@@ -115,7 +117,7 @@ export const GuiasPlataforma: React.FC = () => {
   const listo = !!b && b.titulo.trim().length >= 2 && b.pasos.length > 0 && b.pasos.every((p) => p.texto.trim() || p.imagenId);
   const nombreTema = (id: string) => datos.temas.find((t) => t.id === id)?.nombre ?? id;
 
-  return (
+  return (<>
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 leading-relaxed max-w-2xl">
         Fotos paso a paso de lo que se hace <b>fuera de la app</b>: instalarla, dar permisos, el lado de Meta. Lalan las ofrece con su tarjeta «Ver cómo».
@@ -232,5 +234,6 @@ export const GuiasPlataforma: React.FC = () => {
 
       <VerComo tema={null} tutorial={vista} onCerrar={() => setVista(null)} />
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };

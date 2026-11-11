@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { Loader2, Search, Unlink } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -19,6 +20,7 @@ const fecha = (iso: string) => new Date(iso).toLocaleDateString('es', { day: 'nu
  * Qué salones tienen Vitrina se decide en Planes (el módulo «vitrina»).
  */
 export const VitrinaPlataforma: React.FC = () => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const { showToast } = useApp();
   const [datos, setDatos] = useState<AjustesVitrina | null>(null);
   const [reservados, setReservados] = useState('');
@@ -53,7 +55,7 @@ export const VitrinaPlataforma: React.FC = () => {
     const aviso = n.hasta
       ? `¿Soltar /${n.nombre}? Ya no llevará a ${n.salon} y cualquier salón podrá tomarlo.`
       : `¿Soltar /${n.nombre}? ${n.salon} se queda sin dirección corta hasta que elija otra; sus enlaces y QR con este nombre dejan de abrir.`;
-    if (!window.confirm(aviso)) return;
+    if (!(await confirmar(comoPregunta(aviso)))) return;
     try {
       usar(await api.delete<AjustesVitrina>(`/plataforma/vitrina/nombres/${encodeURIComponent(n.nombre)}`));
       showToast('Nombre soltado', `/${n.nombre} quedó libre.`, 'success');
@@ -66,7 +68,7 @@ export const VitrinaPlataforma: React.FC = () => {
   const nombres = q ? datos.nombres.filter((n) => n.nombre.includes(q) || n.salon.toLowerCase().includes(q)) : datos.nombres;
   const TARJETA = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3';
 
-  return (
+  return (<>
     <div className="space-y-4 max-w-3xl">
       <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 leading-relaxed">
         La Vitrina es la página donde las clientas de cada sede reservan solas. Qué salones la tienen se decide en <b>Planes</b>,
@@ -130,5 +132,6 @@ export const VitrinaPlataforma: React.FC = () => {
         )}
       </div>
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };

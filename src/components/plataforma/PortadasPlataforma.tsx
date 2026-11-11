@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { FileDown, ImagePlus, Loader2, Trash2 } from 'lucide-react';
 import { api, descargarArchivo, urlApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -35,6 +36,7 @@ function prepararImagen(archivo: File): Promise<string> {
  * datos. Sin imagen, se usa el diseño dibujado de la temporada.
  */
 export const PortadasPlataforma: React.FC = () => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const { showToast } = useApp();
   const [lista, setLista] = useState<Portada[] | null>(null);
   const [editando, setEditando] = useState<number | null>(null);
@@ -68,7 +70,7 @@ export const PortadasPlataforma: React.FC = () => {
     finally { setOcupado(false); }
   };
   const quitar = async () => {
-    if (!editando || !window.confirm(`¿Quitar la portada de ${MESES[editando - 1].toLowerCase()}? Volverá el diseño de temporada.`)) return;
+    if (!editando || !(await confirmar(comoPregunta(`¿Quitar la portada de ${MESES[editando - 1].toLowerCase()}? Volverá el diseño de temporada.`)))) return;
     setLista(await api.delete<Portada[]>(`/plataforma/portadas/${editando}`));
     setEditando(null);
   };
@@ -80,7 +82,7 @@ export const PortadasPlataforma: React.FC = () => {
   if (!lista) return <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Cargando…</div>;
   const actual = editando ? lista.find(x => x.mes === editando) : undefined;
 
-  return (
+  return (<>
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 leading-relaxed max-w-2xl">
         Una ilustración por mes para la portada de los informes en PDF de todos los salones. Súbela <b>sin texto</b>: el título, el período y los datos los escribe el sistema encima.
@@ -147,5 +149,6 @@ export const PortadasPlataforma: React.FC = () => {
         )}
       </IOSModal>
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };

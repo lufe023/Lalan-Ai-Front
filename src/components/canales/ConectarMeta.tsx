@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { Check, Facebook, Instagram, Loader2, MessageCircle, Unplug } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -42,6 +43,7 @@ const NOMBRE: Record<CommunicationChannel, string> = { whatsapp: 'WhatsApp', ins
  * listo: Lalan queda recibiendo sus mensajes. Nada de copiar números raros.
  */
 export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado }) => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const { botConfigs, recargarBots, showToast } = useApp();
   const { currentUser } = useAuth();
   // Con una sede activa elegida arriba, se conecta a esa: el servidor trabaja en ella
@@ -158,7 +160,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
   };
 
   const desconectar = async (c: CommunicationChannel) => {
-    if (!window.confirm(`¿Desconectar ${NOMBRE[c]}? Lalan dejará de recibir y contestar esos mensajes.`)) return;
+    if (!(await confirmar(comoPregunta(`¿Desconectar ${NOMBRE[c]}? Lalan dejará de recibir y contestar esos mensajes.`)))) return;
     setOcupado(c);
     try {
       await api.delete(`/bots/conexion/${c}${sede ? `?sede=${sede}` : ''}`);
@@ -173,7 +175,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
   const abrir = (c: CommunicationChannel) =>
     c === 'whatsapp' ? setPreguntaWa(true) : c === 'instagram' ? void soloInstagram() : void paginas(c);
 
-  return (
+  return (<>
     <div className={incrustado ? 'space-y-3 pb-1' : 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-3'}>
       <div>
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Conecta tus cuentas</h3>
@@ -284,5 +286,6 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
         </div>
       </IOSModal>
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };

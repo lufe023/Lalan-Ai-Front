@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { comoPregunta, useConfirmar } from '../components/ui/ModalConfirmar';
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from 'motion/react';
 import {
   Play,
@@ -111,6 +112,7 @@ function agruparPorDia(eventos: { id: string; createdAt: string; [k: string]: an
 }
 
 export const LoungePlayerScreen: React.FC = () => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const {
     loungeTracks,
     currentTrackIndex,
@@ -1007,7 +1009,7 @@ export const LoungePlayerScreen: React.FC = () => {
   }, [isPlayingLounge, currentTrack, nextLoungeTrack]);
 
   // Format seconds to mm:ss
-  const formatTime = (seconds: number) => {
+  const formatTime = async (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
@@ -1023,7 +1025,7 @@ export const LoungePlayerScreen: React.FC = () => {
     return matchesQuery && matchesSource;
   });
 
-  return (
+  return (<>
     <div className="relative flex-1 w-full h-full flex flex-col overflow-hidden bg-[#F9FAFB] dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 select-none">
       {/* iOS Minimalist Nav Header */}
       <div
@@ -2585,8 +2587,8 @@ export const LoungePlayerScreen: React.FC = () => {
                   {editingList.tracks.length} canción{editingList.tracks.length === 1 ? '' : 'es'}
                 </span>
                 <button
-                  onClick={() => {
-                    if (confirm(`¿Eliminar la lista «${editingList.name}»?`)) {
+                  onClick={async () => {
+                    if ((await confirmar(comoPregunta(`¿Eliminar la lista «${editingList.name}»?`)))) {
                       deletePlaylist(editingList.id);
                       setEditingListId(null);
                     }
@@ -2867,5 +2869,6 @@ export const LoungePlayerScreen: React.FC = () => {
         )}
       </IOSModal>
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };

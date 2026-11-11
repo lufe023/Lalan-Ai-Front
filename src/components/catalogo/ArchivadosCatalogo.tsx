@@ -90,8 +90,9 @@ export const ArchivadosCatalogo: React.FC = () => {
     <Aparecer
       key={a.id}
       indice={i}
-      className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs"
+      className="flex flex-col gap-2.5 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs"
     >
+      <div className="flex items-center gap-3 min-w-0">
       <MiniaturaCatalogo
         fotoId={a.fotoId ?? null}
         encuadre={null}
@@ -115,11 +116,12 @@ export const ArchivadosCatalogo: React.FC = () => {
           )}
         </div>
       </div>
+      </div>
       <button
         type="button"
         onClick={() => restaurar(tipo, a)}
         disabled={restaurando === a.id}
-        className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold ios-touch cursor-pointer hover:opacity-90 disabled:opacity-60"
+        className="self-end inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[var(--primary)] text-white text-[0.75rem] font-bold ios-touch cursor-pointer hover:opacity-90 disabled:opacity-60"
       >
         {restaurando === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArchiveRestore className="w-3.5 h-3.5" />}
         Restaurar
