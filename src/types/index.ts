@@ -528,6 +528,8 @@ export interface HorarioExtra {
 
 export interface SalonBusinessSettings {
   salonName: string;
+  /** El nombre de la sede en la que se trabaja ("Tress — Piantini"); el del salón es salonName */
+  sede?: string;
   tagline: string;
   phone: string;
   address: string;

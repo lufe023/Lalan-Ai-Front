@@ -387,7 +387,8 @@ interface AppContextType {
   ponerListas: (channelId: CommunicationChannel, usarListas: boolean) => Promise<void>;
   updateBotMessage: (channelId: CommunicationChannel, field: 'welcomeMessage' | 'offHoursMessage' | 'channelIdentifier', text: string) => Promise<void>;
   settings: SalonBusinessSettings;
-  updateSettings: (newSettings: Partial<SalonBusinessSettings>) => void;
+  /** Guarda en la sede activa. Devuelve lo que quedó guardado, o null si falló (ya avisó) */
+  updateSettings: (newSettings: Partial<SalonBusinessSettings>) => Promise<any | null>;
   metricsPeriod: 'day' | 'week' | 'month';
   setMetricsPeriod: (p: 'day' | 'week' | 'month') => void;
   systemLogs: SystemLog[];
@@ -1826,13 +1827,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let anteriores: SalonBusinessSettings | null = null;
     setSettings(s => { anteriores = s; return { ...s, ...newSettings }; });
 
-    api.patch<any>('/salon/sede', newSettings).catch((e: any) => {
+    return api.patch<any>('/salon/sede', newSettings).catch((e: any) => {
       if (anteriores) setSettings(anteriores);
       showToast(
         'No se pudo guardar',
         e?.message ?? 'Revisa la conexión e inténtalo de nuevo.',
         'warning',
       );
+      return null;
     });
   }, []);
 

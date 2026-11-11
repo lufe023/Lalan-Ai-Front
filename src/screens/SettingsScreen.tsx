@@ -32,7 +32,9 @@ import {
   Music,
   Bot,
   ChevronRight,
-  Zap,   
+  Zap,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import { useTheme, THEME_PALETTE_PRESETS } from '../theme/ThemeContext';
 import { CatalogoEnOtraMoneda } from '../components/ajustes/CatalogoEnOtraMoneda';
@@ -106,7 +108,7 @@ export const SettingsScreen: React.FC = () => {
     isCustomPalette,
     isDark,
   } = useTheme();
-  const { ponerPaleta, varias: variasSedes, actual: sedeActual } = useSedeActiva();
+  const { ponerPaleta, varias: variasSedes, actual: sedeActual, renombrarLocal } = useSedeActiva();
 
   const {
     settings,
@@ -311,6 +313,13 @@ export const SettingsScreen: React.FC = () => {
   // Business Parameters State
   const [salonName, setSalonName] = useState(settings.salonName);
   const [address, setAddress] = useState(settings.address);
+  /* El nombre de la sede en la que se trabaja. Sin sede elegida, el servidor
+     guarda en la principal: el mismo sitio de donde sale la dirección. */
+  const nombreSedeOriginal = sedeActual?.name ?? settings.sede ?? '';
+  const [nombreSede, setNombreSede] = useState(nombreSedeOriginal);
+  const [tocoNombreSede, setTocoNombreSede] = useState(false);
+  useEffect(() => { if (!tocoNombreSede) setNombreSede(nombreSedeOriginal); }, [nombreSedeOriginal, tocoNombreSede]);
+  const [guardandoSalon, setGuardandoSalon] = useState<'no' | 'guardando' | 'listo'>('no');
   const [pais, setPais] = useState(settings.pais ?? '');
   const [ciudad, setCiudad] = useState(settings.ciudad ?? '');
   const [phone, setPhone] = useState(settings.phone);
@@ -334,10 +343,22 @@ export const SettingsScreen: React.FC = () => {
     updateBotMessage(activeMessageChannel, 'offHoursMessage', offHoursText);
   };
 
-  const handleSaveSalonSettings = (e: React.FormEvent) => {
+  const handleSaveSalonSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings({
-      salonName,
+    if (guardandoSalon === 'guardando') return;
+    const sedeLimpia = nombreSede.trim();
+    if (!salonName.trim()) {
+      showToast('Falta el nombre del salón', 'Escribe cómo se llama el salón antes de guardar.', 'warning');
+      return;
+    }
+    if (!sedeLimpia) {
+      showToast('Falta el nombre de la sede', 'Escribe cómo se llama esta sede antes de guardar.', 'warning');
+      return;
+    }
+    setGuardandoSalon('guardando');
+    const guardado = await updateSettings({
+      salonName: salonName.trim(),
+      ...(sedeLimpia !== nombreSedeOriginal ? { sede: sedeLimpia } : {}),
       address,
       pais: pais || null,
       ciudad: ciudad.trim() || null,
@@ -346,6 +367,12 @@ export const SettingsScreen: React.FC = () => {
       defaultAppointmentDurationMinutes,
       gracePeriodMinutes,
     });
+    if (!guardado) { setGuardandoSalon('no'); return; }   // el aviso de error ya salió
+    if (guardado.locationId && guardado.sede) renombrarLocal(guardado.locationId, guardado.sede);
+    setTocoNombreSede(false);
+    setGuardandoSalon('listo');
+    showToast('Cambios guardados', `${guardado.sede ?? sedeLimpia}: nombre, dirección, horario y tiempos de agenda al día.`, 'success');
+    setTimeout(() => setGuardandoSalon('no'), 2500);
   };
 
   return (
@@ -546,6 +573,23 @@ export const SettingsScreen: React.FC = () => {
 
           <div>
             <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
+              {variasSedes ? 'Nombre de esta sede' : 'Nombre de la sede'}
+            </label>
+            <input
+              type="text"
+              value={nombreSede}
+              maxLength={120}
+              placeholder="Ej.: Piantini"
+              onChange={e => { setNombreSede(e.target.value); setTocoNombreSede(true); }}
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
+            />
+            <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+              Sale en el menú de sedes, en la Vitrina y cuando Lalán ofrece dónde atender.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
               {variasSedes ? `Dirección de ${sedeActual?.name ?? 'la sede principal'}` : 'Dirección Principal'}
             </label>
             <input
@@ -701,10 +745,22 @@ export const SettingsScreen: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold flex items-center justify-center gap-1.5 ios-touch cursor-pointer hover:opacity-90 shadow-sm mt-2"
+            disabled={guardandoSalon === 'guardando'}
+            aria-live="polite"
+            className={`w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 ios-touch cursor-pointer hover:opacity-90 shadow-sm mt-2 transition-colors disabled:cursor-wait disabled:opacity-80 ${
+              guardandoSalon === 'listo'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+            }`}
           >
-            <Save className="w-3.5 h-3.5" />
-            <span>Guardar Parámetros de Negocio</span>
+            {guardandoSalon === 'guardando' ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : guardandoSalon === 'listo' ? <Check className="w-3.5 h-3.5" />
+              : <Save className="w-3.5 h-3.5" />}
+            <span>
+              {guardandoSalon === 'guardando' ? 'Guardando…'
+                : guardandoSalon === 'listo' ? 'Guardado'
+                : 'Guardar Parámetros de Negocio'}
+            </span>
           </button>
         </form>
 
