@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Aparecer, ChipsFiltro } from '../components/ui/movimiento';
+import { Aparecer, ChipsFiltro, ListaAnimada } from '../components/ui/movimiento';
 import { AnimatePresence } from 'motion/react';
 import {
   Sparkles,
@@ -809,7 +809,7 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+              <ListaAnimada clave={`servicios-${selectedCategory}`} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
               {serviciosEnLista.map(({ principal: service, copias }, i) => {
                 const tiers = opcionesDe(service.priceTiers, 'Precio Base', service.price);
                 const desde = Math.min(...tiers.map(t => t.price));
@@ -886,7 +886,7 @@ export const CatalogScreen: React.FC = () => {
                   />
                 );
               })}
-              </div>
+              </ListaAnimada>
             )}
           </div>
         )}
@@ -925,7 +925,7 @@ export const CatalogScreen: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+              <ListaAnimada clave={`productos-${selectedCategory}`} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
               {filteredProducts.map((product, i) => {
                 const tiers = opcionesDe(product.priceTiers, 'Precio PVP', product.basePrice);
                 const desde = Math.min(...tiers.map(t => t.price));
@@ -1045,7 +1045,7 @@ export const CatalogScreen: React.FC = () => {
                   />
                 );
               })}
-              </div>
+              </ListaAnimada>
             )}
           </div>
         )}

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Sparkles, X, Loader2, Check, Copy, FileDown, ExternalLink, ImagePlus, Upload, Store, Scissors, Flower2, Hand, Brush, Building2, AlertCircle,
-  ShieldCheck, Music, Coffee, ListChecks, Leaf,
+  ShieldCheck, Music, Coffee, ListChecks, Leaf, Archive, Undo2,
 } from 'lucide-react';
 import { api, descargarArchivo, subirArchivo, urlCortaDeVitrina } from '../../services/api';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
+import { useConfirmar } from '../ui/ModalConfirmar';
 
 /**
  * «Preparar salón de ejemplo»: un salón listo para presentar Lalán en 15
@@ -19,7 +20,13 @@ interface Opciones {
   paises: { id: string; nombre: string; moneda: string }[];
   planes: { id: string; clave: string; nombre: string }[];
   planRecomendado: string | null;
-  ejemplos: { id: string; nombre: string; slug: string; creadoEn: string }[];
+  ejemplos: {
+    id: string; nombre: string; slug: string; creadoEn: string;
+    /** Lo activo que ya tiene: se ofrece archivarlo antes de rellenar */
+    productos?: number; servicios?: number;
+    /** Hay algo que deshacer: vueltas del rellenado y cuántos archivó al prepararlo */
+    deshacer?: { vueltas: number; archivados: number } | null;
+  }[];
 }
 
 interface Resultado {
@@ -83,13 +90,38 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
   const [f, setF] = useState({
     negocioId: '', tipo: 'salon', nombre: '', pais: 'DO', planId: '', sedes: 1, especialistas: 4, clientas: 24,
     duenaNombre: '', email: '', clave: '', telefonoDuena: '', suplidorNombre: '', suplidorWhatsapp: '', rnc: '', telefonoSalon: '', vitrina: true,
+    archivarCatalogo: false,
   });
+  const { confirmar, modalConfirmar } = useConfirmar();
+  const [deshaciendo, setDeshaciendo] = useState(false);
+  const [deshecho, setDeshecho] = useState<string>('');
 
-  useEffect(() => {
-    api.get<Opciones>('/plataforma/ejemplo/opciones')
-      .then((o) => { setOp(o); setF((x) => ({ ...x, planId: o.planRecomendado ?? '' })); })
-      .catch((e) => setError((e as Error).message));
-  }, []);
+  const cargarOpciones = () => api.get<Opciones>('/plataforma/ejemplo/opciones')
+    .then((o) => { setOp(o); setF((x) => ({ ...x, planId: x.planId || o.planRecomendado || '' })); })
+    .catch((e) => setError((e as Error).message));
+  useEffect(() => { cargarOpciones(); }, []);
+
+  /** Quita lo que puso el ejemplo y devuelve lo que se archivó al prepararlo */
+  const deshacer = async (x: Opciones['ejemplos'][number]) => {
+    const ok = await confirmar({
+      titulo: `¿Deshacer el ejemplo de ${x.nombre}?`,
+      mensaje: `Se quita todo lo que puso el ejemplo (clientas, citas, ventas, chats, equipo, productos, servicios, sedes nuevas, fotos)${x.deshacer?.archivados ? ` y vuelven los ${x.deshacer.archivados} productos y servicios que se archivaron al prepararlo` : ''}. Lo que el salón ya tenía y sus canales conectados no se tocan.`,
+      textoConfirmar: 'Deshacer el ejemplo',
+      tono: 'peligro',
+      icono: <Undo2 className="w-7 h-7" aria-hidden="true" />,
+    });
+    if (!ok) return;
+    setDeshaciendo(true); setError(''); setDeshecho('');
+    try {
+      const res = await api.post<{ borrados: Record<string, number>; restaurados: { productos: number; servicios: number }; quedan: string[] }>(`/plataforma/ejemplo/${x.id}/deshacer`, {});
+      const quitados = Object.values(res.borrados).reduce((a, b) => a + b, 0);
+      const vuelven = res.restaurados.productos + res.restaurados.servicios;
+      setDeshecho(`Listo: se quitaron ${quitados.toLocaleString('es')} cosas del ejemplo${vuelven ? ` y volvieron ${res.restaurados.productos} productos y ${res.restaurados.servicios} servicios` : ''}.`
+        + (res.quedan.length ? ` No se pudo quitar: ${res.quedan.join(', ')}.` : ''));
+      await cargarOpciones();
+      onCambio();
+    } catch (err) { setError((err as Error).message); } finally { setDeshaciendo(false); }
+  };
 
   const negocio = op?.negocios.find((n) => n.id === f.tipo);
   const rellenar = !!f.negocioId;
@@ -100,6 +132,7 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
       const res = await api.post<Resultado>('/plataforma/ejemplo', {
         negocioId: f.negocioId || undefined, tipo: f.tipo, pais: f.pais, sedes: f.sedes, especialistas: f.especialistas, clientas: f.clientas,
         vitrina: f.vitrina,
+        ...(rellenar && f.archivarCatalogo ? { archivarCatalogo: true } : {}),
         ...(rellenar ? {} : {
           nombre: f.nombre.trim() || undefined, planId: f.planId || undefined, telefonoSalon: f.telefonoSalon || undefined,
           duena: { nombre: f.duenaNombre || undefined, email: f.email, clave: f.clave || undefined, telefono: f.telefonoDuena || undefined },
@@ -138,6 +171,35 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
             ? (
               <div className="text-[0.75rem] text-slate-500 space-y-1">
                 <p>Se completa lo que le falte (sedes, equipo, clientas, gustos del Lounge, suplidor) y se llena la agenda del próximo mes en los huecos libres. No se borra nada.</p>
+                {(() => {
+                  const x = op.ejemplos.find((e) => e.id === f.negocioId);
+                  if (!x) return null;
+                  const tiene = (x.productos ?? 0) + (x.servicios ?? 0);
+                  return <>
+                    {tiene > 0 && (
+                      <label className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200/80 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 cursor-pointer">
+                        <input type="checkbox" checked={f.archivarCatalogo} onChange={(e) => setF({ ...f, archivarCatalogo: e.target.checked })} className="accent-[var(--primary)] mt-0.5" />
+                        <span>
+                          <span className="font-semibold flex items-center gap-1"><Archive className="w-3.5 h-3.5" /> Archivar antes los {x.productos ?? 0} productos y {x.servicios ?? 0} servicios que ya tiene</span>
+                          <span className="block text-[0.6875rem] text-slate-500">Así el catálogo queda solo con lo del ejemplo. Nada se borra: vuelven con «Deshacer el ejemplo» o desde Catálogo → Archivados.</span>
+                        </span>
+                      </label>
+                    )}
+                    {x.deshacer && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-700">
+                        <span>
+                          Este salón ya se rellenó {x.deshacer.vueltas === 1 ? 'una vez' : `${x.deshacer.vueltas} veces`}
+                          {x.deshacer.archivados ? ` y tiene ${x.deshacer.archivados} productos y servicios archivados por el ejemplo` : ''}.
+                        </span>
+                        <button type="button" onClick={() => void deshacer(x)} disabled={deshaciendo}
+                          className="px-3 py-1.5 rounded-xl bg-white dark:bg-neutral-900 border border-rose-300 text-rose-600 text-[0.75rem] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                          {deshaciendo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />} Deshacer el ejemplo
+                        </button>
+                      </div>
+                    )}
+                  </>;
+                })()}
+                {deshecho && <p className="flex items-start gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold" role="status"><Check className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {deshecho}</p>}
                 <p className="flex items-start gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" /> El WhatsApp, Instagram y Messenger que ya tenga conectados no se tocan: siguen conectados. Al terminar te los muestro.</p>
               </div>
             )
@@ -233,6 +295,7 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
           {ocupado ? <><Loader2 className="w-4 h-4 animate-spin" /> Preparando el salón…</> : <><Sparkles className="w-4 h-4" /> {rellenar ? 'Rellenar salón de ejemplo' : 'Preparar salón de ejemplo'}</>}
         </button>
       )}
+      {modalConfirmar}
     </form>
   );
 };
