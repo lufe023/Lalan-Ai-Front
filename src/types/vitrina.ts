@@ -83,6 +83,8 @@ export interface ServicioVitrina {
   /** Todas sus fotos (hasta 10), la primera es `foto` */
   fotos?: string[];
   popular: boolean;
+  /** Quiénes lo hacen en la sede (ids); null = sin especialistas cargadas */
+  quienes?: string[] | null;
 }
 
 export interface ProductoVitrina {

@@ -114,6 +114,8 @@ export interface SalonService {
   fotoId?: string | null;
   /** Las demás fotos del carrusel, en orden, después de `fotoId` (hasta 10 en total) */
   masFotos?: string[];
+  /** Quiénes lo hacen (ids de especialistas). Vacío = la gente de la zona que tiene su categoría */
+  especialistaIds?: string[];
 }
 
 /** Clave de una categoría de productos del salón (ver ServiceCategory) */

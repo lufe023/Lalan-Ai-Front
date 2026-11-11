@@ -306,6 +306,10 @@ interface AppContextType {
   toggleServiceAi: (id: string, aiAvailable: boolean) => Promise<void>;
   /** "Copiar a otra sede": con su precio, variantes, duración y receta */
   copiarServicio: (id: string, sedes: string[]) => Promise<void>;
+  /** Quiénes hacen el servicio ([] = los de la zona de su categoría) */
+  ponerEspecialistasServicio: (id: string, especialistaIds: string[]) => Promise<void>;
+  /** Los servicios que hace una especialista (los que no estén se le quitan) */
+  guardarServiciosDeEspecialista: (staffId: string, servicioIds: string[]) => Promise<void>;
   /** Pone o quita la foto. Dentro de una sede, un servicio de la cadena se separa en su copia: devuelve el que quedó */
   ponerFotoServicio: (id: string, dataUrl: string) => Promise<SalonService>;
   quitarFotoServicio: (id: string) => Promise<SalonService>;
@@ -751,6 +755,7 @@ function mapApiService(s: any): SalonService {
     ocultoEn: Array.isArray(s.ocultoEn) ? s.ocultoEn : [],
     fotoId: s.fotoId ?? null,
     masFotos: Array.isArray(s.masFotos) ? s.masFotos : [],
+    especialistaIds: Array.isArray(s.especialistaIds) ? s.especialistaIds : [],
   };
 }
 /** Un cambio en el carrusel de fotos de un servicio o producto */
@@ -1323,6 +1328,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const svcs = await api.get<any[]>('/services').catch(() => null);
     if (svcs) setServices(svcs.map(mapApiService));
   }, []);
+
+  // Se recarga la lista: el del salón lleva la lista a sus copias de sede
+  const recargarServicios = useCallback(async () => {
+    const svcs = await api.get<any[]>('/services').catch(() => null);
+    if (svcs) setServices(svcs.map(mapApiService));
+  }, []);
+  const ponerEspecialistasServicio = useCallback(async (id: string, especialistaIds: string[]) => {
+    await api.put(`/services/${id}/especialistas`, { especialistaIds });
+    await recargarServicios();
+  }, [recargarServicios]);
+  const guardarServiciosDeEspecialista = useCallback(async (staffId: string, servicioIds: string[]) => {
+    await api.put(`/services/de-especialista/${staffId}`, { servicioIds });
+    await recargarServicios();
+  }, [recargarServicios]);
 
   // La respuesta puede ser la copia de la sede (otro id): reemplaza al que se tocó, como al editarlo
   const fotoDeServicio = useCallback(async (id: string, res: any) => {
@@ -3091,7 +3110,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clients, isLoadingClients, clientsHasMore, clientsTotal,
       cargarMasClientas, buscarClientas,
       addClient, updateClient, deleteClient, restaurarClienta,
-      services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, preciosServicioEnSedes, preciosProductoEnSedes,
+      services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, ponerEspecialistasServicio, guardarServiciosDeEspecialista, preciosServicioEnSedes, preciosProductoEnSedes,
       ponerFotoServicio, quitarFotoServicio, ponerFotoProducto, quitarFotoProducto, galeriaServicio, galeriaProducto,
       products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
       appointments, addAppointment, updateAppointmentStatus, confirmarCita, registrarAdelanto, adelantoNoLlego, deleteAppointment,

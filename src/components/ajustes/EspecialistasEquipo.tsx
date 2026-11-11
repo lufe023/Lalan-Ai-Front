@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarCheck, CalendarClock, CalendarOff, Check, KeyRound, MapPin, Plus, Scissors, Trash2 } from 'lucide-react';
+import { CalendarCheck, CalendarClock, CalendarOff, Check, KeyRound, ListChecks, MapPin, Plus, Scissors, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useSedeActiva } from '../../context/SedeActivaContext';
 import { useEncuadres } from '../../hooks/useEncuadres';
@@ -8,6 +8,7 @@ import { useConfirmar } from '../ui/ModalConfirmar';
 import { HorarioEspecialista } from './HorarioEspecialista';
 import { semanaCompleta } from './HorarioSemanal';
 import { AvatarEspecialista, FotoEspecialista } from './FotoEspecialista';
+import { ServiciosQueHace } from './ServiciosQueHace';
 import { EntradaEspecialista, PlantillaPermisosEspecialista } from './EntradaEspecialista';
 
 const CAMPO = 'min-w-0 px-2.5 py-2 sm:py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700';
@@ -26,7 +27,7 @@ export const EspecialistasEquipo: React.FC<{
   etiquetasPago?: Record<string, string>;
   onPago?: (staffId: string) => void;
 }> = ({ sinPlantillaPermisos = false, etiquetasPago, onPago }) => {
-  const { settings, zonas, loadZonas, especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista } = useApp();
+  const { settings, services, zonas, loadZonas, especialistas, loadEspecialistas, guardarEspecialista, eliminarEspecialista } = useApp();
   const { sedes: sedesDelSalon, varias: variasSedes } = useSedeActiva();
   const { encuadres, guardar: guardarEncuadre } = useEncuadres();
   const { confirmar, modalConfirmar } = useConfirmar();
@@ -36,6 +37,7 @@ export const EspecialistasEquipo: React.FC<{
   const [entradaDe, setEntradaDe] = useState<string | null>(null);
   const [sedesAbiertas, setSedesAbiertas] = useState<string | null>(null);
   const [horarioDe, setHorarioDe] = useState<string | null>(null);
+  const [serviciosDe, setServiciosDe] = useState<string | null>(null);
   const [nuevaPersona, setNuevaPersona] = useState({ name: '', role: '', zoneId: '' });
 
   useEffect(() => { void loadZonas?.(); void loadEspecialistas?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -74,7 +76,7 @@ export const EspecialistasEquipo: React.FC<{
           subir su foto: es la que sale en tu Vitrina. La zona decide a qué cola
           entra un turno cuando no se elige a mano. Con el calendario dices si
           recibe citas (bartender, recepción o caja no reciben, salvo que lo
-          enciendas), con la llave le das entrada a Lalan y sus permisos, y con
+          enciendas), con la lista marcas los servicios que hace, con la llave le das entrada a Lalan y sus permisos, y con
           el reloj pones su horario y los días que no viene.
         </p>
 
@@ -83,6 +85,7 @@ export const EspecialistasEquipo: React.FC<{
             const recibe = recibeCitas(e.atiendeCitas, e.role);
             const porOficio = typeof e.atiendeCitas !== 'boolean';
             const nombre = e.name.split(' ')[0];
+            const cuantosHace = new Set(services.filter(s => (s.especialistaIds ?? []).includes(e.id)).map(s => s.name.trim().toLowerCase())).size;
             return (
               <React.Fragment key={e.id}>
                 <div
@@ -185,6 +188,20 @@ export const EspecialistasEquipo: React.FC<{
                         {e.sedes?.length ? e.sedes.length : 'Todas'}
                       </button>
                     )}
+                    {recibe && (
+                      <button
+                        type="button"
+                        onClick={() => setServiciosDe(serviciosDe === e.id ? null : e.id)}
+                        aria-label={`Servicios que hace ${e.name}`}
+                        aria-expanded={serviciosDe === e.id}
+                        title={cuantosHace ? `Hace ${cuantosHace} servicio${cuantosHace === 1 ? '' : 's'} marcados` : 'Servicios que hace (sin marcar: los de su zona)'}
+                        className={`${claseBoton(serviciosDe === e.id || cuantosHace > 0)} ${cuantosHace ? 'sm:w-auto sm:px-2 font-bold' : ''}`}
+                      >
+                        <ListChecks className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                        <span className="sm:hidden">Servicios{cuantosHace ? ':' : ''}</span>
+                        {cuantosHace > 0 && cuantosHace}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setEntradaDe(entradaDe === e.id ? null : e.id)}
@@ -227,6 +244,12 @@ export const EspecialistasEquipo: React.FC<{
                       onEncuadre={guardarEncuadre}
                       onCambio={loadEspecialistas}
                     />
+                  </div>
+                )}
+                {/* Los servicios que hace: solo ella (y las marcadas) recibe esas citas */}
+                {serviciosDe === e.id && (
+                  <div className="sm:ml-2 p-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700">
+                    <ServiciosQueHace persona={e} onListo={() => setServiciosDe(null)} />
                   </div>
                 )}
                 {/* Su entrada a Lalan: ve sus citas y lo que se le permita */}
