@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { AlertTriangle, ArrowDown, ArrowUp, Loader2, MapPin, MousePointerClick, Play, Plus, RotateCcw, Sparkles, Trash2, X } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -47,6 +48,7 @@ function rutaDeLaApp(id: string): PasoGuia[] {
  * original; las nuevas se crean aquí.
  */
 export const LoQueLalanSabeHacer: React.FC = () => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const { showToast } = useApp();
   const [datos, setDatos] = useState<Catalogo | null>(null);
   const [b, setB] = useState<Guia | null>(null);
@@ -78,8 +80,8 @@ export const LoQueLalanSabeHacer: React.FC = () => {
   }, [grabando]);
 
   const abrir = (g: Guia) => { setB(g); setTocado(false); setGrabando(null); setFrase(''); };
-  const cerrar = () => {
-    if (tocado && !window.confirm('Tienes cambios sin guardar. ¿Cerrar sin guardar?')) return;
+  const cerrar = async () => {
+    if (tocado && !(await confirmar(comoPregunta('Tienes cambios sin guardar. ¿Cerrar sin guardar?')))) return;
     setB(null); setGrabando(null);
   };
 
@@ -113,7 +115,7 @@ export const LoQueLalanSabeHacer: React.FC = () => {
   const restaurar = async () => {
     if (!b) return;
     const pregunta = b.origen === 'nueva' ? `¿Borrar la tarea «${b.nombre}»? Lalan deja de conocerla.` : `¿Volver «${b.nombre}» al original? Se pierde lo que cambiaste, también la ruta grabada.`;
-    if (!window.confirm(pregunta)) return;
+    if (!(await confirmar(comoPregunta(pregunta)))) return;
     try {
       const c = await api.delete<Catalogo>(`/asistente/guias/${b.id}`);
       setDatos(c);
@@ -139,8 +141,8 @@ export const LoQueLalanSabeHacer: React.FC = () => {
     finally { setProbando(false); }
   };
 
-  const quitarPaso = (i: number) => {
-    if (!window.confirm(`¿Quitar el paso ${i + 1}?`)) return;
+  const quitarPaso = async (i: number) => {
+    if (!(await confirmar(comoPregunta(`¿Quitar el paso ${i + 1}?`)))) return;
     cambiarRuta((r) => r.filter((_, j) => j !== i));
   };
   const moverPaso = (i: number, d: -1 | 1) => cambiarRuta((r) => { const n = [...r]; [n[i], n[i + d]] = [n[i + d], n[i]]; return n; });
@@ -150,7 +152,7 @@ export const LoQueLalanSabeHacer: React.FC = () => {
   const nombreModulo = (id: string | null) => (id ? datos.modulos.find((m) => m.id === id)?.nombre ?? id : 'Todos los planes');
   const deApp = b && b.origen === 'app' && !b.ruta ? rutaDeLaApp(b.id) : [];
 
-  return (
+  return (<>
     <div className="space-y-3 text-slate-900 dark:text-neutral-100">
       <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 leading-relaxed max-w-2xl">
         Lo que Lalan sabe enseñar <b>dentro de la app</b>: cómo lo pide la gente, qué explica ella y la ruta del botón «Llévame».
@@ -347,5 +349,6 @@ export const LoQueLalanSabeHacer: React.FC = () => {
         )}
       </IOSModal>
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };

@@ -222,6 +222,10 @@ export type ClientTag = 'vip' | 'frecuente' | 'nuevo' | 'alergico_sensible' | 'p
 
 export interface Client {
   id: string;
+  /** Archivada (fecha ISO): fuera del directorio, con su historial entero. Null = activa */
+  archivadaEn?: string | null;
+  /** Al registrarla: el número era de una archivada y volvió con su historial */
+  restaurada?: boolean;
   /** Sedes donde ha tenido citas, compras o chats */
   sedes?: string[];
   name: string;

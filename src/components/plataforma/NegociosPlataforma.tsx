@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet, Sparkles } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
 import { IOSToggle } from '../ui/IOSToggle';
@@ -172,6 +173,7 @@ const Excepciones: React.FC<{ d: NegocioDetalle; catalogo: CatalogoModulos; plan
 
 /** La promoción del cliente: hasta cuándo y a qué plan baja; se puede alargar, quitar o terminar ya */
 const PromocionCliente: React.FC<{ d: NegocioDetalle; planes: PlanLalan[]; soloSoporte?: boolean; onGuardar: (c: Record<string, unknown>) => Promise<void> }> = ({ d, planes, soloSoporte, onGuardar }) => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const [dia, setDia] = useState(d.promoHasta ? diaDe(d.promoHasta) : '');
   useEffect(() => setDia(d.promoHasta ? diaDe(d.promoHasta) : ''), [d.promoHasta]);
   const gratis = planes.find((p) => p.clave === 'gratis');
@@ -187,7 +189,7 @@ const PromocionCliente: React.FC<{ d: NegocioDetalle; planes: PlanLalan[]; soloS
       </div>
     );
   }
-  return (
+  return (<>
     <div className="p-3 rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/5 space-y-2 text-[0.8125rem]">
       <p className="flex items-center gap-1.5"><Gift className="w-4 h-4 text-[var(--primary)]" />
         <span>Promoción en <b>{d.plan?.nombre ?? 'su plan'}</b> hasta el <b>{fecha(d.promoHasta)}</b>; luego baja sola a <b>{despues?.nombre ?? 'Plan Gratis'}</b>.</span></p>
@@ -201,18 +203,20 @@ const PromocionCliente: React.FC<{ d: NegocioDetalle; planes: PlanLalan[]; soloS
             <option value="">Luego: {gratis?.nombre ?? 'Plan Gratis'}</option>
             {planes.filter((p) => p.id !== gratis?.id).map((p) => <option key={p.id} value={p.id}>Luego: {p.nombre}</option>)}
           </select>
-          <button type="button" onClick={() => { if (window.confirm(`¿Terminar la promoción de ${d.nombre} ahora? Baja ya a ${despues?.nombre ?? 'Plan Gratis'} y se le avisa a la dueña por correo.`)) void onGuardar({ promoHasta: new Date().toISOString() }); }}
+          <button type="button" onClick={async () => { if ((await confirmar(comoPregunta(`¿Terminar la promoción de ${d.nombre} ahora? Baja ya a ${despues?.nombre ?? 'Plan Gratis'} y se le avisa a la dueña por correo.`)))) void onGuardar({ promoHasta: new Date().toISOString() }); }}
             className="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-[0.75rem] font-bold cursor-pointer">Terminar ahora</button>
-          <button type="button" onClick={() => { if (window.confirm(`¿Quitar la promoción? ${d.nombre} se queda en ${d.plan?.nombre ?? 'su plan'} y ya no baja sola.`)) void onGuardar({ promoHasta: null }); }}
+          <button type="button" onClick={async () => { if ((await confirmar(comoPregunta(`¿Quitar la promoción? ${d.nombre} se queda en ${d.plan?.nombre ?? 'su plan'} y ya no baja sola.`)))) void onGuardar({ promoHasta: null }); }}
             className="px-2.5 py-1.5 rounded-lg text-slate-500 text-[0.75rem] font-semibold cursor-pointer">Quitar promoción</button>
         </div>
       )}
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };
 
 /** Hasta cuándo pagó el salón: con más de 5 días de atraso baja solo al Plan Gratis y pierde lo acumulado */
 const PagoCliente: React.FC<{ d: NegocioDetalle; soloSoporte?: boolean; onGuardar: (c: Record<string, unknown>) => Promise<void> }> = ({ d, soloSoporte, onGuardar }) => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const [dia, setDia] = useState(d.pagadoHasta ? diaDe(d.pagadoHasta) : '');
   useEffect(() => setDia(d.pagadoHasta ? diaDe(d.pagadoHasta) : ''), [d.pagadoHasta]);
   const vencido = !!d.pagadoHasta && new Date(d.pagadoHasta).getTime() < Date.now();
@@ -222,7 +226,7 @@ const PagoCliente: React.FC<{ d: NegocioDetalle; soloSoporte?: boolean; onGuarda
     void onGuardar({ pagadoHasta: finDelDia(base.toISOString().slice(0, 10)) });
   };
   if (soloSoporte && !d.pagadoHasta) return null;
-  return (
+  return (<>
     <div className="flex flex-wrap items-center gap-2 text-[0.75rem] text-slate-500">
       <Wallet className="w-3.5 h-3.5" />
       {d.pagadoHasta
@@ -236,16 +240,18 @@ const PagoCliente: React.FC<{ d: NegocioDetalle; soloSoporte?: boolean; onGuarda
           )}
           <button type="button" onClick={unMesMas} className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-neutral-700 font-bold cursor-pointer">Pagó un mes</button>
           {d.pagadoHasta && (
-            <button type="button" onClick={() => { if (window.confirm(`¿Quitar la fecha de pago de ${d.nombre}? Ya no bajará al Plan Gratis por atraso.`)) void onGuardar({ pagadoHasta: null }); }}
+            <button type="button" onClick={async () => { if ((await confirmar(comoPregunta(`¿Quitar la fecha de pago de ${d.nombre}? Ya no bajará al Plan Gratis por atraso.`)))) void onGuardar({ pagadoHasta: null }); }}
               className="px-2.5 py-1.5 rounded-lg text-slate-500 font-semibold cursor-pointer">Quitar fecha</button>
           )}
         </>
       )}
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };
 
 const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoModulos; onCerrar: () => void; onCambio: () => void; soloSoporte?: boolean }> = ({ id, planes, catalogo, onCerrar, onCambio, soloSoporte }) => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const [d, setD] = useState<NegocioDetalle | null>(null);
   const [notas, setNotas] = useState('');
   const [clave, setClave] = useState<ClaveNueva | null>(null);
@@ -274,12 +280,12 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         v.modulosQuePierde.length ? `Pierde: ${v.modulosQuePierde.join(', ')}.` : '',
         'Este mes tiene la cuota completa del plan nuevo, pero lo que sobre no pasa al mes siguiente.',
       ].filter(Boolean);
-      if (!window.confirm(`¿Pasar ${d.nombre} a ${v.plan.nombre}?\n\n${avisos.join('\n\n')}`)) return;
+      if (!(await confirmar(comoPregunta(`¿Pasar ${d.nombre} a ${v.plan.nombre}?\n\n${avisos.join('\n\n')}`)))) return;
       await guardar({ planId });
     } catch (e) { setError((e as Error).message); }
   };
   const nuevaClave = async (u: NegocioDetalle['usuarios'][number]) => {
-    if (!window.confirm(`¿Generar una clave temporal nueva para ${u.name}? Se le cerrará la sesión.`)) return;
+    if (!(await confirmar(comoPregunta(`¿Generar una clave temporal nueva para ${u.name}? Se le cerrará la sesión.`)))) return;
     try { const r = await api.post<{ claveTemporal: string }>(`/plataforma/negocios/${id}/usuarios/${u.id}/clave-temporal`, {}); setClave({ nombre: u.name, entraCon: [u.usuario, u.email].filter((x): x is string => !!x), clave: r.claveTemporal, salon: d?.nombre }); void cargar(); }
     catch (e) { setError((e as Error).message); }
   };
@@ -294,7 +300,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
     catch (err) { setError((err as Error).message); setEntrando(false); }
   };
   const agregarPaquete = async (respuestas: number, precio: number) => {
-    if (!window.confirm(`¿Sumarle ${respuestas.toLocaleString('es-DO')} respuestas a ${d?.nombre ?? 'este salón'} por ${precio.toLocaleString('es-DO')} pesos? Valen hasta fin de mes.`)) return;
+    if (!(await confirmar(comoPregunta(`¿Sumarle ${respuestas.toLocaleString('es-DO')} respuestas a ${d?.nombre ?? 'este salón'} por ${precio.toLocaleString('es-DO')} pesos? Valen hasta fin de mes.`)))) return;
     try { await api.post(`/plataforma/negocios/${id}/paquete`, { respuestas }); await cargar(); onCambio(); } catch (e) { setError((e as Error).message); }
   };
   const agregarSede = async () => {
@@ -307,7 +313,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
   const planModulos = planes.find((p) => p.id === d.plan?.id)?.modulos ?? d.efectivo.modulos;
   const limitePlan = planes.find((p) => p.id === d.plan?.id)?.limites;
 
-  return (
+  return (<>
     <div className={`${tarjeta} space-y-4`}>
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -319,7 +325,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
             className="px-3 py-1.5 rounded-xl text-[0.75rem] font-bold flex items-center gap-1 bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 cursor-pointer" title="Abrir su app para configurarle especialistas, moneda, ajustes…">
             {entrando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LifeBuoy className="w-3.5 h-3.5" />} Entrar a su salón
           </button>
-          <button type="button" disabled={soloSoporte} onClick={() => { if (!d.activo || window.confirm(`¿Suspender ${d.nombre}? Nadie de ese salón podrá entrar hasta que lo actives.`)) void guardar({ active: !d.activo }); }}
+          <button type="button" disabled={soloSoporte} onClick={async () => { if (!d.activo || (await confirmar(comoPregunta(`¿Suspender ${d.nombre}? Nadie de ese salón podrá entrar hasta que lo actives.`)))) void guardar({ active: !d.activo }); }}
             className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold flex items-center gap-1 cursor-pointer ${d.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
             <Power className="w-3.5 h-3.5" /> {d.activo ? 'Activo' : 'Suspendido'}
           </button>
@@ -363,7 +369,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           {!!d.porCobrar && (
             <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900 text-[0.75rem] text-orange-800 dark:text-orange-200">
               <span><b>Por cobrar: {d.porCobrar.toLocaleString('es-DO')} respuestas adelantadas{d.porCobrarMonto ? ` (${d.porCobrarMonto.toLocaleString('es-DO')} pesos)` : ''}</b> que no devolvió al cambiar de plan.</span>
-              {!soloSoporte && <button type="button" onClick={() => { if (window.confirm(`¿Ya le cobraste las ${d.porCobrar!.toLocaleString('es-DO')} respuestas adelantadas a ${d.nombre}? Se borran de por cobrar.`)) void guardar({ adelantoCobrado: true }); }}
+              {!soloSoporte && <button type="button" onClick={async () => { if ((await confirmar(comoPregunta(`¿Ya le cobraste las ${d.porCobrar!.toLocaleString('es-DO')} respuestas adelantadas a ${d.nombre}? Se borran de por cobrar.`)))) void guardar({ adelantoCobrado: true }); }}
                 className="px-2.5 py-1 rounded-lg bg-white dark:bg-neutral-900 border border-orange-300 font-bold cursor-pointer">Marcar cobrado</button>}
             </div>
           )}
@@ -467,7 +473,8 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         )}
       </div>}
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };
 
 /** Los clientes de Lalan: crear, cambiar de plan, excepciones, suspender */

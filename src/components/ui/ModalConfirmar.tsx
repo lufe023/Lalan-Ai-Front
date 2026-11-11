@@ -181,3 +181,23 @@ export function useConfirmar() {
 
   return { confirmar, modalConfirmar };
 }
+
+/**
+ * Lo que era el texto de un window.confirm(), como pregunta del modal: la
+ * pregunta (lo que va entre ¿ y ?) de título y el resto de explicación.
+ * Lo que borra, quita o corta va en rojo.
+ */
+export function comoPregunta(texto: string, textoConfirmar?: string): PreguntaConfirmar {
+  const limpio = texto.trim();
+  const m = limpio.match(/¿[^?]*\?/);
+  const titulo = m ? m[0] : limpio;
+  const resto = m ? (limpio.slice(0, m.index) + limpio.slice((m.index ?? 0) + m[0].length)).trim() : '';
+  const peligro = /\b(borrar|eliminar|quitar|suspender|desconectar|revocar|soltar|terminar|cerrar sin guardar)/i.test(limpio);
+  return {
+    titulo,
+    // Los saltos de línea del texto (una lista de avisos) se respetan
+    ...(resto ? { mensaje: <span className="whitespace-pre-line">{resto}</span> } : {}),
+    tono: peligro ? 'peligro' : 'normal',
+    ...(textoConfirmar ? { textoConfirmar } : {}),
+  };
+}

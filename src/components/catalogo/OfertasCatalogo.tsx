@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { Bot, Gift, Globe, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -44,6 +45,7 @@ const VACIA: Omit<Oferta, 'id'> = {
  * un día en que la oferta vale, el precio del combo se aplica solo.
  */
 export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servicios }) => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const { showToast } = useApp();
   const { currentUser } = useAuth();
   const { base, dinero, enBase } = useDinero();
@@ -88,7 +90,7 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
   };
 
   const borrar = async (o: Oferta) => {
-    if (!window.confirm(`¿Borrar la oferta «${o.nombre}»?`)) return;
+    if (!(await confirmar(comoPregunta(`¿Borrar la oferta «${o.nombre}»?`)))) return;
     try { await api.delete(`/ofertas/${o.id}`); void cargar(); }
     catch (e: any) { showToast('No se pudo borrar', e?.message ?? 'Inténtalo de nuevo.', 'warning'); }
   };
@@ -99,7 +101,7 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
     o.dias.length && o.dias.length < 7 ? `solo ${o.dias.slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => NOMBRE_DIA[d]).join(', ')}` : 'todos los días',
   ].filter(Boolean).join(' · ');
 
-  return (
+  return (<>
     <div className="space-y-3">
       <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 to-rose-500/10 border border-amber-500/20 flex items-start gap-2.5 text-xs">
         <Gift className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -260,5 +262,6 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
         })()}
       </IOSModal>
     </div>
-  );
+  {modalConfirmar}
+  </>);
 };

@@ -28,6 +28,8 @@ import {
   Settings,
   Contact,
   MessageCircleHeart,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
 import { AlergiasEnGrupos } from '../components/clientes/AlergiasEnGrupos';
@@ -49,6 +51,8 @@ import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { hora12 } from '../utils/hora';
 import { SedesDeClienta } from '../components/ui/SedesDeClienta';
 import { ABRIR_CLIENTA } from '../services/saberProductos';
+import { ClientasArchivadas } from '../components/clientas/ClientasArchivadas';
+import { useConfirmar } from '../components/ui/ModalConfirmar';
 
 /** Cómo le habla Lalan en el chat. Sin saber: neutro */
 const OPCIONES_TRATO: { id: TratoCliente | null; label: string }[] = [
@@ -64,6 +68,7 @@ export const ClientsScreen: React.FC = () => {
     addClient,
     updateClient,
     deleteClient,
+    restaurarClienta,
     startChatWithClient,
     navigateTo,
     appointments,
@@ -110,6 +115,38 @@ export const ClientsScreen: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('all');
+  const { confirmar, modalConfirmar } = useConfirmar();
+  /** Sube cada vez que una ficha entra o sale del archivo: la lista de archivadas se vuelve a pedir */
+  const [vueltaArchivo, setVueltaArchivo] = useState(0);
+
+  /** Archivar, nunca borrar: sus citas, ventas, fiao, fotos y chats siguen enteros */
+  const archivarClienta = async (c: Client) => {
+    const ok = await confirmar({
+      titulo: `¿Archivar a ${c.name}?`,
+      mensaje: `Sale del directorio y de las búsquedas. Sus citas, ventas, fotos y chats se guardan enteros, y la devuelves cuando quieras desde «Archivadas». Si vuelve a escribir o reservar, sale del archivo sola.`,
+      textoConfirmar: 'Archivar',
+      icono: <Archive className="w-7 h-7" aria-hidden="true" />,
+    });
+    if (!ok) return;
+    try {
+      await deleteClient(c.id);
+      setSelectedClient(null);
+      setVueltaArchivo(v => v + 1);
+      showToast('Archivada', `${c.name} está en «Archivadas»`, 'success');
+    } catch (e: any) {
+      showToast('No se pudo archivar', e?.message || 'Intenta de nuevo.', 'warning');
+    }
+  };
+  const restaurarDesdeFicha = async (c: Client) => {
+    try {
+      const vuelta = await restaurarClienta(c.id);
+      setSelectedClient(vuelta);
+      setVueltaArchivo(v => v + 1);
+      showToast('Restaurada', `${c.name} volvió al directorio`, 'success');
+    } catch (e: any) {
+      showToast('No se pudo restaurar', e?.message || 'Intenta de nuevo.', 'warning');
+    }
+  };
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   // Otra pantalla (el aviso de alergia de una cita) pidió abrir la ficha de una clienta, en sus alergias
   useEffect(() => {
@@ -349,7 +386,13 @@ export const ClientsScreen: React.FC = () => {
           totalSpent: 0,
         });
         setSelectedClient(created);
-        showToast('Clienta registrada', `${formData.name.trim()} ha sido añadida a tu CRM.`, 'success');
+        if (created.restaurada) {
+          // El número era de una archivada: es ella que vuelve, con su historial
+          setVueltaArchivo(v => v + 1);
+          showToast('Estaba archivada', `${created.name} volvió al directorio con sus citas y su historial.`, 'success');
+        } else {
+          showToast('Clienta registrada', `${formData.name.trim()} ha sido añadida a tu CRM.`, 'success');
+        }
       }
       setShowAddModal(false);
     } catch (err: any) {
@@ -661,11 +704,14 @@ export const ClientsScreen: React.FC = () => {
             { id: 'alergico_sensible', label: '⚠️ Sensibles / Alergias' },
             { id: 'whatsapp', label: '💬 WhatsApp' },
             { id: 'instagram', label: '📸 Instagram' },
+            { id: 'archivadas', label: '🗄️ Archivadas' },
           ]}
         />
 
         {/* Clients List */}
-        {filteredClients.length === 0 ? (
+        {selectedTagFilter === 'archivadas' ? (
+          <ClientasArchivadas key={vueltaArchivo} busqueda={searchQuery} onAbrir={setSelectedClient} />
+        ) : filteredClients.length === 0 ? (
           <div className="py-12 flex flex-col items-center justify-center text-center p-6 bg-white dark:bg-neutral-900 rounded-2xl border border-dashed border-slate-300 dark:border-neutral-800">
             <Users className="w-10 h-10 text-slate-300 dark:text-neutral-700 mb-2" />
             <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -790,6 +836,11 @@ export const ClientsScreen: React.FC = () => {
                     {selectedClient.phone}
                   </p>
                   <SedesDeClienta sedes={selectedClient.sedes} className="mt-1" />
+                  {selectedClient.archivadaEn && (
+                    <span className="inline-flex items-center gap-1 mt-1 px-1.5 rounded-full bg-slate-200 dark:bg-neutral-700 text-slate-600 dark:text-neutral-300 text-[0.6875rem] font-semibold">
+                      <Archive className="w-3 h-3" /> Archivada
+                    </span>
+                  )}
                   {selectedClient.email && (
                     <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1">
                       <Mail className="w-3 h-3 text-slate-400" />
@@ -1151,20 +1202,25 @@ export const ClientsScreen: React.FC = () => {
               )}
             </div>
 
-            {/* Delete Client */}
+            {/* Archivar (nunca borrar) o, si ya está archivada, devolverla */}
             <div className="pt-2">
-              <button
-                onClick={() => {
-                  if (confirm(`¿Eliminar a ${selectedClient.name} del directorio?`)) {
-                    deleteClient(selectedClient.id);
-                    setSelectedClient(null);
-                  }
-                }}
-                className="w-full py-2 text-rose-500 hover:text-rose-600 font-semibold text-[0.75rem] flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Eliminar Clienta del Directorio</span>
-              </button>
+              {selectedClient.archivadaEn ? (
+                <button
+                  onClick={() => void restaurarDesdeFicha(selectedClient)}
+                  className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white font-bold text-[0.75rem] flex items-center justify-center gap-1.5 cursor-pointer ios-touch hover:opacity-90"
+                >
+                  <ArchiveRestore className="w-3.5 h-3.5" />
+                  <span>Restaurar al directorio</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => void archivarClienta(selectedClient)}
+                  className="w-full py-2 text-slate-500 hover:text-rose-600 font-semibold text-[0.75rem] flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Archive className="w-3.5 h-3.5" />
+                  <span>Archivar clienta</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1485,9 +1541,12 @@ export const ClientsScreen: React.FC = () => {
                       <button
                         onClick={e => {
                           e.stopPropagation();
-                          if (confirm(`¿Eliminar la categoría "${cat.name}" y todas sus opciones?`)) {
-                            handleMgDeleteCat(cat.id);
-                          }
+                          void confirmar({
+                            titulo: `¿Eliminar la categoría «${cat.name}»?`,
+                            mensaje: 'Se borran también todas sus opciones.',
+                            textoConfirmar: 'Eliminar',
+                            tono: 'peligro',
+                          }).then(ok => { if (ok) handleMgDeleteCat(cat.id); });
                         }}
                         disabled={mgDeletingId === cat.id}
                         className="text-rose-400 hover:text-rose-600 cursor-pointer disabled:opacity-40 p-0.5 transition"
@@ -1548,6 +1607,7 @@ export const ClientsScreen: React.FC = () => {
           )}
         </div>
       </IOSModal>
+      {modalConfirmar}
     </div>
   );
 };

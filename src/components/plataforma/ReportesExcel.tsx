@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { FileSpreadsheet, KeyRound, Copy, Check, Loader2, ShieldOff, RefreshCw } from 'lucide-react';
 import { api, urlApi } from '../../services/api';
 
@@ -37,6 +38,7 @@ const Copiable: React.FC<{ etiqueta: string; valor: string; mono?: boolean }> = 
  * deja sin acceso a cualquier Excel que tenga la anterior.
  */
 export const ReportesExcel: React.FC = () => {
+  const { confirmar, modalConfirmar } = useConfirmar();
   const [estado, setEstado] = useState<EstadoClave | null>(null);
   const [nueva, setNueva] = useState<string | null>(null);
   const [ocupada, setOcupada] = useState(false);
@@ -48,7 +50,7 @@ export const ReportesExcel: React.FC = () => {
   }, []);
 
   const generar = async () => {
-    if (estado?.activa && !window.confirm('Se creará una clave nueva y la anterior dejará de funcionar en cualquier Excel que la tenga. ¿Seguir?')) return;
+    if (estado?.activa && !(await confirmar(comoPregunta('Se creará una clave nueva y la anterior dejará de funcionar en cualquier Excel que la tenga. ¿Seguir?')))) return;
     setOcupada(true); setError(null);
     try {
       const r = await api.post<{ clave: string; estado: EstadoClave }>('/plataforma/reportes-piloto/clave', {});
@@ -57,13 +59,13 @@ export const ReportesExcel: React.FC = () => {
   };
 
   const revocar = async () => {
-    if (!window.confirm('El Excel ya no podrá actualizar los números hasta que generes otra clave. ¿Revocarla?')) return;
+    if (!(await confirmar(comoPregunta('El Excel ya no podrá actualizar los números hasta que generes otra clave. ¿Revocarla?')))) return;
     setOcupada(true); setError(null);
     try { setEstado(await api.delete<EstadoClave>('/plataforma/reportes-piloto/clave')); setNueva(null); }
     catch (e) { setError((e as Error).message); } finally { setOcupada(false); }
   };
 
-  return (
+  return (<>
     <section className="space-y-3">
       <div className="flex items-center gap-2">
         <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
@@ -121,5 +123,6 @@ export const ReportesExcel: React.FC = () => {
         </div>
       </div>
     </section>
-  );
+  {modalConfirmar}
+  </>);
 };

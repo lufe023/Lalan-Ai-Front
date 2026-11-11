@@ -295,7 +295,10 @@ interface AppContextType {
   buscarClientas: (texto: string) => Promise<void>;
   addClient: (client: Omit<Client, 'id' | 'registeredDate'>) => Promise<Client>;
   updateClient: (id: string, updated: Partial<Client>) => Promise<void>;
+  /** Archiva (no borra): sus citas, ventas y chats se quedan */
   deleteClient: (id: string) => Promise<void>;
+  /** Saca del archivo a una clienta y la devuelve al directorio */
+  restaurarClienta: (id: string) => Promise<Client>;
   services: SalonService[];
   addService: (service: Omit<SalonService, 'id'>) => Promise<SalonService>;
   updateService: (id: string, updated: Partial<SalonService>) => Promise<void>;
@@ -715,7 +718,7 @@ function fundirClientas(previas: Client[], nuevas: Client[]): Client[] {
   });
 }
 
-function mapApiClient(c: any): Client {
+export function mapApiClient(c: any): Client {
   return {
     id: c.id, name: c.name, phone: c.phone ?? '', email: c.email,
     avatar: urlDeFoto(c.avatar) ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=e2e8f0&color=475569`,
@@ -729,6 +732,8 @@ function mapApiClient(c: any): Client {
     trato: c.trato ?? null,
     tratoPersonal: c.tratoPersonal ?? null,
     sedes: Array.isArray(c.sedes) ? c.sedes : [],
+    archivadaEn: c.archivadaEn ?? null,
+    ...(c.restaurada ? { restaurada: true } : {}),
   };
 }
 function mapApiService(s: any): SalonService {
@@ -1235,7 +1240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       tratoPersonal: data.tratoPersonal?.trim() || undefined,
     });
     const client = mapApiClient(res);
-    setClients(c => [client, ...c]);
+    setClients(c => [client, ...c.filter(x => x.id !== client.id)]);
     setClientsTotal(t => (t === null ? t : t + 1));
     return client;
   }, []);
@@ -1259,6 +1264,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await api.delete(`/clients/${id}`);
     setClients(c => c.filter(x => x.id !== id));
     setClientsTotal(t => (t === null ? t : Math.max(0, t - 1)));
+  }, []);
+  const restaurarClienta = useCallback(async (id: string) => {
+    const client = mapApiClient(await api.post<any>(`/clients/${id}/restaurar`, {}));
+    setClients(c => [client, ...c.filter(x => x.id !== id)]);
+    setClientsTotal(t => (t === null ? t : t + 1));
+    return client;
   }, []);
 
   const addService = useCallback(async (data: Omit<SalonService, 'id'>) => {
@@ -3077,7 +3088,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentScreen, navigateTo, navigateToCatalog, screenHistory, goBack, catalogDeepLink, clearCatalogDeepLink,
       clients, isLoadingClients, clientsHasMore, clientsTotal,
       cargarMasClientas, buscarClientas,
-      addClient, updateClient, deleteClient,
+      addClient, updateClient, deleteClient, restaurarClienta,
       services, addService, updateService, deleteService, toggleServiceAi, copiarServicio, preciosServicioEnSedes, preciosProductoEnSedes,
       ponerFotoServicio, quitarFotoServicio, ponerFotoProducto, quitarFotoProducto, galeriaServicio, galeriaProducto,
       products, addProduct, updateProduct, deleteProduct, usarPrecioDelSalon, toggleProductAi,
