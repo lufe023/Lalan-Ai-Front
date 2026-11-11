@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Aparecer } from '../ui/movimiento';
+import { ItemAnimado } from '../ui/movimiento';
 import type { PriceTier } from '../../types';
 
 /**
@@ -30,8 +30,11 @@ export const TarjetaCatalogo: React.FC<{
   /** Lo que va al final (copiar a otra sede) */
   pie?: React.ReactNode;
 }> = ({ indice, foto, nombre, onEditar, acciones, etiquetas, datos, precio, detalle, interruptores, pie }) => (
-  <Aparecer
+  /* ItemAnimado: entra en cascada como antes y, cuando otra se archiva, se
+     corre con el resorte a ocupar su lugar (dentro de una ListaAnimada) */
+  <ItemAnimado
     indice={indice}
+    tocable={false}
     className="flex flex-col gap-2.5 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs transition hover:border-[var(--primary)]/40"
   >
     <div className="flex gap-3">
@@ -57,7 +60,7 @@ export const TarjetaCatalogo: React.FC<{
 
     <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 dark:border-neutral-800/60">{interruptores}</div>
     {pie}
-  </Aparecer>
+  </ItemAnimado>
 );
 
 /** Un botón chiquito de la tarjeta: solo el ícono, con su nombre al pasar encima */

@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useSedeActiva } from '../../context/SedeActivaContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
-import { Aparecer, ChipsFiltro } from '../ui/movimiento';
+import { ChipsFiltro, ItemAnimado, ListaAnimada } from '../ui/movimiento';
 import { MiniaturaCatalogo } from './FotoDelCatalogo';
 
 /** Un servicio o producto archivado, como lo manda el servidor */
@@ -79,6 +79,35 @@ export const ArchivadosCatalogo: React.FC = () => {
     }
   };
 
+  /** Todo lo que se ve (con el filtro y la búsqueda de ahora) vuelve de una vez */
+  const restaurarTodo = async () => {
+    const lista = [
+      ...verServicios.map(a => ({ tipo: 'servicio' as const, a })),
+      ...verProductos.map(a => ({ tipo: 'producto' as const, a })),
+    ];
+    if (!lista.length) return;
+    const ok = await confirmar({
+      titulo: `¿Restaurar ${lista.length === 1 ? `«${lista[0].a.name}»` : `los ${lista.length}`}?`,
+      mensaje: `Vuelven al catálogo como estaban: ${verServicios.length} servicios y ${verProductos.length} productos. Lalán los ofrece otra vez y salen en la Vitrina los que tenías publicados.`,
+      textoConfirmar: 'Restaurar todo',
+      icono: <ArchiveRestore className="w-7 h-7" aria-hidden="true" />,
+    });
+    if (!ok) return;
+    setRestaurando('todo');
+    let fallaron = 0;
+    for (const { tipo, a } of lista) {
+      try {
+        await api.post(`/${tipo === 'servicio' ? 'services' : 'products'}/${a.id}/restaurar`, {});
+        if (tipo === 'servicio') setServicios(l => (l ?? []).filter(x => x.id !== a.id));
+        else setProductos(l => (l ?? []).filter(x => x.id !== a.id));
+      } catch { fallaron++; }
+    }
+    await recargarCatalogo();
+    setRestaurando(null);
+    if (fallaron) showToast('Restaurado a medias', `${lista.length - fallaron} volvieron; ${fallaron} no se pudieron restaurar. Intenta de nuevo.`, 'warning');
+    else showToast('Restaurado', `${lista.length} volvieron al catálogo`, 'success');
+  };
+
   const texto = buscar.trim().toLowerCase();
   const filtra = (l: Archivado[] | null) => (l ?? []).filter(x => !texto || x.name.toLowerCase().includes(texto) || (x.sku ?? '').toLowerCase().includes(texto));
   const verServicios = que !== 'productos' ? filtra(servicios) : [];
@@ -87,9 +116,10 @@ export const ArchivadosCatalogo: React.FC = () => {
   const nada = !cargando && verServicios.length === 0 && verProductos.length === 0;
 
   const tarjeta = (tipo: 'servicio' | 'producto', a: Archivado, i: number) => (
-    <Aparecer
+    <ItemAnimado
       key={a.id}
       indice={i}
+      tocable={false}
       className="flex flex-col gap-2.5 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs"
     >
       <div className="flex items-center gap-3 min-w-0">
@@ -126,7 +156,7 @@ export const ArchivadosCatalogo: React.FC = () => {
         {restaurando === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArchiveRestore className="w-3.5 h-3.5" />}
         Restaurar
       </button>
-    </Aparecer>
+    </ItemAnimado>
   );
 
   return (
@@ -163,6 +193,20 @@ export const ArchivadosCatalogo: React.FC = () => {
 
       {error && <p className="text-xs text-rose-600">{error}</p>}
 
+      {!cargando && verServicios.length + verProductos.length > 1 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => void restaurarTodo()}
+            disabled={restaurando !== null}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--primary)]/40 text-[var(--primary)] bg-white dark:bg-neutral-900 text-[0.75rem] font-bold ios-touch cursor-pointer hover:bg-[var(--primary)]/5 disabled:opacity-60"
+          >
+            {restaurando === 'todo' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArchiveRestore className="w-3.5 h-3.5" />}
+            Restaurar {texto || que !== 'todos' ? 'lo que ves' : 'todo'} ({verServicios.length + verProductos.length})
+          </button>
+        </div>
+      )}
+
       {cargando ? (
         <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
       ) : nada ? (
@@ -178,17 +222,17 @@ export const ArchivadosCatalogo: React.FC = () => {
           {verServicios.length > 0 && (
             <section className="space-y-2">
               {que === 'todos' && <h3 className="text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">Servicios</h3>}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              <ListaAnimada clave="servicios" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {verServicios.map((a, i) => tarjeta('servicio', a, i))}
-              </div>
+              </ListaAnimada>
             </section>
           )}
           {verProductos.length > 0 && (
             <section className="space-y-2">
               {que === 'todos' && <h3 className="text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wide">Productos</h3>}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              <ListaAnimada clave="productos" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {verProductos.map((a, i) => tarjeta('producto', a, i))}
-              </div>
+              </ListaAnimada>
             </section>
           )}
         </>
