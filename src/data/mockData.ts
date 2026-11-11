@@ -925,6 +925,7 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
 
 export const INITIAL_SETTINGS: SalonBusinessSettings = {
   salonName: 'Lalan AI Studio & Lounge',
+  sede: '',
   tagline: 'Live Assistant for Logistics, Appointments & Networks',
   phone: '+52 (55) 8900-5252',
   address: 'Av. Paseo de las Palmas 720, Lomas de Chapultepec',

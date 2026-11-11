@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
-import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet, Sparkles } from 'lucide-react';
+import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet, Sparkles, Pencil, Check } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
 import { IOSToggle } from '../ui/IOSToggle';
 import { api } from '../../services/api';
@@ -303,6 +303,16 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
     if (!(await confirmar(comoPregunta(`¿Sumarle ${respuestas.toLocaleString('es-DO')} respuestas a ${d?.nombre ?? 'este salón'} por ${precio.toLocaleString('es-DO')} pesos? Valen hasta fin de mes.`)))) return;
     try { await api.post(`/plataforma/negocios/${id}/paquete`, { respuestas }); await cargar(); onCambio(); } catch (e) { setError((e as Error).message); }
   };
+  /** La sede que se está renombrando aquí mismo */
+  const [editandoSede, setEditandoSede] = useState<{ id: string; nombre: string; guardando?: boolean } | null>(null);
+  const renombrarSede = async () => {
+    if (!editandoSede || editandoSede.nombre.trim().length < 2) return;
+    setEditandoSede({ ...editandoSede, guardando: true });
+    try {
+      setD(await api.patch<NegocioDetalle>(`/plataforma/negocios/${id}/sedes/${editandoSede.id}`, { nombre: editandoSede.nombre.trim() }));
+      setEditandoSede(null); onCambio();
+    } catch (e) { setError((e as Error).message); setEditandoSede((x) => (x ? { ...x, guardando: false } : x)); }
+  };
   const agregarSede = async () => {
     if (sede.trim().length < 2) return;
     try { setD(await api.post<NegocioDetalle>(`/plataforma/negocios/${id}/sedes`, { nombre: sede.trim() })); setSede(''); onCambio(); } catch (e) { setError((e as Error).message); }
@@ -444,7 +454,21 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         </div>
         <div className="space-y-2">
           <div className="text-[0.75rem] font-bold uppercase tracking-wider text-slate-500">Sedes</div>
-          {d.sedes.map((s) => <div key={s.id} className="flex items-center gap-1.5 text-[0.8125rem]"><MapPin className="w-3.5 h-3.5 text-slate-400" />{s.name}{s.address && <span className="text-slate-400"> · {s.address}</span>}</div>)}
+          {d.sedes.map((s) => editandoSede?.id === s.id ? (
+            <form key={s.id} onSubmit={(e) => { e.preventDefault(); void renombrarSede(); }} className="flex gap-2">
+              <input autoFocus value={editandoSede.nombre} maxLength={100} onChange={(e) => setEditandoSede({ ...editandoSede, nombre: e.target.value })} onKeyDown={(e) => { if (e.key === 'Escape') setEditandoSede(null); }} aria-label={`Nuevo nombre de ${s.name}`} className={campo} />
+              <button type="submit" disabled={editandoSede.guardando || editandoSede.nombre.trim().length < 2} className="px-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[0.75rem] font-bold cursor-pointer shrink-0 flex items-center gap-1 disabled:opacity-50">
+                {editandoSede.guardando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}Guardar
+              </button>
+              <button type="button" onClick={() => setEditandoSede(null)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer" title="Cancelar"><X className="w-3.5 h-3.5 text-slate-500" /></button>
+            </form>
+          ) : (
+            <div key={s.id} className="flex items-center gap-1.5 text-[0.8125rem]">
+              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="min-w-0 truncate">{s.name}{s.address && <span className="text-slate-400"> · {s.address}</span>}</span>
+              {!soloSoporte && <button type="button" onClick={() => setEditandoSede({ id: s.id, nombre: s.name })} className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Cambiar el nombre"><Pencil className="w-3.5 h-3.5 text-slate-500" /></button>}
+            </div>
+          ))}
           {!soloSoporte && <div className="flex gap-2">
             <input value={sede} onChange={(e) => setSede(e.target.value)} placeholder="Nueva sede (ej.: Naco)" className={campo} />
             <button type="button" onClick={() => void agregarSede()} className="px-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[0.75rem] font-bold cursor-pointer shrink-0">Agregar</button>
