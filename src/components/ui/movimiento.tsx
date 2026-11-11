@@ -22,6 +22,80 @@ const DURACION_ENTRADA_MS = 700;
 
 const PrimeraVez = createContext(false);
 
+/** Al reacomodarse, cada tarjeta se desliza a su nuevo sitio en este tiempo */
+const DESLIZ_MS = 480;
+/** Curva del deslizamiento: arranca con decisión y llega frenando suave, sin rebote */
+const DESLIZ_CURVA = 'cubic-bezier(0.25, 1, 0.5, 1)';
+
+/**
+ * Las tarjetas que cambian de sitio (porque una se fue, llegó otra o se
+ * reordenaron) se deslizan desde donde estaban, en vez de saltar.
+ *
+ * Se hace a mano (FLIP) y no con `layout` de motion: en la rejilla del
+ * Catálogo motion las dejaba saltar a su sitio y después las sacudía unos
+ * píxeles (se veía brusco en PC y en el teléfono). Aquí:
+ *  · se guarda dónde está cada tarjeta (offsetLeft/offsetTop: no cambian con
+ *    el scroll ni con las transformaciones);
+ *  · cuando cambia la lista (MutationObserver) o el tamaño de una tarjeta
+ *    empuja a las demás (ResizeObserver), cada una que se movió arranca
+ *    desde su sitio anterior y se desliza al nuevo;
+ *  · se anima la propiedad `translate`, aparte del `transform` que usa motion
+ *    para hundirse al tocar o la entrada en cascada: no se pisan, y solo
+ *    mueve la composición (va fluido también en teléfonos modestos);
+ *  · si una tarjeta ya iba deslizándose, sigue desde donde se ve, sin tirón.
+ */
+function useDeslizar(contenedor: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const caja = contenedor.current;
+    if (!caja) return;
+    const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const sitios = new Map<HTMLElement, { x: number; y: number }>();
+    let ancho = caja.offsetWidth;
+
+    const tarjetas = () => Array.from(caja.children).filter((n): n is HTMLElement => n instanceof HTMLElement);
+    const guardar = () => {
+      sitios.clear();
+      for (const t of tarjetas()) sitios.set(t, { x: t.offsetLeft, y: t.offsetTop });
+    };
+    /** Lo que la tarjeta todavía va corrida de su sitio (si estaba deslizándose) */
+    const corrimiento = (t: HTMLElement) => {
+      const [x = '0', y = '0'] = getComputedStyle(t).translate.split(' ');
+      return { x: parseFloat(x) || 0, y: parseFloat(y) || 0 };
+    };
+
+    const reacomodar = () => {
+      const anchoNuevo = caja.offsetWidth;
+      // Si la pantalla cambió de ancho (girar el teléfono), se acomodan sin deslizarse
+      const animar = anchoNuevo === ancho && !quieto?.matches;
+      ancho = anchoNuevo;
+      if (animar) {
+        for (const t of tarjetas()) {
+          const antes = sitios.get(t);
+          if (!antes) continue; // la que acaba de llegar entra con su propia animación
+          const dx = antes.x - t.offsetLeft;
+          const dy = antes.y - t.offsetTop;
+          if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+          const ya = corrimiento(t);
+          t.getAnimations().forEach(a => { if ((a as any).id === 'deslizar') a.cancel(); });
+          const anim = t.animate(
+            [{ translate: `${dx + ya.x}px ${dy + ya.y}px` }, { translate: '0px 0px' }],
+            { duration: DESLIZ_MS, easing: DESLIZ_CURVA },
+          );
+          anim.id = 'deslizar';
+        }
+      }
+      guardar();
+    };
+
+    guardar();
+    const cambios = new MutationObserver(reacomodar);
+    cambios.observe(caja, { childList: true });
+    const tamanos = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(reacomodar) : null;
+    tamanos?.observe(caja);
+    return () => { cambios.disconnect(); tamanos?.disconnect(); };
+  }, [contenedor]);
+}
+
 /** Una lista cuyas tarjetas entran en cascada y se reacomodan solas */
 /**
  * `clave`: cuando cambia (otro día en la Agenda, otra pestaña), la lista
@@ -29,6 +103,8 @@ const PrimeraVez = createContext(false);
  */
 export const ListaAnimada: React.FC<{ className?: string; clave?: string; children: React.ReactNode }> = ({ className, clave, children }) => {
   const [primeraVez, setPrimeraVez] = useState(true);
+  const caja = useRef<HTMLDivElement>(null);
+  useDeslizar(caja);
   useEffect(() => {
     setPrimeraVez(true);
     const t = window.setTimeout(() => setPrimeraVez(false), DURACION_ENTRADA_MS);
@@ -37,11 +113,10 @@ export const ListaAnimada: React.FC<{ className?: string; clave?: string; childr
   return (
     <PrimeraVez.Provider value={primeraVez}>
       {/* El contenedor no se anima: si animara su tamaño, estiraría y aplastaría
-          todas las tarjetas (el "elástico" al cambiar de filtro o al llegar
-          al final y cargar más). Las tarjetas ya se acomodan solas.
-          `relative`: popLayout saca las que se van con position absolute */}
-      <div className={`relative ${className ?? ''}`}>
-        <AnimatePresence initial mode="popLayout">{children}</AnimatePresence>
+          todas las tarjetas. La que se va se desvanece en su sitio (deja el
+          hueco un instante) y, al irse, las demás se deslizan a llenarlo. */}
+      <div ref={caja} className={`relative ${className ?? ''}`}>
+        <AnimatePresence initial>{children}</AnimatePresence>
       </div>
     </PrimeraVez.Provider>
   );
@@ -66,13 +141,12 @@ export const ItemAnimado = React.forwardRef<HTMLDivElement, PropsItem>(({ indice
      turno de la cascada, saltaba a transparente y volvía a aparecer (el
      "parpadeo" de cada tarjeta). La animación CSS pinta el primer cuadro ya
      transparente, sin depender de cuándo arranca el JavaScript. motion sigue
-     a cargo de reacomodarse, salir y hundirse al tocar. */
+     a cargo de salir y hundirse al tocar; reacomodarse lo hace ListaAnimada. */
   return (
     <motion.div
       ref={ref}
-      layout="position"
       initial={false}
-      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15 } }}
+      exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
       {...(tocable ? { whileTap: { scale: 0.975 }, whileHover: { y: -2 } } : {})}
       transition={RESORTE}
       className={`entrar-suave ${className ?? ''}`}
