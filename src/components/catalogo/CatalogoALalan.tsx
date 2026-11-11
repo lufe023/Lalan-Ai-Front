@@ -6,13 +6,16 @@ import { VideoProcesando, VistaVideo, miniaturaDeYoutube } from './VideoProcesan
 import { api, blobProtegido, subirArchivo } from '../../services/api';
 import { bienvenidaApi } from '../../services/bienvenida';
 import { reducirFoto } from '../../utils/reducirFoto';
+import { VIDEO_SUBE_ENTERO, formularioDeVideo, paginasDelPdf } from '../../utils/aligerarArchivo';
 import { fotoGenericaComoDataUrl, fotosSugeridas } from './FotoSugerida';
 import { useApp } from '../../context/AppContext';
 import type { SalonProduct } from '../../types';
 import type { ServicioLeido } from '../../types/bienvenida';
 
-/** Fotos y PDF por vez (lo mismo que acepta el servidor) */
+/** Fotos por pedido (lo mismo que acepta el servidor) */
 const FOTOS_POR_VEZ = 3;
+/** Fotos o páginas de PDF que se leen en total (en pedidos de 3) */
+const FOTOS_EN_TOTAL = 9;
 const ACEPTA = 'video/*,image/jpeg,image/png,image/webp,application/pdf';
 
 interface ProductoLeido {
@@ -36,6 +39,8 @@ interface FilaServicio {
   marcado: boolean; nombre: string; precio: string; duracion: number | null;
   categoria: string | null; plantilla: string | null; serviceId: string | null;
 }
+
+const mismoNombre = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /** Sin conexión el navegador dice «Failed to fetch»: eso no se le enseña a la dueña */
 const mensaje = (e: any, porDefecto: string) => {
@@ -98,9 +103,8 @@ export const CatalogoALalan: React.FC<{
     try {
       let r: DelVideo;
       if (archivo) {
-        const f = new FormData();
-        f.append('archivo', archivo);
-        r = await subirArchivo<DelVideo>('/lalan-dice/productos-del-video', f);
+        // Uno pesado no sube entero: va aligerado (cuadros y audio)
+        r = await subirArchivo<DelVideo>('/lalan-dice/productos-del-video', await formularioDeVideo(archivo));
       } else {
         r = await api.post<DelVideo>('/lalan-dice/productos-del-video', { enlace: link });
       }
@@ -109,7 +113,7 @@ export const CatalogoALalan: React.FC<{
       setProductos(r.productos.map(filaDe));
       setServicios([]);
       // Un video con un solo producto es SU video: va a su Vitrina. Con varios, que ella decida
-      setVideoEnVitrina(r.productos.length === 1 && r.video !== 'youtube');
+      setVideoEnVitrina(r.productos.length === 1 && r.video !== 'youtube' && !(archivo && archivo.size > VIDEO_SUBE_ENTERO));
     } catch (e) {
       setError(mensaje(e, 'No pude conectar con Lalán ahora mismo. Inténtalo en un momento.'));
     } finally {
@@ -125,9 +129,23 @@ export const CatalogoALalan: React.FC<{
     setError(null);
     setLeyendo({ tipo: 'foto', url });
     try {
-      const f = new FormData();
-      for (const x of await Promise.all(fotos.slice(0, FOTOS_POR_VEZ).map(reducirFoto))) f.append('fotos', x);
-      const r = await subirArchivo<DelCatalogo>('/bienvenida/foto-catalogo', f);
+      // Los PDF se vuelven fotos aquí (uno pesado ya no choca con el tope de 8 MB) y todo va reducido
+      const paginas: File[] = [];
+      for (const x of fotos) {
+        if (paginas.length >= FOTOS_EN_TOTAL) break;
+        if (x.type !== 'application/pdf') { paginas.push(x); continue; }
+        paginas.push(...await paginasDelPdf(x, FOTOS_EN_TOTAL - paginas.length).catch(() => [x]));
+      }
+      const listas = await Promise.all(paginas.slice(0, FOTOS_EN_TOTAL).map(reducirFoto));
+      const r: DelCatalogo = { servicios: [], productos: [] };
+      for (let i = 0; i < listas.length; i += FOTOS_POR_VEZ) {
+        const f = new FormData();
+        for (const x of listas.slice(i, i + FOTOS_POR_VEZ)) f.append('fotos', x);
+        const parte = await subirArchivo<DelCatalogo>('/bienvenida/foto-catalogo', f);
+        // Lo que sale en dos páginas se cuenta una vez
+        for (const p of parte.productos) if (!r.productos.some(q => mismoNombre(q.nombre, p.nombre))) r.productos.push(p);
+        for (const s of parte.servicios) if (!r.servicios.some(q => mismoNombre(q.leido, s.leido))) r.servicios.push(s);
+      }
       if (!r.productos.length && !r.servicios.length) {
         setError('No vi productos ni servicios en eso. Prueba con una foto más clara de tu catálogo o de tu lista de precios.');
         return;
@@ -194,7 +212,7 @@ export const CatalogoALalan: React.FC<{
   /** El video del reel, una sola vez, para la Vitrina de lo que se cree */
   const videoParaVitrina = async (): Promise<File | null> => {
     if (!videoEnVitrina || origen?.tipo !== 'video') return null;
-    if (origen.video) return origen.video;
+    if (origen.video) return origen.video.size > VIDEO_SUBE_ENTERO ? null : origen.video;
     if (origen.enlace && /instagr/i.test(origen.enlace)) {
       const url = await blobProtegido(`/lalan-dice/video-instagram?enlace=${encodeURIComponent(origen.enlace)}`);
       try { return new File([await (await fetch(url)).blob()], 'instagram.mp4', { type: 'video/mp4' }); }
@@ -370,7 +388,11 @@ export const CatalogoALalan: React.FC<{
                     </div>
                   </div>
                 ))}
-                {origen.tipo === 'video' && origen.enlace && !/instagr/i.test(origen.enlace) ? null : origen.tipo === 'video' && productosACrear.length > 0 && (
+                {origen.tipo === 'video' && origen.video && origen.video.size > VIDEO_SUBE_ENTERO && productosACrear.length > 0 ? (
+                  <p className="px-1 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                    Ese video pesa {Math.round(origen.video.size / 1048576)} MB y la Vitrina acepta hasta 100 MB. Lalán lo leyó igual; para ponerlo en la Vitrina, súbelo más corto desde «Fotos y videos».
+                  </p>
+                ) : origen.tipo === 'video' && origen.enlace && !/instagr/i.test(origen.enlace) ? null : origen.tipo === 'video' && productosACrear.length > 0 && (
                   <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800">
                     <span className="flex items-center gap-2 text-slate-700 dark:text-neutral-200"><Store className="w-4 h-4 text-purple-500" /> Poner el video en la Vitrina de {productosACrear.length === 1 ? 'este producto' : 'estos productos'}</span>
                     <IOSToggle id="video-en-vitrina" checked={videoEnVitrina} onChange={setVideoEnVitrina} activeColor="#9333ea" />
