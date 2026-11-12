@@ -27,7 +27,7 @@ import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO 
 import { irA } from '../../services/avisos';
 import { avisarCambioPendientes, cuandoCorto, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
-import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
+import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, genioDesdeBurbuja, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
 
 interface Accion {
   id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo' | 'compra' | 'recordatorio'; resumen: string;
@@ -224,6 +224,8 @@ export const PantallaLalan: React.FC = () => {
   const [llegoVolando, setLlegoVolando] = useState(false);
   /** El genio va con sombra y el fondo un poco oscuro: así se ve la forma entrando */
   const [conGenio, setConGenio] = useState(false);
+  /** Cómo aparece la pantalla al abrir (null = aparece suave, como siempre) */
+  const [aparecer, setAparecer] = useState<{ initial: TargetAndTransition; animate: TargetAndTransition } | null>(null);
   const tAterriza = useRef(0);
   const [estiloMin, setEstiloMin] = useState<EstiloMinimizar>(estiloMinimizar);
   // El cuadro de escribir crece con lo escrito y vuelve a una línea al enviar
@@ -251,7 +253,12 @@ export const PantallaLalan: React.FC = () => {
   const soltarOido = () => { oido.current?.soltar(); oido.current = null; setNivelOido(0); };
 
   useEffect(() => {
-    const abrir = () => { ponerBurbuja(false); setSinLeer(false); setAbierta(true); };
+    const abrir = () => {
+      // Con el genio, Lalán sale de su burbuja igual que entró
+      const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      setAparecer(!quieto && estiloMinimizar() === 'genio' ? genioDesdeBurbuja(destinoBurbuja()) : null);
+      ponerBurbuja(false); setSinLeer(false); setAbierta(true);
+    };
     window.addEventListener(EVENTO_ABRIR, abrir);
     return () => window.removeEventListener(EVENTO_ABRIR, abrir);
   }, []);
@@ -679,7 +686,7 @@ export const PantallaLalan: React.FC = () => {
           role="dialog" aria-modal="true" aria-label="Lalan"
           custom={salida}
           variants={{ salir: (s: TargetAndTransition | null) => s ?? { opacity: 0, transition: { duration: 0.2 } } }}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit="salir"
+          initial={aparecer?.initial ?? { opacity: 0 }} animate={aparecer?.animate ?? { opacity: 1 }} exit="salir"
           transition={{ duration: 0.2 }}
           className={`fixed inset-0 z-[300] flex flex-col backdrop-blur-2xl text-slate-900 dark:text-neutral-100 ${fondoQuiosco ? 'bg-[#fbf7f8] dark:bg-[#0c0a0b]' : 'bg-slate-50/90 dark:bg-neutral-950/92'}`}
           style={vista && conTeclado

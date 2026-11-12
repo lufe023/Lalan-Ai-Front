@@ -13,7 +13,7 @@ interface EstadoLlamadas {
   miTelefono: string | null;
   llamarPor: string[];
   avisos: { id: string; descripcion: string; grupo: string }[];
-  sedes: { id: string; nombre: string; llamarCitaHoras: number | null }[];
+  sedes: { id: string; nombre: string; llamarCitaHoras: number | null; textoLlamadaCita: string | null }[];
   horasCita: number[];
   esDireccion: boolean;
 }
@@ -73,7 +73,7 @@ export const AvisosPorLlamada: React.FC = () => {
   }, []);
   useEffect(() => { void cargar(); }, [cargar]);
 
-  const guardar = async (cambio: { llamarPor?: string[]; sedes?: { id: string; llamarCitaHoras: number | null }[]; telefono?: string }, clave: string) => {
+  const guardar = async (cambio: { llamarPor?: string[]; sedes?: { id: string; llamarCitaHoras?: number | null; textoLlamadaCita?: string | null }[]; telefono?: string }, clave: string) => {
     setError(''); setOcupado(clave);
     // Se ve al instante; si falla, se recarga lo que quedó de verdad
     setDatos((d) => d && ({
@@ -89,6 +89,14 @@ export const AvisosPorLlamada: React.FC = () => {
   const probar = async () => {
     setError(''); setAviso(''); setOcupado('prueba');
     try { await api.post('/llamadas/prueba', {}); setAviso('Te estamos llamando. Contesta para oír cómo suena.'); void cargar(); }
+    catch (e) { setError((e as Error).message); }
+    finally { setOcupado(null); }
+  };
+
+  /** Oír en mi teléfono lo que Lalán le dice a la clienta de esa sede */
+  const probarCita = async (sede: string) => {
+    setError(''); setAviso(''); setOcupado(`prueba-${sede}`);
+    try { await api.post('/llamadas/prueba-cita', { sede }); setAviso('Te estamos llamando con el recordatorio de la cita. Contesta y prueba marcar 1.'); void cargar(); }
     catch (e) { setError((e as Error).message); }
     finally { setOcupado(null); }
   };
@@ -202,7 +210,8 @@ export const AvisosPorLlamada: React.FC = () => {
           </div>
           <div className="space-y-2">
             {datos.sedes.map((s) => (
-              <label key={s.id} className="flex items-center gap-3">
+              <div key={s.id} className="space-y-2">
+              <label className="flex items-center gap-3">
                 <span className="flex-1 min-w-0 text-[0.8125rem] font-medium truncate">{s.nombre}</span>
                 <select value={s.llamarCitaHoras ?? ''} disabled={ocupado === `sede-${s.id}`}
                   onChange={(e) => void guardar({ sedes: [{ id: s.id, llamarCitaHoras: e.target.value ? Number(e.target.value) : null }] }, `sede-${s.id}`)}
@@ -212,6 +221,13 @@ export const AvisosPorLlamada: React.FC = () => {
                   {datos.horasCita.map((h) => <option key={h} value={h}>{h === 24 ? 'Un día antes' : `${h} ${h === 1 ? 'hora' : 'horas'} antes`}</option>)}
                 </select>
               </label>
+              {s.llamarCitaHoras !== null && (
+                <TextoDeLaLlamada sede={s} guardando={ocupado === `texto-${s.id}`} probando={ocupado === `prueba-${s.id}`}
+                  puedeProbar={listo && !!datos.miTelefono && !sinCupo}
+                  onGuardar={(t) => void guardar({ sedes: [{ id: s.id, textoLlamadaCita: t }] }, `texto-${s.id}`)}
+                  onProbar={() => void probarCita(s.id)} />
+              )}
+              </div>
             ))}
           </div>
           {!listo && datos.sedes.some((s) => s.llamarCitaHoras) && (
@@ -251,6 +267,72 @@ export const AvisosPorLlamada: React.FC = () => {
           </ul>
         </div>
       )}
+    </div>
+  );
+};
+
+const CAMPOS: { campo: string; etiqueta: string; ejemplo: string }[] = [
+  { campo: '{nombre}', etiqueta: 'Nombre', ejemplo: 'Viena' },
+  { campo: '{cuando}', etiqueta: 'Día y hora', ejemplo: 'hoy a las 7 de la noche' },
+  { campo: '{servicio}', etiqueta: 'Servicio', ejemplo: 'balayage con Karla' },
+  { campo: '{sede}', etiqueta: 'Sede', ejemplo: 'Piantini' },
+  { campo: '{salon}', etiqueta: 'Salón', ejemplo: 'tu salón' },
+];
+const SUGERIDO = 'Hola {nombre}, soy Lalán, la asistente de {salon}. Le recuerdo su cita de {servicio} {cuando}. Para confirmar, presione 1. Si necesita cambiarla, presione 2.';
+
+/**
+ * Lo que dice Lalán al llamar a la clienta, con las palabras del salón.
+ * Los campos entre llaves se llenan con los datos de cada cita; si el texto
+ * no dice que marque 1, Lalán lo agrega al final.
+ */
+const TextoDeLaLlamada: React.FC<{
+  sede: { id: string; nombre: string; textoLlamadaCita: string | null };
+  guardando: boolean; probando: boolean; puedeProbar: boolean;
+  onGuardar: (texto: string) => void; onProbar: () => void;
+}> = ({ sede, guardando, probando, puedeProbar, onGuardar, onProbar }) => {
+  const [abierto, setAbierto] = useState(!!sede.textoLlamadaCita);
+  const [texto, setTexto] = useState(sede.textoLlamadaCita ?? '');
+  useEffect(() => { setTexto(sede.textoLlamadaCita ?? ''); }, [sede.textoLlamadaCita]);
+  const cambiado = texto.trim() !== (sede.textoLlamadaCita ?? '').trim();
+  const ejemplo = CAMPOS.reduce((t, c) => t.split(c.campo).join(c.ejemplo), texto.trim() || SUGERIDO);
+  const poner = (campo: string) => setTexto((t) => `${t}${t && !t.endsWith(' ') ? ' ' : ''}${campo}`);
+
+  if (!abierto) {
+    return (
+      <button type="button" onClick={() => setAbierto(true)} className="ml-0.5 text-[0.75rem] font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">
+        <ChevronRight className="w-3.5 h-3.5" /> Lo que dice Lalán en {sede.nombre}
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 p-3 space-y-2">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Lo que dice Lalán al llamar</div>
+      <textarea value={texto} onChange={(e) => setTexto(e.target.value.slice(0, 400))} rows={3} placeholder={SUGERIDO}
+        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[16px] sm:text-[0.8125rem] leading-snug resize-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
+      <div className="flex flex-wrap gap-1.5">
+        {CAMPOS.map((c) => (
+          <button key={c.campo} type="button" onClick={() => poner(c.campo)}
+            className="px-2.5 py-1 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.6875rem] font-semibold text-slate-600 dark:text-neutral-300 cursor-pointer">
+            + {c.etiqueta}
+          </button>
+        ))}
+      </div>
+      <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 leading-snug"><span className="font-semibold">Así suena:</span> «{ejemplo}»</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => onGuardar(texto)} disabled={!cambiado || guardando}
+          className="min-h-[36px] px-3.5 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer">
+          {guardando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Guardar
+        </button>
+        <button type="button" onClick={onProbar} disabled={!puedeProbar || probando || cambiado}
+          title={cambiado ? 'Guarda primero el texto' : !puedeProbar ? 'Se puede cuando las llamadas estén encendidas y tengas tu teléfono' : 'Te llama a ti con este texto'}
+          className="min-h-[36px] px-3.5 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-semibold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer">
+          {probando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />} Escucharla en mi teléfono
+        </button>
+        {sede.textoLlamadaCita && (
+          <button type="button" onClick={() => { setTexto(''); onGuardar(''); }} disabled={guardando}
+            className="min-h-[36px] px-2 text-[0.75rem] font-semibold text-slate-400 hover:text-slate-600 cursor-pointer">Volver al de siempre</button>
+        )}
+      </div>
     </div>
   );
 };

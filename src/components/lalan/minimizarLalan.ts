@@ -162,3 +162,23 @@ function genio(d: Destino, vw: number, vh: number, seg: number): TargetAndTransi
     transition: { duration: seg, ease: 'linear', times: tiempos },
   };
 }
+
+/**
+ * Al abrir, el mismo genio al revés: la pantalla sale de la burbuja por el
+ * embudo y se despliega. Al terminar se quita el recorte (si no, al girar el
+ * teléfono quedaría cortada a la medida de antes).
+ */
+export function genioDesdeBurbuja(d: Destino): { initial: TargetAndTransition; animate: TargetAndTransition } {
+  const ida = genio(d, window.innerWidth, window.innerHeight, DURACION_MINIMIZAR.genio / 1000);
+  const recortes = [...(ida.clipPath as string[])].reverse();
+  const bajadas = [...(ida.y as number[])].reverse();
+  const opacidad = recortes.map((_, i) => (i === 0 ? 0 : i === 1 ? 0.8 : 1));
+  return {
+    initial: { clipPath: recortes[0], y: bajadas[0], opacity: 0 },
+    animate: {
+      clipPath: recortes, y: bajadas, opacity: opacidad,
+      transition: { duration: DURACION_MINIMIZAR.genio / 1000, ease: 'linear', times: recortes.map((_, i) => i / (recortes.length - 1)) },
+      transitionEnd: { clipPath: 'none', y: 0 },
+    },
+  };
+}
