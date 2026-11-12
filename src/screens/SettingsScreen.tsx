@@ -55,6 +55,7 @@ import { PeticionesMusica } from '../components/ui/PeticionesMusica';
 import { TuPlan } from '../components/ajustes/TuPlan';
 import { UsuariosSalon } from '../components/ajustes/UsuariosSalon';
 import { AvisosEquipo } from '../components/ajustes/AvisosEquipo';
+import { AvisosPorLlamada } from '../components/ajustes/AvisosPorLlamada';
 import { CambiosDelSalon, SoporteEnTuSalon } from '../components/ajustes/TransparenciaSalon';
 import { DosPasosCuenta } from '../components/ajustes/DosPasos';
 import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
@@ -512,6 +513,7 @@ export const SettingsScreen: React.FC = () => {
         {currentUser?.role === 'admin' && <CambiosDelSalon />}
           </>
         )}
+        {seccion === 'llamadas' && <AvisosPorLlamada />}
         {seccion === 'plan' && (
           <>
         {/* Su plan y su gente: lo primero que una dueña busca en Ajustes */}
