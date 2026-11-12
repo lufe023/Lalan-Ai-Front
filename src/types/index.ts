@@ -248,6 +248,8 @@ export interface Client {
   trato?: TratoCliente | null;
   /** Cómo le habla el salón a ella (de tú, "mi reina"…). Lalan lo usa solo con ella. Vacío: la voz general */
   tratoPersonal?: string | null;
+  /** Cumpleaños: "MM-DD" o "AAAA-MM-DD". Lalán lo recuerda en «Tu día» */
+  cumpleanos?: string | null;
 }
 
 export type TratoCliente = 'femenino' | 'masculino';

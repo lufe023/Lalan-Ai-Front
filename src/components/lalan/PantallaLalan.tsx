@@ -24,9 +24,12 @@ import { descargarPlan, MisPlanes } from './MisPlanes';
 import { VerComo } from '../minitutoriales/VerComo';
 import { usePlan } from '../../context/PlanContext';
 import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO } from '../../services/compras';
+import { irA } from '../../services/avisos';
+import { avisarCambioPendientes, cuandoCorto, pendientesApi } from '../../services/pendientes';
+import { TuDiaLalan } from './TuDiaLalan';
 
 interface Accion {
-  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo' | 'compra'; resumen: string;
+  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo' | 'compra' | 'recordatorio'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
   /** "Llévame": la tarea a la que lleva y en qué sede */
   guia?: GuiaTarjeta | null;
@@ -36,7 +39,10 @@ interface Accion {
   tutorial?: TutorialTarjeta | null;
   /** Repetir una compra: el pedido de antes y, ya confirmada, el borrador nuevo */
   compra?: CompraTarjeta | null;
+  /** Un recordatorio o encargo que Lalán guardó */
+  recordatorio?: RecordatorioTarjeta | null;
 }
+interface RecordatorioTarjeta { id: string; texto: string; cuando: string; para: string | null }
 interface CompraTarjeta { ordenId: string; numero: string; nuevoId: string | null; nuevoNumero: string | null }
 interface TutorialTarjeta { tema: string; nombre: string }
 interface DocumentoTarjeta { id: string; titulo: string; sede: string }
@@ -519,6 +525,19 @@ export const PantallaLalan: React.FC = () => {
     window.dispatchEvent(new Event(EVENTO_ABRIR_FACTURA));
   };
 
+  /** Un botón de «Tu día»: Lalan se hace burbuja y la app abre lo que es */
+  const irDesdeTuDia = (destino: { ir: string; aviso?: string | null; conversacion?: string | null }) => {
+    minimizar();
+    irA(destino);
+  };
+  /** «Recuérdame…»: el teclado abierto con eso ya escrito */
+  const escribirDesdeTuDia = (t: string) => {
+    escucha.terminar(false);
+    setEscribiendo(true);
+    setTexto(t);
+    window.setTimeout(() => entrada.current?.focus(), 50);
+  };
+
   /** "Llévame": Lalan se hace burbuja (sigue oyendo) y la app señala dónde tocar */
   const llevame = (g: GuiaTarjeta) => {
     minimizar();
@@ -789,11 +808,12 @@ export const PantallaLalan: React.FC = () => {
                 </div>
                 <div ref={lista} aria-live="polite"
                   className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
+                  <div className="max-w-2xl"><TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} /></div>
                   {cargando && !mensajes.length && (
                     <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
                   )}
                   {!cargando && !mensajes.length && (
-                    <div className="h-full flex flex-col items-center justify-center text-center gap-2 text-slate-500 dark:text-neutral-400">
+                    <div className="py-10 flex flex-col items-center justify-center text-center gap-2 text-slate-500 dark:text-neutral-400">
                       <p className="text-2xl font-bold tracking-tight text-slate-800 dark:text-neutral-100">¿En qué te ayudo?</p>
                       <p className="text-[0.9375rem] max-w-md" style={{ textWrap: 'balance' }}>Háblame con la esfera o escríbeme aquí abajo. Conozco tu agenda, tu caja, tus chats y tu inventario.</p>
                     </div>
@@ -860,6 +880,7 @@ export const PantallaLalan: React.FC = () => {
                 Escribiendo termina encima del campo, para que la cajita no tape el texto */}
             <div ref={lista} className="absolute inset-0 overflow-y-auto px-5 pt-4 space-y-5" aria-live="polite"
               style={escribiendo ? { bottom: altoAbajo, paddingBottom: 8 } : { paddingBottom: altoAbajo + 8 }}>
+              <TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} />
               {cargando && !mensajes.length && (
                 <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
               )}
@@ -1121,8 +1142,38 @@ const Tarjeta: React.FC<{
   if (accion.guia) return <TarjetaGuia guia={accion.guia} onLlevame={onLlevame} />;
   if (accion.documento) return <TarjetaDocumento documento={accion.documento} onFallo={onFallo} />;
   if (accion.tutorial) return <TarjetaTutorial tutorial={accion.tutorial} />;
-  if (accion.tipo === 'guia' || accion.tipo === 'documento' || accion.tipo === 'tutorial') return null;
+  if (accion.recordatorio) return <TarjetaRecordatorio recordatorio={accion.recordatorio} onFallo={onFallo} />;
+  if (accion.tipo === 'guia' || accion.tipo === 'documento' || accion.tipo === 'tutorial' || accion.tipo === 'recordatorio') return null;
   return <TarjetaAccion accion={accion} ocupada={ocupada} onResolver={onResolver} onVerChat={onVerChat} onAbrirPedido={onAbrirPedido} />;
+};
+
+/** Un recordatorio que Lalán guardó: cuándo y para quién, y quitarlo si no era */
+const TarjetaRecordatorio: React.FC<{ recordatorio: RecordatorioTarjeta; onFallo: (e: unknown) => void }> = ({ recordatorio, onFallo }) => {
+  const [quitado, setQuitado] = useState(false);
+  const [quitando, setQuitando] = useState(false);
+  const quitar = async () => {
+    setQuitando(true);
+    try { await pendientesApi.quitar(recordatorio.id); setQuitado(true); avisarCambioPendientes(); } catch (e) { onFallo(e); } finally { setQuitando(false); }
+  };
+  return (
+    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm p-3.5 space-y-2.5">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-[var(--primary)]">{recordatorio.para ? `Encargo para ${recordatorio.para.split(' ')[0]}` : 'Recordatorio'}</div>
+      <div>
+        <p className={`text-[0.9375rem] font-semibold leading-snug text-slate-800 dark:text-neutral-100 ${quitado ? 'line-through opacity-60' : ''}`}>{recordatorio.texto}</p>
+        <p className="mt-0.5 text-[0.8125rem] text-slate-500 dark:text-neutral-400 first-letter:uppercase">{quitado ? 'Quitado' : cuandoCorto(recordatorio.cuando)}</p>
+      </div>
+      {!quitado && (
+        <div className="flex gap-2">
+          <button type="button" onClick={() => irA({ ir: 'recordatorios', aviso: `recordatorio:${recordatorio.id}` })}
+            className="flex-1 py-2.5 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] text-[0.875rem] font-bold cursor-pointer">Ver recordatorios</button>
+          <button type="button" onClick={() => void quitar()} disabled={quitando}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 text-[0.875rem] font-semibold cursor-pointer disabled:opacity-50">
+            {quitando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Quitar'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 /** Un plan que Lalan dejó guardado: se descarga en PDF y queda en Mis planes */

@@ -20,6 +20,7 @@ import { InformesScreen } from './screens/InformesScreen';
 import { ComprasScreen } from './screens/ComprasScreen';
 import { AvisosScreen } from './screens/AvisosScreen';
 import { MiActividadScreen } from './screens/MiActividadScreen';
+import { RecordatoriosScreen } from './screens/RecordatoriosScreen';
 import { RegistroProveedorScreen } from './screens/RegistroProveedorScreen';
 import { MiSemanaScreen } from './screens/MiSemanaScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -139,6 +140,7 @@ const MainAppContent: React.FC = () => {
       case 'compras':     return <ComprasScreen     key="compras"     />;
       case 'avisos':      return <AvisosScreen      key="avisos"      />;
       case 'mi-actividad': return <MiActividadScreen key="mi-actividad" />;
+      case 'recordatorios': return <RecordatoriosScreen key="recordatorios" />;
       default:          return <DashboardScreen key="default"   />;
     }
   };

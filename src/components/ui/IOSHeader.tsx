@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Search,
   Activity,
+  BellRing,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
@@ -201,6 +202,18 @@ export const IOSHeader: React.FC<IOSHeaderProps> = ({
                       <div className="border-t border-slate-200 dark:border-neutral-800 pt-1.5 mt-0.5 mb-1 max-h-[min(50vh,calc(100dvh-18rem))] overflow-y-auto">
                         <ListaSedes alElegir={() => setShowUserMenu(false)} />
                       </div>
+                    )}
+
+                    {/* Recordatorios y encargos del equipo */}
+                    {currentUser.role !== 'especialista' && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowUserMenu(false); navigateTo('recordatorios'); }}
+                        className="w-full min-h-[44px] flex items-center gap-2 px-2 rounded-lg text-[0.8125rem] font-semibold text-slate-700 dark:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800 border-t border-slate-200 dark:border-neutral-800 transition cursor-pointer"
+                      >
+                        <BellRing className="w-4 h-4 text-[var(--primary)]" />
+                        <span>Recordatorios y encargos</span>
+                      </button>
                     )}
 
                     {/* Lo que hizo en Lalan (la dueña, también lo de su equipo) */}
