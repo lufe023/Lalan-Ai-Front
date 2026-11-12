@@ -14,11 +14,13 @@ export function irADireccion(ruta: string, reemplazar = false) {
 
 /**
  * La Vitrina por su dirección corta (/<salón> o /<salón>/<sede>), sin sesión.
+ * Con /<salón>/<sede>/<servicio> abre de una vez la ficha de ese servicio o
+ * producto: es el enlace que la dueña pega en sus historias.
  * Con una sola sede publicada entra directo; con varias, la clienta elige
  * viendo la dirección de cada una: nunca se adivina la más cercana. Si llegó
  * por un nombre viejo, la barra pasa al nombre de hoy.
  */
-export default function VitrinaCortaScreen({ nombre, sede }: { nombre: string; sede: string | null }) {
+export default function VitrinaCortaScreen({ nombre, sede, item = null }: { nombre: string; sede: string | null; item?: string | null }) {
   const [datos, setDatos] = useState<DireccionCortaVitrina | null>(null);
   const [error, setError] = useState<{ texto: string; noExiste: boolean } | null>(null);
 
@@ -39,12 +41,12 @@ export default function VitrinaCortaScreen({ nombre, sede }: { nombre: string; s
 
   // Llegó por un nombre viejo: la dirección de hoy en la barra
   useEffect(() => {
-    if (datos && datos.nombre !== nombre) irADireccion(`/${datos.nombre}${sede ? `/${sede}` : ''}`, true);
-  }, [datos, nombre, sede]);
+    if (datos && datos.nombre !== nombre) irADireccion(`/${datos.nombre}${sede ? `/${sede}` : ''}${sede && item ? `/${item}` : ''}`, true);
+  }, [datos, nombre, sede, item]);
 
   if (datos) {
     const elegida = sede ? datos.sedes.find((s) => s.corto === sede) : datos.sedes.length === 1 ? datos.sedes[0] : undefined;
-    if (elegida) return <VitrinaScreen slug={elegida.slug} />;
+    if (elegida) return <VitrinaScreen slug={elegida.slug} item={item} />;
     return <ElegirSede datos={datos} noEncontrada={!!sede} />;
   }
 

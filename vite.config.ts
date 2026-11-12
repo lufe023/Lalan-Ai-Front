@@ -25,8 +25,9 @@ function getCurrentCacheName(): string {
 }
 
 /**
- * En desarrollo, lo mismo que hace worker/index.js en Cloudflare: /<salón> y
- * /<salón>/<sede> abren la app para que resuelva la Vitrina.
+ * En desarrollo, lo mismo que hace worker/index.js en Cloudflare: /<salón>,
+ * /<salón>/<sede> y /<salón>/<sede>/<servicio> abren la app para que
+ * resuelva la Vitrina.
  */
 function direccionCortaPlugin(): Plugin {
   return {
@@ -40,6 +41,21 @@ function direccionCortaPlugin(): Plugin {
         }
         next();
       });
+    },
+  };
+}
+
+/**
+ * La dirección de la API, para worker/vista-previa.js: el worker no ve las
+ * variables de compilación de Vite, así que se deja en /lalan-api.json.
+ */
+function direccionDeLaApiPlugin(api: string | undefined): Plugin {
+  return {
+    name: 'lalan-direccion-api',
+    apply: 'build',
+    generateBundle() {
+      if (!api) return;
+      this.emitFile({ type: 'asset', fileName: 'lalan-api.json', source: JSON.stringify({ api }) });
     },
   };
 }
@@ -112,7 +128,7 @@ export default defineConfig(({ mode }) => {
   const cacheName = env.VITE_CACHE_NAME || env.CACHE_NAME || 'lalan-shell-v3';
 
   return {
-    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin(), direccionCortaPlugin()],
+    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin(), direccionCortaPlugin(), direccionDeLaApiPlugin(env.VITE_API_URL)],
     define: {
       'import.meta.env.VITE_CACHE_NAME': JSON.stringify(cacheName),
     },

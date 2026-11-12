@@ -33,7 +33,7 @@ function contarVisita(slug: string) {
  * desde el enlace de Instagram o el QR del mostrador. Como la pared y el
  * reproductor, se monta antes que la app: aquí no hay token ni contexto.
  */
-export default function VitrinaScreen({ slug }: { slug: string }) {
+export default function VitrinaScreen({ slug, item = null }: { slug: string; item?: string | null }) {
   const [datos, setDatos] = useState<DatosVitrina | null>(null);
   const [error, setError] = useState<{ texto: string; noExiste: boolean } | null>(null);
 
@@ -43,7 +43,7 @@ export default function VitrinaScreen({ slug }: { slug: string }) {
       .then((d) => {
         setDatos(d);
         contarVisita(slug);
-        document.title = `${d.salon.nombre} · ${d.sede.nombre}`;
+        if (!item) document.title = `${d.salon.nombre} · ${d.sede.nombre}`;
         // Un enlace largo de antes (/app/#/v/…): la barra muestra la dirección corta
         if (d.direccionCorta && window.location.hash.startsWith('#/v/')) {
           window.history.replaceState(null, '', `/${d.direccionCorta}${window.location.search}`);
@@ -57,7 +57,7 @@ export default function VitrinaScreen({ slug }: { slug: string }) {
 
   useEffect(() => { setDatos(null); cargar(); }, [cargar]);
 
-  if (datos) return <PaginaVitrina datos={datos} slug={slug} />;
+  if (datos) return <PaginaVitrina datos={datos} slug={slug} item={item} />;
 
   return (
     <div className="grid min-h-dvh place-items-center bg-[#FAF7F6] px-6 text-center text-[#1F1A1C]">

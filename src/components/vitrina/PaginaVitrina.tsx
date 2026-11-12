@@ -12,6 +12,7 @@ import type {
 } from '../../types/vitrina';
 import { TITULO_TESTIMONIOS } from '../../types/vitrina';
 import { estiloVitrina } from './temaVitrina';
+import { buscarPorParte, pedidoDelEnlace } from './enlaceDirecto';
 import { IOSModal } from '../ui/IOSModal';
 import MapaSede from './MapaSede';
 import { FotoEncuadrada, estiloEncuadre, type Encuadre } from '../catalogo/FotoEncuadrada';
@@ -61,20 +62,12 @@ function encuadresDe(datos: DatosVitrina): Record<string, Encuadre> {
   return todos;
 }
 
-/** El `?servicio=` del enlace que manda Lalán por el chat, esté antes o después del # */
-function servicioDelEnlace(): string | null {
-  const deHash = window.location.hash.split('?')[1] ?? '';
-  for (const q of [window.location.search, deHash]) {
-    const id = new URLSearchParams(q).get('servicio');
-    if (id) return id.slice(0, 40);
-  }
-  return null;
-}
-
 interface Props {
   datos: DatosVitrina;
   slug: string | null;
   previa?: boolean;
+  /** La parte del enlace directo (/<salón>/<sede>/<servicio>): abre esa ficha */
+  item?: string | null;
 }
 
 /* ───────────── utilidades ───────────── */
@@ -139,7 +132,7 @@ export function ordenarParaVitrina<T extends { id: string }>(lista: T[], orden: 
 
 /* ───────────── la página ───────────── */
 
-export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
+export default function PaginaVitrina({ datos, slug, previa = false, item: itemDelEnlace = null }: Props) {
   const { diseno, sede } = datos;
   const dinero = useMemo(() => formateador(sede.moneda), [sede.moneda]);
   const destacados = useMemo(() => new Set(diseno.destacados ?? []), [diseno.destacados]);
@@ -161,6 +154,8 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
   const [aviso, setAviso] = useState<string | null>(null);
   // `foto`: en cuál abre el carrusel (la carta del abanico que tocó)
   const [ficha, setFicha] = useState<({ tipo: 'servicio'; item: ServicioVitrina } | { tipo: 'producto'; item: ProductoVitrina }) & { foto?: number } | null>(null);
+  /** Llegó por el enlace directo de un servicio o producto: su ficha lleva directo a reservar o pedir */
+  const [delEnlace, setDelEnlace] = useState<string | null>(null);
 
   // "Tu reserva" al lado si la página es ancha, en la barra de abajo y la hoja si no.
   // Se mide la página y no la ventana, por la vista previa de Ajustes.
@@ -230,14 +225,29 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
     if (item) { setTestimonio(null); setFicha({ tipo: 'servicio', item }); }
   };
 
-  // Lalán mandó por el chat el enlace de un servicio (?servicio=…): abre su ficha con toda la galería
+  // Llegó por el enlace directo de un servicio o producto (el de la historia de
+  // Instagram, el que manda Lalán por el chat): abre su ficha con toda la galería
   useEffect(() => {
     if (previa) return;
-    const id = servicioDelEnlace();
-    const item = id ? datos.servicios.find((x) => x.id === id) : null;
-    if (item) setFicha({ tipo: 'servicio', item });
+    const pedido = pedidoDelEnlace(itemDelEnlace);
+    if (!pedido) return;
+    const servicio = pedido.tipo !== 'producto' ? buscarPorParte(datos.servicios, pedido.texto) : null;
+    const producto = !servicio && pedido.tipo !== 'servicio' ? buscarPorParte(datos.productos, pedido.texto) : null;
+    if (servicio) setFicha({ tipo: 'servicio', item: servicio });
+    else if (producto) setFicha({ tipo: 'producto', item: producto });
+    else { avisar('Eso ya no está en la vitrina. Mira todo lo demás 👇'); return; }
+    const nombre = (servicio ?? producto)!.nombre;
+    setDelEnlace((servicio ?? producto)!.id);
+    document.title = `${nombre} · ${datos.salon.nombre}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Reservar ese servicio ya: lo agrega y abre la reserva en lo que sigue */
+  const reservarYa = (id: string) => {
+    if (!servicioIds.includes(id)) alternarServicio(id);
+    setFicha(null);
+    setAbierta('siguiente');
+  };
 
   const bloques = diseno.bloques.filter((b) => b.visible);
   const conPortada = bloques.some((b) => b.tipo === 'portada');
@@ -416,12 +426,12 @@ export default function PaginaVitrina({ datos, slug, previa = false }: Props) {
                   </div>
                 </section>
               )}
-              <button
-                type="button" className={`${BOTON_P} w-full py-3.5 text-[15px]`}
-                onClick={() => { if (servicio) alternarServicio(ficha.item.id); else alternarProducto(ficha.item.id); setFicha(null); }}
-              >
-                {dentro ? <><Minus className="size-4" /> Quitar de tu reserva</> : servicio ? <><Plus className="size-4" /> Agregar a tu reserva</> : <><ShoppingBag className="size-4" /> Apartar</>}
-              </button>
+              <BotonesDeLaFicha
+                servicio={!!servicio} dentro={dentro} delEnlace={delEnlace === ficha.item.id}
+                whatsapp={servicio ? null : pedirPorWhatsApp(datos, ficha.item.nombre)}
+                reservar={() => reservarYa(ficha.item.id)}
+                alternar={() => { if (servicio) alternarServicio(ficha.item.id); else alternarProducto(ficha.item.id); setFicha(null); }}
+              />
             </div>
           );
         })()}
@@ -593,6 +603,52 @@ function Mensaje({ texto }: { texto: string }) {
 function Precio({ s, dinero }: { s: { precio: number | null; modoPrecio?: ServicioVitrina['modoPrecio'] }; dinero: Intl.NumberFormat }) {
   if (s.precio == null || s.modoPrecio === 'consultar') return <span className="text-[var(--v-suave)]">Precio en el salón</span>;
   return <span className="font-semibold">{s.modoPrecio === 'desde' ? 'Desde ' : ''}{dinero.format(s.precio)}</span>;
+}
+
+/** El enlace para pedir un producto por el WhatsApp de Lalán en esta sede, o null si la sede no lo tiene a la vista */
+function pedirPorWhatsApp(datos: DatosVitrina, producto: string): string | null {
+  const numero = datos.chat?.whatsapp;
+  if (!numero) return null;
+  const texto = `Hola, quiero ${producto}. Lo vi en la Vitrina de ${datos.salon.nombre} (${datos.sede.nombre})`;
+  return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+}
+
+/**
+ * Los botones de la ficha. Si llegó por el enlace directo de un servicio, lo
+ * primero es reservarlo (un toque y está eligiendo el día); de un producto,
+ * pedirlo por WhatsApp a Lalán. Lo de siempre (agregar y seguir mirando)
+ * queda debajo.
+ */
+function BotonesDeLaFicha({ servicio, dentro, delEnlace, whatsapp, reservar, alternar }: {
+  servicio: boolean; dentro: boolean; delEnlace: boolean; whatsapp: string | null;
+  reservar: () => void; alternar: () => void;
+}) {
+  const SECUNDARIO = 'inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--v-borde)] py-3 text-[15px] font-semibold transition hover:bg-[var(--v-tinte)]';
+  if (servicio && delEnlace && !dentro) {
+    return (
+      <div className="space-y-2">
+        <button type="button" onClick={reservar} className={`${BOTON_P} w-full py-3.5 text-[15px]`}>
+          <CalendarDays className="size-4" /> Reservar ahora
+        </button>
+        <button type="button" onClick={alternar} className={SECUNDARIO}>
+          <Plus className="size-4" /> Agregar y ver más servicios
+        </button>
+      </div>
+    );
+  }
+  const principal = (
+    <button type="button" onClick={alternar} className={dentro || !(whatsapp && delEnlace) ? `${BOTON_P} w-full py-3.5 text-[15px]` : SECUNDARIO}>
+      {dentro ? <><Minus className="size-4" /> Quitar de tu reserva</> : servicio ? <><Plus className="size-4" /> Agregar a tu reserva</> : <><ShoppingBag className="size-4" /> Apartar con una cita</>}
+    </button>
+  );
+  if (!whatsapp) return principal;
+  const pedir = (
+    <a href={whatsapp} target="_blank" rel="noreferrer"
+      className={delEnlace && !dentro ? `${BOTON_P} w-full py-3.5 text-[15px]` : SECUNDARIO}>
+      <MessageCircle className="size-4" /> Pedirlo por WhatsApp
+    </a>
+  );
+  return <div className="space-y-2">{delEnlace && !dentro ? <>{pedir}{principal}</> : <>{principal}{pedir}</>}</div>;
 }
 
 /** Todas las fotos de un servicio o producto (las Vitrinas viejas solo mandan `foto`) */
