@@ -9,7 +9,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { SelectorSede } from '../components/ui/SelectorSede';
 import { ItemAnimado, ListaAnimada } from '../components/ui/movimiento';
 import { useSedes } from '../hooks/useSedes';
-import { ABRIR_FACTURA, ABRIR_PEDIDO, AVISO_BORRADORES, AVISO_POR_PEDIR, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
+import { ABRIR_FACTURA, ABRIR_PEDIDO, AVISO_BORRADORES, AVISO_POR_PEDIR, AVISO_PROVEEDOR, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO, VISTA_COMPRAS, colorVence, comprasApi, dinero, textoVence, type FilaPedido, type Proveedor, type Resumen } from '../services/compras';
 import { DetallePedido } from '../components/compras/DetallePedido';
 import { FacturaALalan } from '../components/compras/FacturaALalan';
 import { ComparacionPrecios } from '../components/compras/ComparacionPrecios';
@@ -18,9 +18,10 @@ import { PorPedir } from '../components/compras/PorPedir';
 import { AjustesCompras } from '../components/compras/AjustesCompras';
 import { NovedadesProveedores } from '../components/compras/NovedadesProveedores';
 import { PorPagarVista } from '../components/compras/PorPagar';
+import { ChatConProveedor, ListaChatsProveedores } from '../components/compras/ChatsProveedores';
 import { PastillaEstado, botonPrincipal, botonSuave, campo, etiqueta, fechaCorta } from '../components/compras/piezas';
 
-type Vista = 'pedidos' | 'por-pedir' | 'proveedores' | 'por-pagar';
+type Vista = 'pedidos' | 'por-pedir' | 'proveedores' | 'por-pagar' | 'chats';
 type Filtro = '' | 'borrador' | 'cotizacion_enviada' | 'atrasadas' | 'sin_recibir' | 'recepcion_atrasada' | 'tu_si' | 'pago_vencido';
 
 /**
@@ -58,6 +59,8 @@ export const ComprasScreen: React.FC = () => {
   }, []);
   const [filtro, setFiltro] = useState<Filtro>('');
   const [q, setQ] = useState('');
+  // El chat de un proveedor abierto (desde «Chats», su ficha o el aviso de que escribió)
+  const [chat, setChat] = useState<string | null>(null);
   // Lo que la dueña marca para pedir al llegar desde un aviso (todo lo que falta en esa sede)
   const [marcarSede, setMarcarSede] = useState<string | null>(null);
   // Los avisos de Compras abren donde se resuelve: «Por pagar», «Por pedir» de una sede o sus borradores
@@ -73,6 +76,10 @@ export const ComprasScreen: React.FC = () => {
           sessionStorage.removeItem('lalan.abrirAviso');
           const s = aviso.slice(AVISO_POR_PEDIR.length);
           setAbierto(null); setComparando(null); setSede(s); setMarcarSede(`${s}|${Date.now()}`); setVista('por-pedir');
+        } else if (aviso.startsWith(AVISO_PROVEEDOR)) {
+          // Un proveedor escribió sin pedido: su chat, con lo que Lalan revisó arriba
+          sessionStorage.removeItem('lalan.abrirAviso');
+          setAbierto(null); setComparando(null); setVista('chats'); setChat(aviso.slice(AVISO_PROVEEDOR.length));
         } else if (aviso.startsWith(AVISO_BORRADORES)) {
           sessionStorage.removeItem('lalan.abrirAviso');
           setAbierto(null); setComparando(null); setSede(aviso.slice(AVISO_BORRADORES.length)); setFiltro('borrador'); setQ(''); setVista('pedidos');
@@ -125,11 +132,16 @@ export const ComprasScreen: React.FC = () => {
   ] : [], [resumen]);
 
   const abrir = (id: string) => { setAbierto(id); setVista('pedidos'); };
+  /** Un pedido abierto desde un chat vuelve al chat con Atrás */
+  const [volverAlChat, setVolverAlChat] = useState<string | null>(null);
+  const abrirDesdeChat = (id: string) => { setVolverAlChat(chat); setChat(null); abrir(id); };
+  const abrirChat = (proveedorId: string) => { setAbierto(null); setComparando(null); setVista('chats'); setChat(proveedorId); };
   /** Abrir un pedido desde la comparación vuelve a la comparación con Atrás */
   const [volverAComparar, setVolverAComparar] = useState<string | null>(null);
   const cerrarPedido = () => {
     setAbierto(null); setVuelta((v) => v + 1);
     if (volverAComparar) { setComparando(volverAComparar); setVolverAComparar(null); }
+    else if (volverAlChat) { setVista('chats'); setChat(volverAlChat); setVolverAlChat(null); }
   };
 
   return (
@@ -138,8 +150,8 @@ export const ComprasScreen: React.FC = () => {
         title="Compras"
         subtitle="Proveedores, pedidos y lo que llega"
         // Con un pedido abierto, Atrás (botón, deslizar desde el borde o clic derecho) vuelve a la lista
-        showBack={!!abierto || !!comparando}
-        onBack={() => { if (abierto) cerrarPedido(); else { setComparando(null); setVuelta((v) => v + 1); } }}
+        showBack={!!abierto || !!comparando || !!chat}
+        onBack={() => { if (abierto) cerrarPedido(); else if (chat) { setChat(null); setVuelta((v) => v + 1); } else { setComparando(null); setVuelta((v) => v + 1); } }}
         rightAction={
           <div className="flex items-center gap-1.5">
             <SelectorSede sedes={sedes} value={sede} onChange={setSede} todas />
@@ -154,7 +166,10 @@ export const ComprasScreen: React.FC = () => {
       <PageContent className="space-y-3 pb-6 text-slate-900 dark:text-neutral-100">
         {abierto ? (
           <DetallePedido key={abierto} id={abierto} onVolver={cerrarPedido} onCambio={() => setVuelta((v) => v + 1)} onAbrir={setAbierto}
+            onChats={() => { setAbierto(null); setVolverAlChat(null); setVista('chats'); }}
             onComparar={(cid) => { setAbierto(null); setVolverAComparar(null); setComparando(cid); }} />
+        ) : chat ? (
+          <ChatConProveedor key={chat} id={chat} sede={sede || undefined} onVolver={() => { setChat(null); setVuelta((v) => v + 1); }} onAbrirPedido={abrirDesdeChat} />
         ) : comparando ? (
           <ComparacionPrecios key={comparando} id={comparando} onVolver={() => { setComparando(null); setVuelta((v) => v + 1); }} onCambio={() => setVuelta((v) => v + 1)}
             onAbrirPedido={(id) => { setVolverAComparar(comparando); setComparando(null); setAbierto(id); }} />
@@ -163,7 +178,7 @@ export const ComprasScreen: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <div className="flex-1">
                 <IOSSegmentedControl id="compras-vista" value={vista} onChange={(v) => setVista(v as Vista)} size="sm"
-                  options={[{ id: 'pedidos', label: 'Pedidos' }, { id: 'por-pedir', label: 'Por pedir' }, { id: 'por-pagar', label: 'Por pagar' }, { id: 'proveedores', label: 'Proveedores' }]} />
+                  options={[{ id: 'pedidos', label: 'Pedidos' }, { id: 'chats', label: 'Chats' }, { id: 'por-pedir', label: 'Por pedir' }, { id: 'por-pagar', label: 'Por pagar' }, { id: 'proveedores', label: 'Proveedores' }]} />
               </div>
               {vista === 'pedidos' && (
                 <div className="flex gap-2">
@@ -176,7 +191,8 @@ export const ComprasScreen: React.FC = () => {
             {vista === 'por-pedir' && <PorPedir sede={sede || undefined} recarga={vuelta} marcarSede={marcarSede} onArmados={(ids) => { setVuelta((v) => v + 1); if (ids.length === 1) abrir(ids[0]); else { setFiltro('borrador'); setVista('pedidos'); } }}
               onComparar={(cid) => { setVuelta((v) => v + 1); setVista('pedidos'); setComparando(cid); }} />}
             {vista === 'por-pagar' && <PorPagarVista sede={sede || undefined} recarga={vuelta} onAbrir={abrir} />}
-            {vista === 'proveedores' && <ListaProveedores sede={sede || undefined} recarga={vuelta} onAbrirPedido={abrir} />}
+            {vista === 'proveedores' && <ListaProveedores sede={sede || undefined} recarga={vuelta} onAbrirPedido={abrir} onAbrirChat={abrirChat} />}
+            {vista === 'chats' && <ListaChatsProveedores recarga={vuelta} onAbrir={abrirChat} />}
 
             {vista === 'pedidos' && (
               <>

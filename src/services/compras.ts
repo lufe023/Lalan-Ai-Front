@@ -194,6 +194,13 @@ export const comprasApi = {
   guardarAjustes: (a: Partial<AjustesCompras>) => api.put<AjustesCompras>('/compras/ajustes', a),
 
   novedades: () => api.get<NovedadProveedor[]>('/compras/novedades'),
+  /** Los chats con los proveedores (con pedido o sin él) */
+  chats: () => api.get<FilaChatProveedor[]>('/compras/chats'),
+  chat: (proveedorId: string, sede?: string) => api.get<ChatProveedor>(`/compras/proveedores/${proveedorId}/chat${sede ? `?sede=${encodeURIComponent(sede)}` : ''}`),
+  escribirAProveedor: (proveedorId: string, texto: string) => api.post<ChatProveedor>(`/compras/proveedores/${proveedorId}/escribir`, { texto }),
+  /** «Pregúntale»: borrador con lo que falta y Lalan le pide precio */
+  preguntarAProveedor: (proveedorId: string, d: { sede: string; productIds: string[] }) =>
+    api.post<{ ordenId: string; numero: string; canal: 'whatsapp' | 'correo' | null; productos: string[] }>(`/compras/proveedores/${proveedorId}/preguntar`, d),
   enlazarNovedad: (id: string, d: { productId: string; precio?: number | null; nuevo?: boolean }) => api.post<{ ok: true }>(`/compras/novedades/${id}/enlazar`, d),
   descartarNovedad: (id: string) => api.post<{ ok: true }>(`/compras/novedades/${id}/descartar`, {}),
   atenderComoCliente: (id: string) => api.post<{ ok: true; escrito: boolean }>(`/compras/novedades/${id}/como-cliente`, {}),
@@ -371,6 +378,46 @@ export interface Encargo {
   sinQuien: string[];
   /** Borradores a proveedores sin WhatsApp ni correo: los manda la dueña */
   sinCanal: { id: string; proveedor: string }[];
+}
+
+/** Un proveedor escribió (sin pedido): abre su chat en Compras */
+export const AVISO_PROVEEDOR = 'proveedor:';
+
+export interface SedeCorta { id: string; nombre: string }
+
+/** Una fila de «Chats»: el proveedor y lo último que se habló */
+export interface FilaChatProveedor {
+  proveedor: { id: string; nombre: string; contacto: string | null; whatsapp: string | null; correo: string | null; activo: boolean };
+  ultimo: { tipo: string; canal: string | null; autorTipo: string; texto: string; creadoEn: string; conPedido: boolean };
+  /** Lo último lo dijo el proveedor */
+  esperaRespuesta: boolean;
+  ventanaAbierta: boolean;
+}
+
+/** Lo que Lalan revisa del proveedor: lo que nos vende y hasta cuándo alcanza, lo que falta, lo abierto y lo que se le debe */
+export interface PanoramaProveedor {
+  sedes: SedeCorta[];
+  provee: { productId: string; nombre: string; unidad: string; sede: SedeCorta; hay: number; minimo: number; porDia: number | null; alcanzaHasta: string | null; pedido: boolean }[];
+  faltan: { productId: string; nombre: string; unidad: string; sede: SedeCorta; faltan: number; hay: number; loVende: boolean; otroProveedor: string | null; motivo: 'minimo' | 'citas' }[];
+  abiertos: { id: string; numero: string; estado: EstadoCompra; sede: SedeCorta }[];
+  debemos: { currencyCode: string; monto: number }[];
+  pregunta: string;
+}
+
+export interface MensajeProveedor {
+  id: string; tipo: string; canal: string | null; autorTipo: string; autorNombre: string | null; texto: string | null;
+  adjuntoId: string | null; creadoEn: string; pedido: { id: string; numero: string; estado: EstadoCompra } | null;
+}
+
+export interface ChatProveedor {
+  proveedor: { id: string; nombre: string; contacto: string | null; whatsapp: string | null; correo: string | null; telefono: string | null; lalanHabla: boolean; activo: boolean };
+  mensajes: MensajeProveedor[];
+  /** Por dónde sale lo que escribas aquí (null: solo desde tu WhatsApp) */
+  escribirPor: 'whatsapp' | 'correo' | null;
+  ventanaHasta: string | null;
+  waMe: string | null;
+  lalanPuedePreguntar: boolean;
+  panorama: PanoramaProveedor;
 }
 
 /** Avisos de lo que falta: abren «Por pedir» de esa sede (todo marcado) o sus borradores */

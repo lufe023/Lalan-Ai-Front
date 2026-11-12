@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Bot, Loader2, Mail, MessageCircle, Phone, Plus, Sparkles, Star, Trash2, Truck } from 'lucide-react';
+import { Bot, Loader2, Mail, MessageCircle, MessagesSquare, Phone, Plus, Sparkles, Star, Trash2, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useSedes } from '../../hooks/useSedes';
 import { IOSModal } from '../ui/IOSModal';
@@ -18,7 +18,7 @@ import { PastillaEstado, botonPrincipal, botonSuave, campo, etiqueta, fechaCorta
  * qué sedes les vende (vacío = a todas). Tocar uno abre su ficha con lo que
  * se le compra y sus pedidos.
  */
-export const ListaProveedores: React.FC<{ sede?: string; onAbrirPedido: (id: string) => void; recarga?: number }> = ({ sede, onAbrirPedido, recarga }) => {
+export const ListaProveedores: React.FC<{ sede?: string; onAbrirPedido: (id: string) => void; onAbrirChat?: (id: string) => void; recarga?: number }> = ({ sede, onAbrirPedido, onAbrirChat, recarga }) => {
   const [lista, setLista] = useState<Proveedor[] | null>(null);
   const [abierto, setAbierto] = useState<string | 'nuevo' | null>(null);
   const cargar = useCallback(() => { comprasApi.proveedores(sede).then(setLista).catch(() => setLista([])); }, [sede]);
@@ -63,7 +63,8 @@ export const ListaProveedores: React.FC<{ sede?: string; onAbrirPedido: (id: str
           ))}
         </ListaAnimada>
       )}
-      <FichaProveedor id={abierto} onClose={() => setAbierto(null)} onCambio={cargar} onAbrirPedido={(id) => { setAbierto(null); onAbrirPedido(id); }} />
+      <FichaProveedor id={abierto} onClose={() => setAbierto(null)} onCambio={cargar} onAbrirPedido={(id) => { setAbierto(null); onAbrirPedido(id); }}
+        onAbrirChat={onAbrirChat ? (id) => { setAbierto(null); onAbrirChat(id); } : undefined} />
     </div>
   );
 };
@@ -84,9 +85,11 @@ const aFormulario = (p: Proveedor | DetalleProveedor): Formulario => ({
 /** La ficha del proveedor: sus datos, lo que se le compra y sus pedidos */
 export const FichaProveedor: React.FC<{
   id: string | 'nuevo' | null; onClose: () => void; onCambio: () => void; onAbrirPedido?: (id: string) => void;
+  /** Su chat en Compras → Chats (todo lo que se ha hablado, con pedido o sin él) */
+  onAbrirChat?: (id: string) => void;
   /** Al crear uno nuevo desde otro lado (un producto), quien llama recibe el proveedor */
   onCreado?: (p: Proveedor) => void;
-}> = ({ id, onClose, onCambio, onAbrirPedido, onCreado }) => {
+}> = ({ id, onClose, onCambio, onAbrirPedido, onAbrirChat, onCreado }) => {
   const { showToast, currencies, navigateToCatalog } = useApp();
   const sedes = useSedes({ todasLasDelSalon: true });
   const { confirmar, modalConfirmar } = useConfirmar();
@@ -155,6 +158,9 @@ export const FichaProveedor: React.FC<{
     <IOSModal isOpen={!!id} onClose={onClose} title={id === 'nuevo' ? 'Nuevo proveedor' : detalle?.nombre ?? 'Proveedor'} subtitle={id === 'nuevo' ? 'A quién le compras' : detalle?.contacto ?? undefined}>
       {modalConfirmar}
       <div className="space-y-4 p-1">
+        {detalle && onAbrirChat && (
+          <button type="button" onClick={() => onAbrirChat(detalle.id)} className={`${botonSuave} w-full`}><MessagesSquare className="w-4 h-4" /> Ver el chat con {detalle.nombre}</button>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="sm:col-span-2"><label><span className={etiqueta}>Nombre{id === 'nuevo' ? ' (o RNC): Lalan lo busca' : ''}</span>
             <input className={campo} autoFocus={id === 'nuevo'} autoComplete="off" placeholder="Cecomsa, S.R.L." value={f.nombre}
