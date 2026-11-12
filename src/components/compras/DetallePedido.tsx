@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BotonAtras } from '../ui/BotonAtras';
 import {
-  Bot, Check, ChevronRight, Copy, FileText, Loader2, Mail, MessageCircle, PackageCheck, Paperclip, Plus, Printer,
+  Bot, Check, ChevronRight, Copy, FileText, Loader2, Mail, MessageCircle, MessagesSquare, PackageCheck, Paperclip, Plus, Printer,
   Scale, Search, Send, Trash2, X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -30,7 +30,10 @@ const aRenglones = (p: Pedido): Renglon[] => p.lineas.map((l) => ({
  * abajo, en el teléfono) el historial con todo lo que se habló, se mandó y
  * se adjuntó, y por dónde.
  */
-export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambio: () => void; onAbrir: (id: string) => void; onComparar?: (comparacionId: string) => void }> = ({ id, onVolver, onCambio, onAbrir, onComparar }) => {
+export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambio: () => void; onAbrir: (id: string) => void; onComparar?: (comparacionId: string) => void;
+  /** Si el pedido no se pudo abrir: ir a los chats de proveedores (donde está lo que escribieron sin pedido) */
+  onChats?: () => void;
+}> = ({ id, onVolver, onCambio, onAbrir, onComparar, onChats }) => {
   const { showToast, products, navigateToCatalog } = useApp();
   // Que Lalan le escriba al proveedor es del módulo Compras automáticas
   const automaticas = usePlan().tieneModulo('compras_lalan');
@@ -71,6 +74,11 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
       <div className="space-y-3">
         <BotonAtras onVolver={onVolver} texto="Pedidos" />
         <p className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[0.8125rem]">{error}</p>
+        {/* Nunca un callejón sin salida: lo que escribió el proveedor está en su chat, y los pedidos en la lista */}
+        <div className="flex flex-wrap gap-2">
+          {onChats && <button type="button" onClick={onChats} className={botonPrincipal}><MessagesSquare className="w-4 h-4" /> Ver los chats de proveedores</button>}
+          <button type="button" onClick={onVolver} className={botonSuave}><FileText className="w-4 h-4" /> Ver todos los pedidos</button>
+        </div>
       </div>
     );
   }
