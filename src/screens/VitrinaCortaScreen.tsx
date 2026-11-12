@@ -45,9 +45,14 @@ export default function VitrinaCortaScreen({ nombre, sede, item = null }: { nomb
   }, [datos, nombre, sede, item]);
 
   if (datos) {
-    const elegida = sede ? datos.sedes.find((s) => s.corto === sede) : datos.sedes.length === 1 ? datos.sedes[0] : undefined;
-    if (elegida) return <VitrinaScreen slug={elegida.slug} item={item} />;
-    return <ElegirSede datos={datos} noEncontrada={!!sede} />;
+    // /<salón>/<servicio>: lo de después del salón no es una sede, es el
+    // servicio (el enlace sin sede). La clienta elige la sede y se abre ahí.
+    const esSede = !sede || datos.sedes.some((s) => s.corto === sede);
+    const pedido = esSede ? item : sede;
+    const corta = esSede ? sede : null;
+    const elegida = corta ? datos.sedes.find((s) => s.corto === corta) : datos.sedes.length === 1 ? datos.sedes[0] : undefined;
+    if (elegida) return <VitrinaScreen slug={elegida.slug} item={pedido} />;
+    return <ElegirSede datos={datos} noEncontrada={false} item={pedido} />;
   }
 
   return (
@@ -73,14 +78,14 @@ export default function VitrinaCortaScreen({ nombre, sede, item = null }: { nomb
 }
 
 /** Varias sedes: la clienta elige a cuál va, con la dirección a la vista */
-function ElegirSede({ datos, noEncontrada }: { datos: DireccionCortaVitrina; noEncontrada: boolean }) {
+function ElegirSede({ datos, noEncontrada, item = null }: { datos: DireccionCortaVitrina; noEncontrada: boolean; item?: string | null }) {
   return (
     <div className="min-h-dvh bg-[#FAF7F6] px-4 py-10 text-[#1F1A1C]">
       <div className="mx-auto max-w-md">
         <span className="grid size-14 place-items-center rounded-2xl bg-[#C46B7C]/12 text-[#C46B7C]"><Store className="size-7" /></span>
         <h1 className="mt-4 font-serif text-3xl font-semibold leading-tight">{datos.salon}</h1>
         <p className="mt-1 text-[#6B6266]">
-          {noEncontrada ? 'No encontramos esa sede. ¿A cuál quieres ir?' : '¿A qué sede quieres ir?'}
+          {noEncontrada ? 'No encontramos esa sede. ¿A cuál quieres ir?' : item ? '¿En qué sede lo quieres?' : '¿A qué sede quieres ir?'}
         </p>
         <ul className="mt-6 space-y-3">
           {datos.sedes.map((s) => {
@@ -89,7 +94,7 @@ function ElegirSede({ datos, noEncontrada }: { datos: DireccionCortaVitrina; noE
               <li key={s.corto}>
                 <button
                   type="button"
-                  onClick={() => irADireccion(`/${datos.nombre}/${s.corto}`)}
+                  onClick={() => irADireccion(`/${datos.nombre}/${s.corto}${item ? `/${item}` : ''}`)}
                   className="flex w-full items-center gap-3 rounded-2xl border border-[#EADFE2] bg-white p-3 text-left shadow-sm transition hover:border-[#C46B7C] focus-visible:outline-2 focus-visible:outline-[#C46B7C]"
                 >
                   {foto

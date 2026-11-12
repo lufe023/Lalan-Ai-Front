@@ -21,6 +21,8 @@ interface Enlaces {
   tipo: Tipo;
   nombre: string;
   nombreCorto: string | null;
+  /** Sin sede: la clienta elige a cuál va (solo con varias sedes que lo tienen) */
+  sinSede?: string | null;
   sedes: EnlaceDeSede[];
 }
 
@@ -94,6 +96,15 @@ function HojaDeEnlaces({ tipo, id, publicar, cerrar }: { tipo: Tipo; id: string;
           Ninguna sede tuya {tipo === 'servicio' ? 'ofrece este servicio' : 'vende este producto'} todavía.
         </p>
       )}
+
+      {datos.sinSede && (
+        <div className="p-3 rounded-2xl border-2 border-[var(--primary)]/40 bg-[var(--primary)]/5 space-y-2">
+          <div className="text-[0.75rem] font-bold text-slate-800 dark:text-neutral-100">Para todas las sedes</div>
+          <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">La clienta elige a qué sede va y después se abre {tipo === 'servicio' ? 'el servicio' : 'el producto'}.</p>
+          <EnlaceListo url={datos.sinSede} titulo={datos.nombre} />
+        </div>
+      )}
+      {datos.sinSede && <div className="pt-1 text-[0.6875rem] font-bold uppercase tracking-wide text-slate-400">O el de una sede</div>}
 
       {datos.sedes.map((s) => (
         <div key={s.sede.id} className="p-3 rounded-2xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 space-y-2">

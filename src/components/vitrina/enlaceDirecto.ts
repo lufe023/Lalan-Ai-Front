@@ -35,7 +35,10 @@ export function buscarPorParte<T extends { id: string; nombre: string }>(items: 
   const porCodigo = items.filter((x) => codigoDeId(x.id) === codigo);
   if (porCodigo.length === 1) return porCodigo[0];
   if (porCodigo.length > 1) return porCodigo.find((x) => parteDelItem(x.nombre, x.id) === texto) ?? porCodigo[0];
-  return items.find((x) => slug(x.nombre) === texto) ?? null;
+  // Sin código que coincida: por nombre, con o sin el código (la copia de una
+  // sede tiene otro id, y el enlace sin sede lleva el del salón)
+  const sinCodigo = /^[0-9a-f]{6}$/.test(codigo) ? texto.slice(0, -(codigo.length + 1)) : texto;
+  return items.find((x) => slug(x.nombre) === texto || slug(x.nombre).slice(0, 40).replace(/-+$/g, '') === sinCodigo) ?? null;
 }
 
 /**
