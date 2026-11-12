@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { animate, AnimatePresence, motion, useMotionValue } from 'motion/react';
-import { Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { animate, AnimatePresence, motion, useMotionValue, type TargetAndTransition } from 'motion/react';
+import { ArrowUp, BellRing, Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -27,6 +27,7 @@ import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO 
 import { irA } from '../../services/avisos';
 import { avisarCambioPendientes, cuandoCorto, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
+import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
 
 interface Accion {
   id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo' | 'compra' | 'recordatorio'; resumen: string;
@@ -211,6 +212,27 @@ export const PantallaLalan: React.FC = () => {
   const abajo = useRef<HTMLDivElement>(null);
   const lista = useRef<HTMLDivElement>(null);
   const entrada = useRef<HTMLInputElement>(null);
+  /** El cuadro para escribir del teléfono: crece con el texto */
+  const cuadro = useRef<HTMLTextAreaElement>(null);
+  /** La esfera que se ve ahora (grande, o la chiquita escribiendo): de ahí sale volando al minimizar */
+  const esferaVista = useRef<HTMLButtonElement>(null);
+  /** Cómo se va la pantalla al minimizar (null = se desvanece, al cerrar del todo) */
+  const [salida, setSalida] = useState<TargetAndTransition | null>(null);
+  /** Mientras la pantalla viaja a la burbuja, la burbuja espera para aparecer al llegar */
+  const [aterrizando, setAterrizando] = useState(false);
+  const [viaje, setViaje] = useState<{ de: DOMRect; a: Destino } | null>(null);
+  const [llegoVolando, setLlegoVolando] = useState(false);
+  /** El genio va con sombra y el fondo un poco oscuro: así se ve la forma entrando */
+  const [conGenio, setConGenio] = useState(false);
+  const tAterriza = useRef(0);
+  const [estiloMin, setEstiloMin] = useState<EstiloMinimizar>(estiloMinimizar);
+  // El cuadro de escribir crece con lo escrito y vuelve a una línea al enviar
+  useEffect(() => {
+    const el = cuadro.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+  }, [texto, escribiendo]);
   /**
    * Para la conversación continua: si la persona viene hablando (no
    * escribiendo), cuando Lalan termina de hablar el micrófono se abre solo.
@@ -255,6 +277,8 @@ export const PantallaLalan: React.FC = () => {
   const vista = useVistaVisible(abierta);
   const conTeclado = !!vista?.teclado;
   useEffect(() => { if (conTeclado) bajar(); }, [conTeclado, vista?.alto]);
+  // Al pasar a escribir, lo último de la charla queda a la vista, pegado al cuadro
+  useEffect(() => { if (escribiendo) bajar(); }, [escribiendo]);
 
   /**
    * Mientras Lalan habla, el micrófono queda atento (si viene hablando, no
@@ -535,7 +559,7 @@ export const PantallaLalan: React.FC = () => {
     escucha.terminar(false);
     setEscribiendo(true);
     setTexto(t);
-    window.setTimeout(() => entrada.current?.focus(), 50);
+    window.setTimeout(() => (cuadro.current ?? entrada.current)?.focus(), 50);
   };
 
   /** "Llévame": Lalan se hace burbuja (sigue oyendo) y la app señala dónde tocar */
@@ -546,6 +570,21 @@ export const PantallaLalan: React.FC = () => {
 
   /** A la burbuja: la pantalla se va, la charla sigue (voz, micrófono y animación) */
   const minimizar = () => {
+    const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const estilo = estiloMinimizar();
+    const destino = destinoBurbuja();
+    const esfera = esferaVista.current?.getBoundingClientRect();
+    const vuela = estilo === 'esfera' && !!esfera?.width && !quieto;
+    setSalida(quieto ? null : salidaHaciaBurbuja(estilo, destino));
+    setViaje(vuela && esfera ? { de: esfera, a: destino } : null);
+    setLlegoVolando(vuela);
+    setConGenio(estilo === 'genio' && !quieto);
+    window.clearTimeout(tAterriza.current);
+    if (!quieto) {
+      // En el genio la esfera ya está en su sitio y se lo traga; en los demás aparece al llegar
+      setAterrizando(estilo !== 'genio');
+      tAterriza.current = window.setTimeout(() => { setAterrizando(false); setViaje(null); setConGenio(false); }, DURACION_MINIMIZAR[estilo]);
+    }
     setMenu(false);
     setEscribiendo(false);
     setAbierta(false);
@@ -554,6 +593,11 @@ export const PantallaLalan: React.FC = () => {
 
   /** Cerrarla del todo: se calla, suelta el micrófono y vuelve el botón de siempre */
   const cerrar = () => {
+    setSalida(null);
+    setViaje(null);
+    setAterrizando(false);
+    setLlegoVolando(false);
+    setConGenio(false);
     ponerBurbuja(false);
     sesionViva.current = false;
     sesion.current++;
@@ -602,14 +646,40 @@ export const PantallaLalan: React.FC = () => {
 
   return (
     <>
-    <BurbujaLalan visible={!abierta && (burbuja || (!grande && !activeConversationId && !esferaGuardada))} viva={burbuja} modo={modo} nivel={nivelEsfera} pulso={pulso} cierre={escucha.cierre}
+    <BurbujaLalan visible={!abierta && !aterrizando && (burbuja || (!grande && !activeConversationId && !esferaGuardada))} sinEntrada={llegoVolando} tragando={conGenio} viva={burbuja} modo={modo} nivel={nivelEsfera} pulso={pulso} cierre={escucha.cierre}
       sinLeer={sinLeer} onAbrir={abrirLalan} onCerrar={() => { if (burbuja) cerrar(); else setEsferaGuardada(true); }} />
+    {/* «La esfera vuela»: la esfera de la pantalla viaja hasta donde vive la burbuja */}
+    {viaje && (
+      <motion.div aria-hidden="true" className="fixed left-0 top-0 z-[420] pointer-events-none"
+        style={{ width: viaje.de.width, height: viaje.de.height }}
+        initial={{ x: viaje.de.left, y: viaje.de.top, scale: 1 }}
+        animate={{ x: viaje.a.cx - viaje.de.width / 2, y: viaje.a.cy - viaje.de.height / 2, scale: viaje.a.tam / viaje.de.width }}
+        transition={{ duration: DURACION_MINIMIZAR.esfera / 1000, ease: [0.32, 0.72, 0, 1] }}>
+        <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={Math.round(viaje.de.width)} />
+      </motion.div>
+    )}
+    {/* Genio: la app se oscurece un poco y se aclara mientras Lalán entra en la burbuja */}
     <AnimatePresence>
+      {conGenio && (
+        <motion.div key="velo-genio" aria-hidden="true" className="fixed inset-0 z-[299] bg-black pointer-events-none"
+          initial={{ opacity: 0.3 }} animate={{ opacity: 0 }} exit={{ opacity: 0 }}
+          transition={{ duration: DURACION_MINIMIZAR.genio / 1000, ease: 'easeIn' }} />
+      )}
+    </AnimatePresence>
+    {/* La sombra va aquí afuera: si fuera en la pantalla, su propio recorte la borraría */}
+    <div className="fixed inset-0 z-[300] pointer-events-none [&>*]:pointer-events-auto"
+      style={{ filter: !conGenio ? undefined : document.documentElement.classList.contains('dark')
+        // En oscuro una sombra negra no se ve: va un filo claro y un brillo del color de la marca
+        ? 'drop-shadow(0 0 1px rgba(255,255,255,0.55)) drop-shadow(0 0 14px color-mix(in srgb, var(--primary) 45%, transparent))'
+        : 'drop-shadow(0 0 1px rgba(0,0,0,0.35)) drop-shadow(0 22px 30px rgba(0,0,0,0.45))' }}>
+    <AnimatePresence custom={salida}>
       {abierta && (
         <motion.div
           key="lalan"
           role="dialog" aria-modal="true" aria-label="Lalan"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          custom={salida}
+          variants={{ salir: (s: TargetAndTransition | null) => s ?? { opacity: 0, transition: { duration: 0.2 } } }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit="salir"
           transition={{ duration: 0.2 }}
           className={`fixed inset-0 z-[300] flex flex-col backdrop-blur-2xl text-slate-900 dark:text-neutral-100 ${fondoQuiosco ? 'bg-[#fbf7f8] dark:bg-[#0c0a0b]' : 'bg-slate-50/90 dark:bg-neutral-950/92'}`}
           style={vista && conTeclado
@@ -638,7 +708,19 @@ export const PantallaLalan: React.FC = () => {
                 </button>
               </div>
               {/* En PC el nombre ya está en el panel de la conversación */}
-              <span className={`text-[0.9375rem] font-bold tracking-tight ${grande ? 'invisible' : ''}`}>Lalan</span>
+              {escribiendo && !grande ? (
+                // Escribiendo, la esfera sube aquí (chiquita y viva): abajo queda todo para el texto
+                <button ref={esferaVista} type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" title="Toca para hablarle"
+                  className="flex items-center gap-2 min-w-0 rounded-full pr-2 cursor-pointer">
+                  <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={30} />
+                  <span className="text-left leading-tight">
+                    <span className="block text-[0.9375rem] font-bold tracking-tight">Lalan</span>
+                    <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">{modo === 'pensando' ? 'Pensando…' : modo === 'hablando' ? 'Respondiendo…' : 'Toca para hablarle'}</span>
+                  </span>
+                </button>
+              ) : (
+                <span className={`text-[0.9375rem] font-bold tracking-tight ${grande ? 'invisible' : ''}`}>Lalan</span>
+              )}
               <div className="relative w-24 flex justify-end gap-1">
                 {/* Silencio con un toque: de noche, en una reunión… Lalan responde solo por escrito */}
                 <button type="button" onClick={cambiarCallada} aria-pressed={callada}
@@ -686,6 +768,18 @@ export const PantallaLalan: React.FC = () => {
                       </button>
                     )}
                     <ElegirEsfera />
+                    {/* Cómo se va a la burbuja: cada quien elige en su aparato (el genio, si no elige) */}
+                    <div className="px-3 pt-2 pb-1">
+                      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Efecto al minimizar</div>
+                      <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
+                        {ESTILOS_MINIMIZAR.map((e, i) => (
+                          <button key={e.id} type="button" onClick={() => { guardarEstiloMinimizar(e.id); setEstiloMin(e.id); }} aria-pressed={estiloMin === e.id}
+                            className={`py-1.5 px-2 rounded-lg text-[0.75rem] font-semibold text-left cursor-pointer ${estiloMin === e.id ? 'bg-white dark:bg-neutral-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                            {i + 1}. {e.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="px-3 pt-2 pb-1">
                       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cuánto espero cuando te callas</div>
                       <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
@@ -745,7 +839,7 @@ export const PantallaLalan: React.FC = () => {
             <div className="flex-1 min-h-0 grid grid-cols-[minmax(320px,400px)_1fr] gap-5 px-6 pt-2 pb-1">
               {/* Izquierda: Lalan. La esfera es la protagonista, con su estado siempre a la vista */}
               <aside className={`${VIDRIO} flex flex-col items-center justify-center gap-6 p-8 text-center`}>
-                <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
+                <button ref={esferaVista} type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
                   className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
                   <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={Math.max(Math.round(aj.tamanoEsfera * 1.6), 240)} />
                   {modo === 'escuchando' && escucha.cierre > 0 && (
@@ -826,7 +920,7 @@ export const PantallaLalan: React.FC = () => {
                           <div className="px-5 py-3.5 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm">
                             <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
                           </div>
-                          {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} />}
+                          {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
                           <div className="pl-2"><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
                         </div>
                       </div>
@@ -878,8 +972,12 @@ export const PantallaLalan: React.FC = () => {
             <div className="relative flex-1 min-h-0">
             {/* La conversación: corre por detrás de la esfera (abajo es transparente).
                 Escribiendo termina encima del campo, para que la cajita no tape el texto */}
-            <div ref={lista} className="absolute inset-0 overflow-y-auto px-5 pt-4 space-y-5" aria-live="polite"
-              style={escribiendo ? { bottom: altoAbajo, paddingBottom: 8 } : { paddingBottom: altoAbajo + 8 }}>
+            <div ref={lista} className={`absolute inset-0 overflow-y-auto px-5 pt-4 ${escribiendo ? 'space-y-4' : 'space-y-5'}`} aria-live="polite"
+              style={{
+                ...(escribiendo ? { bottom: altoAbajo, paddingBottom: 12 } : { paddingBottom: altoAbajo + 8 }),
+                // Arriba el texto se desvanece en vez de cortarse de golpe
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 20px)', maskImage: 'linear-gradient(to bottom, transparent 0, #000 20px)',
+              }}>
               <TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} />
               {cargando && !mensajes.length && (
                 <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
@@ -893,8 +991,8 @@ export const PantallaLalan: React.FC = () => {
               {mensajes.map((m) => (
                 m.deLalan ? (
                   <div key={m.id} className="space-y-2.5 max-w-[92%]">
-                    <p className="text-[1.0625rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
-                    {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} />}
+                    <p className={`${escribiendo ? 'text-[0.96875rem] leading-[1.55]' : 'text-[1.0625rem] leading-relaxed'} text-slate-800 dark:text-neutral-100 whitespace-pre-line`}>{m.texto}</p>
+                    {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
                     <Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} />
                   </div>
                 ) : (
@@ -909,10 +1007,13 @@ export const PantallaLalan: React.FC = () => {
             </div>
 
             {/* Abajo: la esfera, flotando sobre la conversación */}
-            <div ref={abajo} className={`absolute inset-x-0 bottom-0 px-5 ${escribiendo ? 'pt-1' : 'pt-10'} flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto bg-gradient-to-t to-transparent ${fondoQuiosco
+            <div ref={abajo} className={`absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto ${escribiendo
+              // Escribiendo: una barra quieta pegada al teclado, como en un chat
+              ? 'px-2.5 pt-1 bg-slate-50/95 dark:bg-neutral-950/95 backdrop-blur-xl border-t border-black/5 dark:border-white/5'
+              : `px-5 pt-10 bg-gradient-to-t to-transparent ${fondoQuiosco
               // Sobre los colores, un velo suave: uno sólido se veía como un bloque tapando las manchas
               ? 'from-white/35 via-white/10 dark:from-black/35 dark:via-black/10'
-              : 'from-slate-50/75 via-slate-50/25 dark:from-neutral-950/75 dark:via-neutral-950/25'}`}>
+              : 'from-slate-50/75 via-slate-50/25 dark:from-neutral-950/75 dark:via-neutral-950/25'}`}`}>
               <AnimatePresence>
                 {error && (
                   <motion.p key={error} role="alert" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
@@ -922,22 +1023,28 @@ export const PantallaLalan: React.FC = () => {
                 )}
               </AnimatePresence>
               {escribiendo ? (
-                <form onSubmit={enviarTexto} className="w-full flex items-center gap-2 py-2">
-                  <button type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" className="shrink-0 cursor-pointer">
-                    <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={48} />
+                <form onSubmit={enviarTexto} className="w-full flex items-end gap-1 py-1.5">
+                  <button type="button" onClick={tocarEsfera} aria-label="Hablarle con la voz" title="Hablarle con la voz"
+                    className="w-10 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800">
+                    <Mic className="w-5 h-5" />
                   </button>
-                  <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…" autoFocus
-                    className="flex-1 min-w-0 px-4 py-3 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-[0.9375rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
                   {puedeFactura && (
                     <button type="button" onClick={pasarFactura} aria-label="Pasarle una factura" title="Pásale la factura de lo que compraste"
-                      className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800">
+                      className="w-10 h-11 rounded-full flex items-center justify-center shrink-0 cursor-pointer text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800">
                       <Receipt className="w-5 h-5" />
                     </button>
                   )}
-                  <button type="submit" disabled={!texto.trim() || modo === 'pensando'} aria-label="Enviar"
-                    className="w-11 h-11 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shrink-0 disabled:opacity-40 cursor-pointer">
-                    {modo === 'pensando' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                  </button>
+                  {/* El cuadro crece con el texto (hasta 5 líneas); a 16 px el iPhone no acerca la pantalla */}
+                  <div className="flex-1 min-w-0 flex items-end rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 focus-within:border-[var(--primary)] transition-colors">
+                    <textarea ref={cuadro} rows={1} value={texto} autoFocus enterKeyHint="send" placeholder="Escríbele a Lalan…"
+                      onChange={(e) => setTexto(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (texto.trim() && modo !== 'pensando') void enviar(texto); } }}
+                      className="flex-1 min-w-0 resize-none bg-transparent pl-4 pr-1 py-[10px] text-[16px] leading-[22px] max-h-[132px] placeholder:text-slate-400 focus:outline-none" />
+                    <button type="submit" disabled={!texto.trim() || modo === 'pensando'} aria-label="Enviar"
+                      className="m-[5px] w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center shrink-0 disabled:opacity-30 transition-opacity cursor-pointer">
+                      {modo === 'pensando' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUp className="w-4.5 h-4.5" strokeWidth={2.5} />}
+                    </button>
+                  </div>
                 </form>
               ) : (
                 <>
@@ -959,7 +1066,7 @@ export const PantallaLalan: React.FC = () => {
                         </motion.p>
                       )}
                     </AnimatePresence>
-                    <button type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
+                    <button ref={esferaVista} type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
                       className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
                       <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={aj.tamanoEsfera} />
                       {/* Se llena cuando la persona se calla: se ve venir el envío y se puede seguir hablando */}
@@ -989,6 +1096,7 @@ export const PantallaLalan: React.FC = () => {
       )}
       {abierta && verPlanes && <MisPlanes key="mis-planes" onCerrar={() => setVerPlanes(false)} />}
     </AnimatePresence>
+    </div>
     </>
   );
 };
@@ -1138,17 +1246,20 @@ const TarjetaAccion: React.FC<{ accion: Accion; ocupada: boolean; onResolver: (a
 const Tarjeta: React.FC<{
   accion: Accion; ocupada: boolean; onResolver: (a: Accion, confirmar: boolean) => void; onVerChat: (id: string) => void;
   onLlevame: (g: GuiaTarjeta) => void; onFallo: (e: unknown) => void; onAbrirPedido: (id: string) => void;
-}> = ({ accion, ocupada, onResolver, onVerChat, onLlevame, onFallo, onAbrirPedido }) => {
+  onIr: (destino: { ir: string; aviso?: string | null }) => void;
+}> = ({ accion, ocupada, onResolver, onVerChat, onLlevame, onFallo, onAbrirPedido, onIr }) => {
   if (accion.guia) return <TarjetaGuia guia={accion.guia} onLlevame={onLlevame} />;
   if (accion.documento) return <TarjetaDocumento documento={accion.documento} onFallo={onFallo} />;
   if (accion.tutorial) return <TarjetaTutorial tutorial={accion.tutorial} />;
-  if (accion.recordatorio) return <TarjetaRecordatorio recordatorio={accion.recordatorio} onFallo={onFallo} />;
+  if (accion.recordatorio) return <TarjetaRecordatorio recordatorio={accion.recordatorio} onFallo={onFallo} onIr={onIr} />;
   if (accion.tipo === 'guia' || accion.tipo === 'documento' || accion.tipo === 'tutorial' || accion.tipo === 'recordatorio') return null;
   return <TarjetaAccion accion={accion} ocupada={ocupada} onResolver={onResolver} onVerChat={onVerChat} onAbrirPedido={onAbrirPedido} />;
 };
 
 /** Un recordatorio que Lalán guardó: cuándo y para quién, y quitarlo si no era */
-const TarjetaRecordatorio: React.FC<{ recordatorio: RecordatorioTarjeta; onFallo: (e: unknown) => void }> = ({ recordatorio, onFallo }) => {
+const TarjetaRecordatorio: React.FC<{
+  recordatorio: RecordatorioTarjeta; onFallo: (e: unknown) => void; onIr: (destino: { ir: string; aviso?: string | null }) => void;
+}> = ({ recordatorio, onFallo, onIr }) => {
   const [quitado, setQuitado] = useState(false);
   const [quitando, setQuitando] = useState(false);
   const quitar = async () => {
@@ -1164,8 +1275,11 @@ const TarjetaRecordatorio: React.FC<{ recordatorio: RecordatorioTarjeta; onFallo
       </div>
       {!quitado && (
         <div className="flex gap-2">
-          <button type="button" onClick={() => irA({ ir: 'recordatorios', aviso: `recordatorio:${recordatorio.id}` })}
-            className="flex-1 py-2.5 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] text-[0.875rem] font-bold cursor-pointer">Ver recordatorios</button>
+          {/* Lalán se hace burbuja y la app abre Recordatorios con este marcado */}
+          <button type="button" onClick={() => onIr({ ir: 'recordatorios', aviso: `recordatorio:${recordatorio.id}` })}
+            className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-[var(--primary)]/25 active:scale-[0.98] transition-transform cursor-pointer">
+            <BellRing className="w-4 h-4" /> Ver recordatorios
+          </button>
           <button type="button" onClick={() => void quitar()} disabled={quitando}
             className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 text-[0.875rem] font-semibold cursor-pointer disabled:opacity-50">
             {quitando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Quitar'}
@@ -1267,6 +1381,15 @@ function posGuardada(): PosBurbuja {
   } catch { /* noop */ }
   return { lado: 'der', y: 0.72 };
 }
+/** Dónde queda el centro de la burbuja (la misma cuenta que usa la burbuja para ponerse) */
+function destinoBurbuja(): Destino {
+  const p = posGuardada();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const x = p.lado === 'der' ? vw - TAM_BURBUJA - BORDE_BURBUJA : BORDE_BURBUJA;
+  const y = Math.min(Math.max(p.y * vh, BORDE_BURBUJA + 40), vh - TAM_BURBUJA - BORDE_BURBUJA);
+  return { cx: x + TAM_BURBUJA / 2, cy: y + TAM_BURBUJA / 2, tam: TAM_BURBUJA };
+}
 function guardarPos(p: PosBurbuja) { try { localStorage.setItem(CLAVE_POS_BURBUJA, JSON.stringify(p)); } catch { /* noop */ } }
 
 /**
@@ -1295,8 +1418,12 @@ const ETIQUETA_BURBUJA: Record<ModoEsfera, string> = {
  */
 const BurbujaLalan: React.FC<{
   visible: boolean; viva: boolean; modo: ModoEsfera; nivel: number; pulso: number; cierre: number; sinLeer: boolean;
+  /** Llega la esfera volando: la burbuja aparece ya del tamaño, sin crecer */
+  sinEntrada?: boolean;
+  /** Genio: la pantalla entra en la esfera; la esfera se abre un poco al tragársela */
+  tragando?: boolean;
   onAbrir: () => void; onCerrar: () => void;
-}> = ({ visible, viva, modo, nivel, pulso, cierre, sinLeer, onAbrir, onCerrar }) => {
+}> = ({ visible, viva, modo, nivel, pulso, cierre, sinLeer, sinEntrada, tragando, onAbrir, onCerrar }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [arrastrando, setArrastrando] = useState(false);
@@ -1418,10 +1545,14 @@ const BurbujaLalan: React.FC<{
           <motion.div key="burbuja"
             className={`fixed left-0 top-0 ${viva || arrastrando ? 'z-[410]' : 'z-40'}`}
             style={{ x, y, width: TAM_BURBUJA, height: TAM_BURBUJA }}
-            initial={{ opacity: 0, scale: 0.4 }}
-            animate={{ opacity: tirando ? 0 : 1, scale: tirando ? 0.2 : sobre ? 0.82 : arrastrando ? 1.08 : 1 }}
+            initial={sinEntrada ? false : tragando ? { opacity: 0, scale: 0.7 } : { opacity: 0, scale: 0.4 }}
+            animate={tragando
+              ? { opacity: 1, scale: [0.7, 1, 1.22, 1] }
+              : { opacity: tirando ? 0 : 1, scale: tirando ? 0.2 : sobre ? 0.82 : arrastrando ? 1.08 : 1 }}
             exit={{ opacity: 0, scale: 0.4 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 28 }}>
+            transition={tragando
+              ? { duration: DURACION_MINIMIZAR.genio / 1000 + 0.18, times: [0, 0.3, 0.88, 1], ease: 'easeOut' }
+              : { type: 'spring', stiffness: 380, damping: 28 }}>
             <button type="button" aria-label={ETIQUETA_BURBUJA[modo]} data-medir="Abrir Lalan"
               title="Toca para abrir el chat · arrástrala al zafacón para cerrarla"
               onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerCancel={alSoltar}
