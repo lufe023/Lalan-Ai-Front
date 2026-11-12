@@ -337,8 +337,8 @@ function slugDeVitrina(): string | null {
   return m ? m[1] : null;
 }
 
-/** La Vitrina por su dirección corta (/<salón> o /<salón>/<sede>), fuera de /app/ */
-function direccionDeVitrina(): { nombre: string; sede: string | null } | null {
+/** La Vitrina por su dirección corta (/<salón>, /<salón>/<sede> o /<salón>/<sede>/<servicio>), fuera de /app/ */
+function direccionDeVitrina(): { nombre: string; sede: string | null; item: string | null } | null {
   const ruta = window.location.pathname;
   if (ruta === '/app' || ruta.startsWith('/app/')) return null;
   return direccionCorta(ruta);
@@ -453,7 +453,7 @@ export default function App() {
   if (vitrinaCorta) {
     return (
       <MotionConfig reducedMotion="user">
-        <VitrinaCortaScreen nombre={vitrinaCorta.nombre} sede={vitrinaCorta.sede} />
+        <VitrinaCortaScreen nombre={vitrinaCorta.nombre} sede={vitrinaCorta.sede} item={vitrinaCorta.item} />
       </MotionConfig>
     );
   }

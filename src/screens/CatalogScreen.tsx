@@ -74,6 +74,7 @@ import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
 import { usePlan } from '../context/PlanContext';
 import { useEncuadres } from '../hooks/useEncuadres';
+import { BotonEnlaceDirecto } from '../components/catalogo/EnlaceParaCompartir';
 import { COLOR_ASISTENTE, InterruptorDeCatalogo, SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
 import { BotonDeTarjeta, OpcionesDeTarjeta, PrecioDeTarjeta, TarjetaCatalogo, opcionesDe } from '../components/catalogo/TarjetaCatalogo';
 
@@ -841,6 +842,9 @@ export const CatalogScreen: React.FC = () => {
                       />
                     }
                     acciones={<>
+                      {service.enVitrina !== false && (
+                        <BotonEnlaceDirecto tipo="servicio" id={service.id} publicar={() => updateService(service.id, { enVitrina: true })} />
+                      )}
                       <BotonDeTarjeta titulo="Editar servicio y precios" onClick={() => handleOpenEditService(service)}>
                         <Edit2 className="w-3.5 h-3.5" />
                       </BotonDeTarjeta>
@@ -968,6 +972,9 @@ export const CatalogScreen: React.FC = () => {
                         <BotonDeTarjeta titulo="Recibir mercancía (con fecha de vencimiento)" onClick={() => setRecibiendo({ id: product.id, name: product.name, unit: product.unit, costPrice: (product as any).costPrice ?? null })}>
                           <PackagePlus className="w-3.5 h-3.5" />
                         </BotonDeTarjeta>
+                      )}
+                      {!product.supplyOnly && product.enVitrina !== false && (
+                        <BotonEnlaceDirecto tipo="producto" id={product.id} publicar={() => updateProduct(product.id, { enVitrina: true })} />
                       )}
                       <BotonDeTarjeta titulo="Editar producto y precios" onClick={() => handleOpenEditProduct(product)}>
                         <Edit2 className="w-3.5 h-3.5" />
