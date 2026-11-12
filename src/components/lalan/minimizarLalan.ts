@@ -23,7 +23,7 @@ export const DURACION_MINIMIZAR: Record<EstiloMinimizar, number> = {
 };
 
 const CLAVE = 'lalan_minimizar';
-const DEFECTO: EstiloMinimizar = 'esfera';
+const DEFECTO: EstiloMinimizar = 'genio';
 
 export function estiloMinimizar(): EstiloMinimizar {
   try {

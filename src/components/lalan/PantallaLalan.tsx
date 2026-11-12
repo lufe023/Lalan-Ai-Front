@@ -768,9 +768,9 @@ export const PantallaLalan: React.FC = () => {
                       </button>
                     )}
                     <ElegirEsfera />
-                    {/* De prueba: el efecto al minimizar, para elegir el que queda */}
+                    {/* Cómo se va a la burbuja: cada quien elige en su aparato (el genio, si no elige) */}
                     <div className="px-3 pt-2 pb-1">
-                      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Al minimizar (prueba)</div>
+                      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Efecto al minimizar</div>
                       <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-neutral-800">
                         {ESTILOS_MINIMIZAR.map((e, i) => (
                           <button key={e.id} type="button" onClick={() => { guardarEstiloMinimizar(e.id); setEstiloMin(e.id); }} aria-pressed={estiloMin === e.id}
