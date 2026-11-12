@@ -26,37 +26,41 @@ interface Enlaces {
   sedes: EnlaceDeSede[];
 }
 
+/** Qué servicio o producto pide su link, y cómo marcarlo «sale en la Vitrina» si es lo que falta */
+export interface PedidoDeEnlace {
+  tipo: Tipo;
+  id: string;
+  publicar: () => Promise<unknown> | void;
+}
+
 /**
  * El botón de la tarjeta del catálogo que da el enlace directo a ese
  * servicio o producto en la Vitrina: para pegarlo en una historia de
  * Instagram, en el estado de WhatsApp o en un chat. Quien lo abre cae en su
  * ficha con «Reservar ahora» (o «Pedirlo por WhatsApp», si es un producto).
- * Sin la Vitrina en el plan no aparece.
+ * Sin la Vitrina en el plan no aparece. La hoja va aparte, en la pantalla
+ * (HojaEnlaceDirecto): dentro de la tarjeta quedaba encerrada en la lista.
  */
-export const BotonEnlaceDirecto: React.FC<{
-  tipo: Tipo;
-  id: string;
-  /** Lo que cambia «sale en la Vitrina» desde aquí mismo, si es lo que falta */
-  publicar: () => Promise<unknown> | void;
-}> = ({ tipo, id, publicar }) => {
+export const BotonEnlaceDirecto: React.FC<{ tipo: Tipo; abrir: () => void }> = ({ tipo, abrir }) => {
   const { tieneModulo } = usePlan();
-  const [abierto, setAbierto] = useState(false);
   if (!tieneModulo('vitrina')) return null;
   return (
-    <>
-      <BotonDeTarjeta titulo={`Link de este ${tipo} para compartir`} onClick={() => setAbierto(true)}>
-        <Link2 className="w-3.5 h-3.5" />
-      </BotonDeTarjeta>
-      <IOSModal
-        isOpen={abierto} onClose={() => setAbierto(false)} id="enlace-directo"
-        title="Link para compartir" subtitle="Pégalo en tu historia de Instagram, tu estado o un chat"
-        fixedHeight={false} height="auto"
-      >
-        {abierto && <HojaDeEnlaces tipo={tipo} id={id} publicar={publicar} cerrar={() => setAbierto(false)} />}
-      </IOSModal>
-    </>
+    <BotonDeTarjeta titulo={`Link de este ${tipo} para compartir`} onClick={abrir}>
+      <Link2 className="w-3.5 h-3.5" />
+    </BotonDeTarjeta>
   );
 };
+
+/** La hoja «Link para compartir». Va en la raíz de la pantalla, como las demás hojas */
+export const HojaEnlaceDirecto: React.FC<{ pedido: PedidoDeEnlace | null; cerrar: () => void }> = ({ pedido, cerrar }) => (
+  <IOSModal
+    isOpen={!!pedido} onClose={cerrar} id="enlace-directo"
+    title="Link para compartir" subtitle="Pégalo en tu historia de Instagram, tu estado o un chat"
+    fixedHeight={false} height="auto" forma="angosta"
+  >
+    {pedido && <HojaDeEnlaces key={pedido.id} tipo={pedido.tipo} id={pedido.id} publicar={pedido.publicar} cerrar={cerrar} />}
+  </IOSModal>
+);
 
 function HojaDeEnlaces({ tipo, id, publicar, cerrar }: { tipo: Tipo; id: string; publicar: () => Promise<unknown> | void; cerrar: () => void }) {
   const { navigateTo } = useApp();

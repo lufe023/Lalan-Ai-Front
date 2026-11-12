@@ -74,7 +74,7 @@ import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
 import { usePlan } from '../context/PlanContext';
 import { useEncuadres } from '../hooks/useEncuadres';
-import { BotonEnlaceDirecto } from '../components/catalogo/EnlaceParaCompartir';
+import { BotonEnlaceDirecto, HojaEnlaceDirecto, type PedidoDeEnlace } from '../components/catalogo/EnlaceParaCompartir';
 import { COLOR_ASISTENTE, InterruptorDeCatalogo, SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
 import { BotonDeTarjeta, OpcionesDeTarjeta, PrecioDeTarjeta, TarjetaCatalogo, opcionesDe } from '../components/catalogo/TarjetaCatalogo';
 
@@ -129,6 +129,8 @@ export const CatalogScreen: React.FC = () => {
   } = useApp();
   const { varias: variasSedes, actual: sedeActual, sedes: sedesDelSalon } = useSedeActiva();
   const sedeDelStockInicial = useSedeDelStock();
+  /** El servicio o producto cuyo link para compartir está abierto */
+  const [enlaceDe, setEnlaceDe] = useState<PedidoDeEnlace | null>(null);
   /* Recibir mercancía (lotes con vencimiento) */
   const [recibiendo, setRecibiendo] = useState<ProductoARecibir | null>(null);
   /** A quién se le compra cada producto (Compras): el chip de la tarjeta y su hoja */
@@ -843,7 +845,7 @@ export const CatalogScreen: React.FC = () => {
                     }
                     acciones={<>
                       {service.enVitrina !== false && (
-                        <BotonEnlaceDirecto tipo="servicio" id={service.id} publicar={() => updateService(service.id, { enVitrina: true })} />
+                        <BotonEnlaceDirecto tipo="servicio" abrir={() => setEnlaceDe({ tipo: 'servicio', id: service.id, publicar: () => updateService(service.id, { enVitrina: true }) })} />
                       )}
                       <BotonDeTarjeta titulo="Editar servicio y precios" onClick={() => handleOpenEditService(service)}>
                         <Edit2 className="w-3.5 h-3.5" />
@@ -974,7 +976,7 @@ export const CatalogScreen: React.FC = () => {
                         </BotonDeTarjeta>
                       )}
                       {!product.supplyOnly && product.enVitrina !== false && (
-                        <BotonEnlaceDirecto tipo="producto" id={product.id} publicar={() => updateProduct(product.id, { enVitrina: true })} />
+                        <BotonEnlaceDirecto tipo="producto" abrir={() => setEnlaceDe({ tipo: 'producto', id: product.id, publicar: () => updateProduct(product.id, { enVitrina: true }) })} />
                       )}
                       <BotonDeTarjeta titulo="Editar producto y precios" onClick={() => handleOpenEditProduct(product)}>
                         <Edit2 className="w-3.5 h-3.5" />
@@ -1067,6 +1069,8 @@ export const CatalogScreen: React.FC = () => {
           </div>
         )}
       </PageContent>
+
+      <HojaEnlaceDirecto pedido={enlaceDe} cerrar={() => setEnlaceDe(null)} />
 
       {/* SERVICE MODAL (Add / Edit + Dynamic Price Table) */}
       <IOSModal
