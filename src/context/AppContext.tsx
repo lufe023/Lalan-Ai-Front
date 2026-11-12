@@ -98,7 +98,7 @@ export interface LoungeEvent {
 }
 
 
-export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'conversiones-report' | 'sala' | 'plataforma' | 'informes' | 'mi-semana' | 'compras' | 'avisos' | 'mi-actividad';
+export type ScreenName = 'dashboard' | 'calendar' | 'clients' | 'catalog' | 'chats' | 'bots' | 'settings' | 'lounge' | 'price-lists' | 'ganancias' | 'caja' | 'citas-report' | 'conversiones-report' | 'sala' | 'plataforma' | 'informes' | 'mi-semana' | 'compras' | 'avisos' | 'mi-actividad' | 'recordatorios';
 
 // ═══════════════════════════════════════════════════════════════════
 //  SALA Y TURNOS
@@ -129,6 +129,9 @@ export interface SalonStaff {
   fotoId?: string | null;
   phone?: string | null;
   active: boolean;
+  /** Cumpleaños "MM-DD" y el año si se sabe: Lalán lo recuerda en «Tu día» */
+  cumpleMesDia?: string | null;
+  cumpleAnio?: number | null;
   zoneId?: string | null;
   zone?: { id: string; name: string; prefix: string; color?: string | null } | null;
   /** Su horario propio; null = trabaja todo el horario del salón */
@@ -459,7 +462,7 @@ interface AppContextType {
   eliminarZona: (id: string) => Promise<void>;
   especialistas: SalonStaff[];
   loadEspecialistas: () => Promise<void>;
-  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null; atiendeCitas?: boolean | null; sedes?: string[] }) => Promise<boolean>;
+  guardarEspecialista: (dto: { id?: string; name: string; role?: string; zoneId?: string | null; active?: boolean; horarioSemanal?: import('../types').DiaDeHorario[] | null; atiendeCitas?: boolean | null; sedes?: string[]; cumpleanos?: string }) => Promise<boolean>;
   eliminarEspecialista: (id: string) => Promise<void>;
   /** Da el turno: la persona llegó. Con appointmentId es una cita; sin él, walk-in */
   darTurno: (dto: { appointmentId?: string | null; clientId?: string | null; clientName?: string; zoneId?: string | null; staffId?: string | null; reason?: string | null }) => Promise<QueueTicket | null>;
@@ -736,6 +739,7 @@ export function mapApiClient(c: any): Client {
     priceListId: c.priceListId,
     trato: c.trato ?? null,
     tratoPersonal: c.tratoPersonal ?? null,
+    cumpleanos: c.cumpleMesDia ? (c.cumpleAnio ? `${c.cumpleAnio}-${c.cumpleMesDia}` : c.cumpleMesDia) : null,
     sedes: Array.isArray(c.sedes) ? c.sedes : [],
     archivadaEn: c.archivadaEn ?? null,
     ...(c.restaurada ? { restaurada: true } : {}),
@@ -1244,6 +1248,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hospitalityPrefs: data.hospitality,
       trato: data.trato || undefined,
       tratoPersonal: data.tratoPersonal?.trim() || undefined,
+      cumpleanos: data.cumpleanos || undefined,
     });
     const client = mapApiClient(res);
     setClients(c => [client, ...c.filter(x => x.id !== client.id)]);
@@ -1263,6 +1268,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.hospitality !== undefined)            payload.hospitalityPrefs = updated.hospitality;
     if (updated.trato !== undefined)                  payload.trato = updated.trato || null;
     if (updated.tratoPersonal !== undefined)          payload.tratoPersonal = updated.tratoPersonal?.trim() || null;
+    if (updated.cumpleanos !== undefined)             payload.cumpleanos = updated.cumpleanos || '';
     const res = await api.patch<any>(`/clients/${id}`, payload);
     setClients(c => c.map(x => x.id === id ? mapApiClient(res) : x));
   }, []);

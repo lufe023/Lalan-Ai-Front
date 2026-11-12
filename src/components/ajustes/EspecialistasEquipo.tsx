@@ -10,6 +10,7 @@ import { semanaCompleta } from './HorarioSemanal';
 import { AvatarEspecialista, FotoEspecialista } from './FotoEspecialista';
 import { ServiciosQueHace } from './ServiciosQueHace';
 import { EntradaEspecialista, PlantillaPermisosEspecialista } from './EntradaEspecialista';
+import { CampoCumple, cumpleDeApi } from '../ui/CampoCumple';
 
 const CAMPO = 'min-w-0 px-2.5 py-2 sm:py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700';
 
@@ -244,6 +245,13 @@ export const EspecialistasEquipo: React.FC<{
                       onEncuadre={guardarEncuadre}
                       onCambio={loadEspecialistas}
                     />
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-neutral-700">
+                      <CampoCumple
+                        etiqueta={`Cumpleaños de ${nombre}`}
+                        valor={cumpleDeApi(e.cumpleMesDia, e.cumpleAnio)}
+                        onCambio={v => void guardarEspecialista({ id: e.id, name: e.name, cumpleanos: v })}
+                      />
+                    </div>
                   </div>
                 )}
                 {/* Los servicios que hace: solo ella (y las marcadas) recibe esas citas */}

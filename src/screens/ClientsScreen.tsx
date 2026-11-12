@@ -7,6 +7,7 @@ import {
   Search,
   Phone,
   Mail,
+  Cake,
   Calendar,
   MessageSquare,
   Sparkles,
@@ -53,6 +54,7 @@ import { SedesDeClienta } from '../components/ui/SedesDeClienta';
 import { ABRIR_CLIENTA } from '../services/saberProductos';
 import { ClientasArchivadas } from '../components/clientas/ClientasArchivadas';
 import { useConfirmar } from '../components/ui/ModalConfirmar';
+import { CampoCumple, cumpleTexto } from '../components/ui/CampoCumple';
 
 /** Cómo le habla Lalan en el chat. Sin saber: neutro */
 const OPCIONES_TRATO: { id: TratoCliente | null; label: string }[] = [
@@ -218,6 +220,7 @@ export const ClientsScreen: React.FC = () => {
     medicalOrAllergyNotes: string;
     trato: TratoCliente | null;
     tratoPersonal: string;
+    cumpleanos: string;
   }>({
     name: '',
     phone: '',
@@ -229,6 +232,7 @@ export const ClientsScreen: React.FC = () => {
     medicalOrAllergyNotes: '',
     trato: null,
     tratoPersonal: '',
+    cumpleanos: '',
   });
 
   // Filter Clients
@@ -298,6 +302,7 @@ export const ClientsScreen: React.FC = () => {
       medicalOrAllergyNotes: '',
       trato: null,
       tratoPersonal: '',
+      cumpleanos: '',
     });
     setShowAddModal(true);
   };
@@ -315,6 +320,7 @@ export const ClientsScreen: React.FC = () => {
       medicalOrAllergyNotes: client.medicalOrAllergyNotes || '',
       trato: client.trato ?? null,
       tratoPersonal: client.tratoPersonal ?? '',
+      cumpleanos: client.cumpleanos ?? '',
     });
     setShowAddModal(true);
   };
@@ -355,6 +361,7 @@ export const ClientsScreen: React.FC = () => {
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
           trato: formData.trato,
           tratoPersonal: formData.tratoPersonal.trim(),
+          cumpleanos: formData.cumpleanos,
         });
         setSelectedClient({
           ...selectedClient,
@@ -367,6 +374,7 @@ export const ClientsScreen: React.FC = () => {
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
           trato: formData.trato,
           tratoPersonal: formData.tratoPersonal.trim() || null,
+          cumpleanos: formData.cumpleanos || null,
         });
       } else {
         const created = await addClient({
@@ -382,6 +390,7 @@ export const ClientsScreen: React.FC = () => {
           medicalOrAllergyNotes: formData.medicalOrAllergyNotes.trim(),
           trato: formData.trato,
           tratoPersonal: formData.tratoPersonal.trim() || null,
+          cumpleanos: formData.cumpleanos || null,
           totalVisits: 0,
           totalSpent: 0,
         });
@@ -845,6 +854,12 @@ export const ClientsScreen: React.FC = () => {
                     <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1">
                       <Mail className="w-3 h-3 text-slate-400" />
                       {selectedClient.email}
+                    </p>
+                  )}
+                  {selectedClient.cumpleanos && (
+                    <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1">
+                      <Cake className="w-3 h-3 text-slate-400" />
+                      Cumple el {cumpleTexto(selectedClient.cumpleanos)}
                     </p>
                   )}
                 </div>
@@ -1319,6 +1334,9 @@ export const ClientsScreen: React.FC = () => {
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition"
             />
           </div>
+
+          {/* Cumpleaños: Lalán lo recuerda en «Tu día» */}
+          <CampoCumple valor={formData.cumpleanos} onCambio={v => setFormData({ ...formData, cumpleanos: v })} />
 
           {/* Trato: Lalan no supone que quien escribe es mujer (también hay barberías) */}
           <div>

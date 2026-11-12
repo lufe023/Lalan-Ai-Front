@@ -8,6 +8,7 @@ import type { UsuarioSalon } from '../../types/plataforma';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { PermisosDePersona, ResumenRol, RolesDelSalon, useCatalogoPermisos } from './PermisosEquipo';
 import { rolDePersona, type CatalogoPermisosRol } from '../../services/permisos';
+import { CampoCumple, cumpleDeApi } from '../ui/CampoCumple';
 
 /** Lo que se elige al dar de alta o cambiar el rol: 'admin' o la clave de un rol de Lalan */
 type Eleccion = string;
@@ -24,7 +25,7 @@ const eleccionDe = (u: UsuarioSalon, catalogo: CatalogoPermisosRol | null): Elec
 
 interface Sede { id: string; name: string }
 interface ClaveNueva { nombre: string; entraCon: string[]; clave: string; telefono: string | null }
-interface Acceso { email: string; usuario: string; telefono: string }
+interface Acceso { email: string; usuario: string; telefono: string; cumpleanos: string }
 
 /** 18095551234 → 809-555-1234 */
 const telefonoLegible = (t: string | null) => {
@@ -84,7 +85,7 @@ export const UsuariosSalon: React.FC = () => {
     const nombre = u.name.split(' ')[0];
     if (eleccion === ADMIN && !u.email) {
       setError(`Para hacer administradora a ${nombre}, primero ponle su correo (ahí le llegan los informes). Escríbelo abajo y guarda; luego cambia el rol.`);
-      setEditandoAcceso({ id: u.id, datos: { email: '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono) } });
+      setEditandoAcceso({ id: u.id, datos: { email: '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono), cumpleanos: cumpleDeApi(u.cumpleMesDia, u.cumpleAnio) } });
       return;
     }
     if (eleccion === eleccionDe(u, catalogo)) return;
@@ -115,6 +116,7 @@ export const UsuariosSalon: React.FC = () => {
     if (d.email.trim() !== (u.email ?? '')) cambio.email = d.email.trim() || null;
     if (d.usuario.trim() !== (u.usuario ?? '')) cambio.usuario = d.usuario.trim();
     if (d.telefono.trim() !== telefonoLegible(u.telefono)) cambio.telefono = d.telefono.trim() || null;
+    if (d.cumpleanos !== cumpleDeApi(u.cumpleMesDia, u.cumpleAnio)) cambio.cumpleanos = d.cumpleanos;
     if (!Object.keys(cambio).length) { setEditandoAcceso(null); return; }
     setError('');
     try { await api.patch(`/users/${u.id}`, cambio); setEditandoAcceso(null); await cargar(); }
@@ -226,6 +228,10 @@ export const UsuariosSalon: React.FC = () => {
                         onChange={(e) => setEditandoAcceso({ id: u.id, datos: { ...editandoAcceso.datos, telefono: e.target.value } })} className={campo} />
                       <input type="email" autoCapitalize="none" placeholder="Correo" value={editandoAcceso.datos.email}
                         onChange={(e) => setEditandoAcceso({ id: u.id, datos: { ...editandoAcceso.datos, email: e.target.value } })} className={campo} />
+                      <div className="sm:col-span-3">
+                        <CampoCumple valor={editandoAcceso.datos.cumpleanos}
+                          onCambio={(v) => setEditandoAcceso({ id: u.id, datos: { ...editandoAcceso.datos, cumpleanos: v } })} />
+                      </div>
                       <div className="sm:col-span-3 flex gap-2">
                         <button type="submit" className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-bold cursor-pointer">Guardar</button>
                         <button type="button" onClick={() => setEditandoAcceso(null)} className="px-3 py-1.5 rounded-lg text-[0.75rem] font-semibold text-slate-500 cursor-pointer">Cancelar</button>
@@ -246,7 +252,7 @@ export const UsuariosSalon: React.FC = () => {
                   </select>
                 )}
                 <button type="button" title="Con qué entra (usuario, teléfono, correo)"
-                  onClick={() => setEditandoAcceso(editandoAcceso?.id === u.id ? null : { id: u.id, datos: { email: u.email ?? '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono) } })}
+                  onClick={() => setEditandoAcceso(editandoAcceso?.id === u.id ? null : { id: u.id, datos: { email: u.email ?? '', usuario: u.usuario ?? '', telefono: telefonoLegible(u.telefono), cumpleanos: cumpleDeApi(u.cumpleMesDia, u.cumpleAnio) } })}
                   className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><Pencil className="w-3.5 h-3.5" /></button>
                 {u.role === 'assistant' && catalogo && (
                   <button type="button" onClick={() => setPermisosDe(permisosDe === u.id ? null : u.id)} title="Qué puede hacer"

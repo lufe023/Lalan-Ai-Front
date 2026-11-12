@@ -284,6 +284,9 @@ export interface UsuarioSalon {
   roleTitle: string | null;
   /** Rol `assistant`: cuál de los roles de Lalan (null = Recepción) */
   rolPersonal: string | null;
+  /** Cumpleaños "MM-DD" y el año si se sabe: Lalán lo recuerda en «Tu día» */
+  cumpleMesDia?: string | null;
+  cumpleAnio?: number | null;
   active: boolean;
   locationId: string | null;
   debeCambiarClave: boolean;
