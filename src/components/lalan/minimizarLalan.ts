@@ -14,12 +14,12 @@ export const ESTILOS_MINIMIZAR: { id: EstiloMinimizar; nombre: string }[] = [
   { id: 'morph', nombre: 'Se encoge en círculo' },
   { id: 'tarjeta', nombre: 'Tarjeta que vuela' },
   { id: 'gota', nombre: 'Gota' },
-  { id: 'genio', nombre: 'Genio' },
+  { id: 'genio', nombre: 'Genio (como Mac)' },
 ];
 
 /** Lo que dura cada efecto (ms): la burbuja aparece al llegar */
 export const DURACION_MINIMIZAR: Record<EstiloMinimizar, number> = {
-  esfera: 520, iris: 480, morph: 520, tarjeta: 560, gota: 620, genio: 600,
+  esfera: 520, iris: 480, morph: 520, tarjeta: 560, gota: 620, genio: 680,
 };
 
 const CLAVE = 'lalan_minimizar';
@@ -102,16 +102,7 @@ export function salidaHaciaBurbuja(estilo: EstiloMinimizar, d: Destino): TargetA
       };
     }
     case 'genio':
-      // Lo de abajo se angosta primero hacia la burbuja; lo de arriba lo sigue
-      return {
-        clipPath: [
-          `polygon(0px 0px, ${vw}px 0px, ${vw}px ${vh}px, 0px ${vh}px)`,
-          `polygon(0px 0px, ${vw}px 0px, ${d.cx + r}px ${d.cy + r}px, ${d.cx - r}px ${d.cy + r}px)`,
-          `polygon(${d.cx - r}px ${d.cy - r}px, ${d.cx + r}px ${d.cy - r}px, ${d.cx + r}px ${d.cy + r}px, ${d.cx - r}px ${d.cy + r}px)`,
-        ],
-        opacity: [1, 1, 0],
-        transition: { duration: seg, times: [0, 0.5, 1], ease: 'easeIn', opacity: { duration: seg, times: [0, 0.85, 1] } },
-      };
+      return genio(d, vw, vh, seg);
     case 'esfera':
     default:
       // La pantalla se disuelve; la esfera (aparte) es la que viaja a la burbuja
@@ -122,4 +113,51 @@ export function salidaHaciaBurbuja(estilo: EstiloMinimizar, d: Destino): TargetA
         transition: { duration: seg * 0.7, ease: 'easeOut' },
       };
   }
+}
+
+const suave = (t: number) => t * t * (3 - 2 * t);
+const tramo = (p: number, desde: number, hasta: number) => suave(Math.min(1, Math.max(0, (p - desde) / (hasta - desde))));
+const mezcla = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/**
+ * El genio de la Mac: primero las orillas de abajo se curvan hacia la
+ * burbuja (como un embudo); después la pantalla entera se escurre por ese
+ * embudo y entra en la burbuja. Se arma con un recorte de muchos puntos por
+ * cuadro y la pantalla bajando, así lo de arriba "cae" dentro.
+ */
+function genio(d: Destino, vw: number, vh: number, seg: number): TargetAndTransition {
+  const r = d.tam / 2;
+  const CUADROS = 18;
+  const FILAS = 24;
+  const recortes: string[] = [];
+  const bajadas: number[] = [];
+  for (let i = 0; i <= CUADROS; i++) {
+    const p = i / CUADROS;
+    // Las orillas se doblan (0–45 %); la pantalla baja y entra (30–100 %)
+    const doblez = tramo(p, 0, 0.45);
+    const entra = tramo(p, 0.3, 1);
+    const arriba = mezcla(0, d.cy - r, entra);
+    const abajo = mezcla(vh, d.cy + r, tramo(p, 0, 0.55));
+    const izq: string[] = [];
+    const der: string[] = [];
+    for (let f = 0; f <= FILAS; f++) {
+      const s = f / FILAS;
+      const y = mezcla(arriba, abajo, s);
+      // Cuánto se angosta esta fila: más abajo, más angosta; al final todas
+      const forma = mezcla(suave(s), 1, entra);
+      const k = doblez * forma;
+      izq.push(`${mezcla(0, d.cx - r, k).toFixed(1)}px ${(y - arriba).toFixed(1)}px`);
+      der.push(`${mezcla(vw, d.cx + r, k).toFixed(1)}px ${(y - arriba).toFixed(1)}px`);
+    }
+    // El recorte va en las medidas de la pantalla ya bajada (por eso se resta `arriba`)
+    recortes.push(`polygon(${[...izq, ...der.reverse()].join(', ')})`);
+    bajadas.push(arriba);
+  }
+  const tiempos = recortes.map((_, i) => i / CUADROS);
+  return {
+    clipPath: recortes,
+    y: bajadas,
+    opacity: [...recortes.map(() => 1).slice(0, -2), 0.8, 0],
+    transition: { duration: seg, ease: 'linear', times: tiempos },
+  };
 }
