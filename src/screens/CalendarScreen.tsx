@@ -47,6 +47,8 @@ const CLIENTAS_SUGERIDAS = 6;
 
 /** Otra pantalla deja aquí el id de la cita que la Agenda tiene que abrir */
 export const ABRIR_CITA = 'lalan.abrirCita';
+/** Señal: abre la cita guardada en ABRIR_CITA aunque la Agenda ya esté montada */
+export const EVENTO_ABRIR_CITA = 'lalan:abrir-cita';
 
 export const CalendarScreen: React.FC = () => {
   const { dinero } = useDinero();
@@ -100,7 +102,14 @@ export const CalendarScreen: React.FC = () => {
     setActiveAppointment(a);
   };
   const totalPendientes = useMemo(() => citasPendientes(appointments).total, [appointments]);
-  // Otra pantalla (Mi semana) pidió abrir una cita: se salta a su día y se abre
+  // Otra pantalla (Mi semana, Lalán, la campana) pidió abrir una cita: se salta a su día y se abre.
+  // Si la Agenda ya estaba abierta, llega el evento y se vuelve a mirar (aunque haya otra cita abierta).
+  const [pedidoAbrir, setPedidoAbrir] = useState(0);
+  useEffect(() => {
+    const otra = () => setPedidoAbrir((n) => n + 1);
+    window.addEventListener(EVENTO_ABRIR_CITA, otra);
+    return () => window.removeEventListener(EVENTO_ABRIR_CITA, otra);
+  }, []);
   useEffect(() => {
     let id: string | null = null;
     try { id = sessionStorage.getItem(ABRIR_CITA); } catch { /* sin almacenamiento */ }
@@ -108,8 +117,15 @@ export const CalendarScreen: React.FC = () => {
     const a = appointments.find((x) => x.id === id);
     if (!a) return; // aún cargando: se intenta de nuevo cuando lleguen
     try { sessionStorage.removeItem(ABRIR_CITA); } catch { /* nada */ }
+    // Lo que estuviera encima se cierra: la cita pedida queda a la vista
+    setVerRecordatorios(false);
+    setCambiandoDe(null);
+    setCompletionDialog(null);
+    setCobroPendiente(null);
+    setShowNewAptModal(false);
+    setRecienConfirmada(null);
     abrirPendiente(a);
-  }, [appointments]);
+  }, [appointments, pedidoAbrir]);
   /* Recordatorios de hoy y mañana desde el WhatsApp propio (sin plantilla de Meta) */
   const recordatorios = useRecordatoriosAMano();
   const [verRecordatorios, setVerRecordatorios] = useState(false);
