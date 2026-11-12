@@ -424,6 +424,13 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
                 onBlur={(e) => { const v = e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))); if (v !== (d.limitesPropios.preguntasDia ?? null)) void guardar({ limitePreguntasDia: v }); }}
                 className={campo} />
             </label>
+            {/* Llamadas extra para este salón (el módulo se le da en «Módulos»): vacío = las del plan */}
+            <label className="space-y-1 block">
+              <span className="text-[0.75rem] text-slate-500">Llamadas de Lalán al mes</span>
+              <input type="number" min={0} disabled={soloSoporte} defaultValue={d.limitesPropios.llamadasMes ?? ''} placeholder={limitePlan?.llamadasMes == null ? 'Plan: sin tope' : `Plan: ${limitePlan.llamadasMes}`}
+                onBlur={(e) => { const v = e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))); if (v !== (d.limitesPropios.llamadasMes ?? null)) void guardar({ limiteLlamadasMes: v }); }}
+                className={campo} />
+            </label>
           </div>
         </div>
       </div>

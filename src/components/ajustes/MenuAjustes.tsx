@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { RESORTE } from '../ui/movimiento';
-import { BellRing, Bot, ChevronRight, Globe, Mail, Monitor, Palette, Sparkles, Store, UserCircle2, Users, Wallet } from 'lucide-react';
+import { BellRing, Bot, PhoneCall, ChevronRight, Globe, Mail, Monitor, Palette, Sparkles, Store, UserCircle2, Users, Wallet } from 'lucide-react';
 import type { UserRole } from '../../types';
 
 /** Los grupos de Ajustes (catálogo: id + descripción) */
-export type SeccionAjustes = 'cuenta' | 'plan' | 'equipo' | 'salon' | 'chats' | 'sala' | 'vitrina' | 'caja' | 'correo' | 'apariencia';
+export type SeccionAjustes = 'cuenta' | 'llamadas' | 'plan' | 'equipo' | 'salon' | 'chats' | 'sala' | 'vitrina' | 'caja' | 'correo' | 'apariencia';
 
 interface Grupo {
   id: SeccionAjustes;
@@ -23,6 +23,7 @@ const ADMINISTRACION: UserRole[] = ['admin', 'super_admin'];
 
 export const GRUPOS_AJUSTES: Grupo[] = [
   { id: 'cuenta', titulo: 'Mi cuenta', resumen: 'Notificaciones, entrar con 1 toque, contraseña, dónde está abierta tu sesión y lo que Lalan sabe de ti', icono: UserCircle2, color: 'bg-slate-500' },
+  { id: 'llamadas', titulo: 'Avisos por llamada', resumen: 'Lalán te llama si es urgente y recuerda las citas llamando a tus clientas', icono: PhoneCall, color: 'bg-green-600', roles: ['admin', 'super_admin', 'assistant'], palabras: 'llamada llamar telefono urgente alarma recordatorio cita confirmar marcar 1' },
   { id: 'plan', titulo: 'Mi plan', resumen: 'Lo que incluye y cuánto llevas usado este mes', icono: Sparkles, color: 'bg-amber-500', roles: ADMINISTRACION },
   { id: 'equipo', titulo: 'Equipo', resumen: 'Quién entra a la app, tus especialistas (foto, horario, permisos) y a quién le llega cada aviso', icono: Users, color: 'bg-sky-500', roles: ADMINISTRACION, palabras: 'especialistas estilistas barberos manicuristas personal empleados horario ausencias vacaciones permisos entrada' },
   { id: 'salon', titulo: 'El salón', resumen: 'Horario de la semana, horario extra, citas y zonas', icono: Store, color: 'bg-emerald-500', roles: ADMINISTRACION, palabras: 'horario extra extendido fuera de horario abrir mas tarde cerrar mas tarde ultimo recurso' },

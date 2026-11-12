@@ -99,7 +99,7 @@ export interface CatalogosPiloto { tiposNegocio: Opcion[]; queAutomatizar: Opcio
 export type ClaveModulo =
   | 'informes' | 'canales_extra' | 'sala_turnos' | 'caja' | 'inventario'
   | 'listas_precios' | 'multimoneda' | 'hospitalidad' | 'lounge_musica' | 'pedir_cancion' | 'recordatorios' | 'quiosco' | 'vitrina' | 'fotos_clientes'
-  | 'compras' | 'compras_lalan' | 'planes_seguimiento';
+  | 'compras' | 'compras_lalan' | 'planes_seguimiento' | 'llamadas';
 
 export type GrupoModulo = 'atencion' | 'salon' | 'dinero' | 'experiencia';
 export interface ModuloCatalogo {
@@ -115,6 +115,8 @@ export type Limites = Record<Recurso, number | null> & {
   preguntasDia?: number | null;
   /** Espacio para «Cómo quedó», en MB (null = sin tope) */
   fotosClientesMB?: number | null;
+  /** Llamadas de Lalán al mes (null = sin tope) */
+  llamadasMes?: number | null;
 };
 
 /** Un paquete de respuestas extra que el salón puede pedir */
