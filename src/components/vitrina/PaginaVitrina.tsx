@@ -384,8 +384,12 @@ export default function PaginaVitrina({ datos, slug, previa = false, item: itemD
           const resultados = servicio ? (datos.testimonios ?? []).filter((t) => t.servicio?.id === servicio.id && t.fotos.length) : [];
           return (
             <div className="mx-auto max-w-md space-y-4">
-              <div className="mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
-                <Carrusel key={`${ficha.item.id}-${ficha.foto ?? 0}`} fotos={fotosDe(ficha.item)} alt={ficha.item.nombre} inicio={ficha.foto} />
+              {/* El carrusel va pegado a la caja (absolute inset-0): con aspect y max-h juntos, el
+                  iPhone le daba el alto sin tope y la bocina del video quedaba cortada abajo */}
+              <div className="relative mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
+                <div className="absolute inset-0">
+                  <Carrusel key={`${ficha.item.id}-${ficha.foto ?? 0}`} fotos={fotosDe(ficha.item)} alt={ficha.item.nombre} inicio={ficha.foto} />
+                </div>
               </div>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 {servicio
@@ -474,10 +478,12 @@ export default function PaginaVitrina({ datos, slug, previa = false, item: itemD
         {testimonio && (
           <div className="mx-auto max-w-md space-y-4">
             {!!testimonio.fotos.length && (
-              <div className="mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
-                {testimonio.antesDespues
-                  ? <AntesDespues antes={testimonio.fotos[0]} despues={testimonio.fotos[1]} alt={`Resultado de ${testimonio.nombre}`} />
-                  : <Carrusel fotos={testimonio.fotos} alt={`Fotos de ${testimonio.nombre}`} />}
+              <div className="relative mx-auto aspect-[4/5] max-h-[55vh] w-full overflow-hidden rounded-3xl bg-[var(--v-tinte)]">
+                <div className="absolute inset-0">
+                  {testimonio.antesDespues
+                    ? <AntesDespues antes={testimonio.fotos[0]} despues={testimonio.fotos[1]} alt={`Resultado de ${testimonio.nombre}`} />
+                    : <Carrusel fotos={testimonio.fotos} alt={`Fotos de ${testimonio.nombre}`} />}
+                </div>
               </div>
             )}
             {testimonio.texto && (
@@ -942,7 +948,7 @@ function VideoVitrina({ cuadro, video, alt, encuadre }: { cuadro: string; video:
           setConSonido(sonar);
         }}
         aria-label={conSonido ? 'Quitar el sonido' : 'Poner sonido'}
-        className="absolute bottom-2 left-2 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/55 text-white backdrop-blur transition active:scale-95"
+        className="absolute bottom-3 left-3 z-10 grid size-8 cursor-pointer place-items-center rounded-full bg-black/55 text-white backdrop-blur transition active:scale-95"
       >
         {conSonido ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
       </button>
