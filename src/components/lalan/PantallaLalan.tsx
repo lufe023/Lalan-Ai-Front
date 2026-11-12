@@ -222,6 +222,8 @@ export const PantallaLalan: React.FC = () => {
   const [aterrizando, setAterrizando] = useState(false);
   const [viaje, setViaje] = useState<{ de: DOMRect; a: Destino } | null>(null);
   const [llegoVolando, setLlegoVolando] = useState(false);
+  /** El genio va con sombra y el fondo un poco oscuro: así se ve la forma entrando */
+  const [conGenio, setConGenio] = useState(false);
   const tAterriza = useRef(0);
   const [estiloMin, setEstiloMin] = useState<EstiloMinimizar>(estiloMinimizar);
   // El cuadro de escribir crece con lo escrito y vuelve a una línea al enviar
@@ -576,10 +578,11 @@ export const PantallaLalan: React.FC = () => {
     setSalida(quieto ? null : salidaHaciaBurbuja(estilo, destino));
     setViaje(vuela && esfera ? { de: esfera, a: destino } : null);
     setLlegoVolando(vuela);
+    setConGenio(estilo === 'genio' && !quieto);
     window.clearTimeout(tAterriza.current);
     if (!quieto) {
       setAterrizando(true);
-      tAterriza.current = window.setTimeout(() => { setAterrizando(false); setViaje(null); }, DURACION_MINIMIZAR[estilo]);
+      tAterriza.current = window.setTimeout(() => { setAterrizando(false); setViaje(null); setConGenio(false); }, DURACION_MINIMIZAR[estilo]);
     }
     setMenu(false);
     setEscribiendo(false);
@@ -593,6 +596,7 @@ export const PantallaLalan: React.FC = () => {
     setViaje(null);
     setAterrizando(false);
     setLlegoVolando(false);
+    setConGenio(false);
     ponerBurbuja(false);
     sesionViva.current = false;
     sesion.current++;
@@ -653,6 +657,20 @@ export const PantallaLalan: React.FC = () => {
         <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={Math.round(viaje.de.width)} />
       </motion.div>
     )}
+    {/* Genio: la app se oscurece un poco y se aclara mientras Lalán entra en la burbuja */}
+    <AnimatePresence>
+      {conGenio && (
+        <motion.div key="velo-genio" aria-hidden="true" className="fixed inset-0 z-[299] bg-black pointer-events-none"
+          initial={{ opacity: 0.3 }} animate={{ opacity: 0 }} exit={{ opacity: 0 }}
+          transition={{ duration: DURACION_MINIMIZAR.genio / 1000, ease: 'easeIn' }} />
+      )}
+    </AnimatePresence>
+    {/* La sombra va aquí afuera: si fuera en la pantalla, su propio recorte la borraría */}
+    <div className="fixed inset-0 z-[300] pointer-events-none [&>*]:pointer-events-auto"
+      style={{ filter: !conGenio ? undefined : document.documentElement.classList.contains('dark')
+        // En oscuro una sombra negra no se ve: va un filo claro y un brillo del color de la marca
+        ? 'drop-shadow(0 0 1px rgba(255,255,255,0.55)) drop-shadow(0 0 14px color-mix(in srgb, var(--primary) 45%, transparent))'
+        : 'drop-shadow(0 0 1px rgba(0,0,0,0.35)) drop-shadow(0 22px 30px rgba(0,0,0,0.45))' }}>
     <AnimatePresence custom={salida}>
       {abierta && (
         <motion.div
@@ -1077,6 +1095,7 @@ export const PantallaLalan: React.FC = () => {
       )}
       {abierta && verPlanes && <MisPlanes key="mis-planes" onCerrar={() => setVerPlanes(false)} />}
     </AnimatePresence>
+    </div>
     </>
   );
 };
