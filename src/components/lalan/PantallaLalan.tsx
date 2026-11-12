@@ -581,7 +581,8 @@ export const PantallaLalan: React.FC = () => {
     setConGenio(estilo === 'genio' && !quieto);
     window.clearTimeout(tAterriza.current);
     if (!quieto) {
-      setAterrizando(true);
+      // En el genio la esfera ya está en su sitio y se lo traga; en los demás aparece al llegar
+      setAterrizando(estilo !== 'genio');
       tAterriza.current = window.setTimeout(() => { setAterrizando(false); setViaje(null); setConGenio(false); }, DURACION_MINIMIZAR[estilo]);
     }
     setMenu(false);
@@ -645,7 +646,7 @@ export const PantallaLalan: React.FC = () => {
 
   return (
     <>
-    <BurbujaLalan visible={!abierta && !aterrizando && (burbuja || (!grande && !activeConversationId && !esferaGuardada))} sinEntrada={llegoVolando} viva={burbuja} modo={modo} nivel={nivelEsfera} pulso={pulso} cierre={escucha.cierre}
+    <BurbujaLalan visible={!abierta && !aterrizando && (burbuja || (!grande && !activeConversationId && !esferaGuardada))} sinEntrada={llegoVolando} tragando={conGenio} viva={burbuja} modo={modo} nivel={nivelEsfera} pulso={pulso} cierre={escucha.cierre}
       sinLeer={sinLeer} onAbrir={abrirLalan} onCerrar={() => { if (burbuja) cerrar(); else setEsferaGuardada(true); }} />
     {/* «La esfera vuela»: la esfera de la pantalla viaja hasta donde vive la burbuja */}
     {viaje && (
@@ -1419,8 +1420,10 @@ const BurbujaLalan: React.FC<{
   visible: boolean; viva: boolean; modo: ModoEsfera; nivel: number; pulso: number; cierre: number; sinLeer: boolean;
   /** Llega la esfera volando: la burbuja aparece ya del tamaño, sin crecer */
   sinEntrada?: boolean;
+  /** Genio: la pantalla entra en la esfera; la esfera se abre un poco al tragársela */
+  tragando?: boolean;
   onAbrir: () => void; onCerrar: () => void;
-}> = ({ visible, viva, modo, nivel, pulso, cierre, sinLeer, sinEntrada, onAbrir, onCerrar }) => {
+}> = ({ visible, viva, modo, nivel, pulso, cierre, sinLeer, sinEntrada, tragando, onAbrir, onCerrar }) => {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [arrastrando, setArrastrando] = useState(false);
@@ -1542,10 +1545,14 @@ const BurbujaLalan: React.FC<{
           <motion.div key="burbuja"
             className={`fixed left-0 top-0 ${viva || arrastrando ? 'z-[410]' : 'z-40'}`}
             style={{ x, y, width: TAM_BURBUJA, height: TAM_BURBUJA }}
-            initial={sinEntrada ? false : { opacity: 0, scale: 0.4 }}
-            animate={{ opacity: tirando ? 0 : 1, scale: tirando ? 0.2 : sobre ? 0.82 : arrastrando ? 1.08 : 1 }}
+            initial={sinEntrada ? false : tragando ? { opacity: 0, scale: 0.7 } : { opacity: 0, scale: 0.4 }}
+            animate={tragando
+              ? { opacity: 1, scale: [0.7, 1, 1.22, 1] }
+              : { opacity: tirando ? 0 : 1, scale: tirando ? 0.2 : sobre ? 0.82 : arrastrando ? 1.08 : 1 }}
             exit={{ opacity: 0, scale: 0.4 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 28 }}>
+            transition={tragando
+              ? { duration: DURACION_MINIMIZAR.genio / 1000 + 0.18, times: [0, 0.3, 0.88, 1], ease: 'easeOut' }
+              : { type: 'spring', stiffness: 380, damping: 28 }}>
             <button type="button" aria-label={ETIQUETA_BURBUJA[modo]} data-medir="Abrir Lalan"
               title="Toca para abrir el chat · arrástrala al zafacón para cerrarla"
               onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerCancel={alSoltar}

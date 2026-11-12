@@ -126,7 +126,8 @@ const mezcla = (a: number, b: number, t: number) => a + (b - a) * t;
  * cuadro y la pantalla bajando, así lo de arriba "cae" dentro.
  */
 function genio(d: Destino, vw: number, vh: number, seg: number): TargetAndTransition {
-  const r = d.tam / 2;
+  // Termina más chico que la esfera: entra por detrás de ella y no se ve el final
+  const r = d.tam * 0.22;
   const CUADROS = 18;
   const FILAS = 24;
   const recortes: string[] = [];
