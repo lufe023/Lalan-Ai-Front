@@ -978,10 +978,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // «Pidió fotos de un servicio que no tiene»: abre ese servicio en el catálogo para subirlas
       if (aviso?.startsWith('servicio:')) setCatalogDeepLink({ serviceId: aviso.slice('servicio:'.length) });
       // Una cita o una clienta: la Agenda y Clientas las abren al montarse (ABRIR_CITA, ABRIR_CLIENTA)
-      else if (aviso?.startsWith('cita:')) { try { sessionStorage.setItem('lalan.abrirCita', aviso.slice('cita:'.length)); } catch { /* nada */ } }
-      else if (aviso?.startsWith('clienta:')) { try { sessionStorage.setItem('lalan.abrirClienta', aviso.slice('clienta:'.length)); } catch { /* nada */ } }
+      // Si ya está en esa pantalla (o con otra cita/ficha abierta), el evento le avisa que abra esta
+      else if (aviso?.startsWith('cita:')) { try { sessionStorage.setItem('lalan.abrirCita', aviso.slice('cita:'.length)); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-cita')); }
+      else if (aviso?.startsWith('clienta:')) { try { sessionStorage.setItem('lalan.abrirClienta', aviso.slice('clienta:'.length)); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-clienta')); }
       // Una clienta en plan de seguimiento contó algo: su ficha con el plan abierto
-      else if (aviso?.startsWith('plan:')) { try { sessionStorage.setItem('lalan.abrirClienta', aviso.slice('plan:'.length)); sessionStorage.setItem('lalan.abrirPlan', aviso.slice('plan:'.length)); } catch { /* nada */ } }
+      else if (aviso?.startsWith('plan:')) { try { sessionStorage.setItem('lalan.abrirClienta', aviso.slice('plan:'.length)); sessionStorage.setItem('lalan.abrirPlan', aviso.slice('plan:'.length)); } catch { /* nada */ } window.dispatchEvent(new Event('lalan:abrir-clienta')); }
       // «Lalan entró a tu salón»: abre Ajustes en esa sección (Mi cuenta → Lalan en tu salón)
       // Un proveedor contestó o Lalan espera tu sí: abre ese pedido en Compras
       // Ya cotizaron los proveedores de una comparación: abre la comparación, donde se elige
@@ -1024,6 +1025,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentScreen]);
   const [screenHistory, setScreenHistory] = useState<ScreenName[]>([]);
   const navigateTo = useCallback((screen: ScreenName) => {
+    // Ya está ahí: no se apila otra vez (Atrás no debe volver a la misma pantalla)
+    if (screen === currentScreen) return;
     setScreenHistory(h => [...h, currentScreen]);
     setCurrentScreen(screen);
   }, [currentScreen]);

@@ -150,7 +150,14 @@ export const ClientsScreen: React.FC = () => {
     }
   };
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  // Otra pantalla (el aviso de alergia de una cita) pidió abrir la ficha de una clienta, en sus alergias
+  // Otra pantalla (el aviso de alergia de una cita) pidió abrir la ficha de una clienta, en sus alergias.
+  // Si Clientas ya estaba abierta (o con otra ficha), llega el evento y se vuelve a mirar.
+  const [pedidoAbrir, setPedidoAbrir] = useState(0);
+  useEffect(() => {
+    const otra = () => setPedidoAbrir((n) => n + 1);
+    window.addEventListener('lalan:abrir-clienta', otra);
+    return () => window.removeEventListener('lalan:abrir-clienta', otra);
+  }, []);
   useEffect(() => {
     let id: string | null = null;
     try { id = sessionStorage.getItem(ABRIR_CLIENTA); } catch { /* sin almacenamiento */ }
@@ -160,7 +167,7 @@ export const ClientsScreen: React.FC = () => {
     try { sessionStorage.removeItem(ABRIR_CLIENTA); } catch { /* nada */ }
     setSelectedClient(c);
     setTimeout(() => document.getElementById('alergias-clienta')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
-  }, [clients]);
+  }, [clients, pedidoAbrir]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string }>({});
