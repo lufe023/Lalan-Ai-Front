@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BotonAtras } from '../ui/BotonAtras';
 import {
-  Bot, Check, ChevronRight, Copy, FileText, Loader2, Mail, MessageCircle, MessagesSquare, PackageCheck, Paperclip, Plus, Printer,
+  ArrowLeftRight, Bot, Check, ChevronRight, Copy, FileText, Loader2, Mail, MessageCircle, MessagesSquare, PackageCheck, Paperclip, Plus, Printer,
   Scale, Search, Send, Trash2, X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import {
-  PASOS, cantidadTexto, comprasApi, dinero, unidadTexto, type EstadoCompra, type Evento, type LineaNueva, type Pedido,
+  PASOS, cantidadTexto, comprasApi, dinero, haceCuanto, unidadTexto, type EstadoCompra, type Evento, type LineaNueva, type Pedido,
 } from '../../services/compras';
 import { EnviarPedido } from './EnviarPedido';
 import { RecibirPedido } from './RecibirPedido';
+import { CambiarProveedor } from './CambiarProveedor';
 import { CuentaDelPedido } from './PorPagar';
 import {
   IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, campo, deInputFecha, etiqueta, fechaHora, paraInputFecha,
@@ -45,6 +46,8 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   const [guardando, setGuardando] = useState(false);
   const [enviar, setEnviar] = useState<'cotizacion' | 'orden' | null>(null);
   const [recibir, setRecibir] = useState(false);
+  /** «Cambiar proveedor» o «Pedírselo a otro» (para comparar) */
+  const [otroProveedor, setOtroProveedor] = useState<'cambiar' | 'otro' | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   /** Cada vez que sube, el historial abre «Dile a Lalan» */
   const [dileALalan, setDileALalan] = useState(0);
@@ -155,6 +158,8 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   return (
     <div className="space-y-3">
       {modalConfirmar}
+      <CambiarProveedor pedido={otroProveedor ? p : null} modo={otroProveedor ?? 'cambiar'} onClose={() => setOtroProveedor(null)}
+        onListo={(x, nuevo) => { if (nuevo) { onCambio(); onAbrir(x.id); } else actualizado(x); }} />
       {/* ── Migas y número ── */}
       <div className="flex flex-wrap items-center gap-2">
         <BotonAtras onVolver={onVolver} texto="Pedidos" />
@@ -202,11 +207,15 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             <button type="button" disabled={guardando || !!ocupado} onClick={() => void guardarBorrador()} className={botonSuave} title="Se queda guardado; no se le manda ni se le confirma nada al proveedor">
               {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} {p.estado === 'borrador' ? 'Guardar borrador' : 'Guardar'}
             </button>
-            {automaticas && p.proveedor.lalanHabla && !p.manejaLalan && (
+            {/* Un borrador que armó Lalán todavía no se ha pedido: también ahí puede pedirlo ella */}
+            {automaticas && p.proveedor.lalanHabla && (!p.manejaLalan || p.estado === 'borrador') && (
               <button type="button" disabled={sinRenglones || !!ocupado} onClick={() => void lalanPide()} className={botonSuave} title="Lalan le escribe, anota los precios y te pregunta antes de comprar">
                 {ocupado === 'lalan' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />} Que Lalan pida el precio
               </button>
             )}
+            <button type="button" disabled={sinRenglones || !!ocupado} onClick={async () => { if (cambiado) await guardar(false); setOtroProveedor('otro'); }} className={botonSuave} title="Se arma lo mismo para otro proveedor y los comparas lado a lado">
+              <Scale className="w-4 h-4" /> Pedírselo a otro
+            </button>
           </>}
           {porRecibir && <>
             <button type="button" onClick={() => setRecibir(true)} className={botonPrincipal}><PackageCheck className="w-4 h-4" /> Recibir</button>
@@ -246,12 +255,36 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-[0.8125rem]">
             <div>
               <span className={etiqueta}>Proveedor</span>
-              <p className="font-bold text-slate-900 dark:text-white">{p.proveedor.nombre}</p>
-              <p className="text-slate-500 dark:text-neutral-400 flex flex-wrap gap-x-2">
-                {p.proveedor.contacto && <span>{p.proveedor.contacto}</span>}
-                {p.proveedor.whatsapp && <a className="text-[#1da851] font-semibold" href={`https://wa.me/${p.proveedor.whatsapp}`} target="_blank" rel="noopener">WhatsApp</a>}
-                {p.proveedor.correo && <a className="text-[var(--primary)] font-semibold" href={`mailto:${p.proveedor.correo}`}>{p.proveedor.correo}</a>}
+              <p className="font-bold text-slate-900 dark:text-white flex flex-wrap items-center gap-x-2">
+                {p.proveedor.nombre}
+                {p.estado === 'borrador' && (
+                  <button type="button" onClick={async () => { if (cambiado) await guardar(false); setOtroProveedor('cambiar'); }} className="inline-flex items-center gap-1 text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">
+                    <ArrowLeftRight className="w-3.5 h-3.5" /> Cambiar
+                  </button>
+                )}
               </p>
+              {/* Con quién de la empresa se habla en este pedido: si tiene varias personas, se elige aquí */}
+              {(p.proveedor.contactos?.length ?? 0) > 0 && enCotizacion ? (
+                <select className={`${campo} !py-1.5 mt-1 max-w-xs`} aria-label="Con quién hablas" value={p.contactoId ?? ''} onChange={(e) => void campoPedido({ contactoId: e.target.value || null })}>
+                  <option value="">{p.proveedor.contacto ?? 'El contacto de la ficha'}{p.proveedor.whatsapp ? ' · WhatsApp' : ''}</option>
+                  {p.proveedor.contactos!.map((c) => <option key={c.id} value={c.id}>{c.nombre}{c.cargo ? ` (${c.cargo})` : ''}{c.whatsapp ? ' · WhatsApp' : ''}</option>)}
+                </select>
+              ) : p.contacto.nombre ? <p className="text-slate-500 dark:text-neutral-400">{p.contacto.nombre}</p> : null}
+              <p className="text-slate-500 dark:text-neutral-400 flex flex-wrap gap-x-2">
+                {p.contacto.whatsapp && <a className="text-[#1da851] font-semibold" href={`https://wa.me/${p.contacto.whatsapp}`} target="_blank" rel="noopener">WhatsApp</a>}
+                {p.contacto.correo && <a className="text-[var(--primary)] font-semibold" href={`mailto:${p.contacto.correo}`}>{p.contacto.correo}</a>}
+              </p>
+              {p.ventana && enCotizacion && (
+                <p className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  <MessageCircle className="w-3 h-3" /> Te escribió {haceCuanto(p.ventana.escribio)}: Lalán le puede escribir ya
+                </p>
+              )}
+              {!p.ventana && enCotizacion && p.otrasVentanas.filter((v) => v.contactoId !== undefined).slice(0, 1).map((v) => (
+                <p key={v.numero} className="mt-1 flex flex-wrap items-center gap-1.5 text-[0.75rem] text-emerald-800 dark:text-emerald-300">
+                  <MessageCircle className="w-3.5 h-3.5" /> {v.nombre ?? 'Otra persona'} te escribió {haceCuanto(v.escribio)}.
+                  <button type="button" onClick={() => void campoPedido({ contactoId: v.contactoId ?? null })} className="font-bold underline cursor-pointer">Hablar con {v.nombre ?? 'esa persona'}</button>
+                </p>
+              ))}
             </div>
             <div>
               <span className={etiqueta}>Entregar en</span>
