@@ -926,28 +926,32 @@ export const PantallaLalan: React.FC = () => {
             {grande ? (
             <div className="flex-1 min-h-0 grid grid-cols-[minmax(320px,400px)_1fr] gap-5 px-6 pt-2 pb-1">
               {/* Izquierda: Lalan. La esfera es la protagonista, con su estado siempre a la vista */}
-              <aside className={`${VIDRIO} flex flex-col items-center justify-center gap-6 p-8 text-center`}>
-                <button ref={esferaVista} type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
-                  className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
-                  <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={Math.max(Math.round(aj.tamanoEsfera * 1.6), 240)} />
-                  {modo === 'escuchando' && escucha.cierre > 0 && (
-                    <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--primary)" strokeOpacity="0.9" strokeWidth="2.5" strokeLinecap="round"
-                        strokeDasharray={`${escucha.cierre * 251.3} 251.3`} />
-                    </svg>
-                  )}
-                </button>
-                <div className="space-y-1.5" role="status">
-                  <p className="text-xl font-bold tracking-tight">
-                    {callada && modo === 'reposo' ? 'En silencio' : modo === 'reposo' ? 'Toca la esfera y háblame' : TEXTO_ESTADO[modo].sabe ?? TEXTO_ESTADO[modo].nueva}
-                  </p>
-                  <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400" style={{ textWrap: 'balance' }}>
-                    {modo === 'escuchando' ? 'Cuando te calles te respondo; o toca la esfera.'
-                      : modo === 'hablando' ? 'Toca la esfera para interrumpirme.'
-                      : modo === 'pensando' ? 'Revisando tu salón…'
-                      : callada ? 'Te respondo solo por escrito.' : 'O escríbeme en el panel de la derecha.'}
-                  </p>
+              {/* En la PC el panel de la esfera lleva «Tu día» siempre a la vista; el chat queda para conversar */}
+              <aside className={`${VIDRIO} flex flex-col gap-4 p-6 min-h-0`}>
+                <div className="flex items-center gap-4 shrink-0">
+                  <button ref={esferaVista} type="button" onClick={tocarEsfera} aria-label={modo === 'escuchando' ? 'Ya terminé' : 'Hablarle a Lalan'}
+                    className="relative rounded-full cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+                    <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={96} />
+                    {modo === 'escuchando' && escucha.cierre > 0 && (
+                      <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" aria-hidden="true">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--primary)" strokeOpacity="0.9" strokeWidth="2.5" strokeLinecap="round"
+                          strokeDasharray={`${escucha.cierre * 251.3} 251.3`} />
+                      </svg>
+                    )}
+                  </button>
+                  <div className="min-w-0 space-y-0.5" role="status">
+                    <p className="text-[1.0625rem] font-bold tracking-tight leading-snug">
+                      {callada && modo === 'reposo' ? 'En silencio' : modo === 'reposo' ? 'Toca la esfera y háblame' : TEXTO_ESTADO[modo].sabe ?? TEXTO_ESTADO[modo].nueva}
+                    </p>
+                    <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 leading-snug">
+                      {modo === 'escuchando' ? 'Cuando te calles te respondo; o toca la esfera.'
+                        : modo === 'hablando' ? 'Toca la esfera para interrumpirme.'
+                        : modo === 'pensando' ? 'Revisando tu salón…'
+                        : callada ? 'Te respondo solo por escrito.' : 'O escríbeme en el panel de la derecha.'}
+                    </p>
+                  </div>
                 </div>
+                <div className="flex flex-col items-center gap-3 empty:hidden">
                 <AnimatePresence>
                   {modo === 'escuchando' && <BotonDejarDeEscuchar key="dejar" onClick={dejarDeEscuchar} />}
                 </AnimatePresence>
@@ -959,6 +963,9 @@ export const PantallaLalan: React.FC = () => {
                     </motion.p>
                   )}
                 </AnimatePresence>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 pb-2 space-y-4 [scrollbar-width:thin]">
+                  <TuDiaLalan variante="panel" onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} />
                 {!mensajes.length && !cargando && (
                   <div className="w-full space-y-2 pt-2">
                     <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">Puedes preguntarme</p>
@@ -970,6 +977,7 @@ export const PantallaLalan: React.FC = () => {
                     ))}
                   </div>
                 )}
+                </div>
               </aside>
 
               {/* Derecha: la conversación, en su panel, con el cuadro para escribir siempre a mano */}
@@ -992,7 +1000,6 @@ export const PantallaLalan: React.FC = () => {
                   onScroll={(e) => { const el = e.currentTarget; setLejosDeHoy(el.scrollHeight - el.scrollTop - el.clientHeight > 500); }}
                   className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
                   <div className="max-w-2xl"><DiasAnteriores hoy={hoy} dias={dias} pintar={pintarPanel} lista={lista} espacio="space-y-6" irA={irAlBuscado} /></div>
-                  <div className="max-w-2xl"><TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} /></div>
                   {cargando && !mensajes.length && (
                     <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
                   )}

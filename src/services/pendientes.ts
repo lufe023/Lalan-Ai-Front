@@ -61,6 +61,8 @@ export interface TuDia {
   sede: { id: string; nombre: string } | null;
   resumen: { citas: number; porConfirmar: number; libres: number; pendientes: number };
   items: ItemTuDia[];
+  /** La próxima cita de hoy (o la que está pasando) */
+  proxima?: { id: string; hora: string; clienta: string; servicio: string; especialista: string | null; clientId: string | null; enCurso: boolean } | null;
 }
 
 export interface NuevoPendiente {
