@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bell, CalendarClock, Cake, Check, ChevronDown, Clock, Loader2, Package, UserRound } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { CarrilHorizontal } from '../ui/CarrilHorizontal';
 import { alRecibir } from '../../services/socket';
 import { EVENTO_PENDIENTES, avisarCambioPendientes, pendientesApi, textoFelicitar, type ItemTuDia, type TuDia } from '../../services/pendientes';
 
@@ -126,15 +127,15 @@ export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir }) =
       <AnimatePresence initial={false}>
         {abierto && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} className="space-y-2.5 overflow-hidden">
-            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 pb-0.5">
+            <CarrilHorizontal className="gap-2 -mx-1 px-1 py-0.5">
               {ATAJOS.map((a) => (
                 <button key={a.texto} type="button"
                   onClick={() => (a.pregunta ? onPreguntar(a.pregunta) : a.escribir ? onEscribir(a.escribir) : a.ir ? onIr({ ir: a.ir }) : undefined)}
-                  className="min-h-[36px] px-3.5 rounded-full bg-white/90 dark:bg-neutral-900/85 border border-slate-200/80 dark:border-white/10 text-[0.8125rem] font-semibold text-slate-700 dark:text-neutral-200 whitespace-nowrap cursor-pointer shadow-sm">
+                  className="shrink-0 min-h-[36px] px-3.5 rounded-full bg-white/90 dark:bg-neutral-900/85 border border-slate-200/80 dark:border-white/10 text-[0.8125rem] font-semibold text-slate-700 dark:text-neutral-200 whitespace-nowrap cursor-pointer shadow-sm">
                   {a.texto}
                 </button>
               ))}
-            </div>
+            </CarrilHorizontal>
             {dia.items.map((i) => (
               <Tarjeta key={`${i.tipo}:${i.id}`} item={i}>
                 {i.tipo === 'recordatorio' && (i.relacion === 'encargue' ? (

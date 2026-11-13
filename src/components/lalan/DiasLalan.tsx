@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { CalendarDays, ChevronDown, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { TuDia } from '../../services/pendientes';
+import { CarrilHorizontal } from '../ui/CarrilHorizontal';
 
 /** Un día anterior de la conversación con Lalán (lo manda GET /asistente) */
 export interface DiaAnterior {
@@ -28,6 +29,8 @@ interface Props<M> {
   lista: React.RefObject<HTMLDivElement | null>;
   /** Separación entre mensajes de un día abierto */
   espacio?: string;
+  /** Desde el buscador: abre ese día y lleva al mensaje (`vez` cambia en cada búsqueda) */
+  irA?: { dia: string; mensaje?: string; vez: number } | null;
 }
 
 /** Días que se ven siempre, plegados, encima de hoy (los demás, con los botones) */
@@ -69,20 +72,36 @@ const ayerDe = (hoy: string) => {
  * día (o el calendario para cualquier otro); los últimos días se ven plegados
  * y se abren con un toque.
  */
-export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, lista, espacio = 'space-y-5' }: Props<M>) {
+export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, lista, espacio = 'space-y-5', irA }: Props<M>) {
   const [abiertos, setAbiertos] = useState<Record<string, DiaAbierto<M>>>({});
-  const [llevarA, setLlevarA] = useState<string | null>(null);
+  const [llevarA, setLlevarA] = useState<{ dia: string; mensaje?: string } | null>(null);
   const calendario = useRef<HTMLInputElement>(null);
 
   // Al abrir uno desde los botones o el calendario, se lleva la vista a ese día
   useEffect(() => {
     if (!llevarA) return;
-    const el = lista.current?.querySelector<HTMLElement>(`[data-dia="${llevarA}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setLlevarA(null);
+    const bloque = lista.current?.querySelector<HTMLElement>(`[data-dia="${llevarA.dia}"]`);
+    if (!bloque) return;
+    if (llevarA.mensaje) {
+      // Espera a que el día termine de cargar para llevar al mensaje justo
+      if (!abiertos[llevarA.dia] || abiertos[llevarA.dia].cargando) return;
+      const m = bloque.querySelector<HTMLElement>(`[data-mensaje="${llevarA.mensaje}"]`);
+      if (m) {
+        setTimeout(() => { m.scrollIntoView({ behavior: 'smooth', block: 'center' }); resaltar(m); }, 280);
+        setLlevarA(null);
+        return;
+      }
     }
+    bloque.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setLlevarA(null);
   }, [llevarA, abiertos, lista]);
+
+  // Lo que eligió en el buscador
+  useEffect(() => {
+    if (!irA || irA.dia >= hoy || !dias.length) return;
+    if (!abiertos[irA.dia]) void cargar(irA.dia);
+    setLlevarA({ dia: irA.dia, mensaje: irA.mensaje });
+  }, [irA?.vez]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!dias.length) return null;
 
@@ -108,7 +127,7 @@ export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, li
   const irAlDia = (dia: string) => {
     if (!dia || dia >= hoy) return;
     if (!abiertos[dia]) void cargar(dia);
-    setLlevarA(dia);
+    setLlevarA({ dia });
   };
 
   const abrirCalendario = () => {
@@ -125,16 +144,21 @@ export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, li
 
   return (
     <section aria-label="Días anteriores" className="space-y-3">
-      <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 pb-0.5">
+      {/* «Otro día» queda siempre a la vista; los días corren de lado (dedo, mouse, ruedita o flechas) */}
+      <div className="flex items-center gap-2">
         <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 shrink-0 pr-1">Ver un día</span>
+        <div className="flex-1 min-w-0">
+        <CarrilHorizontal etiqueta="Días anteriores" className="gap-2 py-0.5">
         {dias.slice(0, DIAS_EN_BOTONES).map((d) => (
           <button key={d.dia} type="button" onClick={() => irAlDia(d.dia)} aria-pressed={!!abiertos[d.dia]}
-            className={`min-h-[36px] px-3.5 rounded-full border text-[0.8125rem] font-semibold whitespace-nowrap cursor-pointer shadow-sm transition-colors ${abiertos[d.dia]
+            className={`shrink-0 min-h-[36px] px-3.5 rounded-full border text-[0.8125rem] font-semibold whitespace-nowrap cursor-pointer shadow-sm transition-colors ${abiertos[d.dia]
               ? 'bg-[var(--primary)] text-white border-transparent'
               : 'bg-white/90 dark:bg-neutral-900/85 border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-neutral-200'}`}>
             {corto(d.dia, hoy)}
           </button>
         ))}
+        </CarrilHorizontal>
+        </div>
         <span className="relative shrink-0">
           <button type="button" onClick={abrirCalendario}
             className="min-h-[36px] px-3.5 rounded-full bg-white/90 dark:bg-neutral-900/85 border border-slate-200/80 dark:border-white/10 text-[0.8125rem] font-semibold text-slate-700 dark:text-neutral-200 whitespace-nowrap cursor-pointer shadow-sm inline-flex items-center gap-1.5">
@@ -211,3 +235,11 @@ const TuDiaGuardado: React.FC<{ dia: TuDia }> = ({ dia }) => {
     </div>
   );
 };
+
+/** Un destello suave en el mensaje que buscó */
+export function resaltar(el: HTMLElement) {
+  el.animate?.(
+    [{ boxShadow: '0 0 0 0 transparent' }, { boxShadow: '0 0 0 6px color-mix(in srgb, var(--primary) 35%, transparent)' }, { boxShadow: '0 0 0 0 transparent' }],
+    { duration: 1600, easing: 'ease-in-out', delay: 250 },
+  );
+}

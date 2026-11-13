@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, type TargetAndTransition } from 'motion/react';
-import { ArrowUp, BellRing, Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BellRing, Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Search, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -27,7 +27,8 @@ import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO 
 import { irA } from '../../services/avisos';
 import { avisarCambioPendientes, cuandoConAviso, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
-import { DiasAnteriores, type DiaAnterior } from './DiasLalan';
+import { DiasAnteriores, resaltar, type DiaAnterior } from './DiasLalan';
+import { BuscarLalan, type ResultadoBusqueda } from './BuscarLalan';
 import { marcarLalanDescubierta, tocaPista, useLalanDescubierta } from './descubrirLalan';
 import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, genioDesdeBurbuja, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
 
@@ -218,6 +219,11 @@ export const PantallaLalan: React.FC = () => {
   const grande = usePantallaGrande();
   const abajo = useRef<HTMLDivElement>(null);
   const lista = useRef<HTMLDivElement>(null);
+  /** Subió a leer otros días: aparece «Volver a hoy» */
+  const [lejosDeHoy, setLejosDeHoy] = useState(false);
+  /** «Buscar en lo que hablamos» abierto, y a qué mensaje llevar al elegir */
+  const [buscando, setBuscando] = useState(false);
+  const [irAlBuscado, setIrAlBuscado] = useState<{ dia: string; mensaje?: string; vez: number } | null>(null);
   const entrada = useRef<HTMLInputElement>(null);
   /** El cuadro para escribir del teléfono: crece con el texto */
   const cuadro = useRef<HTMLTextAreaElement>(null);
@@ -665,40 +671,52 @@ export const PantallaLalan: React.FC = () => {
   if (!puedeHablarConLalan(currentUser?.role)) return null;
 
   // Cómo se pinta un mensaje: en el panel de la computadora y en el teléfono (hoy y los días anteriores)
+  const elegirBusqueda = (r: ResultadoBusqueda) => {
+    setBuscando(false);
+    if (r.dia === hoy || !hoy) {
+      const el = lista.current?.querySelector<HTMLElement>(`[data-mensaje="${r.id}"]`);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); resaltar(el); }
+      return;
+    }
+    setIrAlBuscado({ dia: r.dia, mensaje: r.id, vez: Date.now() });
+  };
+
   const pintarPanel = (m: Mensaje) => (
                     m.deLalan ? (
-                      <div key={m.id} className="flex gap-3 max-w-[88%]">
+                      <div key={m.id} data-mensaje={m.id} className="flex gap-3 max-w-[88%] scroll-mt-6 rounded-3xl">
                         <span className="mt-1 w-8 h-8 shrink-0 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></span>
                         <div className="min-w-0 space-y-2">
                           <div className="px-5 py-3.5 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm">
                             <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
                           </div>
                           {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                          <div className="pl-2"><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
+                          <div className="pl-2 flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
                         </div>
                       </div>
                     ) : (
-                      <div key={m.id} className="flex justify-end">
+                      <div key={m.id} data-mensaje={m.id} className="flex flex-col items-end gap-1 scroll-mt-6 rounded-3xl">
                         <div className={`max-w-[75%] px-5 py-3 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug shadow-md shadow-[var(--primary)]/20 transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
                           {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
                           {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
                         </div>
+                        {!m.enviando && <Hora iso={m.creadoEn} className="pr-2" />}
                       </div>
                     )
                   );
   const pintarMovil = (m: Mensaje) => (
                 m.deLalan ? (
-                  <div key={m.id} className="space-y-2.5 max-w-[92%]">
+                  <div key={m.id} data-mensaje={m.id} className="space-y-2.5 max-w-[92%] scroll-mt-6 rounded-3xl">
                     <p className={`${escribiendo ? 'text-[0.96875rem] leading-[1.55]' : 'text-[1.0625rem] leading-relaxed'} text-slate-800 dark:text-neutral-100 whitespace-pre-line`}>{m.texto}</p>
                     {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                    <Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} />
+                    <div className="flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
                   </div>
                 ) : (
-                  <div key={m.id} className="flex justify-end">
+                  <div key={m.id} data-mensaje={m.id} className="flex flex-col items-end gap-1 scroll-mt-6 rounded-3xl">
                     <div className={`max-w-[85%] px-4 py-2.5 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
                       {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
                       {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
                     </div>
+                    {!m.enviando && <Hora iso={m.creadoEn} className="pr-2" />}
                   </div>
                 )
               );
@@ -765,6 +783,13 @@ export const PantallaLalan: React.FC = () => {
                 <button type="button" onClick={cerrar} aria-label="Cerrar a Lalan" title="Cerrar" className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
                   <X className="w-5.5 h-5.5" />
                 </button>
+                {/* En la PC, Minimizar va junto a Cerrar, como en las ventanas */}
+                {grande && (
+                  <button type="button" onClick={minimizar} aria-label="Minimizar a Lalan" title="Minimizar: Lalan sigue contigo en una burbuja"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                    <Minimize2 className="w-5 h-5" />
+                  </button>
+                )}
               </div>
               {/* En PC el nombre ya está en el panel de la conversación */}
               {escribiendo && !grande ? (
@@ -797,6 +822,10 @@ export const PantallaLalan: React.FC = () => {
                 {menu && (
                   <div className="absolute right-0 top-11 z-10 w-72 max-h-[75vh] overflow-y-auto rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-xl p-2 text-[0.875rem]">
                     {uso && <LoQueQueda uso={uso} />}
+                    <button type="button" onClick={() => { setMenu(false); setBuscando(true); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
+                      <Search className="w-4 h-4 text-[var(--primary)]" />
+                      <span className="flex-1">Buscar en lo que hablamos</span>
+                    </button>
                     <button type="button" onClick={() => { setMenu(false); setVerPlanes(true); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800 text-left cursor-pointer">
                       <FileText className="w-4 h-4 text-[var(--primary)]" />
                       <span className="flex-1">Mis planes</span>
@@ -944,7 +973,7 @@ export const PantallaLalan: React.FC = () => {
               </aside>
 
               {/* Derecha: la conversación, en su panel, con el cuadro para escribir siempre a mano */}
-              <section className={`${VIDRIO} flex flex-col min-h-0 overflow-hidden`}>
+              <section className={`${VIDRIO} relative flex flex-col min-h-0 overflow-hidden`}>
                 <div className="flex items-center gap-3 px-6 h-16 shrink-0 border-b border-black/5 dark:border-white/5">
                   <span className="w-9 h-9 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5" /></span>
                   <div className="leading-tight">
@@ -954,14 +983,15 @@ export const PantallaLalan: React.FC = () => {
                       {modo === 'pensando' ? 'Pensando…' : 'Tu asistente, al día con tu salón'}
                     </div>
                   </div>
-                  <button type="button" onClick={minimizar} title="Lalan sigue contigo en una burbuja"
+                  <button type="button" onClick={() => setBuscando(true)} aria-label="Buscar en lo que hablamos" title="Buscar en lo que hablamos"
                     className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
-                    <Minimize2 className="w-4 h-4" /> Minimizar
+                    <Search className="w-4 h-4" /> Buscar
                   </button>
                 </div>
                 <div ref={lista} aria-live="polite"
+                  onScroll={(e) => { const el = e.currentTarget; setLejosDeHoy(el.scrollHeight - el.scrollTop - el.clientHeight > 500); }}
                   className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
-                  <div className="max-w-2xl"><DiasAnteriores hoy={hoy} dias={dias} pintar={pintarPanel} lista={lista} espacio="space-y-6" /></div>
+                  <div className="max-w-2xl"><DiasAnteriores hoy={hoy} dias={dias} pintar={pintarPanel} lista={lista} espacio="space-y-6" irA={irAlBuscado} /></div>
                   <div className="max-w-2xl"><TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} /></div>
                   {cargando && !mensajes.length && (
                     <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
@@ -985,6 +1015,15 @@ export const PantallaLalan: React.FC = () => {
                     </div>
                   )}
                 </div>
+                <AnimatePresence>
+                  {lejosDeHoy && (
+                    <motion.button type="button" onClick={bajar} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                      className="absolute left-1/2 -translate-x-1/2 bottom-24 z-[1] min-h-[40px] px-4 rounded-full bg-[var(--primary)] text-white text-[0.8125rem] font-semibold shadow-lg shadow-[var(--primary)]/25 inline-flex items-center gap-1.5 cursor-pointer">
+                      <ArrowDown className="w-4 h-4" /> Volver a hoy
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+                <AnimatePresence>{buscando && grande && <BuscarLalan hoy={hoy} onCerrar={() => setBuscando(false)} onElegir={elegirBusqueda} />}</AnimatePresence>
                 <form onSubmit={enviarTexto} className="shrink-0 p-4 border-t border-black/5 dark:border-white/5">
                   <div className="flex items-center gap-2 p-1.5 pl-5 rounded-2xl bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm focus-within:ring-2 focus-within:ring-[var(--primary)]">
                     <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…"
@@ -1010,6 +1049,7 @@ export const PantallaLalan: React.FC = () => {
             </div>
             ) : (
             <div className="relative flex-1 min-h-0">
+            <AnimatePresence>{buscando && !grande && <BuscarLalan hoy={hoy} onCerrar={() => setBuscando(false)} onElegir={elegirBusqueda} />}</AnimatePresence>
             {/* La conversación: corre por detrás de la esfera (abajo es transparente).
                 Escribiendo termina encima del campo, para que la cajita no tape el texto */}
             <div ref={lista} className={`absolute inset-0 overflow-y-auto px-5 pt-4 ${escribiendo ? 'space-y-4' : 'space-y-5'}`} aria-live="polite"
@@ -1018,7 +1058,7 @@ export const PantallaLalan: React.FC = () => {
                 // Arriba el texto se desvanece en vez de cortarse de golpe
                 WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 20px)', maskImage: 'linear-gradient(to bottom, transparent 0, #000 20px)',
               }}>
-              <DiasAnteriores hoy={hoy} dias={dias} pintar={pintarMovil} lista={lista} espacio={escribiendo ? 'space-y-4' : 'space-y-5'} />
+              <DiasAnteriores hoy={hoy} dias={dias} pintar={pintarMovil} lista={lista} espacio={escribiendo ? 'space-y-4' : 'space-y-5'} irA={irAlBuscado} />
               <TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} />
               {cargando && !mensajes.length && (
                 <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
@@ -1194,6 +1234,17 @@ const LoQueQueda: React.FC<{ uso: Uso }> = ({ uso }) => {
 
 /** "¿Se lo mando?": lo que Lalan propone hacer, con Sí / No */
 /** ¿Te sirvió? Discreto: dos iconos chiquitos debajo de lo que dijo Lalan */
+/** La hora de un mensaje, chiquita y gris («10:42 a. m.») */
+const Hora: React.FC<{ iso: string; className?: string }> = ({ iso, className = '' }) => {
+  const f = new Date(iso);
+  if (Number.isNaN(f.getTime())) return null;
+  return (
+    <time dateTime={iso} className={`text-[0.6875rem] text-slate-400 dark:text-neutral-500 tabular-nums ${className}`}>
+      {f.toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })}
+    </time>
+  );
+};
+
 const Calificar: React.FC<{ util: boolean | null; onCambio: (u: boolean | null) => void }> = ({ util, onCambio }) => {
   const boton = (valor: boolean, Icono: typeof ThumbsUp, etiqueta: string) => {
     const activo = util === valor;
