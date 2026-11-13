@@ -27,6 +27,7 @@ import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO 
 import { irA } from '../../services/avisos';
 import { avisarCambioPendientes, cuandoConAviso, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
+import { DiasAnteriores, type DiaAnterior } from './DiasLalan';
 import { marcarLalanDescubierta, tocaPista, useLalanDescubierta } from './descubrirLalan';
 import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, genioDesdeBurbuja, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
 
@@ -169,6 +170,9 @@ export const PantallaLalan: React.FC = () => {
   const sesionViva = useRef(false);
   const sesion = useRef(0);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
+  /** El día de hoy del salón y los días anteriores con Lalán (cada uno se abre aparte) */
+  const [hoy, setHoy] = useState('');
+  const [dias, setDias] = useState<DiaAnterior[]>([]);
   const [cargando, setCargando] = useState(false);
   const [modo, setModo] = useState<ModoEsfera>('reposo');
   const [pulso, setPulso] = useState(0);
@@ -379,9 +383,15 @@ export const PantallaLalan: React.FC = () => {
     conVoz.current = true;
     // La voz (aparato o Cloudflare) sale de los ajustes: se esperan antes de que Lalan hable
     const ajustesListos = cargarAjustesLalan().then((a) => { if (vigente()) setAj(a); return a; });
-    api.get<Respuesta>('/asistente')
-      // Se mezcla: el panorama puede llegar antes que la lista
-      .then((r) => { if (vigente()) { setMensajes((antes) => juntar(r.mensajes, antes)); bajar(); } })
+    api.get<Respuesta & { hoy?: string; dias?: DiaAnterior[] }>('/asistente')
+      // Se mezcla: el panorama puede llegar antes que la lista. Lo de otros días va en su día.
+      .then((r) => {
+        if (!vigente()) return;
+        setMensajes((antes) => juntar(r.mensajes, antes));
+        setHoy(r.hoy ?? '');
+        setDias(r.dias ?? []);
+        bajar();
+      })
       .catch((e) => vigente() && fallo(e))
       .finally(() => vigente() && setCargando(false));
     setModo('pensando');
@@ -633,7 +643,7 @@ export const PantallaLalan: React.FC = () => {
   const empezarDeNuevo = async () => {
     setMenu(false);
     callarLalan();
-    try { await api.delete('/asistente'); setMensajes([]); } catch (e) { fallo(e); }
+    try { await api.delete('/asistente'); setMensajes([]); setDias([]); } catch (e) { fallo(e); }
   };
 
   const cambiarCallada = () => {
@@ -653,6 +663,45 @@ export const PantallaLalan: React.FC = () => {
   };
 
   if (!puedeHablarConLalan(currentUser?.role)) return null;
+
+  // Cómo se pinta un mensaje: en el panel de la computadora y en el teléfono (hoy y los días anteriores)
+  const pintarPanel = (m: Mensaje) => (
+                    m.deLalan ? (
+                      <div key={m.id} className="flex gap-3 max-w-[88%]">
+                        <span className="mt-1 w-8 h-8 shrink-0 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></span>
+                        <div className="min-w-0 space-y-2">
+                          <div className="px-5 py-3.5 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm">
+                            <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
+                          </div>
+                          {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
+                          <div className="pl-2"><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={m.id} className="flex justify-end">
+                        <div className={`max-w-[75%] px-5 py-3 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug shadow-md shadow-[var(--primary)]/20 transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
+                          {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
+                          {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
+                        </div>
+                      </div>
+                    )
+                  );
+  const pintarMovil = (m: Mensaje) => (
+                m.deLalan ? (
+                  <div key={m.id} className="space-y-2.5 max-w-[92%]">
+                    <p className={`${escribiendo ? 'text-[0.96875rem] leading-[1.55]' : 'text-[1.0625rem] leading-relaxed'} text-slate-800 dark:text-neutral-100 whitespace-pre-line`}>{m.texto}</p>
+                    {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
+                    <Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} />
+                  </div>
+                ) : (
+                  <div key={m.id} className="flex justify-end">
+                    <div className={`max-w-[85%] px-4 py-2.5 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
+                      {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
+                      {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
+                    </div>
+                  </div>
+                )
+              );
 
   return (
     <>
@@ -912,6 +961,7 @@ export const PantallaLalan: React.FC = () => {
                 </div>
                 <div ref={lista} aria-live="polite"
                   className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
+                  <div className="max-w-2xl"><DiasAnteriores hoy={hoy} dias={dias} pintar={pintarPanel} lista={lista} espacio="space-y-6" /></div>
                   <div className="max-w-2xl"><TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} /></div>
                   {cargando && !mensajes.length && (
                     <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
@@ -922,27 +972,7 @@ export const PantallaLalan: React.FC = () => {
                       <p className="text-[0.9375rem] max-w-md" style={{ textWrap: 'balance' }}>Háblame con la esfera o escríbeme aquí abajo. Conozco tu agenda, tu caja, tus chats y tu inventario.</p>
                     </div>
                   )}
-                  {mensajes.map((m) => (
-                    m.deLalan ? (
-                      <div key={m.id} className="flex gap-3 max-w-[88%]">
-                        <span className="mt-1 w-8 h-8 shrink-0 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></span>
-                        <div className="min-w-0 space-y-2">
-                          <div className="px-5 py-3.5 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm">
-                            <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
-                          </div>
-                          {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                          <div className="pl-2"><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div key={m.id} className="flex justify-end">
-                        <div className={`max-w-[75%] px-5 py-3 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug shadow-md shadow-[var(--primary)]/20 transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
-                          {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
-                          {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
-                        </div>
-                      </div>
-                    )
-                  ))}
+                  {mensajes.map(pintarPanel)}
                   {modo === 'pensando' && (
                     <div className="flex gap-3">
                       <span className="w-8 h-8 shrink-0 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></span>
@@ -988,6 +1018,7 @@ export const PantallaLalan: React.FC = () => {
                 // Arriba el texto se desvanece en vez de cortarse de golpe
                 WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 20px)', maskImage: 'linear-gradient(to bottom, transparent 0, #000 20px)',
               }}>
+              <DiasAnteriores hoy={hoy} dias={dias} pintar={pintarMovil} lista={lista} espacio={escribiendo ? 'space-y-4' : 'space-y-5'} />
               <TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} />
               {cargando && !mensajes.length && (
                 <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
@@ -998,22 +1029,7 @@ export const PantallaLalan: React.FC = () => {
                   <p className="text-[0.875rem]">Prueba: «¿Cómo se ve mi día?», «¿Quién me está esperando?» o «Dile a Ana que sí la esperamos a las 3».</p>
                 </div>
               )}
-              {mensajes.map((m) => (
-                m.deLalan ? (
-                  <div key={m.id} className="space-y-2.5 max-w-[92%]">
-                    <p className={`${escribiendo ? 'text-[0.96875rem] leading-[1.55]' : 'text-[1.0625rem] leading-relaxed'} text-slate-800 dark:text-neutral-100 whitespace-pre-line`}>{m.texto}</p>
-                    {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                    <Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} />
-                  </div>
-                ) : (
-                  <div key={m.id} className="flex justify-end">
-                    <div className={`max-w-[85%] px-4 py-2.5 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
-                      {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
-                      {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
-                    </div>
-                  </div>
-                )
-              ))}
+              {mensajes.map(pintarMovil)}
             </div>
 
             {/* Abajo: la esfera, flotando sobre la conversación */}
