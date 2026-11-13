@@ -404,6 +404,10 @@ export function iniciarAsistente(): void {
     const d = a.datos ?? {};
     const destino = a.cual === 'piloto' ? 'piloto' : 'otro-negocio';
     if (a.cual === 'piloto') {
+      // El formulario está plegado bajo «Crear mi cuenta»: se abre para llenarlo
+      const form = document.getElementById('form-piloto');
+      if (form) form.hidden = false;
+      document.getElementById('p-abrir')?.setAttribute('aria-expanded', 'true');
       llenar('p-nombre', d.nombre); llenar('p-salon', d.negocio); llenar('p-telefono', d.telefono);
       llenar('p-ciudad', d.ciudad); llenar('p-mensaje', d.detalle);
     } else {

@@ -894,6 +894,13 @@
   .piloto-lista li::before { content: '✓'; position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; background: var(--tinta); color: var(--fondo); }
   .suave a { color: var(--tinta); font-weight: 700; }
   .piloto-caja { min-width: 0; }
+  .registro-ya { background: var(--papel); border-radius: 22px; padding: 26px; border: 1px solid var(--linea); display: grid; gap: 12px; justify-items: start; }
+  .registro-ya h3 { margin: 0; font-family: var(--serif); font-size: 1.6rem; }
+  .registro-ya p { margin: 0; color: var(--tinta-2); }
+  .registro-ya .boton { justify-self: stretch; justify-content: center; }
+  .registro-otra { font: inherit; font-size: .85rem; font-weight: 700; color: var(--tinta-2); background: none; border: 0; padding: 6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .registro-otra:hover { color: var(--tinta); }
+  .piloto-caja .registro-ya + .contacto { margin-top: 14px; }
   .contacto fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
   .contacto legend { font-size: .8rem; font-weight: 700; color: var(--tinta-2); margin-bottom: 8px; padding: 0; }
   .contacto textarea { font: inherit; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--linea); background: var(--fondo); color: var(--tinta); resize: vertical; }

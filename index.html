@@ -563,7 +563,7 @@
       </details>
       <details>
         <summary>¿Cómo empiezo?</summary>
-        <p>Te visitamos, conectamos el WhatsApp de tu salón, cargamos tus servicios y especialistas y te mostramos el panel en 15 minutos.</p>
+        <p>Crea tu cuenta aquí mismo: pones tu correo, te llega un código y ya estás dentro. Lalan te guía para cargar tus servicios, tu horario y tu equipo. Si prefieres, te visitamos y la dejamos lista contigo en 15 minutos.</p>
       </details>
     </div>
     </div>
@@ -576,10 +576,10 @@
       <div class="encabezado" style="margin:0">
         <span class="ceja">Prueba gratis · Cupos limitados este mes</span>
         <h2>Pruébala gratis, <em class="acento">con tu mismo número.</em></h2>
-        <p>Lalan atiende tu mismo WhatsApp Business, tu Instagram y tu página de Facebook: tus clientas te escriben donde siempre y no notan el cambio. Te la instalamos, la configuramos contigo y la pruebas sin pagar nada. Los meses de prueba dependen del plan que elijas.</p>
+        <p>Lalan atiende tu mismo WhatsApp Business, tu Instagram y tu página de Facebook: tus clientas te escriben donde siempre y no notan el cambio. Créala tú en 2 minutos o, si prefieres, te la instalamos nosotros. La pruebas sin pagar nada. Los meses de prueba dependen del plan que elijas.</p>
         <ul class="piloto-lista">
           <li>Sin tarjeta y sin contrato</li>
-          <li>Te la instalamos y la configuramos contigo</li>
+          <li>Entras hoy mismo, sin esperar a nadie</li>
           <li>Tu mismo número, tu Instagram y tu Facebook</li>
           <li>Al terminar la prueba decides si sigues. Si no, te llevas tus contactos y tus chats quedan guardados</li>
         </ul>
@@ -587,7 +587,15 @@
       </div>
 
       <div class="piloto-caja">
-        <form class="contacto" id="form-piloto" novalidate>
+        <!-- Registro propio: crea su cuenta y entra sola (la app abre «Crear mi cuenta» con ?registro=1) -->
+        <div class="registro-ya" id="registro-ya">
+          <h3>Créala tú, en 2 minutos</h3>
+          <p>Tu nombre, el de tu salón y tu correo. Te llega un código, lo pones y ya estás dentro de tu salón. Lalan te guía para cargar tus servicios y tu equipo.</p>
+          <p class="oferta-elegida" id="r-oferta" role="status" hidden></p>
+          <a class="boton" id="r-crear" href="/app/?registro=1">Crear mi cuenta</a>
+          <button type="button" class="registro-otra" id="p-abrir" aria-expanded="false" aria-controls="form-piloto">¿Prefieres que te la instalemos? Déjanos tus datos</button>
+        </div>
+        <form class="contacto" id="form-piloto" novalidate hidden>
           <div class="fila-2">
             <div><label for="p-nombre">Tu nombre *</label><input id="p-nombre" name="nombre" autocomplete="name" placeholder="Ej.: Alanny" required maxlength="80"></div>
             <div><label for="p-salon">Nombre del salón *</label><input id="p-salon" name="salon" autocomplete="organization" placeholder="Ej.: Glam Studio" required maxlength="100"></div>
@@ -672,7 +680,7 @@
 <footer class="envoltura" id="pie">
   <div class="pie-fila">
     <span>© 2026 Gomez Santana Solutions Group SRL · Lalan AI Studio &amp; Lounge</span>
-    <span><a href="/app/">Entrar a Lalan</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes.html">Condiciones de los planes</a> · <a href="/privacidad.html">Privacidad</a> · <a href="/terminos.html">Términos</a></span>
+    <span><a href="/app/">Entrar a Lalan</a> · <a href="/app/?registro=1" id="pie-crear">Crear mi cuenta</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes.html">Condiciones de los planes</a> · <a href="/privacidad.html">Privacidad</a> · <a href="/terminos.html">Términos</a></span>
   </div>
   <div class="pie-fila">
     <!-- Las cinco letras siguen siendo el camino al huevo de pascua (huevo.ts) -->

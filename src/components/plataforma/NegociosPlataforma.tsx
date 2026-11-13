@@ -329,6 +329,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         <div>
           <h3 className="text-[1.0625rem] font-extrabold text-slate-900 dark:text-white">{d.nombre}</h3>
           <p className="text-[0.75rem] text-slate-500">Cliente desde {fecha(d.creadoEn)} · {d.sedes.length} {d.sedes.length === 1 ? 'sede' : 'sedes'}</p>
+          {d.registroPropio && <p className="text-[0.75rem] font-semibold text-sky-700 dark:text-sky-400">Se registró sola desde la página{d.planElegido ? ` · eligió el plan «${d.planElegido}»` : ''}</p>}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button type="button" onClick={() => setParaEntrar(paraEntrar ? null : { motivo: '', cambiar: false })} disabled={entrando} aria-expanded={!!paraEntrar}
@@ -576,6 +577,7 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
               {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
               {!n.activo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-rose-100 text-rose-700">Suspendido</span>}
               {n.esEjemplo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-violet-100 text-violet-700">De ejemplo</span>}
+              {n.registroPropio && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-sky-100 text-sky-700" title={n.planElegido ? `Eligió el plan «${n.planElegido}»` : undefined}>Se registró sola</span>}
               {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}
             </div>
             <UsoDelPlan uso={n.uso} limites={n.limites} compacto />

@@ -23,6 +23,8 @@ interface AuthContextType {
   isLoading: boolean;
   /** Si la cuenta tiene dos pasos, devuelve el reto en vez de abrir la sesión */
   login: (credentials: LoginCredentials) => Promise<{ dosPasos?: RetoDosPasos }>;
+  /** Ya con la sesión abierta en cookies (por ejemplo, al terminar de crear su cuenta) */
+  entrarConSesion: (user: ApiUser) => void;
   /** El segundo paso: el código de la app o el del correo */
   completarDosPasos: (pase: string, codigo: string, porCorreo?: boolean) => Promise<void>;
   /** Ya configuró los dos pasos: se quita la pantalla que la pide */
@@ -43,7 +45,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface ApiUser {
+export interface ApiUser {
   id: string; name: string; email: string | null; role: UserRole;
   roleTitle?: string; avatar?: string; badgeColor?: string;
   debeCambiarClave?: boolean;
@@ -163,6 +165,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try { localStorage.setItem('lalan_cached_user', JSON.stringify(user)); } catch {}
   }
 
+  const entrarConSesion = useCallback((user: ApiUser) => abrir(user), []);
+
   const loginWithQuickDevice = useCallback(async () => {
     const r = await quickAuth.loginWithDevice();
     if ('dosPasos' in r) return { dosPasos: r.dosPasos };
@@ -211,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [faltanPermisos]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, loginWithQuickDevice, logout, hasPermission, puede, completarDosPasos, dosPasosListo, claveCambiada, correoListo, terminosAceptados }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, entrarConSesion, loginWithQuickDevice, logout, hasPermission, puede, completarDosPasos, dosPasosListo, claveCambiada, correoListo, terminosAceptados }}>
       {children}
     </AuthContext.Provider>
   );
