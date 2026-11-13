@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, type TargetAndTransition } from 'motion/react';
-import { ArrowUp, BellRing, Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BellRing, Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -218,6 +218,8 @@ export const PantallaLalan: React.FC = () => {
   const grande = usePantallaGrande();
   const abajo = useRef<HTMLDivElement>(null);
   const lista = useRef<HTMLDivElement>(null);
+  /** Subió a leer otros días: aparece «Volver a hoy» */
+  const [lejosDeHoy, setLejosDeHoy] = useState(false);
   const entrada = useRef<HTMLInputElement>(null);
   /** El cuadro para escribir del teléfono: crece con el texto */
   const cuadro = useRef<HTMLTextAreaElement>(null);
@@ -765,6 +767,13 @@ export const PantallaLalan: React.FC = () => {
                 <button type="button" onClick={cerrar} aria-label="Cerrar a Lalan" title="Cerrar" className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
                   <X className="w-5.5 h-5.5" />
                 </button>
+                {/* En la PC, Minimizar va junto a Cerrar, como en las ventanas */}
+                {grande && (
+                  <button type="button" onClick={minimizar} aria-label="Minimizar a Lalan" title="Minimizar: Lalan sigue contigo en una burbuja"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 dark:text-neutral-400 hover:bg-slate-200/60 dark:hover:bg-neutral-800 cursor-pointer">
+                    <Minimize2 className="w-5 h-5" />
+                  </button>
+                )}
               </div>
               {/* En PC el nombre ya está en el panel de la conversación */}
               {escribiendo && !grande ? (
@@ -944,7 +953,7 @@ export const PantallaLalan: React.FC = () => {
               </aside>
 
               {/* Derecha: la conversación, en su panel, con el cuadro para escribir siempre a mano */}
-              <section className={`${VIDRIO} flex flex-col min-h-0 overflow-hidden`}>
+              <section className={`${VIDRIO} relative flex flex-col min-h-0 overflow-hidden`}>
                 <div className="flex items-center gap-3 px-6 h-16 shrink-0 border-b border-black/5 dark:border-white/5">
                   <span className="w-9 h-9 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4.5 h-4.5" /></span>
                   <div className="leading-tight">
@@ -954,12 +963,9 @@ export const PantallaLalan: React.FC = () => {
                       {modo === 'pensando' ? 'Pensando…' : 'Tu asistente, al día con tu salón'}
                     </div>
                   </div>
-                  <button type="button" onClick={minimizar} title="Lalan sigue contigo en una burbuja"
-                    className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.8125rem] font-semibold text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
-                    <Minimize2 className="w-4 h-4" /> Minimizar
-                  </button>
                 </div>
                 <div ref={lista} aria-live="polite"
+                  onScroll={(e) => { const el = e.currentTarget; setLejosDeHoy(el.scrollHeight - el.scrollTop - el.clientHeight > 500); }}
                   className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
                   <div className="max-w-2xl"><DiasAnteriores hoy={hoy} dias={dias} pintar={pintarPanel} lista={lista} espacio="space-y-6" /></div>
                   <div className="max-w-2xl"><TuDiaLalan onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} /></div>
@@ -985,6 +991,14 @@ export const PantallaLalan: React.FC = () => {
                     </div>
                   )}
                 </div>
+                <AnimatePresence>
+                  {lejosDeHoy && (
+                    <motion.button type="button" onClick={bajar} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                      className="absolute left-1/2 -translate-x-1/2 bottom-24 z-[1] min-h-[40px] px-4 rounded-full bg-[var(--primary)] text-white text-[0.8125rem] font-semibold shadow-lg shadow-[var(--primary)]/25 inline-flex items-center gap-1.5 cursor-pointer">
+                      <ArrowDown className="w-4 h-4" /> Volver a hoy
+                    </motion.button>
+                  )}
+                </AnimatePresence>
                 <form onSubmit={enviarTexto} className="shrink-0 p-4 border-t border-black/5 dark:border-white/5">
                   <div className="flex items-center gap-2 p-1.5 pl-5 rounded-2xl bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 shadow-sm focus-within:ring-2 focus-within:ring-[var(--primary)]">
                     <input ref={entrada} value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escríbele a Lalan…"

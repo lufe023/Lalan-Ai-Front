@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { CalendarDays, ChevronDown, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { TuDia } from '../../services/pendientes';
+import { CarrilHorizontal } from '../ui/CarrilHorizontal';
 
 /** Un día anterior de la conversación con Lalán (lo manda GET /asistente) */
 export interface DiaAnterior {
@@ -125,16 +126,21 @@ export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, li
 
   return (
     <section aria-label="Días anteriores" className="space-y-3">
-      <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 pb-0.5">
+      {/* «Otro día» queda siempre a la vista; los días corren de lado (dedo, mouse, ruedita o flechas) */}
+      <div className="flex items-center gap-2">
         <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 shrink-0 pr-1">Ver un día</span>
+        <div className="flex-1 min-w-0">
+        <CarrilHorizontal etiqueta="Días anteriores" className="gap-2 py-0.5">
         {dias.slice(0, DIAS_EN_BOTONES).map((d) => (
           <button key={d.dia} type="button" onClick={() => irAlDia(d.dia)} aria-pressed={!!abiertos[d.dia]}
-            className={`min-h-[36px] px-3.5 rounded-full border text-[0.8125rem] font-semibold whitespace-nowrap cursor-pointer shadow-sm transition-colors ${abiertos[d.dia]
+            className={`shrink-0 min-h-[36px] px-3.5 rounded-full border text-[0.8125rem] font-semibold whitespace-nowrap cursor-pointer shadow-sm transition-colors ${abiertos[d.dia]
               ? 'bg-[var(--primary)] text-white border-transparent'
               : 'bg-white/90 dark:bg-neutral-900/85 border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-neutral-200'}`}>
             {corto(d.dia, hoy)}
           </button>
         ))}
+        </CarrilHorizontal>
+        </div>
         <span className="relative shrink-0">
           <button type="button" onClick={abrirCalendario}
             className="min-h-[36px] px-3.5 rounded-full bg-white/90 dark:bg-neutral-900/85 border border-slate-200/80 dark:border-white/10 text-[0.8125rem] font-semibold text-slate-700 dark:text-neutral-200 whitespace-nowrap cursor-pointer shadow-sm inline-flex items-center gap-1.5">
