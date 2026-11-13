@@ -229,6 +229,10 @@ export interface NegocioResumen {
   /** Salón de ejemplo para presentar Lalán */
   esEjemplo?: boolean;
   creadoEn: string;
+  /** Se registró sola desde la página («Crear mi cuenta») */
+  registroPropio?: boolean;
+  /** La clave del plan que eligió al registrarse */
+  planElegido?: string | null;
   plan: { id: string; nombre: string } | null;
   excepciones: number;
   promoHasta?: string | null;
@@ -248,6 +252,10 @@ export interface NegocioDetalle {
   /** Salón de ejemplo para presentar Lalán */
   esEjemplo?: boolean;
   creadoEn: string;
+  /** Se registró sola desde la página («Crear mi cuenta») */
+  registroPropio?: boolean;
+  /** La clave del plan que eligió al registrarse */
+  planElegido?: string | null;
   notasPlataforma: string | null;
   plan: { id: string; nombre: string } | null;
   modulosExtra: ClaveModulo[];
