@@ -36,7 +36,10 @@ const WHATSAPP = '18092299444';
 /** Lo que se le manda al servidor (las últimas) */
 const MENSAJES_AL_SERVIDOR = 20;
 /** Cuándo aparece el globito de invitación (una vez por pestaña) */
-const INVITACION_MS = 14_000;
+const INVITACION_MS = 6_000;
+/** Ya abrió la ventanita alguna vez en este aparato: el botón deja de llamar la atención */
+const CLAVE_CONOCE = 'lalan-asistente-conoce';
+const ICONO_CHISPA = '<svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z" fill="currentColor"/></svg>';
 /** Cuánto se deja leer la respuesta antes de mover la página */
 const ESPERA_LECTURA_MS = 900;
 const ESPERA_LECTURA_MOVIL_MS = 3200;
@@ -86,9 +89,10 @@ export function iniciarAsistente(): void {
   raiz.className = 'asis';
   raiz.innerHTML = `
     <div class="asis-invita" hidden><button type="button" class="asis-invita-x" aria-label="Cerrar">×</button>
-      <span>¿Te cuento cómo llenar tu agenda mientras duermes? 💅</span></div>
-    <button type="button" class="asis-lanzar" aria-expanded="false" aria-controls="asis-panel">
-      <span class="asis-logo">${LOGO}</span><span class="asis-lanzar-txt">¿Preguntas? Habla con Lalan</span><i class="asis-punto" hidden></i>
+      <b>Hola, soy Lalán, la asistente con IA ✨</b>
+      <span>Pregúntame lo que quieras de tu salón. Escríbeme o háblame.</span></div>
+    <button type="button" class="asis-lanzar" aria-expanded="false" aria-controls="asis-panel" aria-label="Pregúntale a Lalán, la asistente con IA">
+      <span class="asis-logo">${LOGO}<i class="asis-ia">${ICONO_CHISPA}IA</i></span><span class="asis-lanzar-txt">Pregúntale a Lalán</span><i class="asis-punto" hidden></i>
     </button>
     <section class="asis-panel" id="asis-panel" role="dialog" aria-label="Habla con Lalan" hidden>
       <header class="asis-cab">
@@ -111,6 +115,10 @@ export function iniciarAsistente(): void {
       <p class="asis-nota">¿Prefieres hablar con alguien del equipo? <a href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">WhatsApp</a></p>
     </section>`;
   document.body.appendChild(raiz);
+  // Mientras no la ha abierto nunca, el botón respira (un halo suave) para que se note
+  let conoce = false;
+  try { conoce = localStorage.getItem(CLAVE_CONOCE) === '1'; } catch { /* sin almacenamiento */ }
+  if (!conoce) raiz.classList.add('asis-nueva');
 
   const $ = <T extends HTMLElement>(s: string) => raiz.querySelector(s) as T;
   const panel = $<HTMLElement>('.asis-panel');
@@ -359,6 +367,8 @@ export function iniciarAsistente(): void {
   const abrir = () => {
     panel.hidden = false; raiz.classList.add('asis-abierta');
     lanzar.setAttribute('aria-expanded', 'true'); invita.hidden = true; punto.hidden = true;
+    raiz.classList.remove('asis-nueva');
+    try { localStorage.setItem(CLAVE_CONOCE, '1'); } catch { /* sin almacenamiento */ }
     if (!lista.childElementCount) {
       burbuja({ rol: 'lalan', texto: SALUDO }, true);
       estado.mensajes.forEach((m) => burbuja(m, false));

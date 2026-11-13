@@ -946,7 +946,21 @@
 }
 .asis-lanzar:hover { transform: translateY(-2px); }
 .asis-lanzar:focus-visible { outline: 2px solid var(--tinta); outline-offset: 3px; }
-.asis-logo { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); flex-shrink: 0; }
+.asis-logo { position: relative; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); flex-shrink: 0; }
+/* «IA»: que se sepa de un vistazo que el botón es una asistente, no el logo */
+.asis-ia {
+  position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px;
+  height: 15px; padding: 0 5px; border-radius: 999px; background: #fff; color: var(--rosa-hondo);
+  font: 800 .58rem/1 var(--sans); letter-spacing: .04em; font-style: normal; box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+.asis-cab .asis-ia { display: none; }
+/* Mientras no la ha abierto nunca: un halo suave que sale del botón */
+.asis-nueva .asis-lanzar::before, .asis-nueva .asis-lanzar::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--rosa); z-index: -1; pointer-events: none;
+  animation: asis-halo 2.4s ease-out infinite;
+}
+.asis-nueva .asis-lanzar::after { animation-delay: 1.2s; }
+@keyframes asis-halo { from { transform: scale(1); opacity: .35; } to { transform: scale(1.1, 1.45); opacity: 0; } }
 .asis-logo svg { width: 62%; height: 62%; }
 .asis-punto { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #34C759; box-shadow: 0 0 0 2px var(--papel); }
 .asis-abierta .asis-lanzar { padding-right: 8px; }
@@ -956,6 +970,7 @@
   background: var(--papel); color: var(--tinta); border: 1px solid var(--linea); box-shadow: var(--sombra); font-size: .86rem; line-height: 1.35;
   animation: asis-aparece .4s cubic-bezier(.2,.9,.3,1.2) both;
 }
+.asis-invita b { display: block; margin-bottom: 2px; font-size: .9rem; }
 .asis-invita-x { position: absolute; top: 4px; right: 6px; border: 0; background: none; color: var(--tinta-3); font-size: 1.1rem; cursor: pointer; }
 .asis-panel {
   width: min(380px, calc(100vw - 36px)); height: min(560px, calc(100dvh - 120px)); display: flex; flex-direction: column; overflow: hidden;
@@ -1028,12 +1043,13 @@
 @keyframes asis-resalta { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 20%, 60% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--rosa) 35%, transparent); } }
 @media (max-width: 640px) {
   .asis { right: 12px; left: 12px; align-items: flex-end; }
-  .asis-lanzar-txt { display: none; }
-  .asis-lanzar { padding: 8px; }
+  /* En el teléfono el texto se queda: solo el logo parecía un adorno */
+  .asis-lanzar { padding: 7px 16px 7px 7px; font-size: .86rem; }
   .asis-panel { width: 100%; height: min(78dvh, 620px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .asis-lanzar, .asis-invita, .asis-panel, .asis-entra, .asis-resaltado { animation: none; }
+  .asis-nueva .asis-lanzar::before, .asis-nueva .asis-lanzar::after { display: none; }
 }
 
 /* ── El visor de ejemplos de los planes ── */

@@ -27,6 +27,7 @@ import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO 
 import { irA } from '../../services/avisos';
 import { avisarCambioPendientes, cuandoConAviso, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
+import { marcarLalanDescubierta, tocaPista, useLalanDescubierta } from './descubrirLalan';
 import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, genioDesdeBurbuja, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
 
 interface Accion {
@@ -71,6 +72,8 @@ export function abrirLalan() {
   // abre el micrófono puede dejar la grabación muda.
   if (!estaCallada()) despertarVoz();
   prepararAudio();
+  // Ya sabe dónde está Lalán: la esfera deja de llamarla con el halo y la pastilla
+  marcarLalanDescubierta();
   window.dispatchEvent(new Event(EVENTO_ABRIR));
 }
 
@@ -1410,7 +1413,7 @@ function tragarElClick() {
 }
 
 const ETIQUETA_BURBUJA: Record<ModoEsfera, string> = {
-  reposo: 'Lalan. Toca para abrir el chat',
+  reposo: 'Lalán, tu asistente con IA. Toca para preguntarle',
   escuchando: 'Lalan te escucha. Toca para abrir el chat',
   pensando: 'Lalan está pensando. Toca para abrir el chat',
   hablando: 'Lalan está hablando. Toca para abrir el chat',
@@ -1439,6 +1442,22 @@ const BurbujaLalan: React.FC<{
   const ancla = useRef<HTMLDivElement>(null);
   const inicio = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const movio = useRef(false);
+  const descubierta = useLalanDescubierta();
+  const quieto = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  /** La pastilla «Pregúntale a Lalán»: sale sola un rato mientras no la haya abierto nunca */
+  const [pista, setPista] = useState(false);
+  const lado = posGuardada().lado;
+
+  useEffect(() => {
+    if (!visible || viva || descubierta) { setPista(false); return; }
+    let quitar = 0;
+    const poner = window.setTimeout(() => {
+      if (!tocaPista()) return;
+      setPista(true);
+      quitar = window.setTimeout(() => setPista(false), 9000);
+    }, 1400);
+    return () => { window.clearTimeout(poner); window.clearTimeout(quitar); };
+  }, [visible, viva, descubierta]);
 
   const colocar = useCallback((p: PosBurbuja, suave: boolean) => {
     const vw = window.innerWidth;
@@ -1560,6 +1579,34 @@ const BurbujaLalan: React.FC<{
             transition={tragando
               ? { duration: DURACION_MINIMIZAR.genio / 1000 + 0.18, times: [0, 0.3, 0.88, 1], ease: 'easeOut' }
               : { type: 'spring', stiffness: 380, damping: 28 }}>
+            {/* Mientras no la conoce, la esfera respira: un halo suave del color de la marca */}
+            {!descubierta && !quieto && !arrastrando && !tirando && modo === 'reposo' && [0, 1.2].map((retraso) => (
+              <motion.span key={retraso} aria-hidden="true"
+                className="absolute inset-0 rounded-full bg-[var(--primary)] pointer-events-none"
+                initial={{ scale: 1, opacity: 0 }} animate={{ scale: [1, 1.7], opacity: [0.35, 0] }}
+                transition={{ duration: 2.4, delay: retraso, repeat: Infinity, ease: 'easeOut' }} />
+            ))}
+            {/* «Pregúntale a Lalán»: dice qué es la esfera, al lado contrario del borde */}
+            <AnimatePresence>
+              {pista && !arrastrando && !tirando && (
+                <motion.button key="pista" type="button" onClick={onAbrir}
+                  initial={{ opacity: 0, x: lado === 'der' ? 10 : -10, scale: 0.92 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: lado === 'der' ? 10 : -10, scale: 0.92 }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+                  className={`absolute top-1/2 -translate-y-1/2 ${lado === 'der' ? 'right-[calc(100%+12px)] origin-right' : 'left-[calc(100%+12px)] origin-left'} flex items-center gap-2 pl-2.5 pr-3.5 py-2 rounded-2xl bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-xl shadow-black/10 text-left whitespace-nowrap cursor-pointer`}>
+                  <span className="w-7 h-7 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </span>
+                  <span>
+                    <span className="block text-[0.8125rem] font-bold leading-tight text-slate-900 dark:text-white">Pregúntale a Lalán</span>
+                    <span className="block text-[0.6875rem] leading-tight text-slate-500 dark:text-neutral-400">Tu asistente con IA · voz o texto</span>
+                  </span>
+                  {/* La puntita que señala la esfera */}
+                  <span aria-hidden="true" className={`absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 bg-white/95 dark:bg-neutral-900/95 border-slate-200/80 dark:border-white/10 ${lado === 'der' ? '-right-[5px] border-t border-r' : '-left-[5px] border-b border-l'}`} />
+                </motion.button>
+              )}
+            </AnimatePresence>
             <button type="button" aria-label={ETIQUETA_BURBUJA[modo]} data-medir="Abrir Lalan"
               title="Toca para abrir el chat · arrástrala al zafacón para cerrarla"
               onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerCancel={alSoltar}
@@ -1572,6 +1619,11 @@ const BurbujaLalan: React.FC<{
                     strokeDasharray={`${cierre * 251.3} 251.3`} />
                 </svg>
               )}
+              {/* «IA»: que se sepa de un vistazo que la esfera es una asistente */}
+              <span aria-hidden="true"
+                className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[18px] px-1.5 flex items-center gap-0.5 rounded-full bg-white dark:bg-neutral-900 text-[var(--primary)] text-[0.625rem] font-extrabold tracking-wide shadow-md ring-1 ring-[var(--primary)]/20 pointer-events-none">
+                <Sparkles className="w-2.5 h-2.5" />IA
+              </span>
               {/* Dijo algo mientras estaba en burbuja (en silencio solo se lee) */}
               <AnimatePresence>
                 {sinLeer && (
