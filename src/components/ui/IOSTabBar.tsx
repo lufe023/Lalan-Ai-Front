@@ -29,6 +29,7 @@ import { RESORTE } from './movimiento';
 import { LogoLalan } from './LogoLalan';
 import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
 import { EsferaLalan } from '../lalan/EsferaLalan';
+import { useLalanDescubierta } from '../lalan/descubrirLalan';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { PERMISO_DE_PANTALLA } from '../../services/permisos';
@@ -77,6 +78,8 @@ export const IOSTabBar: React.FC = () => {
     openFolios,
   } = useApp();
   const { currentUser, puede } = useAuth();
+  const lalanDescubierta = useLalanDescubierta();
+  const quieto = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const nombreSede = useNombreSede();
   const { tieneModulo } = usePlan();
   const aplicacionesNuevas = useAplicacionesNuevas(currentUser?.role === 'super_admin');
@@ -337,11 +340,27 @@ export const IOSTabBar: React.FC = () => {
           </div>
           {puedeHablarConLalan(currentUser?.role) && (
             <button type="button" onClick={abrirLalan} data-medir="Abrir Lalan"
-              className="mt-3 w-full flex items-center gap-2.5 px-2 py-1.5 rounded-2xl bg-[var(--primary)]/8 hover:bg-[var(--primary)]/15 text-left cursor-pointer ios-touch">
-              <EsferaLalan modo="reposo" tamano={34} />
+              aria-label="Pregúntale a Lalán, tu asistente con IA"
+              className={`mt-3 w-full flex items-center gap-2.5 px-2 py-2 rounded-2xl text-left cursor-pointer ios-touch border transition-colors ${lalanDescubierta
+                ? 'bg-[var(--primary)]/8 hover:bg-[var(--primary)]/15 border-transparent'
+                : 'bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 border-[var(--primary)]/25'}`}>
+              <span className="relative shrink-0 w-[34px] h-[34px]">
+                {/* Mientras no la ha abierto nunca, la esfera respira para llamar la atención */}
+                {!lalanDescubierta && !quieto && [0, 1.2].map((retraso) => (
+                  <motion.span key={retraso} aria-hidden="true" className="absolute inset-0 rounded-full bg-[var(--primary)] pointer-events-none"
+                    initial={{ scale: 1, opacity: 0 }} animate={{ scale: [1, 1.6], opacity: [0.35, 0] }}
+                    transition={{ duration: 2.4, delay: retraso, repeat: Infinity, ease: 'easeOut' }} />
+                ))}
+                <EsferaLalan modo="reposo" tamano={34} />
+              </span>
               <span className="flex-1 min-w-0">
-                <span className="block text-sm font-bold text-slate-900 dark:text-white leading-tight">Habla con Lalan</span>
-                <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate">Tu día, tus chats, tus informes</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">Pregúntale a Lalán</span>
+                  <span className="shrink-0 inline-flex items-center gap-0.5 h-4 px-1.5 rounded-full bg-[var(--primary)] text-white text-[0.5625rem] font-extrabold tracking-wide">
+                    <Sparkles className="w-2.5 h-2.5" />IA
+                  </span>
+                </span>
+                <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate">Tu asistente: habla o escribe</span>
               </span>
             </button>
           )}
