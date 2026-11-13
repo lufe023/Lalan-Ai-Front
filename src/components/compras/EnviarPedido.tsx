@@ -28,20 +28,22 @@ export const EnviarPedido: React.FC<{
   useEffect(() => {
     if (!pedido) return;
     setCargando(true);
-    setWhatsapp(pedido.proveedor.whatsapp ?? '');
-    setCorreo(pedido.proveedor.correo ?? '');
+    setWhatsapp(pedido.contacto.whatsapp ?? '');
+    setCorreo(pedido.contacto.correo ?? '');
     comprasApi.mensaje(pedido.id, como).then((m) => setTexto(m.texto)).catch(() => setTexto('')).finally(() => setCargando(false));
   }, [pedido, como]);
 
   if (!pedido) return null;
-  const faltaWhatsapp = !pedido.proveedor.whatsapp;
-  const faltaCorreo = !pedido.proveedor.correo;
+  // A la persona con quien se habla en este pedido (la de la ficha u otra de la empresa)
+  const faltaWhatsapp = !pedido.contacto.whatsapp;
+  const faltaCorreo = !pedido.contacto.correo;
 
   /** Guarda en la ficha del proveedor lo que faltaba, antes de mandar */
   const completarFicha = async (que: 'whatsapp' | 'correo') => {
     const valor = que === 'whatsapp' ? whatsapp.trim() : correo.trim();
     if (!valor) throw new Error(que === 'whatsapp' ? 'Escribe el WhatsApp del proveedor' : 'Escribe el correo del proveedor');
-    await comprasApi.editarProveedor(pedido.proveedor.id, { [que]: valor });
+    if (pedido.contacto.id) await comprasApi.editarContacto(pedido.contacto.id, { [que]: valor });
+    else await comprasApi.editarProveedor(pedido.proveedor.id, { [que]: valor });
   };
 
   const mandar = async (canal: 'whatsapp' | 'correo' | 'impreso') => {
@@ -58,7 +60,7 @@ export const EnviarPedido: React.FC<{
       }
       showToast(
         canal === 'correo' ? 'Correo enviado' : canal === 'whatsapp' ? 'Listo para mandar' : 'Hoja abierta',
-        canal === 'correo' ? `Le llegó a ${r.orden.proveedor.correo} con la hoja en PDF.` : canal === 'whatsapp' ? 'Toca enviar en WhatsApp. Quedó anotado en el historial.' : 'Imprímela desde ahí. Quedó anotado en el historial.',
+        canal === 'correo' ? `Le llegó a ${r.orden.contacto.correo} con la hoja en PDF.` : canal === 'whatsapp' ? 'Toca enviar en WhatsApp. Quedó anotado en el historial.' : 'Imprímela desde ahí. Quedó anotado en el historial.',
         'success',
       );
       onEnviado(r.orden);
@@ -71,7 +73,7 @@ export const EnviarPedido: React.FC<{
 
   const titulo = como === 'cotizacion' ? 'Pedir precio' : 'Mandar la orden';
   return (
-    <IOSModal isOpen={!!pedido} onClose={onClose} title={titulo} subtitle={`${pedido.numero} · ${pedido.proveedor.nombre}`} fixedHeight={false}>
+    <IOSModal isOpen={!!pedido} onClose={onClose} title={titulo} subtitle={`${pedido.numero} · ${pedido.contacto.nombre && !pedido.contacto.principal ? `${pedido.contacto.nombre}, ` : ''}${pedido.proveedor.nombre}`} fixedHeight={false}>
       <div className="space-y-3 p-1">
         <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
           {como === 'cotizacion'
