@@ -16,7 +16,7 @@ export function useOpcionesRecibo() {
     const sede = sedes.find(s => s.id === venta?.locationId) ?? null;
     return {
       diseno: st?.reciboDiseno ?? undefined,
-      salon: st?.salonName || 'Lalan AI Studio & Lounge',
+      salon: st?.salonName || undefined,
       sede: varias ? sede?.name : undefined,
       direccion: sede ? (sede.address ?? '') : (st?.address ?? ''),
       telefono: sede ? (sede.phone ?? '') : (st?.phone ?? ''),

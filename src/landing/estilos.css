@@ -587,7 +587,11 @@
   /* ── Pie ── */
   .pie-fila { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; width: 100%; }
   .siglas-pie { margin: 0; font-size: .82rem; color: var(--tinta-2); }
-  .siglas-pie b { font-family: var(--serif); font-size: 1rem; color: var(--tinta); }
+  /* Las cinco letras son el camino al huevo de pascua (huevo.ts): se pueden tocar y se encienden en orden */
+  .siglas-pie b { font-family: var(--serif); font-size: 1rem; color: var(--tinta); display: inline-block; padding: 6px 1px; margin: -6px 0; cursor: pointer; border-radius: 6px; transition: color .2s ease, transform .2s ease, text-shadow .2s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .siglas-pie b:hover { color: var(--rosa); }
+  .siglas-pie b.encendida { color: var(--rosa); transform: translateY(-2px) scale(1.15); text-shadow: 0 0 12px color-mix(in srgb, var(--rosa) 55%, transparent); }
+  @media (prefers-reduced-motion: reduce) { .siglas-pie b, .siglas-pie b.encendida { transition: none; transform: none; } }
   .pie-nota { margin: 0; width: 100%; }
   footer .tema-panel { top: auto; bottom: calc(100% + 10px); }
 

@@ -98,7 +98,7 @@ export const LoginScreen: React.FC = () => {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Lalan AI</h1>
-          <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">Studio & Lounge · Gestión inteligente</p>
+          <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">Live Assistant for Logistics, Appointments & Networking</p>
         </div>
 
         {registro ? (

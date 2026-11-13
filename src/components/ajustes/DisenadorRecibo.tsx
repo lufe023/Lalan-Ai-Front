@@ -54,7 +54,7 @@ export const DisenadorRecibo: React.FC = () => {
 
   const html = useMemo(() => construirRecibo(MUESTRA, {
     diseno: d,
-    salon: (settings as any)?.salonName || 'Lalan AI Studio & Lounge',
+    salon: (settings as any)?.salonName || 'Tu salón',
     sede: varias ? sedeVista?.name : undefined,
     direccion: sedeVista?.address ?? (settings as any)?.address ?? '',
     telefono: sedeVista?.phone ?? (settings as any)?.phone ?? '',

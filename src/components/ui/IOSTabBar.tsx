@@ -75,6 +75,7 @@ export const IOSTabBar: React.FC = () => {
     // incrustado aquí en vez de la portada de la radio.
     ytQueue, ytIndex, ytPlaying, ytToggle, ytNext,
     openFolios,
+    settings,
   } = useApp();
   const { currentUser, puede } = useAuth();
   const nombreSede = useNombreSede();
@@ -332,7 +333,10 @@ export const IOSTabBar: React.FC = () => {
             </div>
             <div>
               <div className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Lalan AI</div>
-              <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 font-medium tracking-wide uppercase">Studio & Lounge</div>
+              {/* Debajo de la marca va el salón de quien entra; Lalan no es un salón */}
+              {settings.salonName?.trim() && (
+                <div className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 font-medium tracking-wide uppercase truncate max-w-[11rem] xl:max-w-[13rem]">{settings.salonName}</div>
+              )}
             </div>
           </div>
           {puedeHablarConLalan(currentUser?.role) && (
