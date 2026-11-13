@@ -43,7 +43,7 @@ interface Accion {
   tutorial?: TutorialTarjeta | null;
   /** Repetir una compra: el pedido de antes y, ya confirmada, el borrador nuevo */
   compra?: CompraTarjeta | null;
-  /** Un recordatorio o encargo que Lalán guardó */
+  /** Un recordatorio o encargo que Lalan guardó */
   recordatorio?: RecordatorioTarjeta | null;
 }
 interface RecordatorioTarjeta { id: string; texto: string; cuando: string; para: string | null; aviso?: string | null }
@@ -74,7 +74,7 @@ export function abrirLalan() {
   // abre el micrófono puede dejar la grabación muda.
   if (!estaCallada()) despertarVoz();
   prepararAudio();
-  // Ya sabe dónde está Lalán: la esfera deja de llamarla con el halo y la pastilla
+  // Ya sabe dónde está Lalan: la esfera deja de llamarla con el halo y la pastilla
   marcarLalanDescubierta();
   window.dispatchEvent(new Event(EVENTO_ABRIR));
 }
@@ -171,7 +171,7 @@ export const PantallaLalan: React.FC = () => {
   const sesionViva = useRef(false);
   const sesion = useRef(0);
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
-  /** El día de hoy del salón y los días anteriores con Lalán (cada uno se abre aparte) */
+  /** El día de hoy del salón y los días anteriores con Lalan (cada uno se abre aparte) */
   const [hoy, setHoy] = useState('');
   const [dias, setDias] = useState<DiaAnterior[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -267,7 +267,7 @@ export const PantallaLalan: React.FC = () => {
 
   useEffect(() => {
     const abrir = () => {
-      // Con el genio, Lalán sale de su burbuja igual que entró
+      // Con el genio, Lalan sale de su burbuja igual que entró
       const quieto = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       setAparecer(!quieto && estiloMinimizar() === 'genio' ? genioDesdeBurbuja(destinoBurbuja()) : null);
       ponerBurbuja(false); setSinLeer(false); setAbierta(true);
@@ -735,7 +735,7 @@ export const PantallaLalan: React.FC = () => {
         <EsferaLalan modo={modo} nivel={nivelEsfera} pulso={pulso} tamano={Math.round(viaje.de.width)} />
       </motion.div>
     )}
-    {/* Genio: la app se oscurece un poco y se aclara mientras Lalán entra en la burbuja */}
+    {/* Genio: la app se oscurece un poco y se aclara mientras Lalan entra en la burbuja */}
     <AnimatePresence>
       {conGenio && (
         <motion.div key="velo-genio" aria-hidden="true" className="fixed inset-0 z-[299] bg-black pointer-events-none"
@@ -1333,7 +1333,7 @@ const Tarjeta: React.FC<{
   return <TarjetaAccion accion={accion} ocupada={ocupada} onResolver={onResolver} onVerChat={onVerChat} onAbrirPedido={onAbrirPedido} />;
 };
 
-/** Un recordatorio que Lalán guardó: cuándo y para quién, y quitarlo si no era */
+/** Un recordatorio que Lalan guardó: cuándo y para quién, y quitarlo si no era */
 const TarjetaRecordatorio: React.FC<{
   recordatorio: RecordatorioTarjeta; onFallo: (e: unknown) => void; onIr: (destino: { ir: string; aviso?: string | null }) => void;
 }> = ({ recordatorio, onFallo, onIr }) => {
@@ -1352,7 +1352,7 @@ const TarjetaRecordatorio: React.FC<{
       </div>
       {!quitado && (
         <div className="flex gap-2">
-          {/* Lalán se hace burbuja y la app abre Recordatorios con este marcado */}
+          {/* Lalan se hace burbuja y la app abre Recordatorios con este marcado */}
           <button type="button" onClick={() => onIr({ ir: 'recordatorios', aviso: `recordatorio:${recordatorio.id}` })}
             className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-[var(--primary)]/25 active:scale-[0.98] transition-transform cursor-pointer">
             <BellRing className="w-4 h-4" /> Ver recordatorios
@@ -1480,7 +1480,7 @@ function tragarElClick() {
 }
 
 const ETIQUETA_BURBUJA: Record<ModoEsfera, string> = {
-  reposo: 'Lalán, tu asistente con IA. Toca para preguntarle',
+  reposo: 'Lalan, tu asistente con IA. Toca para preguntarle',
   escuchando: 'Lalan te escucha. Toca para abrir el chat',
   pensando: 'Lalan está pensando. Toca para abrir el chat',
   hablando: 'Lalan está hablando. Toca para abrir el chat',
@@ -1511,7 +1511,7 @@ const BurbujaLalan: React.FC<{
   const movio = useRef(false);
   const descubierta = useLalanDescubierta();
   const quieto = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  /** La pastilla «Pregúntale a Lalán»: sale sola un rato mientras no la haya abierto nunca */
+  /** La pastilla «Pregúntale a Lalan»: sale sola un rato mientras no la haya abierto nunca */
   const [pista, setPista] = useState(false);
   const lado = posGuardada().lado;
 
@@ -1653,7 +1653,7 @@ const BurbujaLalan: React.FC<{
                 initial={{ scale: 1, opacity: 0 }} animate={{ scale: [1, 1.7], opacity: [0.35, 0] }}
                 transition={{ duration: 2.4, delay: retraso, repeat: Infinity, ease: 'easeOut' }} />
             ))}
-            {/* «Pregúntale a Lalán»: dice qué es la esfera, al lado contrario del borde */}
+            {/* «Pregúntale a Lalan»: dice qué es la esfera, al lado contrario del borde */}
             <AnimatePresence>
               {pista && !arrastrando && !tirando && (
                 <motion.button key="pista" type="button" onClick={onAbrir}
@@ -1666,7 +1666,7 @@ const BurbujaLalan: React.FC<{
                     <Sparkles className="w-3.5 h-3.5" />
                   </span>
                   <span>
-                    <span className="block text-[0.8125rem] font-bold leading-tight text-slate-900 dark:text-white">Pregúntale a Lalán</span>
+                    <span className="block text-[0.8125rem] font-bold leading-tight text-slate-900 dark:text-white">Pregúntale a Lalan</span>
                     <span className="block text-[0.6875rem] leading-tight text-slate-500 dark:text-neutral-400">Tu asistente con IA · voz o texto</span>
                   </span>
                   {/* La puntita que señala la esfera */}
@@ -1686,10 +1686,10 @@ const BurbujaLalan: React.FC<{
                     strokeDasharray={`${cierre * 251.3} 251.3`} />
                 </svg>
               )}
-              {/* «Lalán AI»: que se sepa de un vistazo quién es la esfera */}
+              {/* «Lalan AI»: que se sepa de un vistazo quién es la esfera */}
               <span aria-hidden="true"
                 className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-4 px-1.5 flex items-center gap-0.5 whitespace-nowrap rounded-full bg-white dark:bg-neutral-900 text-[var(--primary)] text-[0.5625rem] font-bold shadow-md ring-1 ring-[var(--primary)]/20 pointer-events-none">
-                <Sparkles className="w-2 h-2" />Lalán AI
+                <Sparkles className="w-2 h-2" />Lalan AI
               </span>
               {/* Dijo algo mientras estaba en burbuja (en silencio solo se lee) */}
               <AnimatePresence>

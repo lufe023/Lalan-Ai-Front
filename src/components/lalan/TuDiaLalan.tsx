@@ -7,9 +7,9 @@ import { alRecibir } from '../../services/socket';
 import { EVENTO_PENDIENTES, avisarCambioPendientes, pendientesApi, textoFelicitar, type ItemTuDia, type TuDia } from '../../services/pendientes';
 
 interface Props {
-  /** Lalán se hace burbuja antes de ir a otra pantalla */
+  /** Lalan se hace burbuja antes de ir a otra pantalla */
   onIr: (destino: { ir: string; aviso?: string | null; conversacion?: string | null }) => void;
-  /** Le pregunta algo a Lalán (los atajos) */
+  /** Le pregunta algo a Lalan (los atajos) */
   onPreguntar: (texto: string) => void;
   /** Abre el teclado con algo ya escrito («Recuérdame ») */
   onEscribir: (texto: string) => void;
@@ -33,7 +33,7 @@ const botonPrincipal = 'min-h-[40px] px-4 rounded-full bg-[var(--primary)] text-
 const botonSecundario = 'min-h-[40px] px-4 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 text-[0.8125rem] font-semibold cursor-pointer disabled:opacity-50';
 
 /**
- * «Tu día»: lo primero que se ve al abrir a Lalán. Sus recordatorios y
+ * «Tu día»: lo primero que se ve al abrir a Lalan. Sus recordatorios y
  * encargos, las citas de hoy que piden algo, los cumpleaños y lo que no
  * alcanza, cada uno con su botón para resolverlo ahí mismo, sin hablar.
  * La esfera y la conversación siguen debajo, como siempre.
@@ -45,7 +45,7 @@ export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir }) =
   const [ocupado, setOcupado] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
-    try { setDia(await pendientesApi.tuDia()); } catch { /* sin «Tu día», Lalán sigue igual */ }
+    try { setDia(await pendientesApi.tuDia()); } catch { /* sin «Tu día», Lalan sigue igual */ }
   }, []);
 
   useEffect(() => { void cargar(); }, [cargar]);

@@ -45,7 +45,7 @@ const iniciales = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map(
 /**
  * Recordatorios y encargos: lo que la dueña no quiere olvidar y lo que le
  * encarga a su equipo. Cada uno con su botón (Listo, Pospón, Quitar) y, en
- * los encargos, quién lo tiene y cuándo lo hizo. Lalán los crea también
+ * los encargos, quién lo tiene y cuándo lo hizo. Lalan los crea también
  * cuando se lo piden hablando.
  */
 export const RecordatoriosScreen: React.FC = () => {
@@ -233,7 +233,7 @@ export const RecordatoriosScreen: React.FC = () => {
               {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : editando ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />} {editando ? 'Guardar cambios' : para ? 'Encargar' : 'Guardar'}
             </button>
           </div>
-          {!editando && <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 text-center">También se lo puedes pedir a Lalán: «recuérdame…» o «encárgale a…».</p>}
+          {!editando && <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 text-center">También se lo puedes pedir a Lalan: «recuérdame…» o «encárgale a…».</p>}
         </form>
 
         <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1 mb-3" role="tablist" aria-label="Qué ver">
@@ -249,7 +249,7 @@ export const RecordatoriosScreen: React.FC = () => {
             <div className="rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-6 py-12 text-center">
               <Bell className="w-6 h-6 mx-auto text-slate-300" />
               <p className="text-sm font-bold text-slate-800 dark:text-neutral-100 mt-2">{filtro === 'hechos' ? 'Todavía no hay nada hecho' : 'Nada pendiente'}</p>
-              <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mt-1">Lo que guardes aquí o le pidas a Lalán te llega en la app a su hora.</p>
+              <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mt-1">Lo que guardes aquí o le pidas a Lalan te llega en la app a su hora.</p>
             </div>
           ) : lista.map((p) => (
             <article key={p.id} className={`rounded-3xl border bg-white dark:bg-neutral-900 px-4 py-3 ${p.id === resaltado ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/30' : 'border-slate-200/80 dark:border-neutral-800'}`}>

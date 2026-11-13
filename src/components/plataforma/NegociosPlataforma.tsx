@@ -275,7 +275,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
     try {
       const v = await api.get<VistaCambioDePlan>(`/plataforma/negocios/${id}/cambio-plan?planId=${encodeURIComponent(planId)}`);
       const avisos = [
-        v.sedesSinLalan.length ? `Lalán deja de contestar en ${v.sedesSinLalan.join(', ')}: esos chats pasan a una persona.` : '',
+        v.sedesSinLalan.length ? `Lalan deja de contestar en ${v.sedesSinLalan.join(', ')}: esos chats pasan a una persona.` : '',
         v.adelanto.respuestas ? `Se le cobran ${v.adelanto.respuestas.toLocaleString('es-DO')} respuestas adelantadas (${v.adelanto.monto.toLocaleString('es-DO')} ${v.adelanto.moneda}).` : '',
         v.modulosQuePierde.length ? `Pierde: ${v.modulosQuePierde.join(', ')}.` : '',
         'Este mes tiene la cuota completa del plan nuevo, pero lo que sobre no pasa al mes siguiente.',
@@ -427,7 +427,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
             </label>
             {/* Llamadas extra para este salón (el módulo se le da en «Módulos»): vacío = las del plan */}
             <label className="space-y-1 block">
-              <span className="text-[0.75rem] text-slate-500">Llamadas de Lalán al mes</span>
+              <span className="text-[0.75rem] text-slate-500">Llamadas de Lalan al mes</span>
               <input type="number" min={0} disabled={soloSoporte} defaultValue={d.limitesPropios.llamadasMes ?? ''} placeholder={limitePlan?.llamadasMes == null ? 'Plan: sin tope' : `Plan: ${limitePlan.llamadasMes}`}
                 onBlur={(e) => { const v = e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))); if (v !== (d.limitesPropios.llamadasMes ?? null)) void guardar({ limiteLlamadasMes: v }); }}
                 className={campo} />
@@ -489,7 +489,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[0.8125rem] font-bold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-[var(--primary)]" /> Salón de ejemplo</div>
-              <p className="text-[0.75rem] text-slate-500">Para presentar Lalán: se puede rellenar con datos de ejemplo y queda fuera de las estadísticas. Nunca lo marques en un salón de verdad.</p>
+              <p className="text-[0.75rem] text-slate-500">Para presentar Lalan: se puede rellenar con datos de ejemplo y queda fuera de las estadísticas. Nunca lo marques en un salón de verdad.</p>
             </div>
             <IOSToggle checked={!!d.esEjemplo} onChange={(v) => void guardar({ esEjemplo: v })} ariaLabel="Salón de ejemplo" />
           </div>

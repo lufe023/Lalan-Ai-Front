@@ -1,7 +1,7 @@
 import { api } from './api';
 
 /**
- * Recordatorios y encargos del equipo, y «Tu día» (lo que Lalán enseña al
+ * Recordatorios y encargos del equipo, y «Tu día» (lo que Lalan enseña al
  * abrirla). Todo es de una sede: el servidor usa la sede activa.
  */
 

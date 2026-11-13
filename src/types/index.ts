@@ -100,7 +100,7 @@ export interface SalonService {
   color: string;
   popular?: boolean;
   description?: string;
-  /** Lo que Lalán dice para recomendarlo en los chats */
+  /** Lo que Lalan dice para recomendarlo en los chats */
   lalanDice?: string;
   aiAvailable: boolean; // Accessible by the AI Chat Bot to offer
   /** Sale en la Vitrina (la página pública de reservas) */
@@ -163,7 +163,7 @@ export interface SalonProduct {
   /** Las demás fotos del carrusel, en orden, después de `fotoId` (hasta 10 en total) */
   masFotos?: string[];
   description: string;
-  /** Lo que Lalán dice para recomendarlo en los chats */
+  /** Lo que Lalan dice para recomendarlo en los chats */
   lalanDice?: string;
   aiAvailable: boolean; // Accessible by the AI Bot to recommend/sell
   /** Sale en la Vitrina de las sedes que lo manejan, aunque esté en cero */
@@ -248,7 +248,7 @@ export interface Client {
   trato?: TratoCliente | null;
   /** Cómo le habla el salón a ella (de tú, "mi reina"…). Lalan lo usa solo con ella. Vacío: la voz general */
   tratoPersonal?: string | null;
-  /** Cumpleaños: "MM-DD" o "AAAA-MM-DD". Lalán lo recuerda en «Tu día» */
+  /** Cumpleaños: "MM-DD" o "AAAA-MM-DD". Lalan lo recuerda en «Tu día» */
   cumpleanos?: string | null;
 }
 
@@ -570,7 +570,7 @@ export interface SalonBusinessSettings {
   aiAgentName: string;
   /** Con la asistente pausada, ¿sigue proponiendo respuestas a la humana? */
   aiSuggestWhenPaused: boolean;
-  /** Lalán propone sola «Qué dice Lalán» en las fichas del catálogo (de todo el salón) */
+  /** Lalan propone sola «Qué dice Lalan» en las fichas del catálogo (de todo el salón) */
   lalanSugiereFichas?: boolean;
   /** Instrucciones propias; null = las de base del sistema */
   aiPrompt: string | null;

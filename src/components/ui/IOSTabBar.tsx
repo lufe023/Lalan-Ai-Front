@@ -344,7 +344,7 @@ export const IOSTabBar: React.FC = () => {
           </div>
           {puedeHablarConLalan(currentUser?.role) && (
             <button type="button" onClick={abrirLalan} data-medir="Abrir Lalan"
-              aria-label="Pregúntale a Lalán, tu asistente con IA"
+              aria-label="Pregúntale a Lalan, tu asistente con IA"
               className={`mt-3 w-full flex items-center gap-2.5 px-2 py-2 rounded-2xl text-left cursor-pointer ios-touch border transition-colors ${lalanDescubierta
                 ? 'bg-[var(--primary)]/8 hover:bg-[var(--primary)]/15 border-transparent'
                 : 'bg-[var(--primary)]/10 hover:bg-[var(--primary)]/15 border-[var(--primary)]/25'}`}>
@@ -359,7 +359,7 @@ export const IOSTabBar: React.FC = () => {
               </span>
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">Pregúntale a Lalán</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">Pregúntale a Lalan</span>
                   <span className="shrink-0 inline-flex items-center gap-0.5 h-4 px-1.5 rounded-full bg-[var(--primary)] text-white text-[0.5625rem] font-extrabold tracking-wide">
                     <Sparkles className="w-2.5 h-2.5" />IA
                   </span>

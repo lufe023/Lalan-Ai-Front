@@ -19,18 +19,18 @@ const ventanaDe = (ventanas: VentanaAbierta[], c: ContactoProveedor | null) => (
 
 /** Lo que hará Lalan al pedir precio, dicho antes de tocar */
 function comoLeEscribe(c: ContactoProveedor | null, ventana: VentanaAbierta | null): { texto: string; listo: boolean } {
-  if (ventana) return { texto: `Te escribió ${haceCuanto(ventana.escribio)}: Lalán le escribe por WhatsApp ahora mismo.`, listo: true };
-  if (c?.whatsapp) return { texto: 'No te ha escrito en 24 horas: Lalán le escribe con la plantilla de cotización; si no puede, por correo.', listo: true };
-  if (c?.correo) return { texto: 'Lalán le escribe por correo.', listo: true };
-  return { texto: 'No tiene WhatsApp ni correo: agrégale uno a la persona para que Lalán le escriba.', listo: false };
+  if (ventana) return { texto: `Te escribió ${haceCuanto(ventana.escribio)}: Lalan le escribe por WhatsApp ahora mismo.`, listo: true };
+  if (c?.whatsapp) return { texto: 'No te ha escrito en 24 horas: Lalan le escribe con la plantilla de cotización; si no puede, por correo.', listo: true };
+  if (c?.correo) return { texto: 'Lalan le escribe por correo.', listo: true };
+  return { texto: 'No tiene WhatsApp ni correo: agrégale uno a la persona para que Lalan le escriba.', listo: false };
 }
 
 /**
  * «¿A quién se lo pides?»: cambiar el proveedor de un borrador (mismos
  * productos, con sus precios) o pedirle lo mismo a otro para comparar.
- * Primero los que escribieron por WhatsApp en las últimas 24 h (Lalán les
+ * Primero los que escribieron por WhatsApp en las últimas 24 h (Lalan les
  * escribe ya, gratis); se elige con qué persona de la empresa se habla, y
- * Lalán puede pedir el precio en el mismo toque.
+ * Lalan puede pedir el precio en el mismo toque.
  */
 export const CambiarProveedor: React.FC<{
   pedido: Pedido | null;
@@ -64,7 +64,7 @@ export const CambiarProveedor: React.FC<{
     if (!pedido) return;
     setLista(null); setElegido(null); setQ(''); setNuevaPersona(null); setLalanPide(true);
     void cargar();
-    // De la lista de Lalán: solo los que venden algo de este pedido
+    // De la lista de Lalan: solo los que venden algo de este pedido
     const ids = new Set(pedido.lineas.map((l) => l.productId));
     comprasApi.sugerencias()
       .then((r) => setSugeridos((r.sugerencias ?? []).filter((s) => s.productos.some((p) => ids.has(p.id)))))
@@ -126,8 +126,8 @@ export const CambiarProveedor: React.FC<{
         try {
           const r = await comprasApi.lalanPide(p.id);
           p = r.orden;
-          nota += ` Lalán ya le pidió el precio por ${r.canal === 'whatsapp' ? 'WhatsApp' : 'correo'}.`;
-        } catch (e) { nota += ` Lalán no pudo escribirle: ${(e as Error).message}`; }
+          nota += ` Lalan ya le pidió el precio por ${r.canal === 'whatsapp' ? 'WhatsApp' : 'correo'}.`;
+        } catch (e) { nota += ` Lalan no pudo escribirle: ${(e as Error).message}`; }
       }
       showToast(que === 'cambiar' ? 'Proveedor cambiado' : 'Pedido para comparar', nota, 'success');
       onListo(p, que === 'otro');
@@ -142,7 +142,7 @@ export const CambiarProveedor: React.FC<{
       subtitle={`${pedido.numero} · ${productos} ${productos === 1 ? 'producto' : 'productos'} · ${pedido.sede.nombre}`}>
       <div className="space-y-3 p-1">
         <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
-          Los mismos productos, con el precio y la presentación de cada proveedor. Arriba, los que te escribieron por WhatsApp en las últimas 24 horas: a esos Lalán les escribe ya.
+          Los mismos productos, con el precio y la presentación de cada proveedor. Arriba, los que te escribieron por WhatsApp en las últimas 24 horas: a esos Lalan les escribe ya.
         </p>
         <label className="relative block">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -164,7 +164,7 @@ export const CambiarProveedor: React.FC<{
                   <span className="flex-1 min-w-0">
                     <span className="flex flex-wrap items-center gap-1.5">
                       <b className="text-[0.875rem] text-slate-900 dark:text-white">{p.nombre}</b>
-                      {p.plataformaId && <Sparkles className="w-3.5 h-3.5 text-violet-500" aria-label="De la lista de Lalán" />}
+                      {p.plataformaId && <Sparkles className="w-3.5 h-3.5 text-violet-500" aria-label="De la lista de Lalan" />}
                       {p.esElActual && <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-bold bg-slate-100 dark:bg-neutral-800 text-slate-500">Es el de ahora</span>}
                       {p.yaCotiza && <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Ya lo está cotizando</span>}
                     </span>
@@ -221,10 +221,10 @@ export const CambiarProveedor: React.FC<{
                     {lalanPuede && (
                       <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-violet-50/70 dark:bg-violet-950/20">
                         <span className="text-[0.8125rem] text-slate-700 dark:text-neutral-200">
-                          <b className="flex items-center gap-1"><Bot className="w-4 h-4 text-violet-600" /> Que Lalán le pida el precio ya</b>
+                          <b className="flex items-center gap-1"><Bot className="w-4 h-4 text-violet-600" /> Que Lalan le pida el precio ya</b>
                           <span className={`block text-[0.6875rem] ${como.listo ? 'text-slate-500' : 'text-amber-700 dark:text-amber-400'}`}>{como.texto}</span>
                         </span>
-                        <IOSToggle checked={lalanPide && como.listo} onChange={setLalanPide} disabled={!como.listo} ariaLabel="Que Lalán le pida el precio ya" />
+                        <IOSToggle checked={lalanPide && como.listo} onChange={setLalanPide} disabled={!como.listo} ariaLabel="Que Lalan le pida el precio ya" />
                       </div>
                     )}
 
@@ -251,7 +251,7 @@ export const CambiarProveedor: React.FC<{
 
         {sugeridos.length > 0 && (
           <div className="p-3 rounded-2xl border border-violet-200 dark:border-violet-900/60 bg-violet-50/60 dark:bg-violet-950/20 space-y-2">
-            <p className="text-[0.75rem] font-bold text-violet-800 dark:text-violet-300 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> De la lista de Lalán: también lo venden</p>
+            <p className="text-[0.75rem] font-bold text-violet-800 dark:text-violet-300 flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> De la lista de Lalan: también lo venden</p>
             {sugeridos.slice(0, 4).map((s) => (
               <div key={s.id} className="flex flex-wrap items-center gap-2">
                 <div className="flex-1 min-w-[12rem] text-[0.8125rem]">

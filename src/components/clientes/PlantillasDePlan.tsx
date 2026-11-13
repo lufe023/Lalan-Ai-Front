@@ -11,7 +11,7 @@ const ICONO: Record<TipoPaso, React.ReactNode> = {
   mensaje: <MessageCircle className="w-3.5 h-3.5" />,
   tarea: <ClipboardList className="w-3.5 h-3.5" />,
 };
-const TIPO: Record<TipoPaso, string> = { cita: 'Sesión en el salón', mensaje: 'Mensaje de Lalán', tarea: 'Tarea' };
+const TIPO: Record<TipoPaso, string> = { cita: 'Sesión en el salón', mensaje: 'Mensaje de Lalan', tarea: 'Tarea' };
 
 type Borrador = { id: string | null; nombre: string; descripcion: string; precio: string; pasos: PasoPlantilla[]; mediciones: string };
 
@@ -28,7 +28,7 @@ const deplantilla = (p: Plantilla): Borrador => ({
 });
 
 /**
- * Las plantillas de plan del salón: las que la dueña arma y las que Lalán
+ * Las plantillas de plan del salón: las que la dueña arma y las que Lalan
  * trae listas por tipo de negocio. Cada plan que empieza copia sus pasos.
  */
 export const PlantillasDePlan: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) => {
@@ -81,7 +81,7 @@ export const PlantillasDePlan: React.FC<{ onCerrar: () => void }> = ({ onCerrar 
         <div className="space-y-5 pb-6">
           <div className="space-y-2">
             {datos.plantillas.length === 0 && (
-              <p className="text-[0.8125rem] text-slate-500">Todavía no hay plantillas. Toma una de Lalán abajo o arma la tuya.</p>
+              <p className="text-[0.8125rem] text-slate-500">Todavía no hay plantillas. Toma una de Lalan abajo o arma la tuya.</p>
             )}
             {datos.plantillas.map((p) => (
               <div key={p.id} className="rounded-xl border border-slate-200 dark:border-neutral-700 p-3">
@@ -120,7 +120,7 @@ export const PlantillasDePlan: React.FC<{ onCerrar: () => void }> = ({ onCerrar 
           {modelos.length > 0 && (
             <div>
               <p className="flex items-center gap-1.5 text-[0.75rem] font-bold uppercase tracking-wide text-slate-500 mb-2">
-                <Sparkles className="w-3.5 h-3.5" /> Lalán las trae listas
+                <Sparkles className="w-3.5 h-3.5" /> Lalan las trae listas
               </p>
               <div className="space-y-2">
                 {modelos.map((m) => (
@@ -204,7 +204,7 @@ const Editor: React.FC<{ borrador: Borrador; moneda: string; onCancelar: () => v
               <input className={campo} value={p.titulo} onChange={(e) => paso(i, { titulo: e.target.value })} placeholder="Qué pasa ese día" />
               {p.tipo === 'cita' && (
                 <select className={campo} value={p.serviceId ?? ''} onChange={(e) => paso(i, { serviceId: e.target.value || null })} aria-label="Servicio">
-                  <option value="">Servicio de la cita (Lalán lo marca hecho al cerrarla)</option>
+                  <option value="">Servicio de la cita (Lalan lo marca hecho al cerrarla)</option>
                   {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               )}

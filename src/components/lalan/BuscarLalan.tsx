@@ -95,7 +95,7 @@ export const BuscarLalan: React.FC<Props> = ({ hoy, onCerrar, onElegir }) => {
         </button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-6 space-y-4 [scrollbar-width:thin]">
-        {!t && <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 px-1">Escribe un nombre, un producto o algo que le pediste a Lalán. Busca en todos los días.</p>}
+        {!t && <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 px-1">Escribe un nombre, un producto o algo que le pediste a Lalan. Busca en todos los días.</p>}
         {t.length >= 2 && resultados && !resultados.length && !buscando && (
           <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 px-1">No encontré «{t}» en lo que hablamos.</p>
         )}
@@ -106,7 +106,7 @@ export const BuscarLalan: React.FC<Props> = ({ hoy, onCerrar, onElegir }) => {
               <button key={r.id} type="button" onClick={() => onElegir(r)}
                 className="w-full text-left rounded-2xl bg-white/90 dark:bg-neutral-900/85 border border-white/80 dark:border-white/5 shadow-sm px-4 py-2.5 cursor-pointer hover:bg-white dark:hover:bg-neutral-900">
                 <span className="flex items-center gap-1.5 text-[0.6875rem] font-semibold text-slate-400">
-                  {r.deLalan ? <><Sparkles className="w-3 h-3 text-[var(--primary)]" /> Lalán</> : 'Tú'}
+                  {r.deLalan ? <><Sparkles className="w-3 h-3 text-[var(--primary)]" /> Lalan</> : 'Tú'}
                   <span aria-hidden>·</span>
                   {new Date(r.creadoEn).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })}
                 </span>

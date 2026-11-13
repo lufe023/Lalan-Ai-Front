@@ -11,7 +11,7 @@ const botonChico = 'text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounde
 
 /**
  * Plataforma → Mercado: las fotos de presentación de un producto genérico.
- * Se suben en borrador y se publican; publicadas, Lalán las ofrece a los
+ * Se suben en borrador y se publican; publicadas, Lalan las ofrece a los
  * salones con ese producto sin foto. Genéricas: nada de fotos de marca bajadas de internet.
  */
 export const FotosDelGenerico: React.FC<{ genericoId: string; nombre: string }> = ({ genericoId, nombre }) => {
