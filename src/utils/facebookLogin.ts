@@ -21,6 +21,8 @@ export interface NumeroWhatsapp { id: string; wabaId: string; numero: string | n
 /** Cómo termina Conectar WhatsApp: conectado, o varios números para elegir */
 export interface ResultadoWhatsapp {
   conectado: boolean; locationId: string; numero: string | null; nombre: string | null; avisos: string[];
+  /** Quedó en la app del teléfono a la vez (coexistencia): Lalan está copiando sus contactos y chats */
+  coexistencia?: boolean;
   elegir?: { pendiente: string; numeros: NumeroWhatsapp[] };
 }
 

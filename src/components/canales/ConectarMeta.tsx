@@ -11,6 +11,7 @@ import { conectarSoloInstagram } from '../../utils/instagramLogin';
 import { irAFacebook, irAWhatsapp, necesitaRedireccion, tomarNumeros, tomarPendientes, type NumerosPendientes, type ResultadoWhatsapp } from '../../utils/facebookLogin';
 import type { CommunicationChannel } from '../../types';
 import { sedeDeLaGuia } from '../guias/GuiaEnCurso';
+import { WhatsappEnTuTelefono } from './WhatsappEnTuTelefono';
 
 /** Si Lalan trajo a la persona con "Llévame" para una sede, esa sede ya viene elegida */
 const sedeGuia = (sedes: Sede[]) => {
@@ -92,7 +93,9 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
     if (res.elegir) { setNumeros({ canal: 'whatsapp', locationId: res.locationId, ...res.elegir }); return; }
     setNumeros(null);
     await recargarBots();
-    showToast('WhatsApp conectado', res.avisos[0] ?? `Lalan ya recibe los mensajes${res.numero ? ` de ${res.numero}` : ''}.`, res.avisos.length ? 'warning' : 'success');
+    showToast('WhatsApp conectado', res.avisos[0] ?? (res.coexistencia
+      ? 'Lalan está copiando tus contactos y tus chats de los últimos 6 meses. Deja abierta la app WhatsApp Business en tu teléfono unos minutos.'
+      : `Lalan ya recibe los mensajes${res.numero ? ` de ${res.numero}` : ''}.`), res.avisos.length ? 'warning' : 'success');
   };
 
   const whatsapp = async (coexistencia: boolean) => {
@@ -222,6 +225,9 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
         })}
       </div>
 
+      {/* WhatsApp que sigue en la app del teléfono: cómo va la copia de sus chats y quién atiende a sus contactos */}
+      <WhatsappEnTuTelefono sede={sede} conectado={conectado('whatsapp')} />
+
       {/* Lo que cobra Meta y las plantillas viven en la tarjeta de WhatsApp (Interruptores por canal) */}
 
       {cfg && currentUser?.role === 'super_admin' && !!(cfg.faltan?.length || cfg.faltanSoloInstagram?.length) && (
@@ -243,7 +249,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
           <button type="button" onClick={() => void whatsapp(true)}
             className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-neutral-700 hover:border-[var(--primary)] cursor-pointer">
             <b className="text-sm block">Usar el número que ya tengo en WhatsApp Business</b>
-            <span className="text-[0.75rem] text-slate-500">Sigues usando la app en tu teléfono y Lalan contesta a la vez. Si le escribes a una clienta desde el teléfono, Lalan se aparta de esa conversación. Tendrás que escanear un código con el teléfono.</span>
+            <span className="text-[0.75rem] text-slate-500">Sigues usando la app en tu teléfono y Lalan contesta a la vez. Si le escribes a una clienta desde el teléfono, Lalan se aparta de esa conversación. Meta te pide confirmar en la app: acepta compartir tus chats y Lalan trae los de los últimos 6 meses. Ten la app actualizada y abierta.</span>
           </button>
         </div>
       </IOSModal>
