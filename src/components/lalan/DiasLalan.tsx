@@ -29,6 +29,8 @@ interface Props<M> {
   lista: React.RefObject<HTMLDivElement | null>;
   /** Separación entre mensajes de un día abierto */
   espacio?: string;
+  /** Desde el buscador: abre ese día y lleva al mensaje (`vez` cambia en cada búsqueda) */
+  irA?: { dia: string; mensaje?: string; vez: number } | null;
 }
 
 /** Días que se ven siempre, plegados, encima de hoy (los demás, con los botones) */
@@ -70,20 +72,36 @@ const ayerDe = (hoy: string) => {
  * día (o el calendario para cualquier otro); los últimos días se ven plegados
  * y se abren con un toque.
  */
-export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, lista, espacio = 'space-y-5' }: Props<M>) {
+export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, lista, espacio = 'space-y-5', irA }: Props<M>) {
   const [abiertos, setAbiertos] = useState<Record<string, DiaAbierto<M>>>({});
-  const [llevarA, setLlevarA] = useState<string | null>(null);
+  const [llevarA, setLlevarA] = useState<{ dia: string; mensaje?: string } | null>(null);
   const calendario = useRef<HTMLInputElement>(null);
 
   // Al abrir uno desde los botones o el calendario, se lleva la vista a ese día
   useEffect(() => {
     if (!llevarA) return;
-    const el = lista.current?.querySelector<HTMLElement>(`[data-dia="${llevarA}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setLlevarA(null);
+    const bloque = lista.current?.querySelector<HTMLElement>(`[data-dia="${llevarA.dia}"]`);
+    if (!bloque) return;
+    if (llevarA.mensaje) {
+      // Espera a que el día termine de cargar para llevar al mensaje justo
+      if (!abiertos[llevarA.dia] || abiertos[llevarA.dia].cargando) return;
+      const m = bloque.querySelector<HTMLElement>(`[data-mensaje="${llevarA.mensaje}"]`);
+      if (m) {
+        setTimeout(() => { m.scrollIntoView({ behavior: 'smooth', block: 'center' }); resaltar(m); }, 280);
+        setLlevarA(null);
+        return;
+      }
     }
+    bloque.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setLlevarA(null);
   }, [llevarA, abiertos, lista]);
+
+  // Lo que eligió en el buscador
+  useEffect(() => {
+    if (!irA || irA.dia >= hoy || !dias.length) return;
+    if (!abiertos[irA.dia]) void cargar(irA.dia);
+    setLlevarA({ dia: irA.dia, mensaje: irA.mensaje });
+  }, [irA?.vez]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!dias.length) return null;
 
@@ -109,7 +127,7 @@ export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, li
   const irAlDia = (dia: string) => {
     if (!dia || dia >= hoy) return;
     if (!abiertos[dia]) void cargar(dia);
-    setLlevarA(dia);
+    setLlevarA({ dia });
   };
 
   const abrirCalendario = () => {
@@ -217,3 +235,11 @@ const TuDiaGuardado: React.FC<{ dia: TuDia }> = ({ dia }) => {
     </div>
   );
 };
+
+/** Un destello suave en el mensaje que buscó */
+export function resaltar(el: HTMLElement) {
+  el.animate?.(
+    [{ boxShadow: '0 0 0 0 transparent' }, { boxShadow: '0 0 0 6px color-mix(in srgb, var(--primary) 35%, transparent)' }, { boxShadow: '0 0 0 0 transparent' }],
+    { duration: 1600, easing: 'ease-in-out', delay: 250 },
+  );
+}
