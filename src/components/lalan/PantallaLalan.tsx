@@ -25,7 +25,7 @@ import { VerComo } from '../minitutoriales/VerComo';
 import { usePlan } from '../../context/PlanContext';
 import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO } from '../../services/compras';
 import { irA } from '../../services/avisos';
-import { avisarCambioPendientes, cuandoCorto, pendientesApi } from '../../services/pendientes';
+import { avisarCambioPendientes, cuandoConAviso, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
 import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, genioDesdeBurbuja, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
 
@@ -43,7 +43,7 @@ interface Accion {
   /** Un recordatorio o encargo que Lalán guardó */
   recordatorio?: RecordatorioTarjeta | null;
 }
-interface RecordatorioTarjeta { id: string; texto: string; cuando: string; para: string | null }
+interface RecordatorioTarjeta { id: string; texto: string; cuando: string; para: string | null; aviso?: string | null }
 interface CompraTarjeta { ordenId: string; numero: string; nuevoId: string | null; nuevoNumero: string | null }
 interface TutorialTarjeta { tema: string; nombre: string }
 interface DocumentoTarjeta { id: string; titulo: string; sede: string }
@@ -1278,7 +1278,7 @@ const TarjetaRecordatorio: React.FC<{
       <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-[var(--primary)]">{recordatorio.para ? `Encargo para ${recordatorio.para.split(' ')[0]}` : 'Recordatorio'}</div>
       <div>
         <p className={`text-[0.9375rem] font-semibold leading-snug text-slate-800 dark:text-neutral-100 ${quitado ? 'line-through opacity-60' : ''}`}>{recordatorio.texto}</p>
-        <p className="mt-0.5 text-[0.8125rem] text-slate-500 dark:text-neutral-400 first-letter:uppercase">{quitado ? 'Quitado' : cuandoCorto(recordatorio.cuando)}</p>
+        <p className="mt-0.5 text-[0.8125rem] text-slate-500 dark:text-neutral-400 first-letter:uppercase">{quitado ? 'Quitado' : cuandoConAviso(recordatorio.cuando, recordatorio.aviso)}</p>
       </div>
       {!quitado && (
         <div className="flex gap-2">
