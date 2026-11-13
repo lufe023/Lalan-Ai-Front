@@ -1635,10 +1635,10 @@ const BurbujaLalan: React.FC<{
                     strokeDasharray={`${cierre * 251.3} 251.3`} />
                 </svg>
               )}
-              {/* «IA»: que se sepa de un vistazo que la esfera es una asistente */}
+              {/* «Lalán AI»: que se sepa de un vistazo quién es la esfera */}
               <span aria-hidden="true"
-                className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-[18px] px-1.5 flex items-center gap-0.5 rounded-full bg-white dark:bg-neutral-900 text-[var(--primary)] text-[0.625rem] font-extrabold tracking-wide shadow-md ring-1 ring-[var(--primary)]/20 pointer-events-none">
-                <Sparkles className="w-2.5 h-2.5" />IA
+                className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-4 px-1.5 flex items-center gap-0.5 whitespace-nowrap rounded-full bg-white dark:bg-neutral-900 text-[var(--primary)] text-[0.5625rem] font-bold shadow-md ring-1 ring-[var(--primary)]/20 pointer-events-none">
+                <Sparkles className="w-2 h-2" />Lalán AI
               </span>
               {/* Dijo algo mientras estaba en burbuja (en silencio solo se lee) */}
               <AnimatePresence>
