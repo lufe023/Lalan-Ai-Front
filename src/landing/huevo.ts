@@ -65,9 +65,16 @@ export function iniciarHuevo() {
   // Tocar las cinco letras en orden: L · A · L · A · N
   const lista = document.getElementById('siglas');
   if (!lista) return;
-  const filas = Array.from(lista.children);
+  const filas = Array.from(lista.querySelectorAll('b'));
   let siguiente = 0;
   let ultimoToque = 0;
+  let apagar = 0;
+  // Cada letra acertada se enciende: la pista de que se va por buen camino
+  const encender = (cuantas: number) => {
+    filas.forEach((f, i) => f.classList.toggle('encendida', i < cuantas));
+    window.clearTimeout(apagar);
+    if (cuantas > 0) apagar = window.setTimeout(() => { siguiente = 0; encender(0); }, PAUSA_MAXIMA_MS);
+  };
   lista.addEventListener('click', e => {
     const fila = (e.target as HTMLElement).closest('b');
     if (!fila) return;
@@ -75,6 +82,11 @@ export function iniciarHuevo() {
     if (ahora - ultimoToque > PAUSA_MAXIMA_MS) siguiente = 0;
     ultimoToque = ahora;
     siguiente = filas.indexOf(fila) === siguiente ? siguiente + 1 : (filas.indexOf(fila) === 0 ? 1 : 0);
-    if (siguiente === LETRAS) { siguiente = 0; mostrar(); }
+    encender(siguiente);
+    if (siguiente === LETRAS) {
+      siguiente = 0;
+      // Un instante con las cinco encendidas antes de abrir el secreto
+      window.setTimeout(() => { encender(0); mostrar(); }, 250);
+    }
   });
 }
