@@ -13,6 +13,8 @@ interface Props {
   onPreguntar: (texto: string) => void;
   /** Abre el teclado con algo ya escrito («Recuérdame ») */
   onEscribir: (texto: string) => void;
+  /** «panel»: en la PC, fijo en el panel de la esfera (siempre abierto, con la próxima cita y los atajos abajo) */
+  variante?: 'tarjeta' | 'panel';
 }
 
 const ATAJOS: { texto: string; pregunta?: string; escribir?: string; ir?: string }[] = [
@@ -38,7 +40,7 @@ const botonSecundario = 'min-h-[40px] px-4 rounded-full bg-white dark:bg-neutral
  * alcanza, cada uno con su botón para resolverlo ahí mismo, sin hablar.
  * La esfera y la conversación siguen debajo, como siempre.
  */
-export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir }) => {
+export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir, variante = 'tarjeta' }) => {
   const { showToast, confirmarCita } = useApp();
   const [dia, setDia] = useState<TuDia | null>(null);
   const [abierto, setAbierto] = useState(() => { try { return sessionStorage.getItem('lalan.tuDiaCerrado') !== '1'; } catch { return true; } });
@@ -98,8 +100,90 @@ export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir }) =
     if (i.conversationId) onIr({ ir: 'chats', conversacion: i.conversationId });
   };
 
+  /** Los botones de cada cosa de «Tu día» (los mismos en la tarjeta y en el panel) */
+  const botones = (i: ItemTuDia) => (
+    <>
+                {i.tipo === 'recordatorio' && (i.relacion === 'encargue' ? (
+                  <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'recordatorios', aviso: `recordatorio:${i.id}` })}>Ver encargo</button>
+                ) : (
+                  <>
+                    <button type="button" className={botonPrincipal} disabled={ocupado === i.id} onClick={() => void hacer(i.id, () => pendientesApi.hecho(i.id), 'Listo')}>
+                      {ocupado === i.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Listo
+                    </button>
+                    <button type="button" className={botonSecundario} disabled={ocupado === i.id} onClick={() => void hacer(i.id, () => pendientesApi.posponer(i.id, { minutos: 60 }), 'Te lo recuerdo en una hora')}>
+                      <Clock className="w-4 h-4 inline -mt-0.5 mr-1" />Pospón 1 h
+                    </button>
+                  </>
+                ))}
+                {i.tipo === 'cita' && (
+                  <>
+                    {i.motivo === 'por_confirmar' ? (
+                      <button type="button" className={botonPrincipal} disabled={ocupado === i.id} onClick={() => void confirmar(i)}>
+                        {ocupado === i.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Confirmar
+                      </button>
+                    ) : (
+                      <button type="button" className={botonPrincipal} onClick={() => onIr({ ir: 'calendar', aviso: `cita:${i.id}` })}>Asignar especialista</button>
+                    )}
+                    {i.conversationId
+                      ? <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'chats', conversacion: i.conversationId })}>Escribirle</button>
+                      : <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'calendar', aviso: `cita:${i.id}` })}>Ver cita</button>}
+                  </>
+                )}
+                {i.tipo === 'cumple' && i.quien === 'clienta' && (
+                  <>
+                    {(i.telefono || i.conversationId) && <button type="button" className={botonPrincipal} onClick={() => felicitar(i)}>Felicitarla</button>}
+                    {i.clientId && <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'clients', aviso: `clienta:${i.clientId}` })}>Ver ficha</button>}
+                  </>
+                )}
+                {i.tipo === 'producto' && (
+                  <button type="button" className={botonPrincipal} onClick={() => onIr({ ir: 'compras', aviso: `por-pedir:${i.sede.id}` })}>Pedirlo</button>
+                )}
+    </>
+  );
+
   if (!dia) return null;
   const { resumen } = dia;
+
+  if (variante === 'panel') {
+    const p = dia.proxima;
+    return (
+      <section aria-label="Tu día" className="w-full space-y-2.5 text-left">
+        <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 first-letter:uppercase">Tu día · {dia.fecha}{dia.sede ? ` · ${dia.sede.nombre}` : ''}</p>
+        <div className="grid grid-cols-3 gap-2">
+          <Cifra n={resumen.citas} texto={resumen.citas === 1 ? 'cita' : 'citas'} clase="bg-[var(--primary)]/10 text-[var(--primary-dark-val)] dark:text-[var(--primary)]" />
+          <Cifra n={resumen.libres} texto={resumen.libres === 1 ? 'hora libre' : 'horas libres'} clase="bg-violet-100/80 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200" />
+          <Cifra n={resumen.pendientes} texto={resumen.pendientes === 1 ? 'pendiente' : 'pendientes'} clase="bg-amber-100/80 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200" />
+        </div>
+        {p && (
+          <>
+            <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 pt-1">{p.enCurso ? 'Ahora' : 'Sigue'}</p>
+            <button type="button" onClick={() => onIr({ ir: 'calendar', aviso: `cita:${p.id}` })}
+              className="w-full flex items-center gap-3 rounded-2xl bg-white/90 dark:bg-neutral-900/85 border border-white/80 dark:border-white/5 shadow-sm px-3.5 py-2.5 cursor-pointer hover:bg-white dark:hover:bg-neutral-900 text-left">
+              <span className="text-[0.9375rem] font-extrabold text-[var(--primary)] tabular-nums shrink-0 whitespace-nowrap">{p.hora}</span>
+              <span className="min-w-0">
+                <span className="block text-[0.875rem] font-semibold text-slate-900 dark:text-neutral-100 truncate">{p.clienta}</span>
+                <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">{p.servicio}{p.especialista ? ` · con ${p.especialista}` : ''}</span>
+              </span>
+            </button>
+          </>
+        )}
+        {!!dia.items.length && <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 pt-1">Pendiente</p>}
+        {dia.items.map((i) => (
+          <Tarjeta key={`${i.tipo}:${i.id}`} item={i}>{botones(i)}</Tarjeta>
+        ))}
+        {!dia.items.length && !p && <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 pt-1">Nada pendiente por hoy.</p>}
+        <div className="flex flex-wrap gap-1.5 pt-2">
+          {ATAJOS.map((a) => (
+            <button key={a.texto} type="button"
+              onClick={() => (a.pregunta ? onPreguntar(a.pregunta) : a.escribir ? onEscribir(a.escribir) : a.ir ? onIr({ ir: a.ir }) : undefined)}
+              className="min-h-[32px] px-3 rounded-full bg-white/80 dark:bg-neutral-900/80 border border-slate-200/80 dark:border-white/10 text-[0.75rem] font-semibold text-slate-600 dark:text-neutral-300 cursor-pointer hover:bg-white dark:hover:bg-neutral-900">
+              {a.texto}
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section aria-label="Tu día" className="space-y-3">
@@ -137,43 +221,7 @@ export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir }) =
               ))}
             </CarrilHorizontal>
             {dia.items.map((i) => (
-              <Tarjeta key={`${i.tipo}:${i.id}`} item={i}>
-                {i.tipo === 'recordatorio' && (i.relacion === 'encargue' ? (
-                  <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'recordatorios', aviso: `recordatorio:${i.id}` })}>Ver encargo</button>
-                ) : (
-                  <>
-                    <button type="button" className={botonPrincipal} disabled={ocupado === i.id} onClick={() => void hacer(i.id, () => pendientesApi.hecho(i.id), 'Listo')}>
-                      {ocupado === i.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Listo
-                    </button>
-                    <button type="button" className={botonSecundario} disabled={ocupado === i.id} onClick={() => void hacer(i.id, () => pendientesApi.posponer(i.id, { minutos: 60 }), 'Te lo recuerdo en una hora')}>
-                      <Clock className="w-4 h-4 inline -mt-0.5 mr-1" />Pospón 1 h
-                    </button>
-                  </>
-                ))}
-                {i.tipo === 'cita' && (
-                  <>
-                    {i.motivo === 'por_confirmar' ? (
-                      <button type="button" className={botonPrincipal} disabled={ocupado === i.id} onClick={() => void confirmar(i)}>
-                        {ocupado === i.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Confirmar
-                      </button>
-                    ) : (
-                      <button type="button" className={botonPrincipal} onClick={() => onIr({ ir: 'calendar', aviso: `cita:${i.id}` })}>Asignar especialista</button>
-                    )}
-                    {i.conversationId
-                      ? <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'chats', conversacion: i.conversationId })}>Escribirle</button>
-                      : <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'calendar', aviso: `cita:${i.id}` })}>Ver cita</button>}
-                  </>
-                )}
-                {i.tipo === 'cumple' && i.quien === 'clienta' && (
-                  <>
-                    {(i.telefono || i.conversationId) && <button type="button" className={botonPrincipal} onClick={() => felicitar(i)}>Felicitarla</button>}
-                    {i.clientId && <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'clients', aviso: `clienta:${i.clientId}` })}>Ver ficha</button>}
-                  </>
-                )}
-                {i.tipo === 'producto' && (
-                  <button type="button" className={botonPrincipal} onClick={() => onIr({ ir: 'compras', aviso: `por-pedir:${i.sede.id}` })}>Pedirlo</button>
-                )}
-              </Tarjeta>
+              <Tarjeta key={`${i.tipo}:${i.id}`} item={i}>{botones(i)}</Tarjeta>
             ))}
           </motion.div>
         )}
