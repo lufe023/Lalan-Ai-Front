@@ -164,7 +164,7 @@ export const CatalogScreen: React.FC = () => {
       titulo: soloAqui && sedeActual ? `¿Quitar «${nombre}» de ${sedeActual.name}?` : `¿Archivar «${nombre}»?`,
       mensaje: soloAqui && sedeActual
         ? `Deja de ofrecerse en ${sedeActual.name}; las demás sedes lo siguen ofreciendo. Su historial se guarda y lo devuelves desde «Archivados».`
-        : `Sale del catálogo, la Vitrina${tipo === 'producto' ? ', la caja' : ''} y los chats de ${settings.aiAgentName || 'Lalán'}. Sus ventas y citas se guardan enteras y lo devuelves cuando quieras desde «Archivados».`,
+        : `Sale del catálogo, la Vitrina${tipo === 'producto' ? ', la caja' : ''} y los chats de ${settings.aiAgentName || 'Lalan'}. Sus ventas y citas se guardan enteras y lo devuelves cuando quieras desde «Archivados».`,
       textoConfirmar: soloAqui ? 'Quitar de esta sede' : 'Archivar',
       icono: <Archive className="w-7 h-7" aria-hidden="true" />,
     });
@@ -759,14 +759,14 @@ export const CatalogScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Sugerencias de «Qué dice Lalán» en las fichas: es de todo el salón, como el catálogo */}
+        {/* Sugerencias de «Qué dice Lalan» en las fichas: es de todo el salón, como el catálogo */}
         <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[0.75rem] font-bold text-slate-900 dark:text-white">
-              Sugerencias de {settings.aiAgentName || 'Lalán'} en las fichas
+              Sugerencias de {settings.aiAgentName || 'Lalan'} en las fichas
             </div>
             <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-              Al crear o editar un producto o servicio con «Qué dice {settings.aiAgentName || 'Lalán'}» vacío, te propone el texto sola.
+              Al crear o editar un producto o servicio con «Qué dice {settings.aiAgentName || 'Lalan'}» vacío, te propone el texto sola.
               Cada sugerencia consume IA; apagado, solo te sugiere cuando se lo pides.
             </p>
           </div>
@@ -782,7 +782,7 @@ export const CatalogScreen: React.FC = () => {
         {activeTab === 'ofertas' && <OfertasCatalogo servicios={services} />}
         {activeTab === 'archivados' && <ArchivadosCatalogo />}
 
-        {/* Lo que la dueña ya tiene (un video, su catálogo impreso, un PDF): Lalán lo convierte en productos y servicios */}
+        {/* Lo que la dueña ya tiene (un video, su catálogo impreso, un PDF): Lalan lo convierte en productos y servicios */}
         {activeTab !== 'ofertas' && activeTab !== 'archivados' && (
           <button
             type="button"
@@ -791,8 +791,8 @@ export const CatalogScreen: React.FC = () => {
           >
             <span className="p-2 rounded-xl bg-purple-600 text-white"><Sparkles className="w-4 h-4" /></span>
             <span className="flex-1">
-              <span className="block text-[0.8125rem] font-bold text-slate-900 dark:text-white">Pásale a Lalán tu catálogo</span>
-              <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">Un video, fotos de tu catálogo impreso o un PDF: Lalán crea los productos y servicios, con su precio si lo trae</span>
+              <span className="block text-[0.8125rem] font-bold text-slate-900 dark:text-white">Pásale a Lalan tu catálogo</span>
+              <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">Un video, fotos de tu catálogo impreso o un PDF: Lalan crea los productos y servicios, con su precio si lo trae</span>
             </span>
           </button>
         )}

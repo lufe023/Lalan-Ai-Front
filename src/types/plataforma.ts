@@ -115,7 +115,7 @@ export type Limites = Record<Recurso, number | null> & {
   preguntasDia?: number | null;
   /** Espacio para «Cómo quedó», en MB (null = sin tope) */
   fotosClientesMB?: number | null;
-  /** Llamadas de Lalán al mes (null = sin tope) */
+  /** Llamadas de Lalan al mes (null = sin tope) */
   llamadasMes?: number | null;
 };
 
@@ -226,7 +226,7 @@ export interface NegocioResumen {
   nombre: string;
   slug: string;
   activo: boolean;
-  /** Salón de ejemplo para presentar Lalán */
+  /** Salón de ejemplo para presentar Lalan */
   esEjemplo?: boolean;
   creadoEn: string;
   /** Se registró sola desde la página («Crear mi cuenta») */
@@ -249,7 +249,7 @@ export interface NegocioDetalle {
   nombre: string;
   slug: string;
   activo: boolean;
-  /** Salón de ejemplo para presentar Lalán */
+  /** Salón de ejemplo para presentar Lalan */
   esEjemplo?: boolean;
   creadoEn: string;
   /** Se registró sola desde la página («Crear mi cuenta») */
@@ -294,7 +294,7 @@ export interface UsuarioSalon {
   roleTitle: string | null;
   /** Rol `assistant`: cuál de los roles de Lalan (null = Recepción) */
   rolPersonal: string | null;
-  /** Cumpleaños "MM-DD" y el año si se sabe: Lalán lo recuerda en «Tu día» */
+  /** Cumpleaños "MM-DD" y el año si se sabe: Lalan lo recuerda en «Tu día» */
   cumpleMesDia?: string | null;
   cumpleAnio?: number | null;
   active: boolean;

@@ -89,10 +89,10 @@ export function iniciarAsistente(): void {
   raiz.className = 'asis';
   raiz.innerHTML = `
     <div class="asis-invita" hidden><button type="button" class="asis-invita-x" aria-label="Cerrar">×</button>
-      <b>Hola, soy Lalán, la asistente con IA ✨</b>
+      <b>Hola, soy Lalan, la asistente con IA ✨</b>
       <span>Pregúntame lo que quieras de tu salón. Escríbeme o háblame.</span></div>
-    <button type="button" class="asis-lanzar" aria-expanded="false" aria-controls="asis-panel" aria-label="Pregúntale a Lalán, la asistente con IA">
-      <span class="asis-logo">${LOGO}<i class="asis-ia">${ICONO_CHISPA}IA</i></span><span class="asis-lanzar-txt">Pregúntale a Lalán</span><i class="asis-punto" hidden></i>
+    <button type="button" class="asis-lanzar" aria-expanded="false" aria-controls="asis-panel" aria-label="Pregúntale a Lalan, la asistente con IA">
+      <span class="asis-logo">${LOGO}<i class="asis-ia">${ICONO_CHISPA}IA</i></span><span class="asis-lanzar-txt">Pregúntale a Lalan</span><i class="asis-punto" hidden></i>
     </button>
     <section class="asis-panel" id="asis-panel" role="dialog" aria-label="Habla con Lalan" hidden>
       <header class="asis-cab">

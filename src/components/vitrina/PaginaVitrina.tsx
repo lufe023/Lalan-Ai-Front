@@ -226,7 +226,7 @@ export default function PaginaVitrina({ datos, slug, previa = false, item: itemD
   };
 
   // Llegó por el enlace directo de un servicio o producto (el de la historia de
-  // Instagram, el que manda Lalán por el chat): abre su ficha con toda la galería
+  // Instagram, el que manda Lalan por el chat): abre su ficha con toda la galería
   useEffect(() => {
     if (previa) return;
     const pedido = pedidoDelEnlace(itemDelEnlace);
@@ -290,7 +290,7 @@ export default function PaginaVitrina({ datos, slug, previa = false, item: itemD
           <main className="min-w-0 space-y-6">
             {!conPortada && <Encabezado datos={datos} />}
             {bloques.map((b) => pintar(b.tipo))}
-            <p className="pt-2 text-center text-xs text-[var(--v-suave)]">Reservas con Lalán</p>
+            <p className="pt-2 text-center text-xs text-[var(--v-suave)]">Reservas con Lalan</p>
           </main>
 
           {ancha && (
@@ -611,7 +611,7 @@ function Precio({ s, dinero }: { s: { precio: number | null; modoPrecio?: Servic
   return <span className="font-semibold">{s.modoPrecio === 'desde' ? 'Desde ' : ''}{dinero.format(s.precio)}</span>;
 }
 
-/** El enlace para pedir un producto por el WhatsApp de Lalán en esta sede, o null si la sede no lo tiene a la vista */
+/** El enlace para pedir un producto por el WhatsApp de Lalan en esta sede, o null si la sede no lo tiene a la vista */
 function pedirPorWhatsApp(datos: DatosVitrina, producto: string): string | null {
   const numero = datos.chat?.whatsapp;
   if (!numero) return null;
@@ -622,7 +622,7 @@ function pedirPorWhatsApp(datos: DatosVitrina, producto: string): string | null 
 /**
  * Los botones de la ficha. Si llegó por el enlace directo de un servicio, lo
  * primero es reservarlo (un toque y está eligiendo el día); de un producto,
- * pedirlo por WhatsApp a Lalán. Lo de siempre (agregar y seguir mirando)
+ * pedirlo por WhatsApp a Lalan. Lo de siempre (agregar y seguir mirando)
  * queda debajo.
  */
 function BotonesDeLaFicha({ servicio, dentro, delEnlace, whatsapp, reservar, alternar }: {
@@ -1582,8 +1582,8 @@ function Ubicacion({ datos }: { datos: DatosVitrina }) {
 }
 
 /**
- * Escribirle a Lalán, la asistente del salón, por las cuentas que la sede
- * tiene conectadas. El WhatsApp lleva escrito de dónde viene, así Lalán ya
+ * Escribirle a Lalan, la asistente del salón, por las cuentas que la sede
+ * tiene conectadas. El WhatsApp lleva escrito de dónde viene, así Lalan ya
  * sabe la sede aunque el número sea el mismo para todas.
  */
 function Chat({ datos }: { datos: DatosVitrina }) {
@@ -1598,7 +1598,7 @@ function Chat({ datos }: { datos: DatosVitrina }) {
   return (
     <section aria-labelledby="v-chat" className={`${TARJETA} p-5`}>
       <h2 id="v-chat" className={TITULO_BLOQUE}>Escríbenos</h2>
-      <p className="mt-1 text-sm text-[var(--v-suave)]">Lalán, la asistente del salón, te contesta por aquí: pregunta, reserva o cambia tu cita.</p>
+      <p className="mt-1 text-sm text-[var(--v-suave)]">Lalan, la asistente del salón, te contesta por aquí: pregunta, reserva o cambia tu cita.</p>
       <div className="mt-3 grid grid-cols-1 gap-2 @md:grid-cols-3">
         {canales.map((x) => (
           <a key={x.nombre} href={x.href} target="_blank" rel="noreferrer"
@@ -1890,7 +1890,7 @@ function PanelReserva({
     if (primero) setFecha(primero.fecha);
   }, [dias, fecha, estados, semanasElegidas.length]);
 
-  // Las horas libres de verdad: las mismas que ofrece Lalán en los chats.
+  // Las horas libres de verdad: las mismas que ofrece Lalan en los chats.
   // Al cambiar de día o de servicios se vuelve a elegir la hora; al cambiar
   // de especialista se queda si ella está libre a esa hora.
   const consulta = useRef('');
@@ -2257,9 +2257,9 @@ function PanelReserva({
 /* ───────────── listo ───────────── */
 
 /**
- * La clienta le escribe a Lalán con su reserva (el mensaje va listo, con el
+ * La clienta le escribe a Lalan con su reserva (el mensaje va listo, con el
  * código). Así el salón le confirma por ese chat sin pagar una plantilla, y
- * Lalán reconoce el código: sabe que es esta reserva y no una cita nueva.
+ * Lalan reconoce el código: sabe que es esta reserva y no una cita nueva.
  */
 function Agilizar({ hecha, salon }: { hecha: ReservaHecha; salon: string }) {
   const servicios = hecha.citas.map((c) => c.servicio).join(' + ');

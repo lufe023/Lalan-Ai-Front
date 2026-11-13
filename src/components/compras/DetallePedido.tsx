@@ -207,7 +207,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             <button type="button" disabled={guardando || !!ocupado} onClick={() => void guardarBorrador()} className={botonSuave} title="Se queda guardado; no se le manda ni se le confirma nada al proveedor">
               {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} {p.estado === 'borrador' ? 'Guardar borrador' : 'Guardar'}
             </button>
-            {/* Un borrador que armó Lalán todavía no se ha pedido: también ahí puede pedirlo ella */}
+            {/* Un borrador que armó Lalan todavía no se ha pedido: también ahí puede pedirlo ella */}
             {automaticas && p.proveedor.lalanHabla && (!p.manejaLalan || p.estado === 'borrador') && (
               <button type="button" disabled={sinRenglones || !!ocupado} onClick={() => void lalanPide()} className={botonSuave} title="Lalan le escribe, anota los precios y te pregunta antes de comprar">
                 {ocupado === 'lalan' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />} Que Lalan pida el precio
@@ -276,7 +276,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
               </p>
               {p.ventana && enCotizacion && (
                 <p className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  <MessageCircle className="w-3 h-3" /> Te escribió {haceCuanto(p.ventana.escribio)}: Lalán le puede escribir ya
+                  <MessageCircle className="w-3 h-3" /> Te escribió {haceCuanto(p.ventana.escribio)}: Lalan le puede escribir ya
                 </p>
               )}
               {!p.ventana && enCotizacion && p.otrasVentanas.filter((v) => v.contactoId !== undefined).slice(0, 1).map((v) => (

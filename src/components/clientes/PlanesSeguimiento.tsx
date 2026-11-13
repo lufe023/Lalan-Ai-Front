@@ -29,7 +29,7 @@ const ESTADO: Record<string, { texto: string; color: string }> = {
 /**
  * Planes de seguimiento en la ficha: el tratamiento de varias sesiones de
  * la clienta, con sus pasos, lo que avisó, cómo va midiendo, la bitácora
- * (sesiones, mensajes de Lalán y lo que ella contestó) y el paquete.
+ * (sesiones, mensajes de Lalan y lo que ella contestó) y el paquete.
  */
 export const PlanesSeguimiento: React.FC<{ clienteId: string; clienteNombre: string }> = ({ clienteId, clienteNombre }) => {
   const { showToast } = useApp();
@@ -100,7 +100,7 @@ export const PlanesSeguimiento: React.FC<{ clienteId: string; clienteNombre: str
           )}
           {empezando && (
             <EmpezarPlan clienteId={clienteId} clienteNombre={clienteNombre} onCancelar={() => setEmpezando(false)} onPlantillas={() => setPlantillas(true)}
-              onListo={(nuevo) => { setEmpezando(false); setPlanes((l) => [nuevo, ...(l ?? [])]); showToast('Plan empezado', `Lalán tiene las fechas de ${clienteNombre.split(' ')[0]}.`, 'success'); }} />
+              onListo={(nuevo) => { setEmpezando(false); setPlanes((l) => [nuevo, ...(l ?? [])]); showToast('Plan empezado', `Lalan tiene las fechas de ${clienteNombre.split(' ')[0]}.`, 'success'); }} />
           )}
         </div>
       )}
@@ -138,9 +138,9 @@ const TarjetaPlan: React.FC<{ plan: PlanCompleto; onCambio: (p: PlanCompleto) =>
   };
   const cambiarEstado = async (estado: PlanCompleto['estado']) => {
     const textos: Record<string, { titulo: string; mensaje: string; boton: string }> = {
-      pausado: { titulo: '¿Poner el plan en pausa?', mensaje: 'Lalán deja de escribirle hasta que lo retomes.', boton: 'Pausar' },
+      pausado: { titulo: '¿Poner el plan en pausa?', mensaje: 'Lalan deja de escribirle hasta que lo retomes.', boton: 'Pausar' },
       terminado: { titulo: '¿Dar el plan por terminado?', mensaje: 'Queda en su ficha con toda la bitácora.', boton: 'Terminar' },
-      abandonado: { titulo: '¿La clienta dejó el plan?', mensaje: 'Queda anotado que lo dejó. Lalán no le escribe más por este plan.', boton: 'Sí, lo dejó' },
+      abandonado: { titulo: '¿La clienta dejó el plan?', mensaje: 'Queda anotado que lo dejó. Lalan no le escribe más por este plan.', boton: 'Sí, lo dejó' },
     };
     const t = textos[estado];
     if (t && !(await confirmar({ titulo: t.titulo, mensaje: t.mensaje, textoConfirmar: t.boton, tono: estado === 'abandonado' ? 'peligro' : undefined }))) return;
@@ -189,7 +189,7 @@ const TarjetaPlan: React.FC<{ plan: PlanCompleto; onCambio: (p: PlanCompleto) =>
           {(plan.objetivo || plan.rutinaCasa) && (
             <div className="grid gap-2 sm:grid-cols-2">
               {plan.objetivo && <Dato titulo="Objetivo" texto={plan.objetivo} />}
-              {plan.rutinaCasa && <Dato titulo="Rutina en casa (Lalán se la recuerda)" texto={plan.rutinaCasa} />}
+              {plan.rutinaCasa && <Dato titulo="Rutina en casa (Lalan se la recuerda)" texto={plan.rutinaCasa} />}
             </div>
           )}
 
@@ -279,10 +279,10 @@ const FilaPaso: React.FC<{ p: PasoDelPlan; plan: PlanCompleto; ocupado: boolean;
   const icono = p.tipo === 'mensaje' ? <Bot className="w-3.5 h-3.5" /> : p.tipo === 'tarea' ? <ClipboardList className="w-3.5 h-3.5" /> : <CalendarClock className="w-3.5 h-3.5" />;
   const abrirCita = (id: string) => { try { sessionStorage.setItem('lalan.abrirCita', id); } catch { /* nada */ } navigateTo('calendar'); };
   let estado: React.ReactNode;
-  if (p.hecho) estado = <span className="text-emerald-700 dark:text-emerald-400">{p.tipo === 'mensaje' ? (p.enviadoEn ? 'Lalán le escribió' : 'Se le escribió') : 'Hecho'}{p.hechoEn ? ` el ${fechaCorta(p.hechoEn)}` : ''}{p.enviadoPor === 'plantilla' ? ' (plantilla de WhatsApp)' : ''}</span>;
+  if (p.hecho) estado = <span className="text-emerald-700 dark:text-emerald-400">{p.tipo === 'mensaje' ? (p.enviadoEn ? 'Lalan le escribió' : 'Se le escribió') : 'Hecho'}{p.hechoEn ? ` el ${fechaCorta(p.hechoEn)}` : ''}{p.enviadoPor === 'plantilla' ? ' (plantilla de WhatsApp)' : ''}</span>;
   else if (p.agendada) estado = <button type="button" onClick={() => abrirCita(p.agendada!.id)} className="text-sky-700 dark:text-sky-300 font-semibold underline-offset-2 hover:underline cursor-pointer">Agendada: {horaCorta(p.agendada.startsAt)}</button>;
   else if (atrasado) estado = <span className="text-rose-700 dark:text-rose-400 font-semibold">Atrasada desde el {fechaCorta(p.fecha)}</span>;
-  else if (p.tipo === 'mensaje') estado = <span className="text-slate-500">Lalán le escribe el {fechaCorta(p.fecha)}</span>;
+  else if (p.tipo === 'mensaje') estado = <span className="text-slate-500">Lalan le escribe el {fechaCorta(p.fecha)}</span>;
   else estado = <span className="text-slate-500">Toca el {fechaCorta(p.fecha)}</span>;
   return (
     <li className={`flex items-start gap-2 p-1.5 rounded-lg ${esProximo && vivo ? 'bg-[var(--primary)]/5' : ''}`}>
@@ -293,7 +293,7 @@ const FilaPaso: React.FC<{ p: PasoDelPlan; plan: PlanCompleto; ocupado: boolean;
         <span className="block text-[0.8125rem] font-semibold text-slate-800 dark:text-neutral-100">{p.titulo}{p.servicio && p.servicio !== p.titulo ? <span className="font-normal text-slate-500"> · {p.servicio}</span> : null}</span>
         <span className="block text-[0.6875rem]">{estado}</span>
         {p.tipo === 'mensaje' && p.mensaje && !p.hecho && <span className="block text-[0.6875rem] text-slate-500 italic">«{p.mensaje}»</span>}
-        {/* Lalán no pudo mandarlo sola: el motivo y el botón para escribirle desde el WhatsApp del salón */}
+        {/* Lalan no pudo mandarlo sola: el motivo y el botón para escribirle desde el WhatsApp del salón */}
         {p.tipo === 'mensaje' && !p.hecho && p.noSalio && (
           <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[0.6875rem] text-amber-700 dark:text-amber-400">
             <AlertTriangle className="w-3 h-3 shrink-0" /> No salió solo: {p.noSalio}
@@ -365,7 +365,7 @@ const FilaBitacora: React.FC<{ b: EntradaBitacora; pasos: PasoDelPlan[]; confirm
   <div className={`p-2 rounded-lg ${b.alerta ? 'bg-rose-50 dark:bg-rose-950/30' : b.tipo === 'respuesta' ? 'bg-emerald-50/70 dark:bg-emerald-950/20' : 'bg-white dark:bg-neutral-900'}`}>
     <div className="flex items-center gap-1.5 text-[0.6875rem] text-slate-500">
       {ICONO_ENTRADA[b.tipo]}
-      <span className="font-semibold text-slate-700 dark:text-neutral-200">{b.autor ?? (b.tipo === 'mensaje' ? 'Lalán' : 'Equipo')}</span>
+      <span className="font-semibold text-slate-700 dark:text-neutral-200">{b.autor ?? (b.tipo === 'mensaje' ? 'Lalan' : 'Equipo')}</span>
       <span>· {new Date(b.fecha).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' })}</span>
       {b.paso != null && pasos[b.paso] && <span className="truncate">· {pasos[b.paso].titulo}</span>}
       <span className="flex-1" />
@@ -518,7 +518,7 @@ const EmpezarPlan: React.FC<{
   return (
     <div className="p-3 rounded-xl bg-white dark:bg-neutral-900 border border-[var(--primary)]/30 space-y-2.5">
       <p className="text-[0.8125rem] font-bold text-slate-900 dark:text-white">Plan para {clienteNombre.split(' ')[0]}</p>
-      {!lista.plantillas.length && <p className="text-[0.75rem] text-slate-500">Todavía no tienes plantillas. Usa una de Lalán y la ajustas cuando quieras:</p>}
+      {!lista.plantillas.length && <p className="text-[0.75rem] text-slate-500">Todavía no tienes plantillas. Usa una de Lalan y la ajustas cuando quieras:</p>}
       {lista.plantillas.length > 0 && (
         <select value={planId} onChange={(e) => { setPlanId(e.target.value); const p = lista.plantillas.find((x) => x.id === e.target.value); setPrecio(p?.precio ? String(p.precio) : ''); }} className={campo} aria-label="Plantilla">
           {lista.plantillas.map((p) => <option key={p.id} value={p.id}>{p.nombre} ({p.duracionDias} días)</option>)}
@@ -537,7 +537,7 @@ const EmpezarPlan: React.FC<{
       {elegida && (
         <>
           <ol className="text-[0.6875rem] text-slate-500 space-y-0.5 pl-1">
-            {elegida.pasos.map((p, i) => <li key={i}>Día {p.dia}: {p.titulo}{p.tipo === 'mensaje' ? ' (Lalán le escribe)' : p.servicio ? ` · ${p.servicio}` : ''}</li>)}
+            {elegida.pasos.map((p, i) => <li key={i}>Día {p.dia}: {p.titulo}{p.tipo === 'mensaje' ? ' (Lalan le escribe)' : p.servicio ? ` · ${p.servicio}` : ''}</li>)}
           </ol>
           <div className="grid grid-cols-2 gap-1.5">
             <label className="block"><span className="block text-[0.6875rem] text-slate-500">Empieza</span><input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} className={campo} /></label>
@@ -551,7 +551,7 @@ const EmpezarPlan: React.FC<{
             {sedes.length > 1 && <label className="block"><span className="block text-[0.6875rem] text-slate-500">Sede</span><SelectorSede sedes={sedes} value={sede} onChange={setSede} className="w-full !rounded-lg py-2" /></label>}
           </div>
           <input value={objetivo} onChange={(e) => setObjetivo(e.target.value)} maxLength={400} placeholder="Objetivo: «frenar la caída en la coronilla»" className={campo} />
-          <textarea value={rutina} onChange={(e) => setRutina(e.target.value)} maxLength={1000} rows={2} placeholder="Rutina en casa (Lalán se la recuerda)" className={campo} />
+          <textarea value={rutina} onChange={(e) => setRutina(e.target.value)} maxLength={1000} rows={2} placeholder="Rutina en casa (Lalan se la recuerda)" className={campo} />
         </>
       )}
       <div className="flex items-center gap-2">

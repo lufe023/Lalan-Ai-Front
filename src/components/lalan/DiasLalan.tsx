@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import type { TuDia } from '../../services/pendientes';
 import { CarrilHorizontal } from '../ui/CarrilHorizontal';
 
-/** Un día anterior de la conversación con Lalán (lo manda GET /asistente) */
+/** Un día anterior de la conversación con Lalan (lo manda GET /asistente) */
 export interface DiaAnterior {
   dia: string;
   mensajes: number;
@@ -67,7 +67,7 @@ const ayerDe = (hoy: string) => {
 };
 
 /**
- * Los días anteriores con Lalán. Nada se borra: cada día queda con su «Tu día»
+ * Los días anteriores con Lalan. Nada se borra: cada día queda con su «Tu día»
  * como estaba al abrirla y su conversación. Arriba, botones para saltar a un
  * día (o el calendario para cualquier otro); los últimos días se ven plegados
  * y se abren con un toque.
@@ -211,7 +211,7 @@ export function DiasAnteriores<M extends { id: string }>({ hoy, dias, pintar, li
   );
 }
 
-/** «Tu día» como estaba al abrir a Lalán ese día (solo para ver) */
+/** «Tu día» como estaba al abrir a Lalan ese día (solo para ver) */
 const TuDiaGuardado: React.FC<{ dia: TuDia }> = ({ dia }) => {
   const r = dia.resumen;
   return (

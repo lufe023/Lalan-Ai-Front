@@ -586,7 +586,7 @@ export const SettingsScreen: React.FC = () => {
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
             />
             <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-              Sale en el menú de sedes, en la Vitrina y cuando Lalán ofrece dónde atender.
+              Sale en el menú de sedes, en la Vitrina y cuando Lalan ofrece dónde atender.
             </p>
           </div>
 

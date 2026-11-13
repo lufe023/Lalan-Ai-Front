@@ -129,7 +129,7 @@ export interface SalonStaff {
   fotoId?: string | null;
   phone?: string | null;
   active: boolean;
-  /** Cumpleaños "MM-DD" y el año si se sabe: Lalán lo recuerda en «Tu día» */
+  /** Cumpleaños "MM-DD" y el año si se sabe: Lalan lo recuerda en «Tu día» */
   cumpleMesDia?: string | null;
   cumpleAnio?: number | null;
   zoneId?: string | null;

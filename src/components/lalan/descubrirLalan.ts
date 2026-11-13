@@ -2,8 +2,8 @@ import { useSyncExternalStore } from 'react';
 
 /**
  * Que la dueña se entere de que la esfera es una asistente con IA. Mientras
- * no haya abierto a Lalán nunca, la esfera respira con un halo y saca una
- * pastilla «Pregúntale a Lalán». La primera vez que la abre (por donde sea)
+ * no haya abierto a Lalan nunca, la esfera respira con un halo y saca una
+ * pastilla «Pregúntale a Lalan». La primera vez que la abre (por donde sea)
  * queda descubierta y todo eso se apaga para siempre en ese aparato.
  */
 
@@ -19,7 +19,7 @@ function leer(): boolean {
   try { return localStorage.getItem(CLAVE) === '1'; } catch { return false; }
 }
 
-/** Ya abrió a Lalán alguna vez: se acaban el halo y la pastilla */
+/** Ya abrió a Lalan alguna vez: se acaban el halo y la pastilla */
 export function marcarLalanDescubierta() {
   if (descubierta) return;
   descubierta = true;

@@ -1342,7 +1342,7 @@ export const ClientsScreen: React.FC = () => {
             />
           </div>
 
-          {/* Cumpleaños: Lalán lo recuerda en «Tu día» */}
+          {/* Cumpleaños: Lalan lo recuerda en «Tu día» */}
           <CampoCumple valor={formData.cumpleanos} onCambio={v => setFormData({ ...formData, cumpleanos: v })} />
 
           {/* Trato: Lalan no supone que quien escribe es mujer (también hay barberías) */}

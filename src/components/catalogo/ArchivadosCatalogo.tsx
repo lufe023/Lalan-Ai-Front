@@ -27,7 +27,7 @@ type Que = 'todos' | 'servicios' | 'productos';
  * La pestaña «Archivados» del catálogo.
  *
  * Archivar no borra: lo archivado sale del catálogo, la Vitrina, la caja y
- * los chats de Lalán, pero sus ventas, citas, compras y recetas siguen
+ * los chats de Lalan, pero sus ventas, citas, compras y recetas siguen
  * enteras. Aquí se ve todo lo archivado y se devuelve con un toque.
  */
 export const ArchivadosCatalogo: React.FC = () => {
@@ -59,8 +59,8 @@ export const ArchivadosCatalogo: React.FC = () => {
     const ok = await confirmar({
       titulo: `¿Restaurar «${a.name}»?`,
       mensaje: tipo === 'servicio'
-        ? `Vuelve al catálogo${aqui} como estaba: Lalán lo ofrece otra vez y sale en la Vitrina si lo tenías publicado.`
-        : 'Vuelve al catálogo como estaba: se puede vender en caja, Lalán lo ofrece otra vez y sale en la Vitrina si lo tenías publicado.',
+        ? `Vuelve al catálogo${aqui} como estaba: Lalan lo ofrece otra vez y sale en la Vitrina si lo tenías publicado.`
+        : 'Vuelve al catálogo como estaba: se puede vender en caja, Lalan lo ofrece otra vez y sale en la Vitrina si lo tenías publicado.',
       textoConfirmar: 'Restaurar',
       icono: <ArchiveRestore className="w-6 h-6" />,
     });
@@ -88,7 +88,7 @@ export const ArchivadosCatalogo: React.FC = () => {
     if (!lista.length) return;
     const ok = await confirmar({
       titulo: `¿Restaurar ${lista.length === 1 ? `«${lista[0].a.name}»` : `los ${lista.length}`}?`,
-      mensaje: `Vuelven al catálogo como estaban: ${verServicios.length} servicios y ${verProductos.length} productos. Lalán los ofrece otra vez y salen en la Vitrina los que tenías publicados.`,
+      mensaje: `Vuelven al catálogo como estaban: ${verServicios.length} servicios y ${verProductos.length} productos. Lalan los ofrece otra vez y salen en la Vitrina los que tenías publicados.`,
       textoConfirmar: 'Restaurar todo',
       icono: <ArchiveRestore className="w-7 h-7" aria-hidden="true" />,
     });
@@ -164,7 +164,7 @@ export const ArchivadosCatalogo: React.FC = () => {
       <div className="p-3 rounded-2xl bg-slate-50 dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 flex items-start gap-2.5 text-[0.6875rem] text-slate-600 dark:text-neutral-400">
         <Archive className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
         <p>
-          Lo archivado no sale en el catálogo, la Vitrina, la caja ni en los chats de Lalán, pero sus ventas, citas, compras y recetas
+          Lo archivado no sale en el catálogo, la Vitrina, la caja ni en los chats de Lalan, pero sus ventas, citas, compras y recetas
           se guardan enteras. Restáuralo cuando quieras y vuelve como estaba.
           {varias && sedeActual && ` Ves lo archivado en ${sedeActual.name} y lo archivado en todas las sedes.`}
         </p>
