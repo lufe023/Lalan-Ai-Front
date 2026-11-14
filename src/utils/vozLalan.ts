@@ -161,6 +161,19 @@ const MUDO = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjE
 let reproductor: HTMLAudioElement | null = null;
 let pedidos: AbortController | null = null;
 
+/**
+ * Los audios que ya llegaron, guardados en este aparato mientras la app está
+ * abierta: «Escuchar de nuevo» los vuelve a tocar sin pedirlos (ni pagarlos)
+ * otra vez. Se olvidan al cerrar o recargar la app.
+ */
+const AUDIOS_GUARDADOS = 80;
+const audiosGuardados = new Map<string, Blob>();
+function guardarAudio(clave: string, audio: Blob) {
+  audiosGuardados.delete(clave);
+  audiosGuardados.set(clave, audio);
+  while (audiosGuardados.size > AUDIOS_GUARDADOS) audiosGuardados.delete(audiosGuardados.keys().next().value as string);
+}
+
 function elReproductor(): HTMLAudioElement {
   if (!reproductor) { reproductor = new Audio(); reproductor.preload = 'auto'; }
   return reproductor;
@@ -309,8 +322,11 @@ async function decirConNube(partes: string[], mio: number, alHablar?: () => void
     : partes;
   const audios = lista.map((t) => {
     const aura = ajustesLalan().motorVoz === 'aura2' ? auraElegida() : null;
+    const clave = `${ajustesLalan().motorVoz}|${aura ?? ''}|${t}`;
+    const guardado = audiosGuardados.get(clave);
+    if (guardado) return Promise.resolve<Blob | null>(guardado);
     const p = pedirAudio('/asistente/voz-lalan', aura ? { texto: t, voz: aura } : { texto: t }, control.signal);
-    p.catch(() => undefined);
+    p.then((b) => { if (b) guardarAudio(clave, b); }, () => undefined);
     return p;
   });
   for (let i = 0; i < lista.length; i++) {
