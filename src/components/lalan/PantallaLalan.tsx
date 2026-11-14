@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, type TargetAndTransition } from 'motion/react';
-import { ArrowDown, ArrowUp, BellRing, Check, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Search, Send, ShoppingCart, Sparkles, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BellRing, Check, Copy, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Search, Send, ShoppingCart, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -176,6 +176,8 @@ export const PantallaLalan: React.FC = () => {
   const [dias, setDias] = useState<DiaAnterior[]>([]);
   const [cargando, setCargando] = useState(false);
   const [modo, setModo] = useState<ModoEsfera>('reposo');
+  /** El mensaje que Lalan está diciendo otra vez (con «Escuchar de nuevo») */
+  const [repitiendo, setRepitiendo] = useState<string | null>(null);
   const [pulso, setPulso] = useState(0);
   const [error, setError] = useState('');
   const hayRuido = useRef(false);
@@ -326,18 +328,24 @@ export const PantallaLalan: React.FC = () => {
     });
   };
 
-  /** Lalan dice su último mensaje (si no está callada) */
-  const decir = useCallback(async (t: string) => {
+  /**
+   * Lalan dice su último mensaje (si no está callada). `repetir`: el id del
+   * mensaje que la dueña pidió escuchar de nuevo; suena aunque esté en
+   * silencio y al terminar no abre el micrófono solo.
+   */
+  const decir = useCallback(async (t: string, repetir?: string) => {
     // Se mira el silencio de AHORA (no el de cuando se hizo la pregunta): si la
     // pusieron en silencio mientras pensaba, ya no habla
-    if (calladaAhora.current || !hayVoz() || !t.trim()) { setModo('reposo'); return; }
+    if ((calladaAhora.current && !repetir) || !hayVoz() || !t.trim()) { setModo('reposo'); setRepitiendo(null); return; }
     const mia = ++decires.current;
+    setRepitiendo(repetir ?? null);
     setModo('hablando');
     armarOido(mia);
     await decirComoLalan(t, () => setPulso((p) => p + 1));
     // Ya empezó a decir otra cosa, o la persona tomó la palabra: esto ya no decide nada
     if (mia !== decires.current || oido.current?.enTurno()) return;
     soltarOido();
+    if (repetir) { setRepitiendo(null); setModo((m) => (m === 'hablando' ? 'reposo' : m)); return; }
     // Terminó de hablar sola (no la interrumpieron): le toca a la persona
     const v = vivo.current;
     if (v.modo === 'hablando' && v.abierta && v.seguir && !v.escribiendo && conVoz.current) { escucharSola.current(); return; }
@@ -638,6 +646,17 @@ export const PantallaLalan: React.FC = () => {
     soltarAudio();
   };
 
+  /** «Escuchar de nuevo»: lo dice otra vez (con el audio guardado si ya llegó); tocar mientras suena lo calla */
+  const escucharDeNuevo = (m: Mensaje) => {
+    if (repitiendo === m.id && modo === 'hablando') {
+      soltarOido(); decires.current++; callarLalan(); setRepitiendo(null); setModo('reposo');
+      return;
+    }
+    soltarOido();
+    despertarVoz();
+    void decir(m.texto, m.id);
+  };
+
   /** 👍 / 👎: si le sirvió la respuesta (tocar otra vez lo quita) */
   const calificar = async (id: string, util: boolean | null) => {
     const antes = mensajes.find((m) => m.id === id)?.util ?? null;
@@ -690,7 +709,7 @@ export const PantallaLalan: React.FC = () => {
                             <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
                           </div>
                           {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                          <div className="pl-2 flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
+                          <div className="pl-2 flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /><OirYCopiar texto={m.texto} sonando={repitiendo === m.id && modo === 'hablando'} onOir={() => escucharDeNuevo(m)} /></div>
                         </div>
                       </div>
                     ) : (
@@ -708,7 +727,7 @@ export const PantallaLalan: React.FC = () => {
                   <div key={m.id} data-mensaje={m.id} className="space-y-2.5 max-w-[92%] scroll-mt-6 rounded-3xl">
                     <p className={`${escribiendo ? 'text-[0.96875rem] leading-[1.55]' : 'text-[1.0625rem] leading-relaxed'} text-slate-800 dark:text-neutral-100 whitespace-pre-line`}>{m.texto}</p>
                     {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                    <div className="flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /></div>
+                    <div className="flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /><OirYCopiar texto={m.texto} sonando={repitiendo === m.id && modo === 'hablando'} onOir={() => escucharDeNuevo(m)} /></div>
                   </div>
                 ) : (
                   <div key={m.id} data-mensaje={m.id} className="flex flex-col items-end gap-1 scroll-mt-6 rounded-3xl">
@@ -1270,6 +1289,40 @@ const Calificar: React.FC<{ util: boolean | null; onCambio: (u: boolean | null) 
       {boton(true, ThumbsUp, 'Me sirvió')}
       {boton(false, ThumbsDown, 'No me sirvió')}
       {util !== null && <span className="text-[0.6875rem] text-slate-400 ml-1">{util ? 'Gracias' : 'Gracias, lo vamos a mejorar'}</span>}
+    </div>
+  );
+};
+
+/** Junto al 👍 👎: escuchar de nuevo lo que dijo Lalan y copiarlo */
+const OirYCopiar: React.FC<{ texto: string; sonando: boolean; onOir: () => void }> = ({ texto, sonando, onOir }) => {
+  const [copiado, setCopiado] = useState(false);
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(texto); }
+    catch {
+      // Sin permiso de portapapeles (o navegador viejo): se copia a la antigua
+      const area = document.createElement('textarea');
+      area.value = texto; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0';
+      document.body.appendChild(area); area.select();
+      try { document.execCommand('copy'); } catch { /* noop */ }
+      area.remove();
+    }
+    setCopiado(true);
+    window.setTimeout(() => setCopiado(false), 1800);
+  };
+  const clase = 'p-1.5 rounded-full cursor-pointer transition-colors';
+  const apagado = 'text-slate-300 hover:text-slate-500 dark:text-neutral-600 dark:hover:text-neutral-400';
+  return (
+    <div className="flex items-center gap-0.5 -mt-1">
+      <button type="button" onClick={onOir} aria-pressed={sonando}
+        aria-label={sonando ? 'Detener' : 'Escuchar de nuevo'} title={sonando ? 'Detener' : 'Escuchar de nuevo'}
+        className={`${clase} ${sonando ? 'text-[var(--primary)] bg-[var(--primary)]/10' : apagado}`}>
+        {sonando ? <Square className="w-3 h-3" fill="currentColor" /> : <Volume2 className="w-3.5 h-3.5" />}
+      </button>
+      <button type="button" onClick={() => void copiar()} aria-label={copiado ? 'Copiado' : 'Copiar mensaje'} title={copiado ? 'Copiado' : 'Copiar mensaje'}
+        className={`${clase} ${copiado ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' : apagado}`}>
+        {copiado ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+      {copiado && <span className="text-[0.6875rem] text-slate-400 ml-1" role="status">Copiado</span>}
     </div>
   );
 };
