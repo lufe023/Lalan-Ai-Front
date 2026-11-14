@@ -14,17 +14,30 @@ export interface VistaVisible {
  * página: la tapa y la corre hacia arriba. Una capa `fixed inset-0` queda
  * entonces debajo del teclado. Con esto se ajusta a lo visible.
  */
+/** Lo más alto que se ha visto la pantalla sin teclado (por orientación) */
+let altoSinTeclado = 0;
+let anchoVisto = 0;
+
 export function useVistaVisible(activa: boolean): VistaVisible | null {
   const [vista, setVista] = useState<VistaVisible | null>(null);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!activa || !vv) { setVista(null); return; }
-    const medir = () => setVista({
-      arriba: vv.offsetTop,
-      alto: vv.height,
-      // Más de 120 px menos que la ventana: es el teclado, no la barra del navegador
-      teclado: window.innerHeight - vv.height > 120,
-    });
+    const medir = () => {
+      // En la app instalada (PWA) del iPhone la ventana también se achica con el
+      // teclado: comparar con la ventana no lo detecta y quedaba el espacio de la
+      // raya de abajo encima del teclado. Se compara con lo más alto que se ha visto
+      // en esta orientación.
+      const ancho = Math.round(window.innerWidth);
+      if (ancho !== anchoVisto) { anchoVisto = ancho; altoSinTeclado = 0; }
+      altoSinTeclado = Math.max(altoSinTeclado, window.innerHeight, vv.height);
+      setVista({
+        arriba: vv.offsetTop,
+        alto: vv.height,
+        // Más de 120 px menos: es el teclado, no la barra del navegador
+        teclado: window.innerHeight - vv.height > 120 || altoSinTeclado - vv.height > 120,
+      });
+    };
     // El teclado del iPhone entra animado: lo que mide al empezar no es donde termina.
     // Se vuelve a medir al acabar de moverse (si no, queda un hueco encima del teclado)
     let tarde = 0;
