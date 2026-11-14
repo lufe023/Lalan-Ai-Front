@@ -11,7 +11,7 @@ export interface AjustesLalan {
   seguirEscuchando: boolean; tonoAlEscuchar: boolean;
   /** Hablarle encima: Lalan se pausa y, si no le dijeron nada, sigue */
   interrumpirConVoz: boolean; vozParaPausarMs: number; retomarTrasMs: number; sensibilidadInterrupcion: number;
-  motorVoz: 'aparato' | 'melotts' | 'aura2'; vozAura: string;
+  motorVoz: 'aparato' | 'melotts' | 'aura2' | 'azure'; vozAura: string; vozAzure: string;
   vocesPreferidas: string; velocidadVoz: number; tonoVoz: number;
   /** Cómo se dice "Lalan" en voz alta */
   pronunciaLalan: string;
@@ -26,7 +26,7 @@ export const AJUSTES_LALAN_POR_DEFECTO: AjustesLalan = {
   habloPocoMs: 1500, extraSiHabloPocoMs: 800, sinVozMs: 8000, sinVozSolaMs: 8000, maximoSegundos: 90, sensibilidad: 2.5, ignorarFondo: 30,
   seguirEscuchando: true, tonoAlEscuchar: true,
   interrumpirConVoz: true, vozParaPausarMs: 300, retomarTrasMs: 1200, sensibilidadInterrupcion: 3,
-  motorVoz: 'aparato', vozAura: 'celeste',
+  motorVoz: 'aparato', vozAura: 'celeste', vozAzure: 'es-DO-RamonaNeural',
   vocesPreferidas: 'Paulina, Google español de Estados Unidos, Mónica, Google español', velocidadVoz: 1.02, tonoVoz: 1.05,
   pronunciaLalan: 'Lalán',
   papelTapiz: true, intensidadPapel: 7, tamanoPapel: 230, tamanoEsfera: 150, fondoLalan: 'dibujitos',

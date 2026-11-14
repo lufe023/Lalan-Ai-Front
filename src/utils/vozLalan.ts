@@ -322,7 +322,7 @@ async function decirConNube(partes: string[], mio: number, alHablar?: () => void
     : partes;
   const audios = lista.map((t) => {
     const aura = ajustesLalan().motorVoz === 'aura2' ? auraElegida() : null;
-    const clave = `${ajustesLalan().motorVoz}|${aura ?? ''}|${t}`;
+    const clave = `${ajustesLalan().motorVoz}|${aura ?? (ajustesLalan().motorVoz === 'azure' ? ajustesLalan().vozAzure : '')}|${t}`;
     const guardado = audiosGuardados.get(clave);
     if (guardado) return Promise.resolve<Blob | null>(guardado);
     const p = pedirAudio('/asistente/voz-lalan', aura ? { texto: t, voz: aura } : { texto: t }, control.signal);
