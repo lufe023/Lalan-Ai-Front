@@ -180,6 +180,103 @@ const PruebaVoz: React.FC<{ motor: string; voz: string; frase?: string; sinConsu
   );
 };
 
+interface SaldoVoz {
+  configurada: boolean;
+  plan: 'gratis' | 'pago';
+  motor: string;
+  motorLanding: string;
+  cercaDelTope: string;
+  gratisDia: number;
+  limiteAura: number | null;
+  reiniciaEn: string;
+  agotado: boolean;
+  hoy: {
+    neuronas: number; quedan: number; porciento: number; letrasAura: number; letrasMelo: number;
+    pedidos: number; fallos: number; cambiosAMelo: number; costoUsd: number; agotadoEn: string | null; ultimoFallo: string | null;
+  };
+  ultimoFallo: { en: string; motivo: string } | null;
+  dias: { dia: string; neuronas: number; letrasAura: number; letrasMelo: number; pedidos: number; fallos: number; cambiosAMelo: number; agotado: boolean }[];
+}
+
+/** Aura-2: neurons por letra (precio de Cloudflare) */
+const NEURONAS_POR_LETRA_AURA = 2.72727;
+
+/**
+ * El saldo de la voz en Cloudflare, como el de OpenRouter: cuánto queda hoy,
+ * cuándo se reinicia y, si se cortó, el motivo exacto que dio Cloudflare.
+ */
+const SaldoVozCloudflare: React.FC = () => {
+  const [s, setS] = useState<SaldoVoz | null>(null);
+  const [error, setError] = useState('');
+  const cargar = useCallback(() => {
+    api.get<SaldoVoz>('/asistente/voz-lalan/saldo').then((d) => { setS(d); setError(''); }).catch((e) => setError((e as Error)?.message || 'No se pudo leer el saldo'));
+  }, []);
+  useEffect(() => { cargar(); const t = setInterval(cargar, 60_000); return () => clearInterval(t); }, [cargar]);
+  if (error) return <p className="text-[0.75rem] text-rose-600 dark:text-rose-400">{error}</p>;
+  if (!s) return null;
+  const n = (x: number) => x.toLocaleString('es-DO');
+  const hora = new Date(s.reiniciaEn).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' });
+  const usaCloudflare = ['melotts', 'aura2'].includes(s.motor) || ['melotts', 'aura2'].includes(s.motorLanding);
+  const pct = s.hoy.porciento;
+  const letrasQuedan = Math.floor(s.hoy.quedan / NEURONAS_POR_LETRA_AURA);
+  const color = s.agotado || pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
+  const maxDia = Math.max(s.gratisDia, ...s.dias.map((d) => d.neuronas));
+  const queHace = s.cercaDelTope === 'aparato' ? 'la voz del teléfono' : s.cercaDelTope === 'seguir' ? 'Aura-2 hasta que Cloudflare corte' : 'MeloTTS';
+  return (
+    <div className="p-3 rounded-xl border border-slate-200 dark:border-neutral-800 space-y-2.5 text-[0.75rem]">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="font-semibold text-slate-600 dark:text-neutral-300">Saldo de voz de hoy en Cloudflare</div>
+        <span className="text-slate-400">Plan {s.plan === 'pago' ? 'de pago' : 'gratis'}</span>
+      </div>
+      {!s.configurada && <p className="font-semibold text-amber-700 dark:text-amber-300">Falta CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_AI_TOKEN en Railway.</p>}
+      {s.agotado ? (
+        <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 space-y-1">
+          <div className="font-bold">Se acabó la voz gratis de hoy. Vuelve a las {hora}.</div>
+          {s.hoy.ultimoFallo && <div className="break-words">Cloudflare dijo: {s.hoy.ultimoFallo}</div>}
+          <div>Mientras tanto Lalan habla con la voz del teléfono. Para que no se corte: pasa la cuenta a Workers Paid (US$ 5 al mes) o usa MeloTTS.</div>
+          <a href="https://dash.cloudflare.com/?to=/:account/workers/plans" target="_blank" rel="noreferrer" className="inline-block font-bold underline">Abrir los planes de Cloudflare</a>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-2 tabular-nums">
+            <span className="text-2xl font-bold">{n(s.hoy.quedan)}</span>
+            <span className="text-slate-500">de {n(s.gratisDia)} neurons gratis quedan · ≈ {n(letrasQuedan)} letras con Aura-2</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100 dark:bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Neurons usadas hoy">
+            <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+          </div>
+          <div className="text-slate-500">
+            Usado hoy: {n(s.hoy.neuronas)} ({pct}%) · se reinicia a las {hora}.
+            {s.plan === 'gratis' && s.limiteAura ? ` Al llegar a ${n(s.limiteAura)} usa ${queHace}.` : ''}
+            {s.plan === 'pago' && s.hoy.costoUsd > 0 ? ` Hoy se pagan ~US$ ${s.hoy.costoUsd.toFixed(2)}.` : ''}
+          </div>
+        </>
+      )}
+      <div className="grid grid-cols-3 gap-2 tabular-nums">
+        <div><div className="text-base font-bold">{n(s.hoy.letrasAura)}</div><div className="text-slate-500">letras Aura-2</div></div>
+        <div><div className="text-base font-bold">{n(s.hoy.letrasMelo)}</div><div className="text-slate-500">letras MeloTTS{s.hoy.cambiosAMelo ? ` (${n(s.hoy.cambiosAMelo)} por saldo)` : ''}</div></div>
+        <div><div className="text-base font-bold">{n(s.hoy.fallos)}</div><div className="text-slate-500">frases sin voz de Cloudflare</div></div>
+      </div>
+      {!s.agotado && s.ultimoFallo && <p className="text-slate-500 break-words">Último fallo ({new Date(s.ultimoFallo.en).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })}): {s.ultimoFallo.motivo}</p>}
+      {s.dias.length > 1 && (
+        <div className="space-y-1">
+          <div className="font-semibold text-slate-500">Últimos días (neurons)</div>
+          <div className="flex items-end gap-1 h-12" aria-label="Neurons por día">
+            {[...s.dias].reverse().map((d) => (
+              <div key={d.dia} className="flex-1 min-w-0 flex flex-col justify-end h-full" title={`${d.dia}: ${n(d.neuronas)} neurons · ${n(d.letrasAura)} letras Aura-2${d.agotado ? ' · se agotó' : ''}`}>
+                <div className={`rounded-sm ${d.agotado ? 'bg-rose-500' : 'bg-[var(--primary)]'}`} style={{ height: `${Math.max(4, Math.round((d.neuronas / maxDia) * 100))}%` }} />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-[0.6875rem] text-slate-400"><span>{s.dias[s.dias.length - 1].dia.slice(5)}</span><span>hoy</span></div>
+        </div>
+      )}
+      {!usaCloudflare && <p className="text-slate-400">Ahora ni la app ni la landing usan voz de Cloudflare.</p>}
+      <p className="text-slate-400">Cuenta lo de los salones, la landing y las pruebas: todo gasta del mismo saldo. Lo gratis es por día (no se acumula).</p>
+    </div>
+  );
+};
+
 const FRASE_LANDING = '¡Holiii, amiga! 💕 Soy Lalan. Te contesto el WhatsApp del salón a cualquier hora y te dejo las citas en la agenda. ¿Tienes tu propio salón? ✨';
 const PRECIO_AURA_MIL = 0.03;
 
@@ -265,6 +362,8 @@ function aplica(c: Campo, todo: Record<string, Valor>) {
   if (c.id === 'landingLetrasPorChat') return motor === 'aura2' || motor === 'melotts';
   if (c.id === 'landingVocesNavegador') return motor === 'navegador';
   if (c.id === 'landingVelocidadVoz') return motor !== 'apagada';
+  if (c.id === 'reservaVozPorciento') return todo.planCloudflare !== 'pago';
+  if (c.id === 'topeVozUsdDia') return todo.planCloudflare === 'pago';
   return true;
 }
 
@@ -344,6 +443,7 @@ export const AjustesLalanPlataforma: React.FC<{ area?: 'app' | 'landing' }> = ({
           <section key={g.id} className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{g.nombre}</h3>
             {g.id === 'apariencia' && <VistaEsfera todo={borrador} />}
+            {g.id === 'voz' && <SaldoVozCloudflare />}
             {g.id === 'voz' && <PruebaVoz motor={String(borrador.motorVoz ?? 'aparato')} voz={String(borrador.vozAura ?? 'celeste')} />}
             {g.id === 'landing' && <VozLandingPanel todo={borrador} />}
             {cat.campos.filter((c) => c.grupo === g.id && aplica(c, borrador)).map((c) => {
