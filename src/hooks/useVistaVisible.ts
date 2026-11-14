@@ -25,10 +25,24 @@ export function useVistaVisible(activa: boolean): VistaVisible | null {
       // Más de 120 px menos que la ventana: es el teclado, no la barra del navegador
       teclado: window.innerHeight - vv.height > 120,
     });
+    // El teclado del iPhone entra animado: lo que mide al empezar no es donde termina.
+    // Se vuelve a medir al acabar de moverse (si no, queda un hueco encima del teclado)
+    let tarde = 0;
+    const alCambiar = () => {
+      medir();
+      window.clearTimeout(tarde);
+      tarde = window.setTimeout(medir, 350);
+    };
     medir();
-    vv.addEventListener('resize', medir);
-    vv.addEventListener('scroll', medir);
-    return () => { vv.removeEventListener('resize', medir); vv.removeEventListener('scroll', medir); };
+    vv.addEventListener('resize', alCambiar);
+    vv.addEventListener('scroll', alCambiar);
+    window.addEventListener('focusin', alCambiar);
+    window.addEventListener('focusout', alCambiar);
+    return () => {
+      window.clearTimeout(tarde);
+      vv.removeEventListener('resize', alCambiar); vv.removeEventListener('scroll', alCambiar);
+      window.removeEventListener('focusin', alCambiar); window.removeEventListener('focusout', alCambiar);
+    };
   }, [activa]);
   return vista;
 }

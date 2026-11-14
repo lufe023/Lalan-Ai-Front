@@ -223,6 +223,16 @@ export const PantallaLalan: React.FC = () => {
   const lista = useRef<HTMLDivElement>(null);
   /** Subió a leer otros días: aparece «Volver a hoy» */
   const [lejosDeHoy, setLejosDeHoy] = useState(false);
+  /** La dueña está al final de la charla (si subió a leer, lo nuevo no la jala) */
+  const alFinal = useRef(true);
+  /** Llegó algo de Lalan mientras ella leía más arriba */
+  const [nuevoDeLalan, setNuevoDeLalan] = useState(false);
+  const alMoverLista = (el: HTMLDivElement) => {
+    const falta = el.scrollHeight - el.scrollTop - el.clientHeight;
+    alFinal.current = falta < 120;
+    if (alFinal.current) setNuevoDeLalan(false);
+    setLejosDeHoy(falta > 500);
+  };
   /** «Buscar en lo que hablamos» abierto, y a qué mensaje llevar al elegir */
   const [buscando, setBuscando] = useState(false);
   const [irAlBuscado, setIrAlBuscado] = useState<{ dia: string; mensaje?: string; vez: number } | null>(null);
@@ -293,7 +303,12 @@ export const PantallaLalan: React.FC = () => {
     return () => obs.disconnect();
   }, [abierta, escribiendo, grande]);
 
-  const bajar = () => requestAnimationFrame(() => lista.current?.scrollTo({ top: lista.current.scrollHeight, behavior: 'smooth' }));
+  // Dos cuadros: React pinta el mensaje nuevo después del primero y así se baja hasta el final de verdad
+  const bajar = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+    alFinal.current = true;
+    setNuevoDeLalan(false);
+    lista.current?.scrollTo({ top: lista.current.scrollHeight, behavior: 'smooth' });
+  }));
 
   // Con el teclado abierto la pantalla se ajusta a lo que se ve y baja al último mensaje
   const vista = useVistaVisible(abierta);
@@ -363,7 +378,9 @@ export const PantallaLalan: React.FC = () => {
       void recargarCatalogo();
       avisarCambioBienvenida();
     }
-    bajar();
+    // Si estaba leyendo más arriba no se la mueve: le sale «Nuevo mensaje de Lalan»
+    if (alFinal.current) bajar();
+    else if (r.mensajes.some((m) => m.deLalan)) setNuevoDeLalan(true);
     const ultimo = [...r.mensajes].reverse().find((m) => m.deLalan);
     if (hablar && ultimo) void decir(ultimo.texto);
     else setModo('reposo');
@@ -777,7 +794,9 @@ export const PantallaLalan: React.FC = () => {
           variants={{ salir: (s: TargetAndTransition | null) => s ?? { opacity: 0, transition: { duration: 0.2 } } }}
           initial={aparecer?.initial ?? { opacity: 0 }} animate={aparecer?.animate ?? { opacity: 1 }} exit="salir"
           transition={{ duration: 0.2 }}
-          className={`fixed inset-0 z-[300] flex flex-col backdrop-blur-2xl text-slate-900 dark:text-neutral-100 ${fondoQuiosco ? 'bg-[#fbf7f8] dark:bg-[#0c0a0b]' : 'bg-slate-50/90 dark:bg-neutral-950/92'}`}
+          // Con el teclado abierto, sin desenfoque: en el iPhone una capa fija con desenfoque
+          // a veces no se repinta al moverse con el teclado y deja un hueco encima
+          className={`fixed inset-0 z-[300] flex flex-col text-slate-900 dark:text-neutral-100 ${conTeclado ? '' : 'backdrop-blur-2xl'} ${fondoQuiosco ? 'bg-[#fbf7f8] dark:bg-[#0c0a0b]' : conTeclado ? 'bg-slate-50 dark:bg-neutral-950' : 'bg-slate-50/90 dark:bg-neutral-950/92'}`}
           style={vista && conTeclado
             // Encima del teclado: el teclado ya tapa la raya de abajo del iPhone
             ? { top: vista.arriba, height: vista.alto, bottom: 'auto', paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)', paddingBottom: 4 }
@@ -1016,7 +1035,7 @@ export const PantallaLalan: React.FC = () => {
                   </button>
                 </div>
                 <div ref={lista} aria-live="polite"
-                  onScroll={(e) => { const el = e.currentTarget; setLejosDeHoy(el.scrollHeight - el.scrollTop - el.clientHeight > 500); }}
+                  onScroll={(e) => alMoverLista(e.currentTarget)}
                   className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
                   <div className="max-w-2xl"><DiasAnteriores hoy={hoy} dias={dias} pintar={pintarPanel} lista={lista} espacio="space-y-6" irA={irAlBuscado} /></div>
                   {cargando && !mensajes.length && (
@@ -1042,10 +1061,10 @@ export const PantallaLalan: React.FC = () => {
                   )}
                 </div>
                 <AnimatePresence>
-                  {lejosDeHoy && (
+                  {(lejosDeHoy || nuevoDeLalan) && (
                     <motion.button type="button" onClick={bajar} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
                       className="absolute left-1/2 -translate-x-1/2 bottom-24 z-[1] min-h-[40px] px-4 rounded-full bg-[var(--primary)] text-white text-[0.8125rem] font-semibold shadow-lg shadow-[var(--primary)]/25 inline-flex items-center gap-1.5 cursor-pointer">
-                      <ArrowDown className="w-4 h-4" /> Volver a hoy
+                      <ArrowDown className="w-4 h-4" /> {nuevoDeLalan ? 'Nuevo mensaje de Lalan' : 'Volver a hoy'}
                     </motion.button>
                   )}
                 </AnimatePresence>
@@ -1079,6 +1098,7 @@ export const PantallaLalan: React.FC = () => {
             {/* La conversación: corre por detrás de la esfera (abajo es transparente).
                 Escribiendo termina encima del campo, para que la cajita no tape el texto */}
             <div ref={lista} className={`absolute inset-0 overflow-y-auto px-5 pt-4 ${escribiendo ? 'space-y-4' : 'space-y-5'}`} aria-live="polite"
+              onScroll={(e) => alMoverLista(e.currentTarget)}
               style={{
                 ...(escribiendo ? { bottom: altoAbajo, paddingBottom: 12 } : { paddingBottom: altoAbajo + 8 }),
                 // Arriba el texto se desvanece en vez de cortarse de golpe
@@ -1097,6 +1117,16 @@ export const PantallaLalan: React.FC = () => {
               )}
               {mensajes.map(pintarMovil)}
             </div>
+            {/* Lalan respondió mientras ella leía más arriba: un toque y baja a verlo */}
+            <AnimatePresence>
+              {nuevoDeLalan && (
+                <motion.button type="button" onClick={bajar} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+                  style={{ bottom: altoAbajo + 12 }}
+                  className="absolute left-1/2 -translate-x-1/2 z-[2] min-h-[40px] px-4 rounded-full bg-[var(--primary)] text-white text-[0.8125rem] font-semibold shadow-lg shadow-[var(--primary)]/25 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
+                  <ArrowDown className="w-4 h-4" /> Nuevo mensaje de Lalan
+                </motion.button>
+              )}
+            </AnimatePresence>
 
             {/* Abajo: la esfera, flotando sobre la conversación */}
             <div ref={abajo} className={`absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto ${escribiendo
