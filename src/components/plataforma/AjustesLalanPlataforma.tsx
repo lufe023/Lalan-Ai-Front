@@ -121,16 +121,19 @@ const VistaEsfera: React.FC<{ todo: Record<string, Valor> }> = ({ todo }) => {
 
 const FRASE_DE_PRUEBA = 'Buenas tardes. Hoy tienes seis citas y la tarde libre de tres a cinco. Ana te espera en WhatsApp: pregunta si hay cupo el jueves. ¿Quieres que le diga que sí?';
 
+/** "es-DO-RamonaNeural" → "Ramona" */
+const nombreAzure = (v: string) => /^[a-z]{2}-[A-Z]{2}-([A-Za-z]+?)(?:Multilingual)?Neural$/.exec(v)?.[1] ?? v;
+
 /** Oír la voz de Cloudflare elegida (sin guardar) y ver cuánto se ha usado este mes */
 const PruebaVoz: React.FC<{ motor: string; voz: string; frase?: string; sinConsumo?: boolean }> = ({ motor, voz, frase = FRASE_DE_PRUEBA, sinConsumo }) => {
   const [texto, setTexto] = useState(frase);
   const [estado, setEstado] = useState<'' | 'cargando' | 'sonando'>('');
   const [aviso, setAviso] = useState('');
-  const [consumo, setConsumo] = useState<{ configurada: boolean; filas: { negocio: string; motor: string; caracteres: number; pedidos: number }[] } | null>(null);
+  const [consumo, setConsumo] = useState<{ configurada: boolean; azure?: boolean; filas: { negocio: string; motor: string; caracteres: number; pedidos: number }[] } | null>(null);
   useEffect(() => { api.get<typeof consumo>('/asistente/voz-lalan/consumo').then(setConsumo).catch(() => undefined); }, []);
   const filas = consumo?.filas.filter((f) => !sinConsumo && !f.negocio.startsWith('Landing')) ?? [];
 
-  if (motor === 'aparato') return <p className="text-[0.75rem] text-slate-400">Con "Aparato" cada teléfono usa su propia voz (Paulina, Google…). Elige MeloTTS o Aura-2 para probar las de Cloudflare.</p>;
+  if (motor === 'aparato') return <p className="text-[0.75rem] text-slate-400">Con "Aparato" cada teléfono usa su propia voz (Paulina, Google…). Elige MeloTTS, Aura-2 o Azure para probar las del servidor.</p>;
 
   const probar = async () => {
     setAviso(''); setEstado('cargando');
@@ -144,7 +147,7 @@ const PruebaVoz: React.FC<{ motor: string; voz: string; frase?: string; sinConsu
       setEstado('sonando');
       await audio.play();
       // Lo que cuesta esta frase con Aura-2 (MeloTTS cobra por minuto: casi nada)
-      setAviso(`Tardó ${segundos} s en llegar.${motor === 'aura2' ? ` Esta frase cuesta ~US$ ${((texto.length / 1000) * 0.03).toFixed(4)}.` : ''}`);
+      setAviso(`Tardó ${segundos} s en llegar.${motor === 'aura2' ? ` Esta frase cuesta ~US$ ${((texto.length / 1000) * 0.03).toFixed(4)}.` : motor === 'azure' ? ` Gasta ${texto.length} de las 500.000 letras gratis del mes.` : ''}`);
     } catch (e) {
       setEstado('');
       setAviso((e as Error).message);
@@ -153,7 +156,10 @@ const PruebaVoz: React.FC<{ motor: string; voz: string; frase?: string; sinConsu
 
   return (
     <div className="space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
-      {consumo && !consumo.configurada && (
+      {consumo && motor === 'azure' && consumo.azure === false && (
+        <p className="text-[0.75rem] font-semibold text-amber-700 dark:text-amber-300">Falta configurar Azure en Railway: AZURE_SPEECH_KEY y AZURE_SPEECH_REGION. Mientras tanto, {sinConsumo ? 'la landing no muestra el botón de voz' : 'Lalan usa la voz del teléfono'}.</p>
+      )}
+      {consumo && motor !== 'azure' && !consumo.configurada && (
         <p className="text-[0.75rem] font-semibold text-amber-700 dark:text-amber-300">Falta configurar Cloudflare en Railway: CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_AI_TOKEN. Mientras tanto, {sinConsumo ? 'la landing no muestra el botón de voz' : 'Lalan usa la voz del teléfono'}.</p>
       )}
       <textarea value={texto} onChange={(e) => setTexto(e.target.value.slice(0, 600))} rows={3} className={`${caja} w-full`} aria-label="Frase de prueba" />
@@ -161,7 +167,7 @@ const PruebaVoz: React.FC<{ motor: string; voz: string; frase?: string; sinConsu
         <button type="button" onClick={() => void probar()} disabled={estado !== '' || !texto.trim()}
           className="px-3 py-2 rounded-xl text-[0.8125rem] font-bold text-white bg-[var(--primary)] flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
           {estado === 'cargando' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-          {estado === 'sonando' ? 'Sonando…' : `Probar la voz (${motor === 'aura2' ? `Aura-2 · ${voz}` : 'MeloTTS'})`}
+          {estado === 'sonando' ? 'Sonando…' : `Probar la voz (${motor === 'aura2' ? `Aura-2 · ${voz}` : motor === 'azure' ? `Azure · ${nombreAzure(voz)}` : 'MeloTTS'})`}
         </button>
         {aviso && <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400">{aviso}</span>}
       </div>
@@ -170,7 +176,7 @@ const PruebaVoz: React.FC<{ motor: string; voz: string; frase?: string; sinConsu
           <div className="font-semibold">Este mes</div>
           {filas.map((f) => (
             <div key={f.negocio + f.motor} className="flex justify-between tabular-nums">
-              <span>{f.negocio} · {f.motor === 'aura2' ? 'Aura-2' : 'MeloTTS'}</span>
+              <span>{f.negocio} · {f.motor === 'aura2' ? 'Aura-2' : f.motor === 'azure' ? 'Azure' : 'MeloTTS'}</span>
               <span>{f.caracteres.toLocaleString('es-DO')} letras{f.motor === 'aura2' ? ` · ~US$ ${((f.caracteres / 1000) * 0.03).toFixed(2)}` : ''}</span>
             </div>
           ))}
@@ -180,8 +186,15 @@ const PruebaVoz: React.FC<{ motor: string; voz: string; frase?: string; sinConsu
   );
 };
 
+interface SaldoAzure {
+  configurada: boolean; region: string | null; plan: 'gratis' | 'pago'; voz: string;
+  gratisMes: number; limite: number | null; letrasMes: number; quedan: number; porciento: number;
+  letrasHoy: number; costoMesUsd: number; reiniciaEn: string; agotado: boolean;
+}
+
 interface SaldoVoz {
   configurada: boolean;
+  azure?: SaldoAzure;
   plan: 'gratis' | 'pago';
   motor: string;
   motorLanding: string;
@@ -195,7 +208,7 @@ interface SaldoVoz {
     pedidos: number; fallos: number; cambiosAMelo: number; costoUsd: number; agotadoEn: string | null; ultimoFallo: string | null;
   };
   ultimoFallo: { en: string; motivo: string } | null;
-  dias: { dia: string; neuronas: number; letrasAura: number; letrasMelo: number; pedidos: number; fallos: number; cambiosAMelo: number; agotado: boolean }[];
+  dias: { dia: string; neuronas: number; letrasAura: number; letrasMelo: number; letrasAzure?: number; pedidos: number; fallos: number; cambiosAMelo: number; agotado: boolean }[];
 }
 
 /** Aura-2: neurons por letra (precio de Cloudflare) */
@@ -225,7 +238,7 @@ const SaldoVozCloudflare: React.FC = () => {
   return (
     <div className="p-3 rounded-xl border border-slate-200 dark:border-neutral-800 space-y-2.5 text-[0.75rem]">
       <div className="flex items-baseline justify-between gap-2">
-        <div className="font-semibold text-slate-600 dark:text-neutral-300">Saldo de voz de hoy en Cloudflare</div>
+        <div className="font-semibold text-slate-600 dark:text-neutral-300">Saldo de voz de hoy en Cloudflare (Aura-2 y MeloTTS)</div>
         <span className="text-slate-400">Plan {s.plan === 'pago' ? 'de pago' : 'gratis'}</span>
       </div>
       {!s.configurada && <p className="font-semibold text-amber-700 dark:text-amber-300">Falta CLOUDFLARE_ACCOUNT_ID y CLOUDFLARE_AI_TOKEN en Railway.</p>}
@@ -272,7 +285,47 @@ const SaldoVozCloudflare: React.FC = () => {
         </div>
       )}
       {!usaCloudflare && <p className="text-slate-400">Ahora ni la app ni la landing usan voz de Cloudflare.</p>}
+      {s.azure && <SaldoAzurePanel a={s.azure} enUso={s.motor === 'azure' || s.motorLanding === 'azure'} />}
       <p className="text-slate-400">Cuenta lo de los salones, la landing y las pruebas: todo gasta del mismo saldo. Lo gratis es por día (no se acumula).</p>
+    </div>
+  );
+};
+
+/** El saldo mensual de Azure (500.000 letras gratis al mes en el recurso F0) */
+const SaldoAzurePanel: React.FC<{ a: SaldoAzure; enUso: boolean }> = ({ a, enUso }) => {
+  const n = (x: number) => x.toLocaleString('es-DO');
+  const vuelve = new Date(a.reiniciaEn).toLocaleDateString('es-DO', { timeZone: 'UTC', day: 'numeric', month: 'long' });
+  const color = a.agotado || a.porciento >= 90 ? 'bg-rose-500' : a.porciento >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
+  return (
+    <div className="pt-2.5 mt-1 border-t border-slate-200 dark:border-neutral-800 space-y-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="font-semibold text-slate-600 dark:text-neutral-300">Saldo de Azure este mes</div>
+        <span className="text-slate-400">{a.plan === 'pago' ? 'De pago (S0)' : 'Gratis (F0)'}{a.region ? ` · ${a.region}` : ''}</span>
+      </div>
+      {!a.configurada ? (
+        <p className="text-slate-500">Sin configurar. Para las voces dominicanas (Ramona y Emilio) pon AZURE_SPEECH_KEY y AZURE_SPEECH_REGION en Railway.</p>
+      ) : a.agotado ? (
+        <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200">
+          <div className="font-bold">Se acabó lo gratis de Azure este mes. Vuelve el {vuelve}.</div>
+          <div>Mientras tanto Lalan usa MeloTTS o la voz del teléfono.</div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-2 tabular-nums">
+            <span className="text-2xl font-bold">{n(a.quedan)}</span>
+            <span className="text-slate-500">de {n(a.gratisMes)} letras gratis quedan · vuelve el {vuelve}</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100 dark:bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow={a.porciento} aria-valuemin={0} aria-valuemax={100} aria-label="Letras de Azure usadas este mes">
+            <div className={`h-full rounded-full ${color}`} style={{ width: `${a.porciento}%` }} />
+          </div>
+          <div className="text-slate-500">
+            Este mes: {n(a.letrasMes)} letras ({a.porciento}%) · hoy {n(a.letrasHoy)}.
+            {a.plan === 'gratis' && a.limite ? ` Al llegar a ${n(a.limite)} cambia de voz.` : ''}
+            {a.plan === 'pago' ? ` ~US$ ${a.costoMesUsd.toFixed(2)} este mes.` : ''}
+            {!enUso ? ' Ahora no se usa: elígela arriba en «De dónde sale la voz».' : ''}
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -330,7 +383,7 @@ const VozLandingPanel: React.FC<{ todo: Record<string, Valor> }> = ({ todo }) =>
     <div className="space-y-3">
       {motor === 'apagada' && <p className="text-[0.75rem] text-slate-400">La voz está apagada: las respuestas de la landing no traen botón "Escúchala".</p>}
       {motor === 'navegador' && <PruebaNavegador voces={String(todo.landingVocesNavegador ?? '')} velocidad={Number(todo.landingVelocidadVoz) || 1} pronuncia={String(todo.pronunciaLalan ?? 'Lalán')} />}
-      {(motor === 'melotts' || motor === 'aura2') && <PruebaVoz motor={motor} voz={String(todo.landingVozAura ?? 'celeste')} frase={FRASE_LANDING} sinConsumo />}
+      {(motor === 'melotts' || motor === 'aura2' || motor === 'azure') && <PruebaVoz motor={motor} voz={String(motor === 'azure' ? todo.landingVozAzure ?? 'es-DO-RamonaNeural' : todo.landingVozAura ?? 'celeste')} frase={FRASE_LANDING} sinConsumo />}
       {m && (
         <div className="p-3 rounded-xl border border-slate-200 dark:border-neutral-800 space-y-2 text-[0.75rem]">
           <div className="font-semibold text-slate-600 dark:text-neutral-300">Este mes en la landing</div>
@@ -358,8 +411,13 @@ const VozLandingPanel: React.FC<{ todo: Record<string, Valor> }> = ({ todo }) =>
 /** Los campos de la landing que no aplican al motor elegido no se muestran */
 function aplica(c: Campo, todo: Record<string, Valor>) {
   const motor = String(todo.landingVoz ?? 'navegador');
-  if (c.id === 'landingVozAura' || c.id === 'landingTopeVozMes') return motor === 'aura2';
-  if (c.id === 'landingLetrasPorChat') return motor === 'aura2' || motor === 'melotts';
+  if (c.id === 'landingVozAura') return motor === 'aura2';
+  if (c.id === 'landingVozAzure') return motor === 'azure';
+  if (c.id === 'landingTopeVozMes') return motor === 'aura2' || motor === 'azure';
+  if (c.id === 'landingLetrasPorChat') return motor === 'aura2' || motor === 'melotts' || motor === 'azure';
+  const app = String(todo.motorVoz ?? 'aparato');
+  if (c.id === 'vozAura') return app === 'aura2';
+  if (c.id === 'vozAzure') return app === 'azure';
   if (c.id === 'landingVocesNavegador') return motor === 'navegador';
   if (c.id === 'landingVelocidadVoz') return motor !== 'apagada';
   if (c.id === 'reservaVozPorciento') return todo.planCloudflare !== 'pago';
@@ -444,7 +502,7 @@ export const AjustesLalanPlataforma: React.FC<{ area?: 'app' | 'landing' }> = ({
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">{g.nombre}</h3>
             {g.id === 'apariencia' && <VistaEsfera todo={borrador} />}
             {g.id === 'voz' && <SaldoVozCloudflare />}
-            {g.id === 'voz' && <PruebaVoz motor={String(borrador.motorVoz ?? 'aparato')} voz={String(borrador.vozAura ?? 'celeste')} />}
+            {g.id === 'voz' && <PruebaVoz motor={String(borrador.motorVoz ?? 'aparato')} voz={String(borrador.motorVoz === 'azure' ? borrador.vozAzure ?? 'es-DO-RamonaNeural' : borrador.vozAura ?? 'celeste')} />}
             {g.id === 'landing' && <VozLandingPanel todo={borrador} />}
             {cat.campos.filter((c) => c.grupo === g.id && aplica(c, borrador)).map((c) => {
               const v = borrador[c.id] ?? c.porDefecto;
