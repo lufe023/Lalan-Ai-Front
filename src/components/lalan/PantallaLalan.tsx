@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, type TargetAndTransition } from 'motion/react';
-import { ArrowDown, ArrowUp, BellRing, Check, Copy, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Navigation, Receipt, RotateCcw, Search, Send, ShoppingCart, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BellRing, Check, Copy, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Music2, Navigation, Receipt, RotateCcw, Search, Send, ShoppingCart, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -27,13 +27,14 @@ import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO 
 import { irA } from '../../services/avisos';
 import { avisarCambioPendientes, cuandoConAviso, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
+import { ponerCancion, textoDePuesta } from '../musica/BuscarCancion';
 import { DiasAnteriores, resaltar, type DiaAnterior } from './DiasLalan';
 import { BuscarLalan, type ResultadoBusqueda } from './BuscarLalan';
 import { marcarLalanDescubierta, tocaPista, useLalanDescubierta } from './descubrirLalan';
 import { DURACION_MINIMIZAR, ESTILOS_MINIMIZAR, estiloMinimizar, genioDesdeBurbuja, guardarEstiloMinimizar, salidaHaciaBurbuja, type Destino, type EstiloMinimizar } from './minimizarLalan';
 
 interface Accion {
-  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo' | 'compra' | 'recordatorio'; resumen: string;
+  id: string; tipo: 'indicacion' | 'mensaje' | 'servicio' | 'rendimiento' | 'guia' | 'documento' | 'tutorial' | 'recuerdo' | 'compra' | 'recordatorio' | 'cancion'; resumen: string;
   estado: 'pendiente' | 'hecha' | 'descartada' | 'fallida'; resultado: string | null; conversacionId: string | null;
   /** "Llévame": la tarea a la que lleva y en qué sede */
   guia?: GuiaTarjeta | null;
@@ -45,6 +46,13 @@ interface Accion {
   compra?: CompraTarjeta | null;
   /** Un recordatorio o encargo que Lalan guardó */
   recordatorio?: RecordatorioTarjeta | null;
+  /** Una canción que Lalan puso en la pantalla de música */
+  cancion?: CancionTarjeta | null;
+}
+interface CancionTarjeta {
+  id: string | null; videoId: string; titulo: string; canal: string; portada: string;
+  modo: 'ahora' | 'cola'; sonando: boolean; posicion: number; sede: string; sedeId: string; altavoz: string | null;
+  otras: { videoId: string; titulo: string; canal: string; portada: string }[];
 }
 interface RecordatorioTarjeta { id: string; texto: string; cuando: string; para: string | null; aviso?: string | null }
 interface CompraTarjeta { ordenId: string; numero: string; nuevoId: string | null; nuevoNumero: string | null }
@@ -1419,9 +1427,112 @@ const Tarjeta: React.FC<{
   if (accion.documento) return <TarjetaDocumento documento={accion.documento} onFallo={onFallo} />;
   if (accion.tutorial) return <TarjetaTutorial tutorial={accion.tutorial} />;
   if (accion.recordatorio) return <TarjetaRecordatorio recordatorio={accion.recordatorio} onFallo={onFallo} onIr={onIr} />;
-  if (accion.tipo === 'guia' || accion.tipo === 'documento' || accion.tipo === 'tutorial' || accion.tipo === 'recordatorio') return null;
+  if (accion.cancion) return <TarjetaCancion cancion={accion.cancion} onFallo={onFallo} onIr={onIr} />;
+  if (accion.tipo === 'guia' || accion.tipo === 'documento' || accion.tipo === 'tutorial' || accion.tipo === 'recordatorio' || accion.tipo === 'cancion') return null;
   return <TarjetaAccion accion={accion} ocupada={ocupada} onResolver={onResolver} onVerChat={onVerChat} onAbrirPedido={onAbrirPedido} />;
 };
+
+/**
+ * Una canción que Lalan puso: cuál, dónde suena, y con un toque cambiarla
+ * por otra de la búsqueda (si no era esa), quitarla de la cola o abrir la
+ * música. Lo que se cambia aquí vive solo en la tarjeta: es música, no un
+ * registro del salón.
+ */
+const TarjetaCancion: React.FC<{
+  cancion: CancionTarjeta; onFallo: (e: unknown) => void; onIr: (destino: { ir: string; aviso?: string | null }) => void;
+}> = ({ cancion, onFallo, onIr }) => {
+  const [actual, setActual] = useState(cancion);
+  const [estado, setEstado] = useState<string>(() => estadoDeCancion(cancion));
+  const [quitada, setQuitada] = useState(false);
+  const [ocupada, setOcupada] = useState<string | null>(null);
+  const [verOtras, setVerOtras] = useState(false);
+
+  const cambiar = async (o: CancionTarjeta['otras'][number]) => {
+    setOcupada(o.videoId);
+    try {
+      const r = await ponerCancion(o.videoId, actual.modo, actual.id, actual.sedeId);
+      setActual((a) => ({
+        ...a, id: r.id, videoId: r.pista.videoId, titulo: r.pista.title, canal: r.pista.channel, portada: r.pista.thumbnail,
+        sonando: r.sonando, posicion: r.posicion, altavoz: r.altavoz,
+        // La que se quitó pasa a ser una opción más
+        otras: [{ videoId: a.videoId, titulo: a.titulo, canal: a.canal, portada: a.portada }, ...a.otras.filter((x) => x.videoId !== o.videoId)],
+      }));
+      setEstado(textoDePuesta(r));
+      setQuitada(false);
+      setVerOtras(false);
+    } catch (e) { onFallo(e); } finally { setOcupada(null); }
+  };
+
+  const quitar = async () => {
+    if (!actual.id) return;
+    setOcupada('quitar');
+    try { await api.delete(`/lounge/musica/pedidas/${actual.id}`); setQuitada(true); } catch (e) { onFallo(e); } finally { setOcupada(null); }
+  };
+
+  // Se puede quitar mientras espera en la cola (la que ya suena se cambia con «Siguiente» en la música)
+  const enCola = !!actual.id && !quitada && (actual.modo === 'cola' || !actual.altavoz);
+
+  return (
+    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 shadow-sm p-3.5 space-y-2.5">
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-[var(--primary)] flex items-center gap-1.5">
+        <Music2 className="w-3.5 h-3.5" /> {actual.modo === 'ahora' ? 'Música · ahora' : 'Música · en la cola'} · {actual.sede}
+      </div>
+      <div className="flex items-center gap-3">
+        <img src={actual.portada} alt="" className={`w-16 h-16 rounded-xl object-cover shrink-0 bg-slate-100 dark:bg-neutral-800 ${quitada ? 'opacity-50' : ''}`} />
+        <div className="min-w-0">
+          <p className={`text-[0.9375rem] font-semibold leading-snug text-slate-800 dark:text-neutral-100 line-clamp-2 ${quitada ? 'line-through opacity-60' : ''}`}>{actual.titulo}</p>
+          <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400 truncate">{actual.canal}</p>
+          <p className="mt-0.5 text-[0.75rem] font-semibold text-slate-600 dark:text-neutral-300">{quitada ? 'Quitada de la cola' : estado}</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        {/* Lalan se hace burbuja y la app abre la música */}
+        <button type="button" onClick={() => onIr({ ir: 'lounge' })}
+          className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[0.875rem] font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-[var(--primary)]/25 active:scale-[0.98] transition-transform cursor-pointer">
+          <Music2 className="w-4 h-4" /> Ver la música
+        </button>
+        {enCola && (
+          <button type="button" onClick={() => void quitar()} disabled={!!ocupada}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-neutral-300 text-[0.875rem] font-semibold cursor-pointer disabled:opacity-50">
+            {ocupada === 'quitar' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Quitar'}
+          </button>
+        )}
+      </div>
+      {actual.otras.length > 0 && !quitada && (
+        <div>
+          <button type="button" onClick={() => setVerOtras((v) => !v)} aria-expanded={verOtras}
+            className="text-[0.8125rem] font-semibold text-[var(--primary)] cursor-pointer">
+            {verOtras ? 'Ocultar las otras' : '¿No era esa? Ver otras'}
+          </button>
+          {verOtras && (
+            <div className="mt-2 space-y-1.5">
+              {actual.otras.map((o) => (
+                <button key={o.videoId} type="button" onClick={() => void cambiar(o)} disabled={!!ocupada}
+                  className="w-full flex items-center gap-2.5 p-1.5 rounded-xl text-left hover:bg-slate-50 dark:hover:bg-neutral-800 cursor-pointer disabled:opacity-60">
+                  <img src={o.portada} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 bg-slate-100 dark:bg-neutral-800" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[0.8125rem] font-semibold text-slate-800 dark:text-neutral-100 line-clamp-1">{o.titulo}</span>
+                    <span className="block text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">{o.canal}</span>
+                  </span>
+                  <span className="shrink-0 text-[0.75rem] font-bold text-[var(--primary)] px-2">
+                    {ocupada === o.videoId ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Esta'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** Lo que dice la tarjeta de una canción recién puesta, con lo que contó el servidor */
+function estadoDeCancion(c: CancionTarjeta): string {
+  if (!c.altavoz) return c.modo === 'ahora' ? 'Primera en la cola: sonará al encender la música' : `En la cola, puesto ${c.posicion}: sonará al encender la música`;
+  if (c.sonando || (c.modo === 'ahora' && c.posicion === 0)) return `Sonando en ${c.altavoz}`;
+  return c.posicion <= 1 ? 'Va después de la que suena' : `En la cola, puesto ${c.posicion}`;
+}
 
 /** Un recordatorio que Lalan guardó: cuándo y para quién, y quitarlo si no era */
 const TarjetaRecordatorio: React.FC<{

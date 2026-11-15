@@ -112,9 +112,44 @@ export const PuenteMusica: React.FC = () => {
         case 'pista':
           if (hayYt && Number.isFinite(Number(valor))) ytPlayIndex(Number(valor));
           break;
+        case 'cancion':
+          tocarCancion(valor);
+          break;
       }
     } catch { /* el player aún no está listo; la siguiente orden llegará */ }
   };
+
+  /**
+   * Tocar YA una canción por su videoId. La orden llega del servidor justo
+   * después del aviso de "hay una canción nueva", y este aparato arma su
+   * propia cola: lo normal es que la canción aún no esté (la cola se pide por
+   * HTTP al recibir el aviso). Se guarda y se toca en cuanto aparece.
+   */
+  const pendienteRef = useRef<{ videoId: string; hasta: number } | null>(null);
+  const ytQueueRef = useRef(ytQueue);
+  ytQueueRef.current = ytQueue;
+  const sonandoRef = useRef(ytPlaying);
+  sonandoRef.current = ytPlaying;
+  const tocarCancion = (videoId: any) => {
+    if (typeof videoId !== 'string' || !videoId) return;
+    const i = ytQueueRef.current.findIndex((t: any) => t.videoId === videoId);
+    if (i >= 0) {
+      pendienteRef.current = null;
+      ytPlayIndex(i);
+      /* Si la música estaba en pausa, el reproductor solo deja la canción
+         cargada: aquí la pidieron para que SUENE, así que se le da play. */
+      window.setTimeout(() => {
+        if (sonandoRef.current) return;
+        try { ytPlayerRef?.current?.playVideo?.(); } catch { /* noop */ }
+      }, 1200);
+    } else pendienteRef.current = { videoId, hasta: Date.now() + 15_000 };
+  };
+  useEffect(() => {
+    const p = pendienteRef.current;
+    if (!p) return;
+    if (Date.now() > p.hasta) { pendienteRef.current = null; return; }
+    if (ytQueue.some((t: any) => t.videoId === p.videoId)) tocarCancion(p.videoId);
+  }, [ytQueue]);
 
   // Un solo oyente para toda la vida de la app
   useEffect(() => alRecibir('musica:orden', (o: any) => aplicar.current(o)), []);
