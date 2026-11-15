@@ -60,6 +60,7 @@ import { IOSModal } from '../components/ui/IOSModal';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { noEsUnGusto } from '../utils/gustos';
 import { useSedes } from '../hooks/useSedes';
+import { BuscarCancion } from '../components/musica/BuscarCancion';
 import { conSedeLocal, elegirSedeLocal, sedeLocal } from '../services/sedeLocal';
 
 /** Una preferencia ya asignada a la clienta */
@@ -1009,7 +1010,8 @@ export const LoungePlayerScreen: React.FC = () => {
   }, [isPlayingLounge, currentTrack, nextLoungeTrack]);
 
   // Format seconds to mm:ss
-  const formatTime = async (seconds: number) => {
+  // OJO: no es async. Si devuelve una promesa, React no la puede pintar y la pantalla entera se cae.
+  const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
@@ -1131,6 +1133,10 @@ export const LoungePlayerScreen: React.FC = () => {
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
+            {/* Buscar una canción (escrita o dicha) y tocarla ya o dejarla en
+                la cola: suena en la pantalla de música de esta sede. */}
+            <BuscarCancion />
+
             {/* Active Client Personal Banner */}
             {activeLoungeClient && (
               <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs flex items-center justify-between">
