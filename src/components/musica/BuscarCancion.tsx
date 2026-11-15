@@ -138,7 +138,7 @@ export const BuscarCancion: React.FC = () => {
        radio no es una cola; el servidor hace lo mismo). */
     const e = estadoMusica();
     const soloRadio = e.sonando && !e.pista?.videoId;
-    if (soyElAnfitrion() && (modo === 'ahora' || soloRadio)) tocarAqui(c.videoId);
+    if (soyElAnfitrion() && (modo === 'ahora' || soloRadio)) tocarAqui(c.videoId, c.title);
     try {
       const r = await ponerCancion(c.videoId, modo);
       const dicho = textoDePuesta(r);

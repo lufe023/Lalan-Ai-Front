@@ -1153,7 +1153,7 @@ export const LoungePlayerScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  tocarAqui(esperaToque.videoId);
+                  tocarAqui(esperaToque.videoId, esperaToque.titulo);
                   avisarEsperaToque(null);
                   setSource('youtube');
                 }}

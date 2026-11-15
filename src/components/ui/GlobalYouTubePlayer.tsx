@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { avisarEsperaToque } from '../../services/esperaToque';
 import { useApp } from '../../context/AppContext';
 import { estadoMusica, soyElAnfitrion } from '../../services/musica';
 
@@ -109,9 +110,9 @@ const EVENTO_TOCAR_AQUI = 'lalan:yt-tocar-aqui';
  * Cuando la cola llega a esa canción, el reproductor ve que ya es la que
  * suena y no la vuelve a cargar.
  */
-export function tocarAqui(videoId: string) {
+export function tocarAqui(videoId: string, titulo?: string) {
   if (!videoId) return;
-  window.dispatchEvent(new CustomEvent(EVENTO_TOCAR_AQUI, { detail: { videoId } }));
+  window.dispatchEvent(new CustomEvent(EVENTO_TOCAR_AQUI, { detail: { videoId, titulo } }));
 }
 
 export const GlobalYouTubePlayer: React.FC = () => {
@@ -428,19 +429,46 @@ export const GlobalYouTubePlayer: React.FC = () => {
   useEffect(() => {
     const alPedir = (e: Event) => {
       const videoId = String((e as CustomEvent).detail?.videoId ?? '');
+      const titulo = String((e as CustomEvent).detail?.titulo ?? '') || 'la canción';
       const p = ytPlayerRef.current;
       if (!videoId || !p) return;
-      pedidaRef.current = { videoId, hasta: Date.now() + 15_000 };
-      loadedIdRef.current = videoId;
+      const vol = mutedRef.current ? 0 : volRef.current;
+      const yaCargada = loadedIdRef.current === videoId;
+      pedidaRef.current = yaCargada ? null : { videoId, hasta: Date.now() + 15_000 };
       autoplayIntentRef.current = true;
       intentandoSonarRef.current = true;
       cancelFade();
       window.clearTimeout(empujonRef.current);
       try {
-        p.setVolume?.(mutedRef.current ? 0 : volRef.current);
-        p.loadVideoById(videoId);
-        p.playVideo?.();
+        if (yaCargada) {
+          /* Ya está cargada (en pausa): es un play, igual que el botón del
+             reproductor, que en el iPhone sí suena. */
+          p.setVolume?.(vol);
+          p.playVideo?.();
+        } else {
+          /* En Safari, cargar otra canción no cuenta como toque: el video
+             nuevo arranca después y lo bloquea. Un play DENTRO del toque
+             sobre lo que ya estaba cargado desbloquea el reproductor, y la
+             canción nueva ya puede sonar sola. Se hace en silencio para que
+             la anterior no se oiga ese instante. */
+          if (loadedIdRef.current) { p.setVolume?.(0); p.playVideo?.(); }
+          loadedIdRef.current = videoId;
+          p.loadVideoById(videoId);
+          window.setTimeout(() => { try { ytPlayerRef.current?.setVolume?.(vol); } catch { /* noop */ } }, 500);
+        }
       } catch { /* el player aún no está listo */ }
+
+      /* Si a pesar de todo no suena: otro empujón y, si sigue callada, el
+         botón «Toca para que suene aquí» en la pantalla de música. */
+      const estado = () => { try { return ytPlayerRef.current?.getPlayerState?.() ?? -1; } catch { return -1; } };
+      window.setTimeout(() => {
+        if (loadedIdRef.current !== videoId) return;
+        if (estado() !== 1 && estado() !== 3) { try { ytPlayerRef.current?.playVideo?.(); } catch { /* noop */ } }
+      }, 1200);
+      window.setTimeout(() => {
+        if (loadedIdRef.current !== videoId) return;
+        if (estado() !== 1) avisarEsperaToque({ videoId, titulo });
+      }, 3000);
     };
     window.addEventListener(EVENTO_TOCAR_AQUI, alPedir);
     return () => window.removeEventListener(EVENTO_TOCAR_AQUI, alPedir);
