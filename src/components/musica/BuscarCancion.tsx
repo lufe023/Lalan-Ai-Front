@@ -7,6 +7,8 @@ import { conSedeLocal, sedeLocal } from '../../services/sedeLocal';
 import { useEscucha } from '../../hooks/useEscucha';
 import { ajustesLalan } from '../../utils/ajustesLalan';
 import { contextoDeAudio, prepararAudio } from '../../utils/vozLalan';
+import { estadoMusica, soyElAnfitrion } from '../../services/musica';
+import { tocarAqui } from '../ui/GlobalYouTubePlayer';
 
 /** Una canción tal como la devuelve la búsqueda */
 export interface CancionEncontrada {
@@ -130,11 +132,18 @@ export const BuscarCancion: React.FC = () => {
 
   const poner = async (c: CancionEncontrada, modo: 'ahora' | 'cola') => {
     setPoniendo(`${c.videoId}:${modo}`);
+    /* Si ESTE aparato es el altavoz, la canción arranca aquí mismo, en el
+       toque: el iPhone no deja sonar un video si el play llega después por
+       la red. Con solo la radio sonando, «A la cola» también suena ya (la
+       radio no es una cola; el servidor hace lo mismo). */
+    const e = estadoMusica();
+    const soloRadio = e.sonando && !e.pista?.videoId;
+    if (soyElAnfitrion() && (modo === 'ahora' || soloRadio)) tocarAqui(c.videoId);
     try {
       const r = await ponerCancion(c.videoId, modo);
       const dicho = textoDePuesta(r);
       setPuestas((p) => ({ ...p, [c.videoId]: dicho }));
-      showToast(modo === 'ahora' ? 'Poniendo la canción' : 'A la cola', `${c.title}. ${dicho}`, r.altavoz || r.yaSonaba ? 'success' : 'info');
+      showToast(r.modo === 'ahora' ? 'Poniendo la canción' : 'A la cola', `${c.title}. ${dicho}`, r.altavoz || r.yaSonaba ? 'success' : 'info');
     } catch (e: any) {
       showToast('No se pudo poner', e?.message ?? 'Inténtalo de nuevo.', 'warning');
     } finally {

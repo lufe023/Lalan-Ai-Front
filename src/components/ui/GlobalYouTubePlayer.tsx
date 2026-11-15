@@ -93,6 +93,27 @@ function loadYouTubeApi(): Promise<any> {
   return w.__lalanYtApiPromise;
 }
 
+/** Ver `tocarAqui` */
+const EVENTO_TOCAR_AQUI = 'lalan:yt-tocar-aqui';
+
+/**
+ * Hacer sonar YA una canción en el reproductor de ESTE aparato, por su
+ * videoId, aunque todavía no esté en la cola.
+ *
+ * Existe por el iPhone (y Safari en general): un video de YouTube no suena
+ * con sonido si el play no nace de un toque. Cuando la dueña toca «Tocar ya»
+ * en el teléfono que hace de altavoz, la orden del servidor llega después,
+ * por el socket, y para entonces el toque ya no cuenta: el video se quedaba
+ * cargado y quieto mientras seguía la radio. Por eso el botón llama a esto
+ * en el mismo toque (el evento es síncrono) y el reproductor arranca ahí.
+ * Cuando la cola llega a esa canción, el reproductor ve que ya es la que
+ * suena y no la vuelve a cargar.
+ */
+export function tocarAqui(videoId: string) {
+  if (!videoId) return;
+  window.dispatchEvent(new CustomEvent(EVENTO_TOCAR_AQUI, { detail: { videoId } }));
+}
+
 export const GlobalYouTubePlayer: React.FC = () => {
   const {
     youtubeAnchorEl,
@@ -143,6 +164,9 @@ export const GlobalYouTubePlayer: React.FC = () => {
    * REAL o lo apaga una pausa REAL.
    */
   const autoplayIntentRef = useRef(false);
+
+  /** La canción que `tocarAqui` puso a sonar antes de que la cola llegue a ella */
+  const pedidaRef = useRef<{ videoId: string; hasta: number } | null>(null);
 
   /** Cuándo falló el último vídeo, para distinguir la pausa de verdad de
    *  la que es solo el player rindiéndose. */
@@ -279,6 +303,17 @@ export const GlobalYouTubePlayer: React.FC = () => {
     if (!p) return;
 
     const track = ytQueue[ytIndex];
+
+    /* Una canción que se mandó a sonar con `tocarAqui` y que la cola todavía
+       no alcanzó (la cola llega por la red, un momento después): no se pisa
+       con la que marque la cola mientras tanto, ni se para si la cola está
+       vacía. A los 15 s, si la cola nunca llegó a ella, manda la cola. */
+    const pedida = pedidaRef.current;
+    if (pedida) {
+      if (track?.videoId === pedida.videoId || Date.now() > pedida.hasta) pedidaRef.current = null;
+      else return;
+    }
+
     if (!track) {
       // Cola vacía: quitaron todas las fuentes, así que paramos de verdad
       // en lugar de dejar sonando la canción anterior.
@@ -293,7 +328,7 @@ export const GlobalYouTubePlayer: React.FC = () => {
       return;
     }
 
-    if (loadedIdRef.current === track.videoId) return; // ya es la que suena
+    if (loadedIdRef.current === track.videoId) { currentTrackRef.current = track; return; } // ya es la que suena
 
     const first = loadedIdRef.current === null;
     loadedIdRef.current = track.videoId;
@@ -387,6 +422,29 @@ export const GlobalYouTubePlayer: React.FC = () => {
   useEffect(() => () => {
     cancelFade();
     window.clearTimeout(empujonRef.current);
+  }, []);
+
+  /* `tocarAqui`: cargar y sonar en el mismo toque. Ver arriba. */
+  useEffect(() => {
+    const alPedir = (e: Event) => {
+      const videoId = String((e as CustomEvent).detail?.videoId ?? '');
+      const p = ytPlayerRef.current;
+      if (!videoId || !p) return;
+      pedidaRef.current = { videoId, hasta: Date.now() + 15_000 };
+      loadedIdRef.current = videoId;
+      autoplayIntentRef.current = true;
+      intentandoSonarRef.current = true;
+      cancelFade();
+      window.clearTimeout(empujonRef.current);
+      try {
+        p.setVolume?.(mutedRef.current ? 0 : volRef.current);
+        p.loadVideoById(videoId);
+        p.playVideo?.();
+      } catch { /* el player aún no está listo */ }
+    };
+    window.addEventListener(EVENTO_TOCAR_AQUI, alPedir);
+    return () => window.removeEventListener(EVENTO_TOCAR_AQUI, alPedir);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Bitácora: qué canción sonó de verdad ─────────────────────────────
