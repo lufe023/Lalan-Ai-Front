@@ -161,6 +161,24 @@
   /* ── Portada ───────────────────────────────── */
   .portada { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; padding-block: 64px 72px; }
   .portada .texto { display: grid; gap: 22px; }
+  /* Portada con letra gruesa en mayúsculas y la frase clave resaltada en el rosa de los botones */
+  .portada h1 {
+    font-family: "Unbounded", var(--sans); font-weight: 800; text-transform: uppercase;
+    font-size: clamp(2rem, 4.3vw, 3.5rem); line-height: 1.06; letter-spacing: -0.02em;
+  }
+  .portada h1 em.acento {
+    font-style: normal; font-weight: 800; color: #fff; background: var(--boton);
+    padding: 0 .14em; border-radius: .14em; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+  .etiqueta-flot {
+    position: absolute; z-index: 2; white-space: nowrap; font-size: .8rem; font-weight: 700; color: var(--tinta);
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 999px; padding: 7px 13px;
+    box-shadow: 0 10px 24px -14px rgba(37,26,31,.45);
+  }
+  .etiqueta-flot::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--acento-marca); margin-right: 8px; vertical-align: 1px; }
+  .etiqueta-flot.e1 { left: -6%; top: 14%; }
+  .etiqueta-flot.e2 { left: 8%; bottom: 10%; }
+  .etiqueta-flot.e3 { right: 26%; top: -16px; }
   .portada .bajada { font-size: 1.12rem; color: var(--tinta-2); max-width: 34em; }
   .acciones { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .sellos { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .86rem; color: var(--tinta-2); }
@@ -701,6 +719,10 @@
     /* El teléfono de la portada a la izquierda: a la derecha lo tapa el globito de Lalan */
     .collage .marco-tel { left: 6%; right: auto; width: 36%; }
     .collage .marco-pc { margin-left: 16%; width: 84%; }
+    .etiqueta-flot { font-size: .7rem; padding: 5px 10px; }
+    .etiqueta-flot.e1 { left: 0; top: -14px; }
+    .etiqueta-flot.e2 { left: auto; right: 0; bottom: 6px; }
+    .etiqueta-flot.e3 { display: none; }
     #metricas .marco-pc { max-width: 390px; margin-inline: auto; }
     #metricas .marco-barra { display: none; }
     .flexible { gap: 12px; }
