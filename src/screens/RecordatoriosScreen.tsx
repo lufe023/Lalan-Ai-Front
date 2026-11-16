@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, Check, Clock, Loader2, MapPin, Pencil, Plus, Repeat, Trash2, UserRound } from 'lucide-react';
+import { Bell, Check, Clock, Loader2, MapPin, MessageCircle, Pencil, Plus, Repeat, Trash2, UserRound } from 'lucide-react';
+import { irA } from '../services/avisos';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useSedeActiva } from '../context/SedeActivaContext';
@@ -297,6 +298,13 @@ export const RecordatoriosScreen: React.FC = () => {
                     className="min-h-[36px] px-3.5 rounded-full border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 text-[0.8125rem] font-semibold cursor-pointer disabled:opacity-50">
                     Mañana
                   </button>
+                  {/* Nació de un chat (Lalan vio algo pendiente): abre ese chat */}
+                  {p.enlace?.startsWith('chat:') && (
+                    <button type="button" onClick={() => irA({ ir: 'chats', conversacion: p.enlace!.slice('chat:'.length) })}
+                      className="min-h-[36px] px-3.5 rounded-full border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 text-[0.8125rem] font-semibold inline-flex items-center gap-1 cursor-pointer">
+                      <MessageCircle className="w-3.5 h-3.5" /> Abrir chat
+                    </button>
+                  )}
                 </div>
               )}
             </article>

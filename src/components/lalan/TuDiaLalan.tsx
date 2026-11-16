@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bell, CalendarClock, Cake, Check, ChevronDown, Clock, Loader2, Package, UserRound } from 'lucide-react';
+import { Bell, CalendarClock, Cake, Check, ChevronDown, Clock, Loader2, MessageCircle, Package, UserRound } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CarrilHorizontal } from '../ui/CarrilHorizontal';
 import { alRecibir } from '../../services/socket';
@@ -29,7 +29,11 @@ const ETIQUETA: Record<ItemTuDia['tipo'], { texto: string; clase: string; Icono:
   cita: { texto: 'Cita', clase: 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-200', Icono: CalendarClock },
   cumple: { texto: 'Cumpleaños', clase: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200', Icono: Cake },
   producto: { texto: 'No alcanza', clase: 'bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300', Icono: Package },
+  compromiso: { texto: 'Pendiente en un chat', clase: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200', Icono: MessageCircle },
 };
+
+/** Un recordatorio que nació de un chat abre ese chat */
+const chatDelEnlace = (enlace: string | null) => (enlace?.startsWith('chat:') ? enlace.slice('chat:'.length) : null);
 
 const botonPrincipal = 'min-h-[40px] px-4 rounded-full bg-[var(--primary)] text-white text-[0.8125rem] font-semibold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5';
 const botonSecundario = 'min-h-[40px] px-4 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 text-[0.8125rem] font-semibold cursor-pointer disabled:opacity-50';
@@ -113,6 +117,9 @@ export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir, var
                     <button type="button" className={botonSecundario} disabled={ocupado === i.id} onClick={() => void hacer(i.id, () => pendientesApi.posponer(i.id, { minutos: 60 }), 'Te lo recuerdo en una hora')}>
                       <Clock className="w-4 h-4 inline -mt-0.5 mr-1" />Pospón 1 h
                     </button>
+                    {chatDelEnlace(i.enlace) && (
+                      <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'chats', conversacion: chatDelEnlace(i.enlace) })}>Abrir chat</button>
+                    )}
                   </>
                 ))}
                 {i.tipo === 'cita' && (
@@ -134,6 +141,11 @@ export const TuDiaLalan: React.FC<Props> = ({ onIr, onPreguntar, onEscribir, var
                     {(i.telefono || i.conversationId) && <button type="button" className={botonPrincipal} onClick={() => felicitar(i)}>Felicitarla</button>}
                     {i.clientId && <button type="button" className={botonSecundario} onClick={() => onIr({ ir: 'clients', aviso: `clienta:${i.clientId}` })}>Ver ficha</button>}
                   </>
+                )}
+                {i.tipo === 'compromiso' && (
+                  <button type="button" className={botonPrincipal} onClick={() => onIr({ ir: 'chats', conversacion: i.conversationId })}>
+                    <MessageCircle className="w-4 h-4" /> Abrir chat
+                  </button>
                 )}
                 {i.tipo === 'producto' && (
                   <button type="button" className={botonPrincipal} onClick={() => onIr({ ir: 'compras', aviso: `por-pedir:${i.sede.id}` })}>Pedirlo</button>

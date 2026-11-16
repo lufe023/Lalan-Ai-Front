@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { ItemAnimado, ListaAnimada, RESORTE } from '../components/ui/movimiento';
 import { FotoClienta } from '../components/ui/FotoClienta';
 import { motion, AnimatePresence } from 'motion/react';
@@ -41,6 +41,7 @@ import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
 import { SedesDeClienta } from '../components/ui/SedesDeClienta';
+import { compromisosApi, EVENTO_NUEVA_CITA, leerNuevaCita } from '../services/compromisos';
 
 /** Cuántas clientas se sugieren mientras se escribe su nombre */
 const CLIENTAS_SUGERIDAS = 6;
@@ -238,6 +239,35 @@ export const CalendarScreen: React.FC = () => {
     if (cl) { setNewClientName(cl.name); setNewClientPhone(cl.phone); setNewChannel(cl.preferredChannel); }
   };
 
+  /* «Agendar cita» desde un chat (lo que Lalan vio pendiente): «Nueva cita»
+     se abre con quién, el día, la hora y la nota ya puestos. Al guardar, el
+     pendiente del chat queda resuelto. */
+  const compromisoDeLaCita = useRef<string | null>(null);
+  const [pedidoNueva, setPedidoNueva] = useState(0);
+  useEffect(() => {
+    const otra = () => setPedidoNueva((n) => n + 1);
+    window.addEventListener(EVENTO_NUEVA_CITA, otra);
+    return () => window.removeEventListener(EVENTO_NUEVA_CITA, otra);
+  }, []);
+  useEffect(() => {
+    const p = leerNuevaCita();
+    if (!p) return;
+    setActiveAppointment(null);
+    setVerRecordatorios(false);
+    setVerPendientes(false);
+    if (p.fecha) { setCurrentDateStr(p.fecha); setIrA({ fecha: new Date(`${p.fecha}T12:00:00`), vez: Date.now() }); }
+    const cl = p.clientId ? clients.find(c => c.id === p.clientId) : undefined;
+    if (cl) handleSelectClient(cl.id);
+    else { setSelectedClientId(p.clientId ?? ''); setNewClientName(p.clientName); setNewClientPhone(p.clientPhone ?? ''); }
+    if (p.canal) setNewChannel(p.canal);
+    if (p.hora) setNewTime(p.hora);
+    setNewNotes(p.notas ?? '');
+    setErrorAlAgendar(null);
+    compromisoDeLaCita.current = p.compromisoId ?? null;
+    setShowNewAptModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoNueva]);
+
   /* Escribir el nombre busca en TODO el directorio, no solo en lo que hay
      cargado: si la clienta ya existe, aparece en el desplegable de arriba
      mientras escribes. Sin esto, con el directorio paginado, una clienta
@@ -321,6 +351,8 @@ export const CalendarScreen: React.FC = () => {
     } finally {
       setAgendando(false);
     }
+    // Venía de algo pendiente en un chat: queda resuelto
+    if (compromisoDeLaCita.current) { void compromisosApi.agendado(compromisoDeLaCita.current).catch(() => undefined); compromisoDeLaCita.current = null; }
     setNewClientName(''); setNewClientPhone(''); setSelectedClientId('');
     setSelectedTierName(''); setCustomPrice(null); setNewNotes('');
     setShowNewAptModal(false);
@@ -901,7 +933,7 @@ export const CalendarScreen: React.FC = () => {
       {/* ── New Appointment Modal ─────────────────────────────────────────── */}
       <IOSModal
         isOpen={showNewAptModal}
-        onClose={() => { setShowNewAptModal(false); setCustomPrice(null); setSelectedTierName(''); }}
+        onClose={() => { setShowNewAptModal(false); setCustomPrice(null); setSelectedTierName(''); compromisoDeLaCita.current = null; }}
         title="Nueva Cita en Salón"
         subtitle={`Agendando para el ${currentDateStr}`}
       >

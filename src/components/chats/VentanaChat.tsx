@@ -18,6 +18,7 @@ import { SedeDelChat } from './SedeDelChat';
 import { EspecialistaDelChat } from './EspecialistaDelChat';
 import { BloquearChat, ProteccionDelChat } from './ProteccionDelChat';
 import { useAuth } from '../../context/AuthContext';
+import { CompromisosDelChat } from './CompromisosDelChat';
 
 /** "1:22 a. m." si es de hoy; "26 sep, 1:22 a. m." si no. Nunca el ISO crudo. */
 export function horaDeMensaje(iso?: string) {
@@ -373,6 +374,9 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           </div>
         )}
 
+        {/* Lo que Lalan vio pendiente en el chat: agendarlo o recordarlo ahí mismo */}
+        <CompromisosDelChat key={`compromisos-${activeConversation.id}`} conversacion={activeConversation} agente={agente} />
+
         {/* ¿A quién le escribes? A la clienta, o a la asistente para que ella le responda */}
         {activeConversation.status !== 'ai_active' && !ventanaCerrada && (
           <div className="px-4 pt-2 flex items-center gap-1.5 shrink-0 bg-white/60 dark:bg-neutral-950/60" role="radiogroup" aria-label="A quién le escribes">
@@ -611,6 +615,9 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
             </button>
           </div>
         )}
+
+        {/* Lo que Lalan vio pendiente en el chat: agendarlo o recordarlo ahí mismo */}
+        <CompromisosDelChat key={`compromisos-${activeConversation.id}`} conversacion={activeConversation} agente={agente} />
 
         {/* ¿A quién le escribes? A la clienta, o a la asistente para que ella le responda */}
         {activeConversation.status !== 'ai_active' && !ventanaCerrada && (
