@@ -53,7 +53,9 @@ export type ItemTuDia =
   | { tipo: 'recordatorio'; id: string; titulo: string; detalle: string; cuando: string; vencido: boolean; relacion: Pendiente['relacion']; enlace: string | null }
   | { tipo: 'cita'; id: string; motivo: 'por_confirmar' | 'sin_especialista'; titulo: string; detalle: string; cuando: string; clientId: string | null; conversationId: string | null }
   | { tipo: 'cumple'; id: string; quien: 'clienta' | 'equipo'; nombre: string; titulo: string; detalle: string; dias: number; clientId: string | null; telefono: string | null; conversationId: string | null }
-  | { tipo: 'producto'; id: string; titulo: string; detalle: string; sede: { id: string; nombre: string } };
+  | { tipo: 'producto'; id: string; titulo: string; detalle: string; sede: { id: string; nombre: string } }
+  /** Algo que quedó pendiente en un chat (Lalan lo vio): se agenda o se recuerda desde el chat */
+  | { tipo: 'compromiso'; id: string; titulo: string; detalle: string; conversationId: string; clientId: string | null };
 
 export interface TuDia {
   nombre: string;
