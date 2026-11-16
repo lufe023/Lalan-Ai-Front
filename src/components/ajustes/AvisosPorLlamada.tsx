@@ -51,10 +51,10 @@ const tarjeta = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slat
 const cuando = (iso: string) => new Date(iso).toLocaleString('es-DO', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 /**
- * Ajustes → Avisos por llamada. Lalán llama por teléfono:
+ * Ajustes → Avisos por llamada. Lalan llama por teléfono:
  *  - a esta persona, por los avisos que ella elija (lo urgente);
  *  - a las clientas, unas horas antes de su cita (lo elige la dirección por sede).
- * Sale apagado: hace falta el módulo en el plan y que Lalán tenga las llamadas
+ * Sale apagado: hace falta el módulo en el plan y que Lalan tenga las llamadas
  * encendidas. Mientras tanto se puede dejar todo elegido.
  */
 export const AvisosPorLlamada: React.FC = () => {
@@ -93,7 +93,7 @@ export const AvisosPorLlamada: React.FC = () => {
     finally { setOcupado(null); }
   };
 
-  /** Oír en mi teléfono lo que Lalán le dice a la clienta de esa sede */
+  /** Oír en mi teléfono lo que Lalan le dice a la clienta de esa sede */
   const probarCita = async (sede: string) => {
     setError(''); setAviso(''); setOcupado(`prueba-${sede}`);
     try { await api.post('/llamadas/prueba-cita', { sede }); setAviso('Te estamos llamando con el recordatorio de la cita. Contesta y prueba marcar 1.'); void cargar(); }
@@ -125,7 +125,7 @@ export const AvisosPorLlamada: React.FC = () => {
         <div className="flex items-start gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0"><PhoneCall className="w-4 h-4" /></div>
           <div className="min-w-0">
-            <h3 className="text-[0.9375rem] font-bold">Lalán te llama cuando es urgente</h3>
+            <h3 className="text-[0.9375rem] font-bold">Lalan te llama cuando es urgente</h3>
             <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mt-0.5">
               Una llamada de verdad, con su voz, para lo que no puede esperar. Y a tus clientas, para recordarles la cita: marcan 1 y queda confirmada.
             </p>
@@ -149,7 +149,7 @@ export const AvisosPorLlamada: React.FC = () => {
         ) : !datos.proveedor ? (
           <div className="rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 p-3 flex items-start gap-2.5">
             <PhoneOff className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
-            <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Las llamadas se están encendiendo en Lalán. Deja elegido lo que quieres: empieza a llamar solo, sin que hagas nada más.</p>
+            <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Las llamadas se están encendiendo en Lalan. Deja elegido lo que quieres: empieza a llamar solo, sin que hagas nada más.</p>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
@@ -171,7 +171,7 @@ export const AvisosPorLlamada: React.FC = () => {
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">Llámame cuando…</h3>
           <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-            {datos.miTelefono ? `Te llama al ${datos.miTelefono}. Además de la notificación, y como mucho una vez cada 15 minutos por el mismo aviso.` : 'Anota tu teléfono: es al que te llama (y también puedes entrar a Lalán con él).'}
+            {datos.miTelefono ? `Te llama al ${datos.miTelefono}. Además de la notificación, y como mucho una vez cada 15 minutos por el mismo aviso.` : 'Anota tu teléfono: es al que te llama (y también puedes entrar a Lalan con él).'}
           </p>
           {!datos.miTelefono && (
             <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (telefono.trim()) void guardar({ telefono: telefono.trim() }, 'telefono'); }}>
@@ -205,7 +205,7 @@ export const AvisosPorLlamada: React.FC = () => {
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">Recordar la cita llamando a la clienta</h3>
             <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-              Lalán le recuerda la cita y le pide marcar 1 para confirmar o 2 para cambiarla. Si marca 2, te avisa para darle otra hora. Solo llama entre 8 a. m. y 8 p. m.
+              Lalan le recuerda la cita y le pide marcar 1 para confirmar o 2 para cambiarla. Si marca 2, te avisa para darle otra hora. Solo llama entre 8 a. m. y 8 p. m.
             </p>
           </div>
           <div className="space-y-2">
@@ -278,12 +278,12 @@ const CAMPOS: { campo: string; etiqueta: string; ejemplo: string }[] = [
   { campo: '{sede}', etiqueta: 'Sede', ejemplo: 'Piantini' },
   { campo: '{salon}', etiqueta: 'Salón', ejemplo: 'tu salón' },
 ];
-const SUGERIDO = 'Hola {nombre}, soy Lalán, la asistente de {salon}. Le recuerdo su cita de {servicio} {cuando}. Para confirmar, presione 1. Si necesita cambiarla, presione 2.';
+const SUGERIDO = 'Hola {nombre}, soy Lalan, la asistente de {salon}. Le recuerdo su cita de {servicio} {cuando}. Para confirmar, presione 1. Si necesita cambiarla, presione 2.';
 
 /**
- * Lo que dice Lalán al llamar a la clienta, con las palabras del salón.
+ * Lo que dice Lalan al llamar a la clienta, con las palabras del salón.
  * Los campos entre llaves se llenan con los datos de cada cita; si el texto
- * no dice que marque 1, Lalán lo agrega al final.
+ * no dice que marque 1, Lalan lo agrega al final.
  */
 const TextoDeLaLlamada: React.FC<{
   sede: { id: string; nombre: string; textoLlamadaCita: string | null };
@@ -300,13 +300,13 @@ const TextoDeLaLlamada: React.FC<{
   if (!abierto) {
     return (
       <button type="button" onClick={() => setAbierto(true)} className="ml-0.5 text-[0.75rem] font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">
-        <ChevronRight className="w-3.5 h-3.5" /> Lo que dice Lalán en {sede.nombre}
+        <ChevronRight className="w-3.5 h-3.5" /> Lo que dice Lalan en {sede.nombre}
       </button>
     );
   }
   return (
     <div className="rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 p-3 space-y-2">
-      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Lo que dice Lalán al llamar</div>
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Lo que dice Lalan al llamar</div>
       <textarea value={texto} onChange={(e) => setTexto(e.target.value.slice(0, 400))} rows={3} placeholder={SUGERIDO}
         className="w-full px-3 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[16px] sm:text-[0.8125rem] leading-snug resize-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
       <div className="flex flex-wrap gap-1.5">

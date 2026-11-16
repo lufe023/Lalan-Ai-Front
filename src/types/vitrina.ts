@@ -61,7 +61,7 @@ export const INFO_BLOQUE_VITRINA: Record<TipoBloqueVitrina, { nombre: string; ay
   testimonios: { nombre: 'Lo que dicen mis clientes', ayuda: 'Testimonios con fotos y videos. Sale cuando agregues el primero' },
   horario: { nombre: 'Horario', ayuda: 'Los días y horas de la sede' },
   ubicacion: { nombre: 'Ubicación', ayuda: 'El mapa, la dirección y las otras sedes' },
-  chat: { nombre: 'Escríbenos', ayuda: 'WhatsApp, Instagram y Messenger para chatear con Lalán' },
+  chat: { nombre: 'Escríbenos', ayuda: 'WhatsApp, Instagram y Messenger para chatear con Lalan' },
 };
 
 export type ModoPrecio = 'exacto' | 'desde' | 'consultar';
@@ -242,7 +242,7 @@ export interface DatosVitrina {
   direccionCorta?: string | null;
   /** Las preguntas del Lounge al reservar (vacío si el salón no tiene hospitalidad) */
   gustos?: PreguntaDeGusto[];
-  /** Las cuentas conectadas de la sede para escribirle a Lalán (null si el bloque está apagado) */
+  /** Las cuentas conectadas de la sede para escribirle a Lalan (null si el bloque está apagado) */
   chat?: ChatVitrina | null;
   /** Las otras sedes publicadas del salón, para el bloque de ubicación */
   otrasSedes?: OtraSedeVitrina[];
@@ -291,9 +291,9 @@ export interface ConfigVitrina {
 
 export interface ReservaHecha {
   confirmada: boolean;
-  /** «V-1A2B3C4D»: va en el mensaje a Lalán para que sepa que es esta reserva y no una cita nueva */
+  /** «V-1A2B3C4D»: va en el mensaje a Lalan para que sepa que es esta reserva y no una cita nueva */
   codigo?: string;
-  /** El WhatsApp de Lalán en la sede (solo dígitos); null si no está conectado */
+  /** El WhatsApp de Lalan en la sede (solo dígitos); null si no está conectado */
   whatsapp?: string | null;
   dia: string;
   fecha: string;

@@ -102,7 +102,7 @@ export const CalendarScreen: React.FC = () => {
     setActiveAppointment(a);
   };
   const totalPendientes = useMemo(() => citasPendientes(appointments).total, [appointments]);
-  // Otra pantalla (Mi semana, Lalán, la campana) pidió abrir una cita: se salta a su día y se abre.
+  // Otra pantalla (Mi semana, Lalan, la campana) pidió abrir una cita: se salta a su día y se abre.
   // Si la Agenda ya estaba abierta, llega el evento y se vuelve a mirar (aunque haya otra cita abierta).
   const [pedidoAbrir, setPedidoAbrir] = useState(0);
   useEffect(() => {

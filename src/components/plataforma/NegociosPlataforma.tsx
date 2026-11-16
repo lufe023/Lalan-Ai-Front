@@ -275,7 +275,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
     try {
       const v = await api.get<VistaCambioDePlan>(`/plataforma/negocios/${id}/cambio-plan?planId=${encodeURIComponent(planId)}`);
       const avisos = [
-        v.sedesSinLalan.length ? `Lalán deja de contestar en ${v.sedesSinLalan.join(', ')}: esos chats pasan a una persona.` : '',
+        v.sedesSinLalan.length ? `Lalan deja de contestar en ${v.sedesSinLalan.join(', ')}: esos chats pasan a una persona.` : '',
         v.adelanto.respuestas ? `Se le cobran ${v.adelanto.respuestas.toLocaleString('es-DO')} respuestas adelantadas (${v.adelanto.monto.toLocaleString('es-DO')} ${v.adelanto.moneda}).` : '',
         v.modulosQuePierde.length ? `Pierde: ${v.modulosQuePierde.join(', ')}.` : '',
         'Este mes tiene la cuota completa del plan nuevo, pero lo que sobre no pasa al mes siguiente.',
@@ -329,6 +329,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
         <div>
           <h3 className="text-[1.0625rem] font-extrabold text-slate-900 dark:text-white">{d.nombre}</h3>
           <p className="text-[0.75rem] text-slate-500">Cliente desde {fecha(d.creadoEn)} · {d.sedes.length} {d.sedes.length === 1 ? 'sede' : 'sedes'}</p>
+          {d.registroPropio && <p className="text-[0.75rem] font-semibold text-sky-700 dark:text-sky-400">Se registró sola desde la página{d.planElegido ? ` · eligió el plan «${d.planElegido}»` : ''}</p>}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button type="button" onClick={() => setParaEntrar(paraEntrar ? null : { motivo: '', cambiar: false })} disabled={entrando} aria-expanded={!!paraEntrar}
@@ -426,7 +427,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
             </label>
             {/* Llamadas extra para este salón (el módulo se le da en «Módulos»): vacío = las del plan */}
             <label className="space-y-1 block">
-              <span className="text-[0.75rem] text-slate-500">Llamadas de Lalán al mes</span>
+              <span className="text-[0.75rem] text-slate-500">Llamadas de Lalan al mes</span>
               <input type="number" min={0} disabled={soloSoporte} defaultValue={d.limitesPropios.llamadasMes ?? ''} placeholder={limitePlan?.llamadasMes == null ? 'Plan: sin tope' : `Plan: ${limitePlan.llamadasMes}`}
                 onBlur={(e) => { const v = e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))); if (v !== (d.limitesPropios.llamadasMes ?? null)) void guardar({ limiteLlamadasMes: v }); }}
                 className={campo} />
@@ -488,7 +489,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[0.8125rem] font-bold flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-[var(--primary)]" /> Salón de ejemplo</div>
-              <p className="text-[0.75rem] text-slate-500">Para presentar Lalán: se puede rellenar con datos de ejemplo y queda fuera de las estadísticas. Nunca lo marques en un salón de verdad.</p>
+              <p className="text-[0.75rem] text-slate-500">Para presentar Lalan: se puede rellenar con datos de ejemplo y queda fuera de las estadísticas. Nunca lo marques en un salón de verdad.</p>
             </div>
             <IOSToggle checked={!!d.esEjemplo} onChange={(v) => void guardar({ esEjemplo: v })} ariaLabel="Salón de ejemplo" />
           </div>
@@ -576,6 +577,7 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
               {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
               {!n.activo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-rose-100 text-rose-700">Suspendido</span>}
               {n.esEjemplo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-violet-100 text-violet-700">De ejemplo</span>}
+              {n.registroPropio && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-sky-100 text-sky-700" title={n.planElegido ? `Eligió el plan «${n.planElegido}»` : undefined}>Se registró sola</span>}
               {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}
             </div>
             <UsoDelPlan uso={n.uso} limites={n.limites} compacto />

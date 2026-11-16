@@ -82,6 +82,32 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean; tipo?: 'pantalla
     if (i >= 0 && i < cola.length) publicarEstado({ indice: i, posicion: 0 });
   };
 
+  /**
+   * Tocar YA una canción por su videoId (la dueña se la pidió a Lalan o la
+   * buscó en el reproductor). Se busca en la cola MÁS NUEVA, la del módulo y
+   * no la de este render: el servidor manda la cola con la canción dentro y
+   * la orden justo detrás, y puede que React aún no haya pintado la cola.
+   * Si todavía no está, se espera a la próxima cola que llegue.
+   */
+  const pendienteRef = useRef<{ videoId: string; hasta: number } | null>(null);
+  const tocarCancion = (videoId: any) => {
+    if (typeof videoId !== 'string' || !videoId) return;
+    const c = estadoMusica().cola ?? [];
+    const i = c.findIndex(t => t.videoId === videoId);
+    if (i >= 0) {
+      pendienteRef.current = null;
+      publicarEstado({ indice: i, posicion: 0, sonando: true });
+    } else {
+      pendienteRef.current = { videoId, hasta: Date.now() + 15_000 };
+    }
+  };
+  useEffect(() => {
+    const p = pendienteRef.current;
+    if (!p) return;
+    if (Date.now() > p.hasta) { pendienteRef.current = null; return; }
+    if (cola.some(t => t.videoId === p.videoId)) tocarCancion(p.videoId);
+  }, [cola]);
+
   /* Los eventos del player se registran UNA vez, al crearlo, así que
      capturarían el `mover` de aquel render y avanzarían siempre desde el
      índice de entonces: la cola se quedaría botando entre las dos primeras
@@ -162,6 +188,7 @@ export function useAltavoz(opciones: { bajarAlLlamar?: boolean; tipo?: 'pantalla
           }
           break;
         case 'pista':   if (Number.isFinite(Number(v))) irA(Number(v)); break;
+        case 'cancion': tocarCancion(v); break;
         case 'video': {
           const quiere = v === null || v === undefined ? undefined : !!v;
           setVideoGrande(actual => {

@@ -5,6 +5,7 @@ import {
   iniciarMusica, publicarEstado, enviarCola, useMusicaSala, registrarAltavoz, activarAltavoz,
   dispositivoPropio, programar, miAjusteMs, miAutoMs, calibrarme, estadoMusica, soyElAnfitrion,
 } from '../services/musica';
+import { avisarEsperaToque } from '../services/esperaToque';
 import {
   corregirSeguidor, posicionObjetivo, arrancarSincronizado, Calibrador, MemoriaSeguidor,
 } from '../utils/seguirLider';
@@ -46,6 +47,8 @@ export const PuenteMusica: React.FC = () => {
 
   const pista = ytQueue[ytIndex];
   const hayYt = !!pista;
+  /** Suena Lalan Radio (el ambiente) y no YouTube */
+  const enRadio = isPlayingLounge && !ytPlaying;
 
   /**
    * Las órdenes se aplican a través de una referencia y no directamente en
@@ -92,11 +95,12 @@ export const PuenteMusica: React.FC = () => {
           else if (!isPlayingLounge) togglePlayLounge();
           break;
         case 'pause':
-          if (hayYt) conHora(() => ytPlayerRef?.current?.pauseVideo?.());
+          if (enRadio) togglePlayLounge();
+          else if (hayYt) conHora(() => ytPlayerRef?.current?.pauseVideo?.());
           else if (isPlayingLounge) togglePlayLounge();
           break;
         case 'next':
-          hayYt ? ytNext() : nextLoungeTrack();
+          hayYt && !enRadio ? ytNext() : nextLoungeTrack();
           break;
         case 'prev':
           if (hayYt) ytPrev();
@@ -112,9 +116,81 @@ export const PuenteMusica: React.FC = () => {
         case 'pista':
           if (hayYt && Number.isFinite(Number(valor))) ytPlayIndex(Number(valor));
           break;
+        case 'cancion':
+          tocarCancion(valor);
+          break;
       }
     } catch { /* el player aún no está listo; la siguiente orden llegará */ }
   };
+
+  /**
+   * Tocar YA una canción por su videoId. La orden llega del servidor justo
+   * después del aviso de "hay una canción nueva", y este aparato arma su
+   * propia cola: lo normal es que la canción aún no esté (la cola se pide por
+   * HTTP al recibir el aviso). Se guarda y se toca en cuanto aparece.
+   */
+  const pendienteRef = useRef<{ videoId: string; hasta: number } | null>(null);
+  const ytQueueRef = useRef(ytQueue);
+  ytQueueRef.current = ytQueue;
+  const sonandoRef = useRef(ytPlaying);
+  sonandoRef.current = ytPlaying;
+  const tocarCancion = (videoId: any) => {
+    if (typeof videoId !== 'string' || !videoId) return;
+    const i = ytQueueRef.current.findIndex((t: any) => t.videoId === videoId);
+    if (i >= 0) {
+      pendienteRef.current = null;
+      ytPlayIndex(i);
+      /* Si la música estaba en pausa, el reproductor solo deja la canción
+         cargada: aquí la pidieron para que SUENE, así que se le da play. */
+      window.setTimeout(() => {
+        if (sonandoRef.current) return;
+        try { ytPlayerRef?.current?.playVideo?.(); } catch { /* noop */ }
+      }, 1200);
+      /* El iPhone no deja sonar un video sin un toque. Si a los 3 s sigue
+         callado, se pide el toque en la pantalla de música. */
+      window.setTimeout(() => {
+        if (sonandoRef.current) return;
+        const t = ytQueueRef.current.find((x: any) => x.videoId === videoId);
+        avisarEsperaToque({ videoId, titulo: t?.title ?? 'la canción' });
+      }, 3000);
+    } else pendienteRef.current = { videoId, hasta: Date.now() + 15_000 };
+  };
+  useEffect(() => {
+    const p = pendienteRef.current;
+    if (!p) return;
+    if (Date.now() > p.hasta) { pendienteRef.current = null; return; }
+    if (ytQueue.some((t: any) => t.videoId === p.videoId)) tocarCancion(p.videoId);
+  }, [ytQueue]);
+
+  /**
+   * La radio y YouTube no suenan a la vez. Lalan Radio es otro reproductor
+   * (el sonido ambiente): cuando YouTube arranca en este aparato, la radio
+   * se calla. Antes seguían las dos, o peor: la radio tapaba a la canción
+   * que la dueña acababa de pedir.
+   */
+  useEffect(() => {
+    if (!ytPlaying) return;
+    if (isPlayingLounge) togglePlayLounge();
+    avisarEsperaToque(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ytPlaying]);
+
+  /**
+   * Una canción pedida (por la dueña, por Lalan o por una clienta) mientras
+   * en este altavoz solo suena la radio: la radio es ambiente, no una cola
+   * de canciones, así que la pedida no tiene a nadie delante y suena ya.
+   * Se intenta una vez por canción; si el teléfono no deja sonar sin un
+   * toque, la pantalla de música lo pide (ver `avisarEsperaToque`).
+   */
+  const probadasRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (!soyAnfitrion || !isPlayingLounge || ytPlaying) return;
+    const pedida = ytQueue.find((t: any) => t.peticionId && !probadasRef.current.has(t.peticionId));
+    if (!pedida) return;
+    probadasRef.current.add((pedida as any).peticionId);
+    tocarCancion(pedida.videoId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ytQueue, soyAnfitrion, isPlayingLounge, ytPlaying]);
 
   // Un solo oyente para toda la vida de la app
   useEffect(() => alRecibir('musica:orden', (o: any) => aplicar.current(o)), []);
@@ -131,11 +207,13 @@ export const PuenteMusica: React.FC = () => {
      serviría de nada. */
   const contar = useRef<() => void>(() => {});
   contar.current = () => {
-    const t = hayYt ? pista : null;
+    /* Si lo que suena es la radio, se cuenta la radio aunque haya una
+       canción de YouTube cargada y quieta: es lo que se oye en el salón. */
+    const t = hayYt && !enRadio ? pista : null;
     publicarEstado({
-      sonando: hayYt ? ytPlaying : isPlayingLounge,
-      posicion: hayYt ? ytTime : 0,
-      duracion: hayYt ? ytDuration : 0,
+      sonando: t ? ytPlaying : isPlayingLounge,
+      posicion: t ? ytTime : 0,
+      duracion: t ? ytDuration : 0,
       volumen: ytVolume,
       pista: t
         ? {

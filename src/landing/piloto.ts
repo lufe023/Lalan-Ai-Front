@@ -41,9 +41,37 @@ function telefonoValido(t: string): boolean {
   return d.length === 10 && /^(809|829|849)/.test(d);
 }
 
+/**
+ * «Crear mi cuenta»: la app abre el registro con el plan que tocó en las
+ * tarjetas (o el que eligió en el formulario) y la visita, para medir.
+ */
+function iniciarRegistro(form: HTMLFormElement) {
+  const enlace = (a: HTMLAnchorElement | null, conPlan: boolean) => {
+    a?.addEventListener('click', () => {
+      const q = new URLSearchParams({ registro: '1' });
+      const plan = conPlan ? (a.dataset.plan || $<HTMLSelectElement>('p-plan')?.value || '') : '';
+      if (plan && plan !== 'no_se') q.set('plan', plan);
+      const visita = visitaActual();
+      if (visita) q.set('visita', visita);
+      a.href = `/app/?${q.toString()}`;
+    });
+  };
+  enlace($<HTMLAnchorElement>('r-crear'), true);
+  enlace($<HTMLAnchorElement>('pie-crear'), false);
+
+  // El formulario de siempre, para quien prefiere que se la instalemos
+  const abrir = $<HTMLButtonElement>('p-abrir');
+  abrir?.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    abrir.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) $<HTMLInputElement>('p-nombre').focus();
+  });
+}
+
 export async function iniciarPiloto(): Promise<void> {
   const form = $<HTMLFormElement>('form-piloto');
   if (!form) return;
+  iniciarRegistro(form);
   const aviso = $<HTMLParagraphElement>('p-aviso');
   const boton = $<HTMLButtonElement>('p-enviar');
 

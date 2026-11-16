@@ -23,7 +23,7 @@ export const fotosSugeridas = (productoId: string) => api.get<Sugeridas>(`/produ
 
 /**
  * Un producto sin foto: si Plataforma tiene fotos de presentación de lo que
- * es (aceite de cutículas, acetona…), Lalán las ofrece y con un toque quedan
+ * es (aceite de cutículas, acetona…), Lalan las ofrece y con un toque quedan
  * de portada.
  */
 export const FotoSugerida: React.FC<{ productoId: string; onUsar: (dataUrl: string) => Promise<void> }> = ({ productoId, onUsar }) => {
@@ -51,7 +51,7 @@ export const FotoSugerida: React.FC<{ productoId: string; onUsar: (dataUrl: stri
     <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900 flex items-center gap-3">
       <span className="relative w-7 h-7 flex items-center justify-center shrink-0"><EsferaLalan modo="reposo" tamano={26} /></span>
       <div className="flex-1 min-w-0">
-        <p className="text-[0.75rem] font-bold text-purple-700 dark:text-purple-300">Lalán tiene una foto para esto</p>
+        <p className="text-[0.75rem] font-bold text-purple-700 dark:text-purple-300">Lalan tiene una foto para esto</p>
         <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Foto de presentación de «{s.conocido?.nombre}». Toca la que quieras de portada.</p>
       </div>
       <div className="flex gap-2 shrink-0">

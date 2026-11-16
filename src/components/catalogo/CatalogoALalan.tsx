@@ -84,8 +84,8 @@ const mensaje = (e: any, porDefecto: string) => {
 const precioValido = (p: string) => Number(p.replace(',', '.')) > 0;
 
 /**
- * «Pásale a Lalán tu catálogo»: un video (su reel, YouTube o del teléfono),
- * fotos o el PDF de su catálogo impreso o de un diseño. Lalán saca los
+ * «Pásale a Lalan tu catálogo»: un video (su reel, YouTube o del teléfono),
+ * fotos o el PDF de su catálogo impreso o de un diseño. Lalan saca los
  * productos (y los servicios, del catálogo) con su precio si lo trae; la
  * dueña solo revisa, pone el precio que falte y toca «Crear».
  */
@@ -151,7 +151,7 @@ export const CatalogoALalan: React.FC<{
       // Un video con un solo producto es SU video: va a su Vitrina. Con varios, que ella decida
       setVideoEnVitrina(r.productos.length === 1 && r.video !== 'youtube' && !(archivo && archivo.size > VIDEO_SUBE_ENTERO));
     } catch (e) {
-      setError(mensaje(e, 'No pude conectar con Lalán ahora mismo. Inténtalo en un momento.'));
+      setError(mensaje(e, 'No pude conectar con Lalan ahora mismo. Inténtalo en un momento.'));
     } finally {
       setLeyendo(null);
       if (url) URL.revokeObjectURL(url);
@@ -201,7 +201,7 @@ export const CatalogoALalan: React.FC<{
       })));
       setVideoEnVitrina(false);
     } catch (e) {
-      setError(mensaje(e, 'No pude conectar con Lalán ahora mismo. Inténtalo en un momento.'));
+      setError(mensaje(e, 'No pude conectar con Lalan ahora mismo. Inténtalo en un momento.'));
     } finally {
       setLeyendo(null);
       if (url) URL.revokeObjectURL(url);
@@ -311,7 +311,7 @@ export const CatalogoALalan: React.FC<{
   const entrada = 'w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.8125rem] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 
   return (
-    <IOSModal isOpen={isOpen} onClose={onClose} title="Pásale a Lalán tu catálogo" subtitle="Un video, fotos o el PDF: Lalán crea los productos y servicios">
+    <IOSModal isOpen={isOpen} onClose={onClose} title="Pásale a Lalan tu catálogo" subtitle="Un video, fotos o el PDF: Lalan crea los productos y servicios">
       <div className="space-y-4 text-xs pb-6">
         {hecho ? (
           <div className="py-8 flex flex-col items-center text-center gap-3">
@@ -321,7 +321,7 @@ export const CatalogoALalan: React.FC<{
                 hecho.servicios ? `${hecho.servicios} servicio${hecho.servicios === 1 ? '' : 's'}` : null].filter(Boolean).join(' y ')} en tu catálogo
             </p>
             <p className="text-slate-500 dark:text-neutral-400 max-w-sm">
-              Ya están en la Vitrina y Lalán los ofrece en los chats. Las existencias se suman con «Recibir mercancía» cuando llegue la mercancía.
+              Ya están en la Vitrina y Lalan los ofrece en los chats. Las existencias se suman con «Recibir mercancía» cuando llegue la mercancía.
             </p>
             <div className="flex gap-2">
               <button type="button" onClick={empezarDeNuevo} className="px-4 py-2 rounded-full border border-slate-200 dark:border-neutral-700 font-bold text-slate-700 dark:text-neutral-200 cursor-pointer">Pasarle otro</button>
@@ -348,9 +348,9 @@ export const CatalogoALalan: React.FC<{
                 <Film className="w-6 h-6" /><ImagePlus className="w-6 h-6" /><FileText className="w-6 h-6" />
               </div>
               <p className="text-[0.8125rem] font-bold text-slate-900 dark:text-white">
-                {arrastrando ? 'Suéltalo y Lalán lo lee' : 'Arrastra aquí un video, fotos o el PDF de tu catálogo'}
+                {arrastrando ? 'Suéltalo y Lalan lo lee' : 'Arrastra aquí un video, fotos o el PDF de tu catálogo'}
               </p>
-              <p className="text-slate-500 dark:text-neutral-400">o toca para elegirlo. Si tu catálogo trae precios, Lalán los copia.</p>
+              <p className="text-slate-500 dark:text-neutral-400">o toca para elegirlo. Si tu catálogo trae precios, Lalan los copia.</p>
               <input ref={archivoRef} type="file" multiple accept={ACEPTA} className="hidden"
                 onChange={e => { const f = e.target.files; recibirArchivos(f ? Array.from(f) : null); e.target.value = ''; }} />
             </div>
@@ -374,7 +374,7 @@ export const CatalogoALalan: React.FC<{
           <>
             {origen.deQueTrata && (
               <p className="flex items-start gap-2 text-slate-600 dark:text-neutral-300">
-                <Sparkles className="w-4 h-4 text-purple-500 shrink-0 mt-px" /> Lalán vio: {origen.deQueTrata}
+                <Sparkles className="w-4 h-4 text-purple-500 shrink-0 mt-px" /> Lalan vio: {origen.deQueTrata}
               </p>
             )}
 
@@ -415,7 +415,7 @@ export const CatalogoALalan: React.FC<{
                               onAbrir={() => setCategoriaAbierta(a => (a === `p${i}` ? null : `p${i}`))}
                               onChange={key => { cambiarProducto(i, { categoria: key }); setCategoriaAbierta(null); }} />
                             {p.lalanDice && (
-                              <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400"><span className="font-bold text-purple-600 dark:text-purple-300">Lalán dirá:</span> {p.lalanDice}</p>
+                              <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400"><span className="font-bold text-purple-600 dark:text-purple-300">Lalan dirá:</span> {p.lalanDice}</p>
                             )}
                           </>
                         )}
@@ -425,7 +425,7 @@ export const CatalogoALalan: React.FC<{
                 ))}
                 {origen.tipo === 'video' && origen.video && origen.video.size > VIDEO_SUBE_ENTERO && productosACrear.length > 0 ? (
                   <p className="px-1 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-                    Ese video pesa {Math.round(origen.video.size / 1048576)} MB y la Vitrina acepta hasta 100 MB. Lalán lo leyó igual; para ponerlo en la Vitrina, súbelo más corto desde «Fotos y videos».
+                    Ese video pesa {Math.round(origen.video.size / 1048576)} MB y la Vitrina acepta hasta 100 MB. Lalan lo leyó igual; para ponerlo en la Vitrina, súbelo más corto desde «Fotos y videos».
                   </p>
                 ) : origen.tipo === 'video' && origen.enlace && !/instagr/i.test(origen.enlace) ? null : origen.tipo === 'video' && productosACrear.length > 0 && (
                   <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800">

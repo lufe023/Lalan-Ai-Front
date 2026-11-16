@@ -87,7 +87,7 @@ const Cifra: React.FC<{ etiqueta: string; valor: React.ReactNode; nota?: string;
 
 /**
  * Informe de conversiones: de las conversaciones del chat, quién agenda o
- * compra y quién solo pregunta. Los planes se cobran por mensajes de Lalán,
+ * compra y quién solo pregunta. Los planes se cobran por mensajes de Lalan,
  * así que las conversiones y los mensajes van en bloques separados.
  */
 export const ConversionesReportScreen: React.FC = () => {
@@ -180,7 +180,7 @@ export const ConversionesReportScreen: React.FC = () => {
           </div>
           <p className="text-[0.6875rem] text-slate-400 mt-1">
             {g.citas} cita{g.citas === 1 ? '' : 's'} · {g.compras} compra{g.compras === 1 ? '' : 's'} · {g.soloInformacion} solo información
-            {` · ${g.mensajesDeLalan} mensajes de Lalán`}
+            {` · ${g.mensajesDeLalan} mensajes de Lalan`}
             {g.promedioAntesDeCita != null && ` · ${g.promedioAntesDeCita} mensajes antes de la cita`}
           </p>
         </div>
@@ -273,7 +273,7 @@ export const ConversionesReportScreen: React.FC = () => {
                 ))}
               </div>
               <p className="text-[0.6875rem] text-slate-400 mt-3 leading-relaxed">
-                De esos, la clienta escribe {n(antes.promedioDeLaClienta)} y Lalán responde {n(antes.promedioDeLalan)} en promedio
+                De esos, la clienta escribe {n(antes.promedioDeLaClienta)} y Lalan responde {n(antes.promedioDeLalan)} en promedio
                 hasta que queda la cita. Medido en {antes.conversiones} {antes.conversiones === 1 ? 'conversación que agendó' : 'conversaciones que agendaron'}.
               </p>
             </div>
@@ -286,17 +286,17 @@ export const ConversionesReportScreen: React.FC = () => {
             <Titulo icono={<MessagesSquare className="w-4 h-4 text-[var(--primary)]" />}>Mensajes</Titulo>
             <div className="p-4">
               <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                <Cifra etiqueta="De Lalán" valor={m.deLalan} nota="los que cuenta tu plan" clase="text-purple-600 dark:text-purple-400" />
+                <Cifra etiqueta="De Lalan" valor={m.deLalan} nota="los que cuenta tu plan" clase="text-purple-600 dark:text-purple-400" />
                 <Cifra etiqueta="De clientas" valor={m.deClientas} />
                 <Cifra etiqueta="Del equipo" valor={m.delEquipo} />
               </div>
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100 dark:border-neutral-800">
-                <Cifra etiqueta="Por conversación que convirtió" valor={n(m.promedioConvertidas)} nota={`${m.deLalanEnConvertidas} de Lalán en total`} />
-                <Cifra etiqueta="Por conversación de solo información" valor={n(m.promedioSoloInformacion)} nota={`${m.deLalanEnSoloInformacion} de Lalán en total`} />
+                <Cifra etiqueta="Por conversación que convirtió" valor={n(m.promedioConvertidas)} nota={`${m.deLalanEnConvertidas} de Lalan en total`} />
+                <Cifra etiqueta="Por conversación de solo información" valor={n(m.promedioSoloInformacion)} nota={`${m.deLalanEnSoloInformacion} de Lalan en total`} />
               </div>
               {m.deLalanPorConversion != null && (
                 <p className="text-[0.6875rem] text-slate-400 mt-3 leading-relaxed">
-                  Cada conversión te costó <strong>{m.deLalanPorConversion} mensajes de Lalán</strong>, contando también
+                  Cada conversión te costó <strong>{m.deLalanPorConversion} mensajes de Lalan</strong>, contando también
                   los que gastó con quien solo preguntó.
                 </p>
               )}
@@ -346,7 +346,7 @@ export const ConversionesReportScreen: React.FC = () => {
                   </div>
                   <p className="text-[0.6875rem] text-slate-400 mt-0.5">
                     {x.canal ? `${NOMBRE_CANAL[x.canal] ?? x.canal} · ` : ''}{fecha(x.inicio)}
-                    {` · ${x.mensajes.total} mensajes (${x.mensajes.lalan} de Lalán)`}
+                    {` · ${x.mensajes.total} mensajes (${x.mensajes.lalan} de Lalan)`}
                   </p>
                   {(!!x.citas.length || x.compras > 0) && (
                     <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 mt-0.5 flex items-center gap-1 flex-wrap">

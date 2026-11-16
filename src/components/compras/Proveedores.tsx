@@ -11,6 +11,7 @@ import {
 } from '../../services/compras';
 import { BuscarEmpresa, type EmpresaElegida } from './BuscarEmpresa';
 import { ComoSePaga } from './ComoSePaga';
+import { PersonasDelProveedor } from './CambiarProveedor';
 import { PastillaEstado, botonPrincipal, botonSuave, campo, etiqueta, fechaCorta } from './piezas';
 
 /**
@@ -168,7 +169,7 @@ export const FichaProveedor: React.FC<{
             {buscador('nombre')}
             {f.plataformaId && id === 'nuevo' && <p className="mt-1 text-[0.6875rem] text-violet-700 dark:text-violet-300 flex items-center gap-1"><Sparkles className="w-3 h-3" /> De la lista de Lalan. Cambia lo que quieras: en tu lista manda lo tuyo.</p>}
           </div>
-          <label><span className={etiqueta}>Persona de contacto</span><input className={campo} placeholder="Juan Pérez" {...t('contacto')} /></label>
+          <label><span className={etiqueta}>Persona de contacto{detalle ? ' (la principal)' : ''}</span><input className={campo} placeholder="Juan Pérez" {...t('contacto')} /></label>
           <label><span className={etiqueta}>WhatsApp</span><input className={campo} inputMode="tel" placeholder="18095551234" {...t('whatsapp')} /></label>
           <label><span className={etiqueta}>Correo</span><input className={campo} type="email" placeholder="ventas@proveedor.com" {...t('correo')} /></label>
           <label><span className={etiqueta}>Teléfono</span><input className={campo} inputMode="tel" {...t('telefono')} /></label>
@@ -215,6 +216,7 @@ export const FichaProveedor: React.FC<{
 
         {detalle && (
           <>
+            <PersonasDelProveedor proveedorId={detalle.id} nombre={detalle.nombre} contactos={detalle.contactos ?? []} onCambio={(c) => { setDetalle({ ...detalle, contactos: c }); onCambio(); }} />
             <div className="space-y-1.5">
               <h4 className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400">Lo que le compras</h4>
               {!detalle.productos.length && <p className="text-[0.8125rem] text-slate-500">Nada todavía. En Catálogo → Productos, toca «Proveedor» en cada producto para decir qué le compras.</p>}

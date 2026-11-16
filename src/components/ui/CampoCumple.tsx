@@ -4,7 +4,7 @@ import { Cake } from 'lucide-react';
 /**
  * Cumpleaños: día y mes (el año es opcional, mucha gente no lo dice).
  * El valor viaja como el servidor lo entiende: "MM-DD" o "AAAA-MM-DD";
- * "" lo quita. Lalán lo usa para recordarlo en «Tu día».
+ * "" lo quita. Lalan lo usa para recordarlo en «Tu día».
  */
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -58,7 +58,7 @@ export const CampoCumple: React.FC<Props> = ({ valor, onCambio, etiqueta = 'Cump
       <label className="flex items-center gap-1.5 text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
         <Cake className="w-3.5 h-3.5 text-[var(--primary)]" />
         {etiqueta}
-        <span className="font-normal text-slate-400">(opcional, Lalán te lo recuerda)</span>
+        <span className="font-normal text-slate-400">(opcional, Lalan te lo recuerda)</span>
       </label>
       <div className="grid grid-cols-[4.5rem_1fr_5.5rem] gap-1.5">
         <select aria-label="Día" value={p.dia || ''} onChange={e => armar(p.mes || 1, Number(e.target.value), p.anio)} className={claseCampo}>

@@ -17,7 +17,7 @@ const PASOS = ['Mirando las escenas', 'Escuchando lo que se dice', 'Sacando lo i
 const PASOS_FOTO = ['Mirando la página', 'Leyendo nombres y precios', 'Separando servicios y productos', 'Poniéndolo en orden'];
 
 /**
- * Mientras Lalán ve un video: la miniatura con una luz que la recorre y los
+ * Mientras Lalan ve un video: la miniatura con una luz que la recorre y los
  * pasos que va dando, para que la dueña vea que algo está pasando.
  */
 export const VideoProcesando: React.FC<{ vista: VistaVideo }> = ({ vista }) => {

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { avisarEsperaToque } from '../../services/esperaToque';
 import { useApp } from '../../context/AppContext';
 import { estadoMusica, soyElAnfitrion } from '../../services/musica';
 
@@ -93,6 +94,27 @@ function loadYouTubeApi(): Promise<any> {
   return w.__lalanYtApiPromise;
 }
 
+/** Ver `tocarAqui` */
+const EVENTO_TOCAR_AQUI = 'lalan:yt-tocar-aqui';
+
+/**
+ * Hacer sonar YA una canción en el reproductor de ESTE aparato, por su
+ * videoId, aunque todavía no esté en la cola.
+ *
+ * Existe por el iPhone (y Safari en general): un video de YouTube no suena
+ * con sonido si el play no nace de un toque. Cuando la dueña toca «Tocar ya»
+ * en el teléfono que hace de altavoz, la orden del servidor llega después,
+ * por el socket, y para entonces el toque ya no cuenta: el video se quedaba
+ * cargado y quieto mientras seguía la radio. Por eso el botón llama a esto
+ * en el mismo toque (el evento es síncrono) y el reproductor arranca ahí.
+ * Cuando la cola llega a esa canción, el reproductor ve que ya es la que
+ * suena y no la vuelve a cargar.
+ */
+export function tocarAqui(videoId: string, titulo?: string) {
+  if (!videoId) return;
+  window.dispatchEvent(new CustomEvent(EVENTO_TOCAR_AQUI, { detail: { videoId, titulo } }));
+}
+
 export const GlobalYouTubePlayer: React.FC = () => {
   const {
     youtubeAnchorEl,
@@ -143,6 +165,9 @@ export const GlobalYouTubePlayer: React.FC = () => {
    * REAL o lo apaga una pausa REAL.
    */
   const autoplayIntentRef = useRef(false);
+
+  /** La canción que `tocarAqui` puso a sonar antes de que la cola llegue a ella */
+  const pedidaRef = useRef<{ videoId: string; hasta: number } | null>(null);
 
   /** Cuándo falló el último vídeo, para distinguir la pausa de verdad de
    *  la que es solo el player rindiéndose. */
@@ -279,6 +304,17 @@ export const GlobalYouTubePlayer: React.FC = () => {
     if (!p) return;
 
     const track = ytQueue[ytIndex];
+
+    /* Una canción que se mandó a sonar con `tocarAqui` y que la cola todavía
+       no alcanzó (la cola llega por la red, un momento después): no se pisa
+       con la que marque la cola mientras tanto, ni se para si la cola está
+       vacía. A los 15 s, si la cola nunca llegó a ella, manda la cola. */
+    const pedida = pedidaRef.current;
+    if (pedida) {
+      if (track?.videoId === pedida.videoId || Date.now() > pedida.hasta) pedidaRef.current = null;
+      else return;
+    }
+
     if (!track) {
       // Cola vacía: quitaron todas las fuentes, así que paramos de verdad
       // en lugar de dejar sonando la canción anterior.
@@ -293,7 +329,7 @@ export const GlobalYouTubePlayer: React.FC = () => {
       return;
     }
 
-    if (loadedIdRef.current === track.videoId) return; // ya es la que suena
+    if (loadedIdRef.current === track.videoId) { currentTrackRef.current = track; return; } // ya es la que suena
 
     const first = loadedIdRef.current === null;
     loadedIdRef.current = track.videoId;
@@ -387,6 +423,56 @@ export const GlobalYouTubePlayer: React.FC = () => {
   useEffect(() => () => {
     cancelFade();
     window.clearTimeout(empujonRef.current);
+  }, []);
+
+  /* `tocarAqui`: cargar y sonar en el mismo toque. Ver arriba. */
+  useEffect(() => {
+    const alPedir = (e: Event) => {
+      const videoId = String((e as CustomEvent).detail?.videoId ?? '');
+      const titulo = String((e as CustomEvent).detail?.titulo ?? '') || 'la canción';
+      const p = ytPlayerRef.current;
+      if (!videoId || !p) return;
+      const vol = mutedRef.current ? 0 : volRef.current;
+      const yaCargada = loadedIdRef.current === videoId;
+      pedidaRef.current = yaCargada ? null : { videoId, hasta: Date.now() + 15_000 };
+      autoplayIntentRef.current = true;
+      intentandoSonarRef.current = true;
+      cancelFade();
+      window.clearTimeout(empujonRef.current);
+      try {
+        if (yaCargada) {
+          /* Ya está cargada (en pausa): es un play, igual que el botón del
+             reproductor, que en el iPhone sí suena. */
+          p.setVolume?.(vol);
+          p.playVideo?.();
+        } else {
+          /* En Safari, cargar otra canción no cuenta como toque: el video
+             nuevo arranca después y lo bloquea. Un play DENTRO del toque
+             sobre lo que ya estaba cargado desbloquea el reproductor, y la
+             canción nueva ya puede sonar sola. Se hace en silencio para que
+             la anterior no se oiga ese instante. */
+          if (loadedIdRef.current) { p.setVolume?.(0); p.playVideo?.(); }
+          loadedIdRef.current = videoId;
+          p.loadVideoById(videoId);
+          window.setTimeout(() => { try { ytPlayerRef.current?.setVolume?.(vol); } catch { /* noop */ } }, 500);
+        }
+      } catch { /* el player aún no está listo */ }
+
+      /* Si a pesar de todo no suena: otro empujón y, si sigue callada, el
+         botón «Toca para que suene aquí» en la pantalla de música. */
+      const estado = () => { try { return ytPlayerRef.current?.getPlayerState?.() ?? -1; } catch { return -1; } };
+      window.setTimeout(() => {
+        if (loadedIdRef.current !== videoId) return;
+        if (estado() !== 1 && estado() !== 3) { try { ytPlayerRef.current?.playVideo?.(); } catch { /* noop */ } }
+      }, 1200);
+      window.setTimeout(() => {
+        if (loadedIdRef.current !== videoId) return;
+        if (estado() !== 1) avisarEsperaToque({ videoId, titulo });
+      }, 3000);
+    };
+    window.addEventListener(EVENTO_TOCAR_AQUI, alPedir);
+    return () => window.removeEventListener(EVENTO_TOCAR_AQUI, alPedir);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Bitácora: qué canción sonó de verdad ─────────────────────────────

@@ -6,23 +6,23 @@ import { EsferaLalan } from '../lalan/EsferaLalan';
 import { VideoProcesando, VistaVideo, miniaturaDeYoutube } from './VideoProcesando';
 
 const LARGO = 1200;
-/** Cuánto espera a que la dueña deje de escribir el nombre antes de pedírselo a Lalán */
+/** Cuánto espera a que la dueña deje de escribir el nombre antes de pedírselo a Lalan */
 const ESPERA_MS = 1500;
-/** Lalán propone sola hasta estas veces por hoja abierta; después, solo con el botón */
+/** Lalan propone sola hasta estas veces por hoja abierta; después, solo con el botón */
 const SOLA_MAX = 2;
 
 interface Sugerencia { texto: string; fuentes: { titulo: string; url: string }[]; deMercado: string | null; video?: 'youtube' | 'instagram' | 'archivo' }
 
 const DE_VIDEO: Record<NonNullable<Sugerencia['video']>, string> = { youtube: 'el video de YouTube', instagram: 'tu post de Instagram', archivo: 'tu video' };
 
-/** Botón pequeño de las ayudas de Lalán bajo el texto */
+/** Botón pequeño de las ayudas de Lalan bajo el texto */
 const BOTON_AYUDA = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-900 text-purple-700 dark:text-purple-300 text-[0.6875rem] font-bold cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/50 transition';
 
 /** Sin conexión con el servidor (o reiniciándose) el navegador dice «Failed to fetch»: eso no se le enseña a la dueña */
 const mensajeDeError = (e: any, porDefecto: string) => {
   const m = String(e?.message ?? '');
   if (!m || /failed to fetch|networkerror|load failed|network request failed/i.test(m)) {
-    return 'No pude conectar con Lalán ahora mismo. Toca «Otra» en un momento.';
+    return 'No pude conectar con Lalan ahora mismo. Toca «Otra» en un momento.';
   }
   return m || porDefecto;
 };
@@ -30,14 +30,14 @@ const mensajeDeError = (e: any, porDefecto: string) => {
 const etiqueta = 'block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide';
 
 /**
- * «Qué dice Lalán»: lo que Lalán usa en los chats para recomendar este
- * producto o servicio. Si está vacío y ya hay nombre, Lalán propone el texto
+ * «Qué dice Lalan»: lo que Lalan usa en los chats para recomendar este
+ * producto o servicio. Si está vacío y ya hay nombre, Lalan propone el texto
  * sola (como las respuestas sugeridas en los chats): con lo que Plataforma
  * sabe del producto y, si es de una marca, lo que la marca dice en la web.
  * La dueña lo usa con un toque, pide otro o lo escribe ella.
  *
  * También puede pasarle un video: un reel o post de su Instagram, uno de
- * YouTube o uno de su teléfono. Lalán saca lo que se dice y se ve y escribe
+ * YouTube o uno de su teléfono. Lalan saca lo que se dice y se ve y escribe
  * con eso.
  */
 export const QueDiceLalan: React.FC<{
@@ -45,13 +45,13 @@ export const QueDiceLalan: React.FC<{
   nombre: string;
   categoria?: string;
   descripcion?: string;
-  /** Si ya existe: así Lalán usa el producto de Plataforma al que está vinculado */
+  /** Si ya existe: así Lalan usa el producto de Plataforma al que está vinculado */
   productoId?: string | null;
   value: string;
   onChange: (texto: string) => void;
   /** Pone el video en el carrusel de la Vitrina (el mismo camino que «Fotos y videos») */
   onPonerEnVitrina?: (archivo: File) => Promise<void>;
-  /** false = Lalán no propone sola (interruptor del catálogo); solo cuando la dueña lo pide */
+  /** false = Lalan no propone sola (interruptor del catálogo); solo cuando la dueña lo pide */
   sugiereSola?: boolean;
 }> = ({ tipo, nombre, categoria, descripcion, productoId, value, onChange, onPonerEnVitrina, sugiereSola = true }) => {
   const [sugerencia, setSugerencia] = useState<Sugerencia | null>(null);
@@ -60,10 +60,10 @@ export const QueDiceLalan: React.FC<{
   const [conVideo, setConVideo] = useState(false);
   const [enlace, setEnlace] = useState('');
   const [leyendo, setLeyendo] = useState<string | null>(null);
-  /** La miniatura que se anima mientras Lalán ve el video */
+  /** La miniatura que se anima mientras Lalan ve el video */
   const [vista, setVista] = useState<VistaVideo | null>(null);
   const archivoRef = useRef<HTMLInputElement>(null);
-  /** El último video que leyó Lalán: el mismo puede ir a la Vitrina */
+  /** El último video que leyó Lalan: el mismo puede ir a la Vitrina */
   const [ultimoVideo, setUltimoVideo] = useState<{ archivo?: File; enlace?: string; origen: 'youtube' | 'instagram' | 'archivo' } | null>(null);
   const [vitrina, setVitrina] = useState<'nada' | 'subiendo' | 'puesto'>('nada');
   const [errorVitrina, setErrorVitrina] = useState<string | null>(null);
@@ -88,13 +88,13 @@ export const QueDiceLalan: React.FC<{
       // Con el interruptor apagado el servidor no gasta IA y no trae texto
       setSugerencia(r?.texto?.trim() ? r : null);
     } catch (e: any) {
-      setError(mensajeDeError(e, 'Lalán no pudo pensar ahora mismo. Inténtalo en un momento.'));
+      setError(mensajeDeError(e, 'Lalan no pudo pensar ahora mismo. Inténtalo en un momento.'));
     } finally {
       setPensando(false);
     }
   };
 
-  /** Lalán aprende de un video: un enlace (Instagram o YouTube) o un archivo del teléfono */
+  /** Lalan aprende de un video: un enlace (Instagram o YouTube) o un archivo del teléfono */
   const pedirConVideo = async (archivo?: File, enlaceDado?: string) => {
     if (!listoParaPedir || pensando) return;
     const link = (enlaceDado ?? enlace).trim();
@@ -130,7 +130,7 @@ export const QueDiceLalan: React.FC<{
       setConVideo(false);
       setEnlace('');
     } catch (e: any) {
-      setError(mensajeDeError(e, 'Lalán no pudo leer ese video. Prueba con otro.'));
+      setError(mensajeDeError(e, 'Lalan no pudo leer ese video. Prueba con otro.'));
     } finally {
       setPensando(false);
       setLeyendo(null);
@@ -163,7 +163,7 @@ export const QueDiceLalan: React.FC<{
     e.stopPropagation();
     capas.current = 0;
     setArrastrando(false);
-    if (!listoParaPedir) { setError('Escribe primero el nombre, así Lalán sabe de qué es el video.'); return; }
+    if (!listoParaPedir) { setError('Escribe primero el nombre, así Lalan sabe de qué es el video.'); return; }
     const archivo = Array.from(e.dataTransfer.files ?? [])[0];
     if (archivo) {
       if (!archivo.type.startsWith('video/')) { setError('Eso no es un video. Arrastra un video o el enlace de tu reel o de YouTube.'); return; }
@@ -209,7 +209,7 @@ export const QueDiceLalan: React.FC<{
     }
   };
 
-  // Vacío y con nombre: Lalán lo propone sola cuando la dueña deja de escribir el nombre
+  // Vacío y con nombre: Lalan lo propone sola cuando la dueña deja de escribir el nombre
   useEffect(() => {
     if (!sugiereSola || !vacio || !listoParaPedir || sugerencia || pensando || solas.current >= SOLA_MAX) return;
     if (pedidoPara.current === nombre.trim()) return;
@@ -241,12 +241,12 @@ export const QueDiceLalan: React.FC<{
       {arrastrando && (
         <div className="absolute inset-0 z-10 rounded-xl bg-purple-600/10 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-600 text-white text-[0.75rem] font-bold shadow">
-            <Film className="w-4 h-4" /> Suelta el video y Lalán lo ve
+            <Film className="w-4 h-4" /> Suelta el video y Lalan lo ve
           </span>
         </div>
       )}
       <label className={etiqueta}>
-        Qué dice Lalán <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(lo usa en los chats para recomendar{tipo === 'producto' ? 'lo y venderlo' : 'lo'})</span>
+        Qué dice Lalan <span className="normal-case font-normal opacity-60 text-[0.6875rem]">(lo usa en los chats para recomendar{tipo === 'producto' ? 'lo y venderlo' : 'lo'})</span>
       </label>
       <textarea
         rows={3}
@@ -269,16 +269,16 @@ export const QueDiceLalan: React.FC<{
               <VideoProcesando vista={vista} />
             ) : pensando ? (
               <p className="text-[0.75rem] font-semibold text-purple-700 dark:text-purple-300 py-1">
-                {leyendo ? `Lalán está viendo ${leyendo}… puede tardar un minuto.` : `Lalán está buscando qué decir de «${nombre.trim()}»…`}
+                {leyendo ? `Lalan está viendo ${leyendo}… puede tardar un minuto.` : `Lalan está buscando qué decir de «${nombre.trim()}»…`}
               </p>
             ) : sugerencia ? (
               <>
-                <div className="text-[0.6875rem] font-bold text-purple-700 dark:text-purple-300">Lalán sugiere decir:</div>
+                <div className="text-[0.6875rem] font-bold text-purple-700 dark:text-purple-300">Lalan sugiere decir:</div>
                 <p className="text-[0.75rem] text-slate-700 dark:text-neutral-200 whitespace-pre-wrap">{sugerencia.texto}</p>
                 {(sugerencia.video || sugerencia.deMercado || sugerencia.fuentes.length > 0) && (
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                     {sugerencia.video && <span className="inline-flex items-center gap-0.5"><Film className="w-3 h-3" /> Salió de {DE_VIDEO[sugerencia.video]}</span>}
-                    {sugerencia.deMercado && <span>Usó lo que Lalán sabe de «{sugerencia.deMercado}»</span>}
+                    {sugerencia.deMercado && <span>Usó lo que Lalan sabe de «{sugerencia.deMercado}»</span>}
                     {sugerencia.fuentes.map(f => (
                       <a key={f.url} href={f.url} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-0.5 underline decoration-dotted hover:text-purple-600 dark:hover:text-purple-300 max-w-[14rem] truncate">
@@ -292,7 +292,7 @@ export const QueDiceLalan: React.FC<{
               <p className="text-[0.75rem] text-rose-600 dark:text-rose-400 py-1">{error}</p>
             ) : (
               <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300 py-1">
-                Está vacío: Lalán puede escribirlo por ti con lo que se sabe de este {tipo}.
+                Está vacío: Lalan puede escribirlo por ti con lo que se sabe de este {tipo}.
               </p>
             )}
           </div>
@@ -339,14 +339,14 @@ export const QueDiceLalan: React.FC<{
       {listoParaPedir && !pensando && (conVideo ? (
         <div className="mt-2 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">Pásale un video a Lalán</span>
+            <span className="text-[0.75rem] font-bold text-slate-700 dark:text-neutral-200">Pásale un video a Lalan</span>
             <button type="button" onClick={() => { setConVideo(false); setEnlace(''); }} aria-label="Cerrar"
               className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-neutral-700 cursor-pointer">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-            Un reel o post de tu Instagram, un video de YouTube o uno de tu teléfono. Lalán escucha lo que se dice y escribe con eso.
+            Un reel o post de tu Instagram, un video de YouTube o uno de tu teléfono. Lalan escucha lo que se dice y escribe con eso.
           </p>
           <div className="flex gap-1.5">
             <div className="flex-1 min-w-0 relative">
@@ -374,7 +374,7 @@ export const QueDiceLalan: React.FC<{
           </p>
         </div>
       ) : (
-        /* Las dos ayudas de Lalán, como botones iguales en una fila (no enlaces pegados) */
+        /* Las dos ayudas de Lalan, como botones iguales en una fila (no enlaces pegados) */
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {!vacio && !sugerencia && !error && (
             <button type="button" onClick={() => void pedir()} className={BOTON_AYUDA}>

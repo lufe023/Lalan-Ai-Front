@@ -43,7 +43,33 @@ export interface Proveedor {
   condicionesPago: string | null; pedidoMinimo: number | null; notas: string | null; sedes: string[];
   lalanHabla: boolean; plataformaId: string | null; activo: boolean;
   productos?: number; pedidosAbiertos?: number;
+  /** Las demás personas de la empresa (la de la ficha es la principal) */
+  contactos?: ContactoGuardado[];
+  /** Quién le escribió al salón por WhatsApp en las últimas 24 h: a esos Lalan les escribe ya, gratis */
+  ventanas?: VentanaAbierta[];
 }
+
+/** Otra persona del proveedor (un vendedor por zona, el de cobros) */
+export interface ContactoGuardado { id: string; proveedorId: string; nombre: string; cargo: string | null; whatsapp: string | null; correo: string | null; telefono: string | null }
+/** Con quién se habla: id null = el contacto de la ficha */
+export interface ContactoProveedor { id: string | null; nombre: string | null; cargo: string | null; whatsapp: string | null; correo: string | null; telefono: string | null; principal: boolean }
+export interface VentanaAbierta { numero: string; escribio: string; hasta: string; contactoId?: string | null; nombre: string | null }
+
+/** «Cambiar proveedor» y «Pedirle lo mismo a otro»: los que le venden a la sede del pedido */
+export interface OtroProveedor extends Omit<Proveedor, 'contactos'> {
+  contactos: ContactoProveedor[];
+  ventanas: VentanaAbierta[];
+  vende: { productId: string; precio: number | null; currencyCode: string | null; unidadCompra: string | null }[];
+  esElActual: boolean; yaCotiza: boolean;
+}
+
+/** «Hace 2 h», «hace 15 min» */
+export const haceCuanto = (iso: string) => {
+  const min = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  return `hace ${h} ${h === 1 ? 'hora' : 'horas'}`;
+};
 
 export interface Vinculo {
   id: string; proveedorId: string; productId: string; codigo: string | null; precio: number | null; currencyCode: string | null;
@@ -117,6 +143,12 @@ export interface Pedido {
   entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null;
   manejaLalan: boolean; esperaDuena: boolean; preguntaDuena: string | null; creadoEn: string; seEdita: boolean;
   comparacionId: string | null;
+  /** Con quién del proveedor se habla en este pedido (id null = el de la ficha) */
+  contactoId: string | null; contacto: ContactoProveedor;
+  /** Su WhatsApp está abierto: escribió en las últimas 24 h (Lalan le escribe ya, sin plantilla) */
+  ventana: { escribio: string; hasta: string } | null;
+  /** Otra persona de la empresa que sí escribió en 24 h (contactoId undefined = número que no está en su ficha) */
+  otrasVentanas: VentanaAbierta[];
   lineas: LineaPedido[]; historial: Evento[];
   adjuntos: { id: string; nombre: string; tipo: string; tamano: number; creadoEn: string }[];
   cuenta: CuentaPedido | null; condicionesPago: string | null; pagos: PagoPedido[];
@@ -240,14 +272,19 @@ export const comprasApi = {
   },
   pedido: (id: string) => api.get<Pedido>(`/compras/ordenes/${id}`),
   crear: (d: { proveedorId: string; locationId?: string | null; lineas: LineaNueva[]; origen?: string }) => api.post<Pedido>('/compras/ordenes', d),
-  editar: (id: string, d: Partial<{ proveedorId: string; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null; entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null; condicionesPago: string | null; venceEl: string | null }>) =>
+  editar: (id: string, d: Partial<{ proveedorId: string; contactoId: string | null; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null; entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null; condicionesPago: string | null; venceEl: string | null }>) =>
     api.patch<Pedido>(`/compras/ordenes/${id}`, d),
   estado: (id: string, estado: EstadoCompra, motivo?: string) => api.post<Pedido>(`/compras/ordenes/${id}/estado`, { estado, motivo }),
   porPagar: (sede?: string) => api.get<PorPagar>(conSede('/compras/por-pagar', sede)),
   pagar: (id: string, d: { monto: number; fecha?: string | null; forma?: FormaDePago | null; referencia?: string | null; nota?: string | null }) =>
     api.post<Pedido>(`/compras/ordenes/${id}/pagos`, d),
   quitarPago: (pagoId: string) => api.delete<Pedido>(`/compras/pagos/${pagoId}`),
-  duplicar: (id: string) => api.post<Pedido>(`/compras/ordenes/${id}/duplicar`, {}),
+  /** Copia el pedido; a otro proveedor, le pide lo mismo y quedan en una comparación */
+  duplicar: (id: string, d: { proveedorId?: string; contactoId?: string | null } = {}) => api.post<Pedido>(`/compras/ordenes/${id}/duplicar`, d),
+  otrosProveedores: (id: string) => api.get<{ productos: number; sede: string; proveedores: OtroProveedor[] }>(`/compras/ordenes/${id}/otros-proveedores`),
+  crearContacto: (proveedorId: string, c: Partial<ContactoGuardado>) => api.post<ContactoGuardado>(`/compras/proveedores/${proveedorId}/contactos`, c),
+  editarContacto: (id: string, c: Partial<ContactoGuardado>) => api.patch<ContactoGuardado>(`/compras/contactos/${id}`, c),
+  borrarContacto: (id: string) => api.delete<{ ok: true }>(`/compras/contactos/${id}`),
   mensaje: (id: string, como?: 'cotizacion' | 'orden') => api.get<{ texto: string; whatsapp: string | null; correo: string | null; esCotizacion: boolean }>(`/compras/ordenes/${id}/mensaje${como ? `?como=${como}` : ''}`),
   enviar: (id: string, d: { canal: CanalEnvio; como?: 'cotizacion' | 'orden'; mensaje?: string }) => api.post<{ enlace: string | null; orden: Pedido }>(`/compras/ordenes/${id}/enviar`, d),
   recibir: (id: string, d: { lineas: { lineaId: string; cantidad: number; costo?: number | null; lote?: string | null; vence?: string | null }[]; cerrarResto?: boolean }) =>

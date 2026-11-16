@@ -605,7 +605,11 @@
   /* ── Pie ── */
   .pie-fila { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; width: 100%; }
   .siglas-pie { margin: 0; font-size: .82rem; color: var(--tinta-2); }
-  .siglas-pie b { font-family: var(--serif); font-size: 1rem; color: var(--tinta); }
+  /* Las cinco letras son el camino al huevo de pascua (huevo.ts): se pueden tocar y se encienden en orden */
+  .siglas-pie b { font-family: var(--serif); font-size: 1rem; color: var(--tinta); display: inline-block; padding: 6px 1px; margin: -6px 0; cursor: pointer; border-radius: 6px; transition: color .2s ease, transform .2s ease, text-shadow .2s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .siglas-pie b:hover { color: var(--rosa); }
+  .siglas-pie b.encendida { color: var(--rosa); transform: translateY(-2px) scale(1.15); text-shadow: 0 0 12px color-mix(in srgb, var(--rosa) 55%, transparent); }
+  @media (prefers-reduced-motion: reduce) { .siglas-pie b, .siglas-pie b.encendida { transition: none; transform: none; } }
   .pie-nota { margin: 0; width: 100%; }
   footer .tema-panel { top: auto; bottom: calc(100% + 10px); }
 
@@ -916,6 +920,13 @@
   .piloto-lista li::before { content: '✓'; position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; background: var(--tinta); color: var(--fondo); }
   .suave a { color: var(--tinta); font-weight: 700; }
   .piloto-caja { min-width: 0; }
+  .registro-ya { background: var(--papel); border-radius: 22px; padding: 26px; border: 1px solid var(--linea); display: grid; gap: 12px; justify-items: start; }
+  .registro-ya h3 { margin: 0; font-family: var(--serif); font-size: 1.6rem; }
+  .registro-ya p { margin: 0; color: var(--tinta-2); }
+  .registro-ya .boton { justify-self: stretch; justify-content: center; }
+  .registro-otra { font: inherit; font-size: .85rem; font-weight: 700; color: var(--tinta-2); background: none; border: 0; padding: 6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .registro-otra:hover { color: var(--tinta); }
+  .piloto-caja .registro-ya + .contacto { margin-top: 14px; }
   .contacto fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
   .contacto legend { font-size: .8rem; font-weight: 700; color: var(--tinta-2); margin-bottom: 8px; padding: 0; }
   .contacto textarea { font: inherit; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--linea); background: var(--fondo); color: var(--tinta); resize: vertical; }
@@ -957,7 +968,21 @@
 }
 .asis-lanzar:hover { transform: translateY(-2px); }
 .asis-lanzar:focus-visible { outline: 2px solid var(--tinta); outline-offset: 3px; }
-.asis-logo { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); flex-shrink: 0; }
+.asis-logo { position: relative; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); flex-shrink: 0; }
+/* «IA»: que se sepa de un vistazo que el botón es una asistente, no el logo */
+.asis-ia {
+  position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px;
+  height: 15px; padding: 0 5px; border-radius: 999px; background: #fff; color: var(--rosa-hondo);
+  font: 800 .58rem/1 var(--sans); letter-spacing: .04em; font-style: normal; box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+.asis-cab .asis-ia { display: none; }
+/* Mientras no la ha abierto nunca: un halo suave que sale del botón */
+.asis-nueva .asis-lanzar::before, .asis-nueva .asis-lanzar::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--rosa); z-index: -1; pointer-events: none;
+  animation: asis-halo 2.4s ease-out infinite;
+}
+.asis-nueva .asis-lanzar::after { animation-delay: 1.2s; }
+@keyframes asis-halo { from { transform: scale(1); opacity: .35; } to { transform: scale(1.1, 1.45); opacity: 0; } }
 .asis-logo svg { width: 62%; height: 62%; }
 .asis-punto { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #34C759; box-shadow: 0 0 0 2px var(--papel); }
 .asis-abierta .asis-lanzar { padding-right: 8px; }
@@ -967,6 +992,7 @@
   background: var(--papel); color: var(--tinta); border: 1px solid var(--linea); box-shadow: var(--sombra); font-size: .86rem; line-height: 1.35;
   animation: asis-aparece .4s cubic-bezier(.2,.9,.3,1.2) both;
 }
+.asis-invita b { display: block; margin-bottom: 2px; font-size: .9rem; }
 .asis-invita-x { position: absolute; top: 4px; right: 6px; border: 0; background: none; color: var(--tinta-3); font-size: 1.1rem; cursor: pointer; }
 .asis-panel {
   width: min(380px, calc(100vw - 36px)); height: min(560px, calc(100dvh - 120px)); display: flex; flex-direction: column; overflow: hidden;
@@ -1039,12 +1065,13 @@
 @keyframes asis-resalta { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 20%, 60% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--rosa) 35%, transparent); } }
 @media (max-width: 640px) {
   .asis { right: 12px; left: 12px; align-items: flex-end; }
-  .asis-lanzar-txt { display: none; }
-  .asis-lanzar { padding: 8px; }
+  /* En el teléfono el texto se queda: solo el logo parecía un adorno */
+  .asis-lanzar { padding: 7px 16px 7px 7px; font-size: .86rem; }
   .asis-panel { width: 100%; height: min(78dvh, 620px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .asis-lanzar, .asis-invita, .asis-panel, .asis-entra, .asis-resaltado { animation: none; }
+  .asis-nueva .asis-lanzar::before, .asis-nueva .asis-lanzar::after { display: none; }
 }
 
 /* ── El visor de ejemplos de los planes ── */

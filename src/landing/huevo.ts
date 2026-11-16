@@ -6,7 +6,7 @@
  * El texto va codificado para que no salga en buscadores ni a simple vista
  * en el código de la página.
  */
-const SECRETO = 'eyJ0aXR1bG8iOiAiRWwgc2VjcmV0byBkZWwgbm9tYnJlIiwgInBhcnJhZm9zIjogWyJIYWNlIGHDsW9zLCB1biBoZXJtYW5pdG8gcXVlIHRvZGF2w61hIG5vIHNhYsOtYSBkZWNpciBlbCBub21icmUgZGUgc3UgaGVybWFuYSBsYSBsbGFtYWJhIMKrTGFsYW7Cuy4iLCAiU2UgbGUgcXVlZMOzLiBQcmltZXJvIGxvIGFkb3B0w7MgbGEgZmFtaWxpYSB5IGRlc3B1w6lzIGxvcyBhbWlnb3MgbcOhcyBjZXJjYW5vcywgcXVlIGxhIHNlZ3VpbW9zIGxsYW1hbmRvIGFzw60gaGFzdGEgaG95LiIsICJMYWxhbiBuYWNpw7MgY29uIGVzZSBjYXJpw7FvIGFkZW50cm86IGF0ZW5kZXIgYSBjYWRhIHBlcnNvbmEgY29tbyBzZSBhdGllbmRlIGEgYWxndWllbiBkZSBsYSBjYXNhLiJdLCAiY2llcnJlIjogIkVuY29udHJhc3RlIG51ZXN0cm8gc2VjcmV0by4gR3XDoXJkYWxvIGJpZW4uIn0=';
+const SECRETO = 'eyJ0aXR1bG8iOiAiRWwgc2VjcmV0byBkZWwgbm9tYnJlIiwgInBhcnJhZm9zIjogWyJBbnRlcyBkZSBzZXIgdW5hIGFzaXN0ZW50ZSwgTGFsYW4gZnVlIHVuYSBwYWxhYnJhIHRvcnBlIHkgdGllcm5hLiBMYSBkaWpvIHVuIG5pw7FvIHF1ZSB0b2RhdsOtYSBubyBwb2TDrWEgcHJvbnVuY2lhciBlbCBub21icmUgZGUgc3UgaGVybWFuYTogbG8gaW50ZW50YWJhLCBzZSBsZSBlbnJlZGFiYSBsYSBsZW5ndWEgeSBsZSBzYWzDrWEgwqtMYWxhbsK7LiIsICJFbGxhIHNlIHJlw61hIHkgbGUgY29udGVzdGFiYS4gw4lsIGxvIHJlcGV0w61hIG9yZ3VsbG9zbywgY29tbyBxdWllbiBhY2FiYSBkZSBpbnZlbnRhciBhbGdvLiBZIGVuIGNpZXJ0byBtb2RvIGxvIGhhYsOtYSBoZWNoby4iLCAiU2UgcXVlZMOzLiBQcmltZXJvIGVuIGxhIGNhc2EsIGVuIGxhIG1lc2EgeSBlbiBsb3MgY3VtcGxlYcOxb3MuIERlc3B1w6lzIGVudHJlIGxvcyBhbWlnb3MgZGUgc2llbXByZSwgcXVlIHRvZGF2w61hIGhveSBsYSBsbGFtYW1vcyBhc8OtLiIsICJDdWFuZG8gbmFjacOzIHVuYSBhc2lzdGVudGUgcGFyYSBhdGVuZGVyIGEgY2FkYSBjbGllbnRhIGNvbW8gc2UgYXRpZW5kZSBhIGFsZ3VpZW4gZGUgbGEgY2FzYSwgbm8gaHVibyBxdWUgYnVzY2FyIG5vbWJyZS4gWWEgbG8gdGVuw61hbW9zLiBTb2xvIGZhbHRhYmEgcXVlIGxhcyBsZXRyYXMgZGlqZXJhbiBsbyBxdWUgZWwgY2FyacOxbyB5YSBzYWLDrWE6IExpdmUgQXNzaXN0YW50IGZvciBMb2dpc3RpY3MsIEFwcG9pbnRtZW50cyAmIE5ldHdvcmtpbmcuIiwgIkNhZGEgdmV6IHF1ZSBMYWxhbiBzYWx1ZGEgYSB1bmEgY2xpZW50YSBwb3Igc3Ugbm9tYnJlIG8gcmVjdWVyZGEgc3UgY2Fmw6kgeSBzdSBjYW5jacOzbiwgbGxldmEgZGVudHJvIHVuIHBvcXVpdG8gZGUgYXF1ZWxsYSBwYWxhYnJhIGRlIG5pw7FvLiJdLCAiY2llcnJlIjogIkVuY29udHJhc3RlIG51ZXN0cm8gc2VjcmV0by4gQWhvcmEgZXJlcyBkZSBsYSBjYXNhLiJ9';
 const PALABRA = 'lalan';
 const LETRAS = 5;
 /** Tiempo máximo entre un toque (o una tecla) y el siguiente */
@@ -65,9 +65,16 @@ export function iniciarHuevo() {
   // Tocar las cinco letras en orden: L · A · L · A · N
   const lista = document.getElementById('siglas');
   if (!lista) return;
-  const filas = Array.from(lista.children);
+  const filas = Array.from(lista.querySelectorAll('b'));
   let siguiente = 0;
   let ultimoToque = 0;
+  let apagar = 0;
+  // Cada letra acertada se enciende: la pista de que se va por buen camino
+  const encender = (cuantas: number) => {
+    filas.forEach((f, i) => f.classList.toggle('encendida', i < cuantas));
+    window.clearTimeout(apagar);
+    if (cuantas > 0) apagar = window.setTimeout(() => { siguiente = 0; encender(0); }, PAUSA_MAXIMA_MS);
+  };
   lista.addEventListener('click', e => {
     const fila = (e.target as HTMLElement).closest('b');
     if (!fila) return;
@@ -75,6 +82,11 @@ export function iniciarHuevo() {
     if (ahora - ultimoToque > PAUSA_MAXIMA_MS) siguiente = 0;
     ultimoToque = ahora;
     siguiente = filas.indexOf(fila) === siguiente ? siguiente + 1 : (filas.indexOf(fila) === 0 ? 1 : 0);
-    if (siguiente === LETRAS) { siguiente = 0; mostrar(); }
+    encender(siguiente);
+    if (siguiente === LETRAS) {
+      siguiente = 0;
+      // Un instante con las cinco encendidas antes de abrir el secreto
+      window.setTimeout(() => { encender(0); mostrar(); }, 250);
+    }
   });
 }
