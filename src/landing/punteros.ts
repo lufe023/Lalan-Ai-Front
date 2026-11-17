@@ -43,28 +43,29 @@ function traer(el: HTMLElement, x: number, y: number, giro: number, ms: number):
       { transform: 'translate(0, -8px) rotate(0deg)', offset: 0.88 },
       { transform: 'none' },
     ],
-    { duration: ms, easing: 'cubic-bezier(.25,.6,.2,1)' },
+    { duration: ms, easing: 'cubic-bezier(.45,.05,.25,1)' },
   );
 }
 
 async function arrastrarDia(dia: HTMLElement): Promise<void> {
   const tarjetas = Array.from(dia.children) as HTMLElement[];
-  const caja = dia.getBoundingClientRect();
-  const centro = caja.left + caja.width / 2;
+  // Cada cuadro llega desde un punto cardinal: oeste, norte, sur y este
+  const DESDE = [
+    { x: -window.innerWidth * 0.6, y: 0, giro: -6 },
+    { x: 0, y: -window.innerHeight * 0.7, giro: 4 },
+    { x: 0, y: window.innerHeight * 0.7, giro: -4 },
+    { x: window.innerWidth * 0.6, y: 0, giro: 6 },
+  ];
   dia.classList.remove('por-arrastrar');
   dia.classList.add('arrastrando');
   const vuelos = tarjetas.map(async (t, i) => {
-    const r = t.getBoundingClientRect();
-    const lado = r.left + r.width / 2 < centro ? -1 : 1;
-    // Desde fuera del lado que le toca; las de arriba bajan, las de abajo suben
-    const x = lado * (window.innerWidth * 0.55) + (r.left + r.width / 2 - centro) * 0.6;
-    const y = (i % 2 ? 1 : -1) * (120 + i * 30);
+    const d = DESDE[i % 4];
     const p = puntero();
     t.append(p);
     t.classList.add('en-vuelo');
-    await esperar(traer(t, x, y, lado * 7, 1500));
+    await esperar(traer(t, d.x, d.y, d.giro, 1700));
     t.classList.remove('en-vuelo');
-    await soltar(p, lado * 30, 50);
+    await soltar(p, Math.sign(d.x || 1) * 30, 50);
   });
   await Promise.all(vuelos);
   dia.classList.remove('arrastrando');

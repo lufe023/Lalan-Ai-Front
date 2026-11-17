@@ -129,7 +129,8 @@ export function iniciarPortadaViva(): void {
           el, w: el.offsetWidth, h: el.offsetHeight, a0: salida[el.dataset.e ?? '1'] ?? 0,
           x: v?.x ?? NaN, y: v?.y ?? NaN,
           // Cada mosca vuela a su manera: radio, velocidad y qué tan rápido alcanza
-          radio: 58 + i * 14, vel: (i % 2 ? -1 : 1) * (2.1 + i * 0.35), fase: i * 1.7, agarre: 3.2 + i * 0.9,
+          // Repartidas a 90° y girando juntas, despacio: nunca se cruzan
+          radio: 1 + (i % 2) * 0.12, vel: 0.55, fase: i * (Math.PI / 2), agarre: 3.2 + i * 0.6,
         };
       }),
     };
@@ -157,9 +158,10 @@ export function iniciarPortadaViva(): void {
       let ty: number;
       if (r) {
         const ang = t.fase + seg * t.vel;
-        const zum = Math.sin(seg * 9 + t.fase * 3) * 6; // el temblor de la mosca
-        tx = raton.x - r.left + Math.cos(ang) * t.radio + zum;
-        ty = raton.y - r.top + Math.sin(ang) * t.radio * 0.7 + Math.cos(seg * 11 + t.fase) * 5;
+        const zum = Math.sin(seg * 7 + t.fase * 3) * 3; // el temblor de la mosca
+        // Elipse ancha: las etiquetas son más anchas que altas
+        tx = raton.x - r.left + Math.cos(ang) * 175 * t.radio + zum;
+        ty = raton.y - r.top + Math.sin(ang) * 95 * t.radio + Math.cos(seg * 8 + t.fase) * 3;
       } else {
         const a = t.a0 + giro;
         tx = Math.min(Math.max(cx + rx * Math.cos(a), t.w / 2 - margen), w - t.w / 2 + margen);
