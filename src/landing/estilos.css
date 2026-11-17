@@ -561,7 +561,7 @@
   .collage.orbita .etiqueta-flot { left: 0; top: 0; right: auto; bottom: auto; translate: calc(var(--ox, 0) * 1px + var(--mx) * 16px) calc(var(--oy, 0) * 1px + var(--my) * 12px); transition: box-shadow .35s, border-color .35s, color .35s; will-change: translate; }
   /* Un resplandor de la marca respira detrás */
   .collage::before {
-    content: ""; position: absolute; z-index: -1; inset: -12% -8% -4% -6%; pointer-events: none;
+    content: ""; position: absolute; z-index: -1; inset: -12% 0 -4% 0; pointer-events: none;
     background:
       radial-gradient(42% 46% at 28% 36%, color-mix(in srgb, var(--marca) 22%, transparent), transparent 70%),
       radial-gradient(36% 40% at 78% 70%, color-mix(in srgb, var(--acento-marca) 24%, transparent), transparent 70%);
@@ -743,8 +743,9 @@
   @keyframes boton-llama { 0% { box-shadow: 0 0 0 0 rgba(0, 128, 105, .45); } 70%, 100% { box-shadow: 0 0 0 10px rgba(0, 128, 105, 0); } }
   .escenarios button.toque-falso { transform: scale(.94); border-color: #008069; color: #008069; }
   .collage.orbita .etiqueta-flot { pointer-events: none; }
-  /* El resplandor de la portada no debe abrir scroll de lado */
-  main { overflow-x: clip; }
+  /* Lo que llega arrastrado desde fuera (punteros.ts) no debe abrir scroll de lado.
+     Solo estas dos secciones: recortar main cortaba las bandas y el carrusel de planes en el teléfono */
+  #dia, #app { overflow-x: clip; }
 
   /* Planes: 3 o 4 columnas en la PC (--columnas lo pone planes.ts), de lado en el teléfono */
   .planes { --columnas: 3; display: grid; grid-template-columns: repeat(var(--columnas), minmax(0, 1fr)); gap: 18px; align-items: stretch; padding-top: 14px; }
