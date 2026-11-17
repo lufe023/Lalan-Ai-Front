@@ -8,6 +8,8 @@
  * que ya trae el HTML.
  */
 
+type Etiqueta = { el: HTMLElement; w: number; h: number; a0: number; x: number; y: number; radio: number; vel: number; fase: number; agarre: number };
+
 type Tarjeta = { e: 1 | 2 | 3 | 4; titulo: string; texto: string; extra?: 'confirmada' | 'ficha' };
 
 // Dos vueltas con gente distinta, para que no se sienta repetido
@@ -115,18 +117,31 @@ export function iniciarPortadaViva(): void {
   // translate). Cada una sale a 90° de la otra; una vuelta tarda VUELTA_MS.
   const VUELTA_MS = 40000;
   const salida: Record<string, number> = { '1': Math.PI, '2': Math.PI / 2, '3': -Math.PI / 2, '4': 0 };
-  let medida = { w: 0, h: 0, tags: [] as { el: HTMLElement; w: number; h: number; a0: number }[] };
+  let medida = { w: 0, h: 0, tags: [] as Etiqueta[] };
   const medir = () => {
+    const viejas = new Map(medida.tags.map((t) => [t.el, t]));
     medida = {
       w: collage.clientWidth,
       h: collage.clientHeight,
-      tags: etiquetas.map((el) => ({ el, w: el.offsetWidth, h: el.offsetHeight, a0: salida[el.dataset.e ?? '1'] ?? 0 })),
+      tags: etiquetas.map((el, i) => {
+        const v = viejas.get(el);
+        return {
+          el, w: el.offsetWidth, h: el.offsetHeight, a0: salida[el.dataset.e ?? '1'] ?? 0,
+          x: v?.x ?? NaN, y: v?.y ?? NaN,
+          // Cada mosca vuela a su manera: radio, velocidad y qué tan rápido alcanza
+          radio: 58 + i * 14, vel: (i % 2 ? -1 : 1) * (2.1 + i * 0.35), fase: i * 1.7, agarre: 3.2 + i * 0.9,
+        };
+      }),
     };
   };
   let girado = 0;
   let ultimo = 0;
   let cuadroOrbita = 0;
-  const colocar = () => {
+  // Moscas: con el ratón dentro de la portada, las etiquetas lo persiguen
+  // zumbando alrededor; al salir o bajar vuelven a su órbita.
+  let mosca = false;
+  let raton = { x: 0, y: 0 };
+  const colocar = (dt = 0) => {
     const { w, h, tags } = medida;
     const alto = h - 48; // el collage deja 48 px abajo para el teléfono
     const cx = w / 2;
@@ -135,20 +150,51 @@ export function iniciarPortadaViva(): void {
     const ry = alto / 2 + 16;
     const margen = w > 560 ? 24 : 0; // en el teléfono no se sale de la pantalla
     const giro = (girado / VUELTA_MS) * Math.PI * 2;
+    const r = mosca ? collage.getBoundingClientRect() : null;
+    const seg = girado / 1000;
     for (const t of tags) {
-      const a = t.a0 + giro;
-      const x = Math.min(Math.max(cx + rx * Math.cos(a), t.w / 2 - margen), w - t.w / 2 + margen);
-      const y = cy + ry * Math.sin(a);
-      t.el.style.setProperty('--ox', (x - t.w / 2).toFixed(1));
-      t.el.style.setProperty('--oy', (y - t.h / 2).toFixed(1));
+      let tx: number;
+      let ty: number;
+      if (r) {
+        const ang = t.fase + seg * t.vel;
+        const zum = Math.sin(seg * 9 + t.fase * 3) * 6; // el temblor de la mosca
+        tx = raton.x - r.left + Math.cos(ang) * t.radio + zum;
+        ty = raton.y - r.top + Math.sin(ang) * t.radio * 0.7 + Math.cos(seg * 11 + t.fase) * 5;
+      } else {
+        const a = t.a0 + giro;
+        tx = Math.min(Math.max(cx + rx * Math.cos(a), t.w / 2 - margen), w - t.w / 2 + margen);
+        ty = cy + ry * Math.sin(a);
+      }
+      if (Number.isNaN(t.x) || !dt) {
+        if (Number.isNaN(t.x)) { t.x = tx; t.y = ty; }
+      } else {
+        const k = 1 - Math.exp(-(dt / 1000) * (mosca ? t.agarre : 2.6));
+        t.x += (tx - t.x) * k;
+        t.y += (ty - t.y) * k;
+      }
+      t.el.style.setProperty('--ox', (t.x - t.w / 2).toFixed(1));
+      t.el.style.setProperty('--oy', (t.y - t.h / 2).toFixed(1));
     }
   };
   const orbitar = (ahora: number) => {
-    if (ultimo) girado += Math.min(ahora - ultimo, 100);
+    const dt = ultimo ? Math.min(ahora - ultimo, 100) : 0;
+    girado += dt;
     ultimo = ahora;
-    colocar();
+    colocar(dt);
     cuadroOrbita = requestAnimationFrame(orbitar);
   };
+  if (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) {
+    const portada = collage.closest('section') ?? collage;
+    portada.addEventListener('pointermove', (ev) => {
+      raton = { x: (ev as PointerEvent).clientX, y: (ev as PointerEvent).clientY };
+      mosca = true;
+    });
+    portada.addEventListener('pointerleave', () => { mosca = false; });
+    // Al bajar, la portada se va de debajo del ratón: vuelven a su sitio
+    window.addEventListener('scroll', () => {
+      if (mosca && portada.getBoundingClientRect().bottom < raton.y) mosca = false;
+    }, { passive: true });
+  }
   medir();
   colocar();
   collage.classList.add('orbita');

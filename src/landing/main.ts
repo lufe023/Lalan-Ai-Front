@@ -14,6 +14,7 @@ import { iniciarAsistente } from './asistente';
 import { iniciarPlanes } from './planes';
 import { iniciarHistoria } from './historiaPerezosa';
 import { iniciarPortadaViva } from './portadaViva';
+import { iniciarPunteros } from './punteros';
 
 // Quien ya tiene sesión en este aparato ve "Ir a mi salón" en vez de "Entrar"
 if (haySesion()) {
@@ -30,3 +31,4 @@ iniciarAsistente();
 void iniciarPlanes();
 iniciarHistoria();
 iniciarPortadaViva();
+iniciarPunteros();

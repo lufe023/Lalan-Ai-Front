@@ -296,6 +296,7 @@
     function piezas(el, nivel, lista) {
       for (var k = 0; k < el.children.length; k++) {
         var c = el.children[k];
+        if (c.hasAttribute('data-arrastre')) continue; // lo trae un puntero (punteros.ts)
         if (nivel < 2 && esContenedor(c)) piezas(c, nivel + 1, lista);
         else lista.push(c);
       }
@@ -329,6 +330,8 @@
     partes.forEach(function (p) {
       // Lo que ya está en pantalla al cargar no se esconde: no parpadea
       if (p.getBoundingClientRect().top < window.innerHeight) { p.classList.add('visto'); return; }
+      // Lo que traen los punteros no se esconde aquí: punteros.ts lo anima
+      if (p.hasAttribute('data-arrastre')) { p.classList.add('visto'); return; }
       armarPiezas(p);
       obs.observe(p);
     });
