@@ -177,8 +177,9 @@
   }
   .etiqueta-flot::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--acento-marca); margin-right: 8px; vertical-align: 1px; }
   .etiqueta-flot.e1 { left: -6%; top: 14%; }
-  .etiqueta-flot.e2 { left: 8%; bottom: 10%; }
+  .etiqueta-flot.e2 { left: -4%; bottom: 24%; }
   .etiqueta-flot.e3 { right: 26%; top: -16px; }
+  .etiqueta-flot.e4 { right: 32%; bottom: 0; }
   .portada .bajada { font-size: 1.12rem; color: var(--tinta-2); max-width: 34em; }
   .acciones { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .sellos { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .86rem; color: var(--tinta-2); }
@@ -532,7 +533,106 @@
   .marco-barra { display: flex; gap: 6px; padding: 10px 12px; background: var(--banda); border-bottom: 1px solid var(--linea); }
   .marco-barra i { width: 9px; height: 9px; border-radius: 50%; background: var(--linea); }
   .marco-tel { margin: 0; border: 7px solid #221A1E; border-radius: 30px; overflow: hidden; background: #fff; box-shadow: 0 30px 50px -28px rgba(37,26,31,.55); }
-  .collage .marco-tel { position: absolute; right: -8px; bottom: 0; width: 34%; }
+  .collage .marco-tel { position: absolute; right: -8px; bottom: 0; width: 37%; }
+
+  /* ── Portada viva ─────────────────────────────────────────────
+     Entrada de cine (una vez, ~1.6 s), etiquetas que flotan y se encienden
+     con lo que muestra el teléfono, la PC que baja sola por el informe y un
+     teléfono donde Lalan va trabajando. Todo con CSS que ya está al pintar:
+     no hay cuadro en blanco. «Reducir movimiento» lo deja quieto (regla de abajo). */
+  .pc-ventana { position: relative; aspect-ratio: 1210 / 620; overflow: hidden; }
+  .pc-ventana img { display: block; width: 100%; height: auto; }
+  .pc-rollo { will-change: transform; animation: pc-baja 16s 2.4s ease-in-out infinite; }
+  /* El menú de la app no se mueve: es la misma captura, recortada a su columna */
+  .pc-menu { position: absolute; inset: 0 auto 0 0; width: 25.3%; overflow: hidden; border-right: 1px solid #E5E9EF; }
+  .pc-menu img { width: 395.3%; max-width: none; }
+  @keyframes pc-baja {
+    0%, 16% { transform: translate3d(0, 0, 0); }
+    50%, 64% { transform: translate3d(0, -62.6%, 0); }
+    92%, 100% { transform: translate3d(0, 0, 0); }
+  }
+
+  /* Profundidad: el ratón mueve un poco cada capa (portadaViva.ts pone --mx/--my) */
+  .collage { --mx: 0; --my: 0; }
+  .collage .marco-pc { translate: calc(var(--mx) * -6px) calc(var(--my) * -4px); transition: translate .5s cubic-bezier(.2, .7, .2, 1); }
+  .collage .marco-tel { translate: calc(var(--mx) * 10px) calc(var(--my) * 8px); transition: translate .5s cubic-bezier(.2, .7, .2, 1); }
+  .collage .etiqueta-flot { translate: calc(var(--mx) * 16px) calc(var(--my) * 12px); transition: translate .6s cubic-bezier(.2, .7, .2, 1), box-shadow .35s, border-color .35s, color .35s; }
+  /* En órbita (portadaViva.ts pone --ox/--oy cada cuadro): la posición va en translate, sin transición */
+  .collage.orbita .etiqueta-flot { left: 0; top: 0; right: auto; bottom: auto; translate: calc(var(--ox, 0) * 1px + var(--mx) * 16px) calc(var(--oy, 0) * 1px + var(--my) * 12px); transition: box-shadow .35s, border-color .35s, color .35s; will-change: translate; }
+  /* Un resplandor de la marca respira detrás */
+  .collage::before {
+    content: ""; position: absolute; z-index: -1; inset: -12% -8% -4% -6%; pointer-events: none;
+    background:
+      radial-gradient(42% 46% at 28% 36%, color-mix(in srgb, var(--marca) 22%, transparent), transparent 70%),
+      radial-gradient(36% 40% at 78% 70%, color-mix(in srgb, var(--acento-marca) 24%, transparent), transparent 70%);
+    filter: blur(8px); animation: resplandor 12s ease-in-out infinite alternate;
+  }
+  .portada { position: relative; isolation: isolate; }
+  @keyframes resplandor { from { transform: translate(-2%, 1%) scale(1); } to { transform: translate(3%, -2%) scale(1.08); } }
+
+  /* Etiquetas: aparecen con resorte, flotan cada una a su ritmo y se encienden */
+  .etiqueta-flot { animation: etiqueta-sale .7s cubic-bezier(.3, 1.5, .5, 1) both, flotar 5.6s ease-in-out infinite; }
+  .etiqueta-flot.e1 { animation-delay: 1.05s, 1.75s; animation-duration: .7s, 5.2s; }
+  .etiqueta-flot.e2 { animation-delay: 1.2s, 1.9s; animation-duration: .7s, 6.1s; }
+  .etiqueta-flot.e3 { animation-delay: 1.35s, 2.05s; animation-duration: .7s, 5.6s; }
+  .etiqueta-flot.e4 { animation-delay: 1.5s, 2.2s; animation-duration: .7s, 6.6s; }
+  @keyframes etiqueta-sale { from { opacity: 0; scale: .6; } to { opacity: 1; scale: 1; } }
+  @keyframes flotar { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-7px) rotate(-.6deg); } 70% { transform: translateY(4px) rotate(.5deg); } }
+  .etiqueta-flot.activa { border-color: color-mix(in srgb, var(--acento-marca) 60%, var(--linea)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--acento-marca) 18%, transparent), 0 16px 30px -16px color-mix(in srgb, var(--acento-marca) 70%, transparent); }
+  .etiqueta-flot.activa::before { animation: punto-late 1.2s ease-out infinite; }
+  @keyframes punto-late { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acento-marca) 70%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+
+  /* Entrada de cine: la ceja, el título, la bajada y los botones suben en cascada;
+     la frase rosa se pinta de izquierda a derecha; la PC se endereza y el teléfono llega */
+  .portada .texto > * { animation: cine-sube .9s cubic-bezier(.2, .8, .2, 1.05) both; }
+  .portada .texto > :nth-child(1) { animation-delay: .05s; }
+  .portada .texto > :nth-child(2) { animation-delay: .15s; }
+  .portada .texto > :nth-child(3) { animation-delay: .45s; }
+  .portada .texto > :nth-child(4) { animation-delay: .55s; }
+  .portada .texto > :nth-child(5) { animation-delay: .65s; }
+  @keyframes cine-sube { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+  .portada h1 em.acento {
+    background-image: linear-gradient(var(--boton), var(--boton)); background-color: transparent;
+    background-repeat: no-repeat; background-size: 100% 100%;
+    animation: acento-pinta .8s .6s cubic-bezier(.6, 0, .2, 1) both;
+  }
+  @keyframes acento-pinta { from { background-size: 0% 100%; color: var(--tinta); } 60% { color: var(--tinta); } to { background-size: 100% 100%; color: #fff; } }
+  .collage .marco-pc { animation: pc-llega 1.1s .25s cubic-bezier(.2, .8, .2, 1) both; transform-origin: 50% 100%; }
+  @keyframes pc-llega { from { opacity: 0; transform: perspective(1200px) translateY(40px) rotateX(14deg) scale(.96); } to { opacity: 1; transform: none; } }
+  .collage .marco-tel { animation: tel-llega 1s .6s cubic-bezier(.25, 1.25, .4, 1) both; }
+  @keyframes tel-llega { from { opacity: 0; transform: translate(40px, 30px) rotate(6deg); } to { opacity: 1; transform: none; } }
+  /* Fuera de pantalla o con la pestaña escondida, todo se queda quieto: no gasta batería */
+  .collage.en-pausa *, .collage.en-pausa::before { animation-play-state: paused !important; }
+
+  /* ── El teléfono vivo: lo que la dueña ve mientras Lalan trabaja ──
+     Todo mide en cqi (ancho del teléfono): se ve igual de grande que una captura */
+  .marco-tel.vivo { container-type: inline-size; aspect-ratio: 560 / 900; background: var(--pantalla); }
+  .vivo-pantalla { position: absolute; inset: 0; display: flex; flex-direction: column; font-size: 5.6cqi; line-height: 1.3; color: var(--tinta); }
+  .vivo-cabeza { display: grid; gap: .1em; padding: 9cqi 6cqi 3cqi; background: linear-gradient(var(--pantalla) 75%, transparent); position: relative; z-index: 1; }
+  .vivo-marca { display: flex; align-items: center; gap: .45em; font-size: .82em; font-weight: 700; color: var(--tinta-2); }
+  .vivo-marca i { width: .55em; height: .55em; border-radius: 50%; background: var(--verde); animation: punto-late 1.6s ease-out infinite; }
+  .vivo-cabeza b { font-size: 1.9em; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; }
+  .vivo-cabeza small { font-size: .78em; color: var(--tinta-3); }
+  .vivo-lista { list-style: none; margin: 0; padding: 0 4.5cqi 5cqi; display: flex; flex-direction: column; gap: 3cqi; flex: 1; justify-content: flex-end; overflow: hidden; }
+  .vivo-tarjeta { display: grid; grid-template-columns: auto 1fr; gap: 3cqi; align-items: start; padding: 3.6cqi; border-radius: 4cqi; background: var(--papel); border: 1px solid var(--linea); box-shadow: 0 2cqi 5cqi -3cqi rgba(37, 26, 31, .35); }
+  .vivo-tarjeta b { display: block; font-size: .95em; font-weight: 800; }
+  .vivo-tarjeta p { margin: .15em 0 0; font-size: .86em; color: var(--tinta-2); }
+  .vivo-icono { width: 9cqi; height: 9cqi; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--acento-marca) 18%, var(--papel)); color: var(--acento-texto); }
+  .vivo-icono svg { width: 58%; height: 58%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .vivo-tarjeta.vivo-alerta { background: color-mix(in srgb, var(--ambar) 12%, var(--papel)); border-color: color-mix(in srgb, var(--ambar) 45%, var(--linea)); }
+  .vivo-tarjeta.vivo-alerta .vivo-icono { background: color-mix(in srgb, var(--ambar) 22%, var(--papel)); color: var(--ambar); }
+  .vivo-sello { display: inline-block; margin-top: .45em; padding: .2em .65em; border-radius: 99px; font-size: .74em; font-weight: 700; }
+  .vivo-sello.verde { color: var(--verde); background: color-mix(in srgb, var(--verde) 14%, var(--papel)); }
+  .vivo-boton { display: inline-block; margin-top: .5em; padding: .35em .8em; border-radius: 99px; font-size: .76em; font-weight: 700; color: #fff; background: var(--boton); }
+  .vivo-onda { display: flex; align-items: center; gap: .9cqi; height: 5cqi; margin-top: .35em; }
+  .vivo-onda i { width: 1cqi; height: 30%; border-radius: 1cqi; background: var(--acento-marca); }
+  .vivo-tarjeta.llega .vivo-onda i { animation: onda .9s ease-in-out 3; }
+  .vivo-onda i:nth-child(3n) { animation-delay: .15s; } .vivo-onda i:nth-child(3n+1) { animation-delay: .3s; }
+  @keyframes onda { 50% { height: 100%; } }
+  /* Cada tarjeta nueva sube con resorte; las de arriba se van corriendo (portadaViva.ts) */
+  .vivo-tarjeta.llega { animation: tarjeta-llega .65s cubic-bezier(.25, 1.3, .4, 1) both; }
+  @keyframes tarjeta-llega { from { opacity: 0; transform: translateY(30%) scale(.94); } to { opacity: 1; transform: none; } }
+  .vivo-tarjeta.se-va { opacity: 0; transition: opacity .4s; }
   .marco-tel.grande { width: min(320px, 100%); margin-inline: auto; }
   .marco-captura { margin: 0 auto; max-width: 440px; border-radius: 22px; overflow: hidden; border: 1px solid var(--linea); box-shadow: var(--sombra); background: #fff; }
 
@@ -616,6 +716,35 @@
   /* ── Entrada suave: sube un poco y aparece, una vez (pagina.js pone .anima solo si se puede) ── */
   .entra { transition: opacity .7s ease, transform .7s cubic-bezier(.2, .7, .2, 1); }
   .anima .entra:not(.visto) { opacity: 0; transform: translateY(18px); }
+  /* Por piezas (pagina.js): la parte se queda quieta y sus piezas entran en cascada.
+     Va en translate/scale, no en transform, para no pisar lo que cada pieza ya mueve */
+  .anima .entra.con-piezas:not(.visto) { opacity: 1; transform: none; }
+  .anima .entra .pieza { transition: opacity .6s ease, translate .8s cubic-bezier(.2, .9, .25, 1.1), scale .8s cubic-bezier(.2, .9, .25, 1.1), filter .6s ease; transition-delay: calc(var(--i, 0) * 75ms); }
+  .anima .entra:not(.visto) .pieza { opacity: 0; translate: 0 26px; filter: blur(4px); }
+  .anima .entra .pieza-foto { transition-duration: .7s, 1.1s, 1.1s, .7s; transition-delay: calc(var(--i, 0) * 75ms + 120ms); }
+  .anima .entra:not(.visto) .pieza-foto { translate: 0 40px; scale: .92; filter: none; }
+  /* ── Punteros que traen las cosas (punteros.ts) ── */
+  .puntero { position: absolute; z-index: 6; width: 26px; height: 26px; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .28)); transform-origin: 20% 10%; }
+  .puntero svg { width: 100%; height: 100%; display: block; fill: #1B1416; stroke: #fff; stroke-width: 1.6; stroke-linejoin: round; }
+  .puntero.agarra { scale: .88; }
+  .dia.por-arrastrar article, .fila-imagen.por-arrastrar .telefono, .fila-imagen.por-arrastrar .escenarios button, .fila-imagen.sin-botones .escenarios button { opacity: 0; }
+  .dia.arrastrando { overflow: visible; }
+  .dia.arrastrando article { position: relative; }
+  .dia article .puntero { top: 16px; right: 20px; }
+  .dia article { transition: box-shadow .4s, background-color .4s, border-radius .4s; }
+  .dia article.en-vuelo { z-index: 2; background: var(--papel); border-radius: 18px; box-shadow: 0 0 0 1px var(--linea), 0 26px 50px -22px rgba(37, 26, 31, .45); }
+  .fila-imagen { position: relative; }
+  .telefono .puntero.en-telefono { top: -10px; left: 58%; }
+  /* Los botones de ejemplo saltan uno tras otro y luego llaman con un halo, para que se note que se tocan */
+  .escenarios.invita button { animation: boton-sale .55s cubic-bezier(.3, 1.6, .5, 1) backwards, boton-llama 1.8s 1.2s ease-out 5; }
+  .escenarios.invita button:nth-child(2) { animation-delay: .1s, 1.5s; }
+  .escenarios.invita button:nth-child(3) { animation-delay: .2s, 1.8s; }
+  @keyframes boton-sale { from { opacity: 0; transform: translateY(12px) scale(.8); } to { opacity: 1; transform: none; } }
+  @keyframes boton-llama { 0% { box-shadow: 0 0 0 0 rgba(0, 128, 105, .45); } 70%, 100% { box-shadow: 0 0 0 10px rgba(0, 128, 105, 0); } }
+  .escenarios button.toque-falso { transform: scale(.94); border-color: #008069; color: #008069; }
+  .collage.orbita .etiqueta-flot { pointer-events: none; }
+  /* El resplandor de la portada no debe abrir scroll de lado */
+  main { overflow-x: clip; }
 
   /* Planes: 3 o 4 columnas en la PC (--columnas lo pone planes.ts), de lado en el teléfono */
   .planes { --columnas: 3; display: grid; grid-template-columns: repeat(var(--columnas), minmax(0, 1fr)); gap: 18px; align-items: stretch; padding-top: 14px; }
@@ -726,7 +855,8 @@
     .etiqueta-flot { font-size: .7rem; padding: 5px 10px; }
     .etiqueta-flot.e1 { left: 0; top: -14px; }
     .etiqueta-flot.e2 { left: auto; right: 0; bottom: 6px; }
-    .etiqueta-flot.e3 { display: none; }
+    .etiqueta-flot.e3 { right: 0; top: 34%; }
+    .etiqueta-flot.e4 { left: auto; right: 2%; bottom: -30px; }
     #metricas .marco-pc { max-width: 390px; margin-inline: auto; }
     #metricas .marco-barra { display: none; }
     .flexible { gap: 12px; }
