@@ -103,24 +103,77 @@ export function iniciarPortadaViva(): void {
   };
 
   const andar = () => {
-    if (reloj !== undefined || !visible || document.hidden) return;
+    if (reloj !== undefined || !visible || document.hidden || paso === 0) return;
     reloj = window.setInterval(siguiente, PASO_MS);
   };
   const parar = () => {
     if (reloj !== undefined) window.clearInterval(reloj);
     reloj = undefined;
   };
+  // ── Órbita: las etiquetas dan la vuelta despacio alrededor de la PC y el
+  // teléfono, sin dejar de flotar (el flotado va en transform, la órbita en
+  // translate). Cada una sale a 90° de la otra; una vuelta tarda VUELTA_MS.
+  const VUELTA_MS = 40000;
+  const salida: Record<string, number> = { '1': Math.PI, '2': Math.PI / 2, '3': -Math.PI / 2, '4': 0 };
+  let medida = { w: 0, h: 0, tags: [] as { el: HTMLElement; w: number; h: number; a0: number }[] };
+  const medir = () => {
+    medida = {
+      w: collage.clientWidth,
+      h: collage.clientHeight,
+      tags: etiquetas.map((el) => ({ el, w: el.offsetWidth, h: el.offsetHeight, a0: salida[el.dataset.e ?? '1'] ?? 0 })),
+    };
+  };
+  let girado = 0;
+  let ultimo = 0;
+  let cuadroOrbita = 0;
+  const colocar = () => {
+    const { w, h, tags } = medida;
+    const alto = h - 48; // el collage deja 48 px abajo para el teléfono
+    const cx = w / 2;
+    const cy = alto / 2 + 6;
+    const rx = w / 2 + 6;
+    const ry = alto / 2 + 16;
+    const margen = w > 560 ? 24 : 0; // en el teléfono no se sale de la pantalla
+    const giro = (girado / VUELTA_MS) * Math.PI * 2;
+    for (const t of tags) {
+      const a = t.a0 + giro;
+      const x = Math.min(Math.max(cx + rx * Math.cos(a), t.w / 2 - margen), w - t.w / 2 + margen);
+      const y = cy + ry * Math.sin(a);
+      t.el.style.setProperty('--ox', (x - t.w / 2).toFixed(1));
+      t.el.style.setProperty('--oy', (y - t.h / 2).toFixed(1));
+    }
+  };
+  const orbitar = (ahora: number) => {
+    if (ultimo) girado += Math.min(ahora - ultimo, 100);
+    ultimo = ahora;
+    colocar();
+    cuadroOrbita = requestAnimationFrame(orbitar);
+  };
+  medir();
+  colocar();
+  collage.classList.add('orbita');
+  new ResizeObserver(() => { medir(); colocar(); }).observe(collage);
+  document.fonts?.ready.then(() => { medir(); colocar(); });
+
   const actualizar = () => {
     const pausa = !visible || document.hidden;
     collage.classList.toggle('en-pausa', pausa);
-    if (pausa) parar();
-    else andar();
+    if (pausa) {
+      parar();
+      cancelAnimationFrame(cuadroOrbita);
+      cuadroOrbita = 0;
+      ultimo = 0;
+    } else {
+      andar();
+      if (!cuadroOrbita) cuadroOrbita = requestAnimationFrame(orbitar);
+    }
   };
 
-  // La primera tarjeta llega cuando el teléfono ya entró
+  // La órbita arranca ya; la primera tarjeta llega cuando el teléfono ya entró
+  actualizar();
   window.setTimeout(() => {
     siguiente();
-    actualizar();
+    andar();
   }, 1500);
 
   if ('IntersectionObserver' in window) {
