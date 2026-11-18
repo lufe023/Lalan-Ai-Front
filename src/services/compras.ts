@@ -444,6 +444,8 @@ export interface PanoramaProveedor {
 export interface MensajeProveedor {
   id: string; tipo: string; canal: string | null; autorTipo: string; autorNombre: string | null; texto: string | null;
   adjuntoId: string | null; creadoEn: string; pedido: { id: string; numero: string; estado: EstadoCompra } | null;
+  /** Lo que salió por WhatsApp: «fallido» si Meta no lo entregó, con el motivo en `fallo` */
+  entrega?: 'enviando' | 'enviado' | 'fallido' | null; fallo?: string | null;
 }
 
 export interface ChatProveedor {
