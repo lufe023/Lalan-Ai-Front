@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BotonAtras } from '../ui/BotonAtras';
 import {
-  ArrowLeftRight, Bot, Check, ChevronRight, Copy, FileText, Loader2, Mail, MessageCircle, MessagesSquare, PackageCheck, Paperclip, Plus, Printer,
+  AlertTriangle, ArrowLeftRight, Bot, Check, ChevronRight, Copy, FileText, Loader2, Mail, MessageCircle, MessagesSquare, PackageCheck, Paperclip, Plus, Printer,
   Scale, Search, Send, Trash2, X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -15,7 +15,7 @@ import { RecibirPedido } from './RecibirPedido';
 import { CambiarProveedor } from './CambiarProveedor';
 import { CuentaDelPedido } from './PorPagar';
 import {
-  IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, campo, deInputFecha, etiqueta, fechaHora, paraInputFecha,
+  IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, botonWhatsapp, campo, deInputFecha, etiqueta, fechaHora, paraInputFecha,
 } from './piezas';
 
 interface Renglon { productId: string; descripcion: string; cantidad: string; precio: string; impuestoPct: string; unidad: string | null; hay: number; unidadInv: string }
@@ -317,7 +317,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
               <input type="date" className={campo} value={paraInputFecha(p.entregaEsperada)} disabled={p.estado === 'recibida' || p.estado === 'cancelada'} onChange={(e) => void campoPedido({ entregaEsperada: deInputFecha(e.target.value) })} />
             </label>
             <label>
-              <span className={etiqueta}>Número del proveedor (su cotización o factura)</span>
+              <span className={etiqueta}>N.º de su cotización o factura</span>
               <input className={campo} defaultValue={p.referenciaProveedor ?? ''} key={`ref-${p.referenciaProveedor}`} onBlur={(e) => { if ((e.target.value || null) !== p.referenciaProveedor) void campoPedido({ referenciaProveedor: e.target.value || null }); }} />
             </label>
             <div>
@@ -461,6 +461,9 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
   const [subiendo, setSubiendo] = useState(false);
   const archivo = useRef<HTMLInputElement>(null);
 
+  const quienRecibe = pedido.contacto.nombre ? `${pedido.contacto.nombre} (${pedido.proveedor.nombre})` : pedido.proveedor.nombre;
+  const sinVentana = !!pedido.contacto.whatsapp && !pedido.ventana && !pedido.contacto.correo;
+
   const indicar = async (literal: boolean) => {
     if (!texto.trim()) return;
     setEnviando(true);
@@ -513,6 +516,15 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
       {modo === 'lalan' && (
         <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">Lalan le contesta a {pedido.proveedor.nombre} por donde están hablando, con lo que le digas. Nunca compra ni paga sin tu sí.</p>
       )}
+      {/* WhatsApp cerrado y sin correo: Lalan no puede escribirle primero. Se dice antes de que lo intente, con el botón para hacerlo desde su teléfono */}
+      {modo === 'lalan' && sinVentana && (
+        <div className="p-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-[0.75rem] space-y-2">
+          <p>{quienRecibe} no le ha escrito al WhatsApp del salón en las últimas 24 horas, y Meta no deja que Lalan le escriba primero. Escríbele tú: cuando conteste, Lalan sigue.</p>
+          <a href={enlaceWa(pedido.contacto.whatsapp!, texto.trim())} target="_blank" rel="noreferrer" className={`${botonWhatsapp} !inline-flex`}>
+            <MessageCircle className="w-4 h-4" /> Escríbele desde tu WhatsApp
+          </a>
+        </div>
+      )}
       <textarea ref={escribir} className={`${campo} min-h-[70px]`} value={texto} onChange={(e) => setTexto(e.target.value)}
         placeholder={modo === 'proveedor' ? 'Ej.: la caja está a 1,250 y la trae el jueves' : modo === 'lalan' ? 'Ej.: dile que sí, pero que lo traiga el lunes' : 'Escribe una nota para el equipo…'} />
       {modo === 'lalan' ? (
@@ -559,6 +571,8 @@ const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
     : e.tipo === 'envio' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
     : 'bg-slate-100 text-slate-600 dark:bg-neutral-800 dark:text-neutral-300';
   const mensaje: string | null = e.tipo === 'envio' && e.datos?.mensaje ? e.datos.mensaje : null;
+  // Meta no lo entregó (o n8n no lo pudo mandar): se dice aquí mismo, con el botón para mandarlo desde su WhatsApp
+  const noLlego = e.datos?.entrega === 'fallido';
   const [ver, setVer] = useState(false);
   return (
     <li className="flex gap-2.5">
@@ -575,6 +589,16 @@ const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
         {e.tipo === 'adjunto' && e.adjuntoId && (
           <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">Abrir</button>
         )}
+        {noLlego && (
+          <div className="mt-1 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[0.75rem] space-y-1.5">
+            <p className="flex items-start gap-1.5 font-semibold"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> No le llegó. {e.datos?.fallo ?? 'Meta no lo entregó.'}</p>
+            {e.datos?.a && (
+              <a href={enlaceWa(e.datos.a, mensaje ?? e.texto ?? '')} target="_blank" rel="noreferrer" className={`${botonWhatsapp} !inline-flex !py-1.5`}>
+                <MessageCircle className="w-3.5 h-3.5" /> Mándaselo desde tu WhatsApp
+              </a>
+            )}
+          </div>
+        )}
         {mensaje && (
           <>
             <button type="button" onClick={() => setVer(!ver)} className="text-[0.75rem] font-bold text-slate-500 cursor-pointer">{ver ? 'Ocultar el mensaje' : 'Ver el mensaje'}</button>
@@ -586,3 +610,8 @@ const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
   );
 };
 
+/** Abre el WhatsApp de la dueña con ese número y el mensaje listo */
+function enlaceWa(numero: string, texto: string): string {
+  const n = numero.replace(/\D/g, '');
+  return `https://wa.me/${n}${texto ? `?text=${encodeURIComponent(texto)}` : ''}`;
+}

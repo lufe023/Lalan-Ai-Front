@@ -148,9 +148,14 @@ export const ChatConProveedor: React.FC<{ id: string; sede?: string; onVolver: (
             </div>
           </div>
         ) : (
-          <p className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-[0.8125rem]">
-            {p.nombre} no ha escrito por WhatsApp en las últimas 24 horas y no tiene correo, así que Meta no deja escribirle desde aquí. Escríbele desde tu WhatsApp con el botón de arriba.
-          </p>
+          <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-[0.8125rem] flex flex-wrap items-center gap-3">
+            <p className="flex-1 min-w-[12rem]">
+              {c.waMe
+                ? `${p.nombre} no le ha escrito al WhatsApp del salón en las últimas 24 horas, y Meta no deja que Lalan le escriba primero. Escríbele desde tu WhatsApp: cuando conteste, Lalan sigue aquí.`
+                : `${p.nombre} no tiene WhatsApp ni correo anotado. Ponle uno en su ficha para escribirle desde aquí.`}
+            </p>
+            {c.waMe && <a href={c.waMe} target="_blank" rel="noreferrer" className={botonWhatsapp}><MessageCircle className="w-4 h-4" /> Escríbele desde tu WhatsApp</a>}
+          </div>
         )
       )}
     </div>
@@ -297,6 +302,9 @@ const Burbuja: React.FC<{ m: MensajeProveedor; onAbrirPedido: (id: string) => vo
           <button type="button" onClick={() => void comprasApi.abrirAdjunto(m.adjuntoId!)} className="font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer"><FileText className="w-3.5 h-3.5" /> {m.texto || 'Archivo'}</button>
         ) : (
           <p className="whitespace-pre-line break-words">{m.tipo === 'envio' ? (m.texto || 'Le mandamos el pedido') : m.texto}</p>
+        )}
+        {m.entrega === 'fallido' && (
+          <p className="mt-1 text-[0.6875rem] font-semibold text-rose-600 dark:text-rose-400">No le llegó. {m.fallo ?? 'Meta no lo entregó.'}</p>
         )}
         <p className="mt-1 text-[0.625rem] text-slate-400 flex items-center gap-1.5 justify-end">
           {m.pedido && (

@@ -37,6 +37,9 @@ export const PASOS: { id: EstadoCompra; nombre: string }[] = [
   { id: 'recibida', nombre: 'Recibida' },
 ];
 
+/** Un proveedor que ya tiene ese WhatsApp (en su ficha o como otra persona de la empresa) */
+export interface DuenoDeNumero { proveedorId: string; proveedor: string; contactoId: string | null; contacto: string | null }
+
 export interface Proveedor {
   id: string; nombre: string; contacto: string | null; whatsapp: string | null; correo: string | null; telefono: string | null;
   direccion: string | null; rnc: string | null; currencyCode: string | null; diasEntrega: number | null;
@@ -282,6 +285,9 @@ export const comprasApi = {
   /** Copia el pedido; a otro proveedor, le pide lo mismo y quedan en una comparación */
   duplicar: (id: string, d: { proveedorId?: string; contactoId?: string | null } = {}) => api.post<Pedido>(`/compras/ordenes/${id}/duplicar`, d),
   otrosProveedores: (id: string) => api.get<{ productos: number; sede: string; proveedores: OtroProveedor[] }>(`/compras/ordenes/${id}/otros-proveedores`),
+  /** ¿Ese WhatsApp ya está en otro proveedor? (para avisar, no se prohíbe) */
+  quienTieneNumero: (whatsapp: string, excepto: string | null) =>
+    api.get<DuenoDeNumero[]>(`/compras/proveedores/numero?whatsapp=${encodeURIComponent(whatsapp)}${excepto ? `&excepto=${excepto}` : ''}`),
   crearContacto: (proveedorId: string, c: Partial<ContactoGuardado>) => api.post<ContactoGuardado>(`/compras/proveedores/${proveedorId}/contactos`, c),
   editarContacto: (id: string, c: Partial<ContactoGuardado>) => api.patch<ContactoGuardado>(`/compras/contactos/${id}`, c),
   borrarContacto: (id: string) => api.delete<{ ok: true }>(`/compras/contactos/${id}`),
@@ -444,6 +450,8 @@ export interface PanoramaProveedor {
 export interface MensajeProveedor {
   id: string; tipo: string; canal: string | null; autorTipo: string; autorNombre: string | null; texto: string | null;
   adjuntoId: string | null; creadoEn: string; pedido: { id: string; numero: string; estado: EstadoCompra } | null;
+  /** Lo que salió por WhatsApp: «fallido» si Meta no lo entregó, con el motivo en `fallo` */
+  entrega?: 'enviando' | 'enviado' | 'fallido' | null; fallo?: string | null;
 }
 
 export interface ChatProveedor {
