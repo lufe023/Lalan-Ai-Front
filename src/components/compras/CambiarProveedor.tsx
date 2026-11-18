@@ -9,6 +9,7 @@ import {
   comprasApi, haceCuanto, type ContactoGuardado, type ContactoProveedor, type OtroProveedor, type Pedido, type Sugerencia, type VentanaAbierta,
 } from '../../services/compras';
 import { botonPrincipal, botonSuave, campo, etiqueta } from './piezas';
+import { NumeroRepetido } from './NumeroRepetido';
 
 const mismoNumero = (a?: string | null, b?: string | null) => {
   const x = (a ?? '').replace(/\D/g, '').slice(-10);
@@ -272,7 +273,11 @@ export const CambiarProveedor: React.FC<{
  * Las demás personas del proveedor (la de la ficha es la principal): un
  * vendedor por zona, el de cobros. En cada pedido se elige con quién se habla.
  */
-export const PersonasDelProveedor: React.FC<{ proveedorId: string; nombre: string; contactos: ContactoGuardado[]; onCambio: (c: ContactoGuardado[]) => void }> = ({ proveedorId, nombre, contactos, onCambio }) => {
+export const PersonasDelProveedor: React.FC<{
+  proveedorId: string; nombre: string; contactos: ContactoGuardado[]; onCambio: (c: ContactoGuardado[]) => void;
+  /** Abrir la ficha del otro proveedor que ya tiene ese WhatsApp */
+  onAbrirOtro?: (id: string) => void;
+}> = ({ proveedorId, nombre, contactos, onCambio, onAbrirOtro }) => {
   const { showToast } = useApp();
   const { confirmar, modalConfirmar } = useConfirmar();
   const [nueva, setNueva] = useState<{ nombre: string; cargo: string; whatsapp: string; correo: string } | null>(null);
@@ -312,7 +317,10 @@ export const PersonasDelProveedor: React.FC<{ proveedorId: string; nombre: strin
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
           <input className={campo} autoFocus placeholder="Nombre" value={nueva.nombre} onChange={(e) => setNueva({ ...nueva, nombre: e.target.value })} />
           <input className={campo} placeholder="Qué hace (opcional): vendedora zona este" value={nueva.cargo} onChange={(e) => setNueva({ ...nueva, cargo: e.target.value })} />
-          <input className={campo} inputMode="tel" placeholder="WhatsApp" value={nueva.whatsapp} onChange={(e) => setNueva({ ...nueva, whatsapp: e.target.value })} />
+          <div>
+            <input className={campo} inputMode="tel" placeholder="WhatsApp" value={nueva.whatsapp} onChange={(e) => setNueva({ ...nueva, whatsapp: e.target.value })} />
+            <NumeroRepetido whatsapp={nueva.whatsapp} excepto={proveedorId} onAbrir={onAbrirOtro} />
+          </div>
           <input className={campo} type="email" placeholder="Correo" value={nueva.correo} onChange={(e) => setNueva({ ...nueva, correo: e.target.value })} />
           <div className="sm:col-span-2 flex gap-2">
             <button type="button" disabled={!nueva.nombre.trim() || guardando} onClick={() => void agregar()} className={botonPrincipal}>{guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Agregar</button>

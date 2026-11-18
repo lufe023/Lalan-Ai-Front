@@ -12,6 +12,7 @@ import {
 import { BuscarEmpresa, type EmpresaElegida } from './BuscarEmpresa';
 import { ComoSePaga } from './ComoSePaga';
 import { PersonasDelProveedor } from './CambiarProveedor';
+import { NumeroRepetido } from './NumeroRepetido';
 import { PastillaEstado, botonPrincipal, botonSuave, campo, etiqueta, fechaCorta } from './piezas';
 
 /**
@@ -64,7 +65,7 @@ export const ListaProveedores: React.FC<{ sede?: string; onAbrirPedido: (id: str
           ))}
         </ListaAnimada>
       )}
-      <FichaProveedor id={abierto} onClose={() => setAbierto(null)} onCambio={cargar} onAbrirPedido={(id) => { setAbierto(null); onAbrirPedido(id); }}
+      <FichaProveedor id={abierto} onClose={() => setAbierto(null)} onCambio={cargar} onAbrirOtro={setAbierto} onAbrirPedido={(id) => { setAbierto(null); onAbrirPedido(id); }}
         onAbrirChat={onAbrirChat ? (id) => { setAbierto(null); onAbrirChat(id); } : undefined} />
     </div>
   );
@@ -90,7 +91,9 @@ export const FichaProveedor: React.FC<{
   onAbrirChat?: (id: string) => void;
   /** Al crear uno nuevo desde otro lado (un producto), quien llama recibe el proveedor */
   onCreado?: (p: Proveedor) => void;
-}> = ({ id, onClose, onCambio, onAbrirPedido, onAbrirChat, onCreado }) => {
+  /** Abrir la ficha de otro proveedor (el que ya tiene el mismo WhatsApp) */
+  onAbrirOtro?: (id: string) => void;
+}> = ({ id, onClose, onCambio, onAbrirPedido, onAbrirChat, onCreado, onAbrirOtro }) => {
   const { showToast, currencies, navigateToCatalog } = useApp();
   const sedes = useSedes({ todasLasDelSalon: true });
   const { confirmar, modalConfirmar } = useConfirmar();
@@ -170,7 +173,9 @@ export const FichaProveedor: React.FC<{
             {f.plataformaId && id === 'nuevo' && <p className="mt-1 text-[0.6875rem] text-violet-700 dark:text-violet-300 flex items-center gap-1"><Sparkles className="w-3 h-3" /> De la lista de Lalan. Cambia lo que quieras: en tu lista manda lo tuyo.</p>}
           </div>
           <label><span className={etiqueta}>Persona de contacto{detalle ? ' (la principal)' : ''}</span><input className={campo} placeholder="Juan Pérez" {...t('contacto')} /></label>
-          <label><span className={etiqueta}>WhatsApp</span><input className={campo} inputMode="tel" placeholder="18095551234" {...t('whatsapp')} /></label>
+          <div><label><span className={etiqueta}>WhatsApp</span><input className={campo} inputMode="tel" placeholder="18095551234" {...t('whatsapp')} /></label>
+            <NumeroRepetido whatsapp={f.whatsapp} excepto={detalle?.id ?? null} onAbrir={onAbrirOtro} />
+          </div>
           <label><span className={etiqueta}>Correo</span><input className={campo} type="email" placeholder="ventas@proveedor.com" {...t('correo')} /></label>
           <label><span className={etiqueta}>Teléfono</span><input className={campo} inputMode="tel" {...t('telefono')} /></label>
           <div><label><span className={etiqueta}>RNC</span>
@@ -216,7 +221,7 @@ export const FichaProveedor: React.FC<{
 
         {detalle && (
           <>
-            <PersonasDelProveedor proveedorId={detalle.id} nombre={detalle.nombre} contactos={detalle.contactos ?? []} onCambio={(c) => { setDetalle({ ...detalle, contactos: c }); onCambio(); }} />
+            <PersonasDelProveedor proveedorId={detalle.id} nombre={detalle.nombre} contactos={detalle.contactos ?? []} onAbrirOtro={onAbrirOtro} onCambio={(c) => { setDetalle({ ...detalle, contactos: c }); onCambio(); }} />
             <div className="space-y-1.5">
               <h4 className="text-[0.6875rem] uppercase font-bold tracking-wider text-slate-400">Lo que le compras</h4>
               {!detalle.productos.length && <p className="text-[0.8125rem] text-slate-500">Nada todavía. En Catálogo → Productos, toca «Proveedor» en cada producto para decir qué le compras.</p>}
