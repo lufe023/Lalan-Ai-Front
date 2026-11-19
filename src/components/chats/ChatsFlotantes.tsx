@@ -1,3 +1,4 @@
+import { EVENTO_MINIMIZAR_CHAT } from '../../services/abrirFicha';
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { VentanaChat } from './VentanaChat';
@@ -54,6 +55,16 @@ export const ChatsFlotantes: React.FC = () => {
     setVentanas(v => [{ id, minimizada: false }, ...v.filter(x => x.id !== id)].slice(0, caben));
     setActiveConversationId(null);
   }, [activeConversationId, esEscritorio, caben, setActiveConversationId]);
+
+  // Se abrió la ficha de la clienta desde su chat: la ventanita se baja para no taparla
+  useEffect(() => {
+    const minimizar = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      setVentanas(v => v.map(x => (x.id === id ? { ...x, minimizada: true } : x)));
+    };
+    window.addEventListener(EVENTO_MINIMIZAR_CHAT, minimizar);
+    return () => window.removeEventListener(EVENTO_MINIMIZAR_CHAT, minimizar);
+  }, []);
 
   // Si se achica la pantalla, se quedan las más recientes
   useEffect(() => { setVentanas(v => (v.length > caben ? v.slice(0, caben) : v)); }, [caben]);

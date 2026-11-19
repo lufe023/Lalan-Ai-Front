@@ -3,6 +3,7 @@ import { CalendarClock, Check, Clock, Sparkles, X } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { pedirSeccionAjustes } from '../ajustes/MenuAjustes';
+import { CHIP_ABIERTO, CHIP_CHAT, CHIP_NEUTRO, CHIP_VIOLETA } from './chipsDelChat';
 import type { Conversation } from '../../types';
 
 /**
@@ -13,7 +14,8 @@ import type { Conversation } from '../../types';
  * y ninguna hora le sirve, le pregunta a la dueña. Lo que pidió llega aquí
  * arriba, en una tarjeta con dos botones: «Sí, dale ese turno» (Lalan se lo
  * agenda y se lo confirma) o «No puedo» (Lalan se lo dice con cariño y le
- * ofrece otra hora). Sin pedido, abajo queda el permiso a mano (24 horas).
+ * ofrece otra hora). Sin pedido, el permiso a mano (24 horas) es un chip de la
+ * fila de herramientas de arriba del chat.
  * Solo la dueña o la administración deciden; el resto del equipo lo ve.
  */
 
@@ -138,47 +140,56 @@ export const PedidoFueraDeHorario: React.FC<{ conversacion: Conversation; puedeA
 };
 
 /**
- * Abajo del chat: el turno autorizado (y quitarlo), o darle permiso a mano
- * cuando la clienta lo pidió hablando con una persona.
+ * En la fila de herramientas de arriba del chat: el turno autorizado (y
+ * quitarlo), o darle permiso a mano cuando la clienta lo pidió hablando con
+ * una persona. Es un chip; lo de decidir se abre debajo (PanelTurnoEspecial).
  */
-export const TurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; ventanaCerrada?: boolean; children?: React.ReactNode }> = ({ conversacion, puedeAutorizar, ventanaCerrada = false, children }) => {
+export const TurnoEspecialChip: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; abierta: boolean; onAbrir: (abrir: boolean) => void }> = ({ conversacion, puedeAutorizar, abierta, onAbrir }) => {
   const t = useTurnoEspecial(conversacion);
   // Con un pedido por decidir, la tarjeta de arriba ya tiene los botones
   const porDecidir = !!t.pedido && !t.vigente;
-  const conPermiso = puedeAutorizar && !porDecidir;
-  if (!t.vigente && !conPermiso && !children) return null;
-
+  if (!t.vigente && (!puedeAutorizar || porDecidir)) return null;
   const cuando = t.hasta ? new Date(t.hasta).toLocaleString('es-DO', { weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
   return (
-    <div className={`px-4 py-1.5 flex items-center gap-2 text-[0.75rem] border-t ${t.vigente
-      ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-200/70 dark:border-violet-900 text-violet-800 dark:text-violet-200'
-      : 'bg-white dark:bg-neutral-950 border-slate-100 dark:border-neutral-900 text-slate-500 dark:text-neutral-400'}`}>
+    <button type="button" aria-expanded={abierta} onClick={() => onAbrir(!abierta)}
+      className={`${CHIP_CHAT} ${abierta ? CHIP_ABIERTO : t.vigente ? CHIP_VIOLETA : CHIP_NEUTRO}`}>
+      {t.vigente ? <Sparkles className="w-3.5 h-3.5 shrink-0" /> : <CalendarClock className="w-3.5 h-3.5 shrink-0" />}
+      {t.vigente ? `Turno extra hasta ${cuando}` : 'Turno fuera de horario'}
+    </button>
+  );
+};
+
+export const PanelTurnoEspecial: React.FC<{ conversacion: Conversation; puedeAutorizar: boolean; ventanaCerrada?: boolean; onListo: () => void }> = ({ conversacion, puedeAutorizar, ventanaCerrada = false, onListo }) => {
+  const t = useTurnoEspecial(conversacion);
+  const cuando = t.hasta ? new Date(t.hasta).toLocaleString('es-DO', { weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+  const decidir = async (autorizar: boolean) => { await t.decidir(autorizar); onListo(); };
+  return (
+    <div className="space-y-2 text-[0.75rem] text-slate-500 dark:text-neutral-400">
       {t.vigente ? (
         <>
-          <Sparkles className="w-3.5 h-3.5 shrink-0" />
-          <span className="flex-1 min-w-0">
-            <span className="font-bold">Lalan puede darle un turno fuera de horario</span>
-            {t.por ? ` (lo permitió ${t.por})` : ''} · hasta {cuando}
-          </span>
+          <p>
+            <span className="font-bold text-violet-700 dark:text-violet-300">Lalan puede darle a {t.nombre} un turno fuera de horario</span>
+            {t.por ? ` (lo permitió ${t.por})` : ''} hasta el {cuando}.
+          </p>
           {puedeAutorizar && (
-            <button type="button" disabled={!!t.ocupado} onClick={() => void t.decidir(false)}
-              className="shrink-0 px-2.5 py-1 rounded-lg bg-white/70 dark:bg-violet-900/50 font-bold disabled:opacity-50 cursor-pointer">
-              Quitar
+            <button type="button" disabled={!!t.ocupado} onClick={() => void decidir(false)}
+              className={`${CHIP_CHAT} ${CHIP_NEUTRO} disabled:opacity-50`}>
+              <X className="w-3.5 h-3.5" /> {t.ocupado ? 'Un momento…' : 'Quitar el permiso'}
             </button>
           )}
         </>
-      ) : conPermiso ? (
+      ) : (
         <>
-          <CalendarClock className="w-3.5 h-3.5 shrink-0" />
-          <span className="flex-1 min-w-0">¿Quiere venir fuera de tu horario?{ventanaCerrada ? ' Lalan se lo ofrece cuando vuelva a escribir.' : ''}</span>
-          <button type="button" disabled={!!t.ocupado} onClick={() => void t.decidir(true)}
-            title={`Durante 24 horas Lalan puede ofrecerle a ${t.nombre} horas fuera del horario`}
-            className="shrink-0 px-2.5 py-1 rounded-lg bg-violet-600 text-white font-bold disabled:opacity-50 cursor-pointer">
-            Darle un turno
+          <p>
+            ¿{t.nombre} solo puede venir fuera de tu horario? Dale permiso y, durante 24 horas, Lalan le ofrece horas fuera del horario.
+            {ventanaCerrada ? ` Pasaron más de 24 horas desde su último mensaje: se lo ofrece cuando ${t.nombre} vuelva a escribir.` : ''}
+          </p>
+          <button type="button" disabled={!!t.ocupado} onClick={() => void decidir(true)}
+            className="h-9 px-4 rounded-xl bg-violet-600 text-white text-[0.8125rem] font-bold flex items-center gap-1.5 disabled:opacity-50 ios-touch cursor-pointer shadow-sm">
+            <Check className="w-4 h-4" /> {t.ocupado ? 'Un momento…' : 'Darle un turno'}
           </button>
         </>
-      ) : <span className="flex-1" />}
-      {children}
+      )}
     </div>
   );
 };
