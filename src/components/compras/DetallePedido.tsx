@@ -161,6 +161,20 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
     catch (e) { showToast('No se pudo', (e as Error).message, 'warning'); }
     finally { setOcupado(null); }
   };
+  /**
+   * Freno al recibir: si la orden se confirmó hace un momento, casi seguro
+   * todavía no ha llegado (en OC-0009 se recibió el mismo minuto). Recibir
+   * suma al inventario, así que se pregunta antes.
+   */
+  const abrirRecibir = async () => {
+    const recien = p.estado === 'confirmada' && !!p.confirmadaEn && Date.now() - new Date(p.confirmadaEn).getTime() < 10 * 60_000;
+    if (recien && !(await confirmar({
+      titulo: '¿Ya llegó el pedido?',
+      mensaje: `La orden ${p.numero} se confirmó hace unos minutos. Recibir suma los productos al inventario de la sede: hazlo solo cuando lo tengas en la mano.`,
+      textoConfirmar: 'Sí, ya llegó',
+    }))) return;
+    setRecibir(true);
+  };
   const entregaPasada = seEditaEntrega && !!p.entregaEsperada && paraInputFecha(p.entregaEsperada) < hoyLocal();
   const pasoActual = p.estado === 'recibida_parcial' ? 'confirmada' : p.estado;
   const indicePaso = PASOS.findIndex((x) => x.id === pasoActual);
@@ -240,7 +254,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             </button>
           </>}
           {porRecibir && <>
-            <button type="button" onClick={() => setRecibir(true)} className={botonPrincipal}><PackageCheck className="w-4 h-4" /> Recibir</button>
+            <button type="button" onClick={() => void abrirRecibir()} className={botonPrincipal}><PackageCheck className="w-4 h-4" /> Recibir</button>
             <button type="button" onClick={() => setEnviar('orden')} className={botonSuave}><Send className="w-4 h-4" /> Mandar la orden</button>
           </>}
           <button type="button" onClick={() => void comprasApi.abrirPdf(p.id).catch((e) => showToast('No se pudo abrir', (e as Error).message, 'warning'))} className={botonSuave}><Printer className="w-4 h-4" /> Imprimir</button>
@@ -599,12 +613,15 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
         </div>
       )}
 
-      <ol className="space-y-3 pt-1">
+      <ol className="space-y-2.5 pt-1">
         {pedido.historial.map((e) => <LineaHistorial key={e.id} e={e} />)}
       </ol>
     </aside>
   );
 };
+
+/** Lo que se dijeron con el proveedor va como chat: él a la izquierda, el salón y Lalan a la derecha */
+const ES_MENSAJE = ['mensaje_entrante', 'mensaje_saliente', 'envio'];
 
 const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
   const color = e.autorTipo === 'lalan' ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
@@ -614,48 +631,71 @@ const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
   const mensaje: string | null = e.tipo === 'envio' && e.datos?.mensaje ? e.datos.mensaje : null;
   // Meta no lo entregó (o n8n no lo pudo mandar): se dice aquí mismo, con el botón para mandarlo desde su WhatsApp
   const noLlego = e.datos?.entrega === 'fallido';
-  const [ver, setVer] = useState(false);
+  const quien = e.autorNombre ?? (e.autorTipo === 'proveedor' ? 'Proveedor' : e.autorTipo === 'lalan' ? 'Lalan' : 'Salón');
+  const canal = e.canal && e.canal !== 'app' ? ` · ${NOMBRE_CANAL[e.canal] ?? e.canal}` : '';
+
+  const extras = (
+    <>
+      {/* La prueba de cada precio que anotó Lalan: lo que dijo el proveedor, o su papel */}
+      {e.tipo === 'lalan' && Array.isArray(e.datos?.precios) && e.datos.precios.some((x: any) => x?.dijo) && (
+        <ul className="mt-1 space-y-0.5">
+          {e.datos.precios.filter((x: any) => x?.dijo).map((x: any) => (
+            <li key={x.linea} className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+              Renglón {x.linea}: {x.precio} · {x.dijo === 'documento' ? 'sale de su documento' : <>dijo «{x.dijo}»</>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {e.adjuntoId && e.tipo !== 'adjunto' && (
+        <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="mt-1 text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {e.datos?.como === 'orden' ? 'Ver la orden (PDF)' : 'Ver la hoja que se mandó'}</button>
+      )}
+      {e.tipo === 'adjunto' && e.adjuntoId && (
+        <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">Abrir</button>
+      )}
+      {noLlego && (
+        <div className="mt-1 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[0.75rem] space-y-1.5 text-left">
+          <p className="flex items-start gap-1.5 font-semibold"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> No le llegó. {e.datos?.fallo ?? 'Meta no lo entregó.'}</p>
+          {e.datos?.a && (
+            <a href={enlaceWa(e.datos.a, mensaje ?? e.texto ?? '')} target="_blank" rel="noreferrer" className={`${botonWhatsapp} !inline-flex !py-1.5`}>
+              <MessageCircle className="w-3.5 h-3.5" /> Mándaselo desde tu WhatsApp
+            </a>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  if (ES_MENSAJE.includes(e.tipo)) {
+    const suyo = e.tipo === 'mensaje_entrante';
+    const fondo = suyo ? 'bg-emerald-50 dark:bg-emerald-950/30 rounded-bl-md'
+      : e.autorTipo === 'lalan' ? 'bg-violet-50 dark:bg-violet-950/30 rounded-br-md'
+      : 'bg-sky-50 dark:bg-sky-950/30 rounded-br-md';
+    return (
+      <li className={`flex ${suyo ? 'justify-start' : 'justify-end'}`}>
+        <div className={`max-w-[88%] rounded-2xl px-3 py-2 ${fondo}`}>
+          <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1 flex-wrap">
+            <b className="text-slate-600 dark:text-neutral-300">{quien}</b>{canal} · {fechaHora(e.creadoEn)}
+            {e.datos?.esRecordatorio && <span className="ml-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 px-1.5 font-bold">Recordatorio</span>}
+          </p>
+          {/* La orden: lo que dice el mensaje que la acompaña; arriba, qué se mandó */}
+          {mensaje && e.texto && <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">{e.texto}</p>}
+          <p className="text-[0.8125rem] text-slate-800 dark:text-neutral-100 whitespace-pre-line break-words mt-0.5">{mensaje ?? e.texto}</p>
+          {extras}
+        </div>
+      </li>
+    );
+  }
+
+  // Lo demás (estados, notas, lo que anotó Lalan) va en una línea chica entre los mensajes
   return (
-    <li className="flex gap-2.5">
-      <span className={`grid place-items-center size-7 rounded-full shrink-0 ${color}`}><IconoCanal canal={e.canal} autor={e.autorTipo} /></span>
+    <li className="flex gap-2 items-start px-1">
+      <span className={`grid place-items-center size-5 rounded-full shrink-0 mt-0.5 ${color}`}><IconoCanal canal={e.canal} autor={e.autorTipo} /></span>
       <div className="min-w-0 flex-1">
-        <p className="text-[0.6875rem] text-slate-400">
-          <b className="text-slate-600 dark:text-neutral-300">{e.autorNombre ?? (e.autorTipo === 'proveedor' ? 'Proveedor' : 'Lalan')}</b>
-          {' · '}{TITULO_EVENTO[e.tipo] ?? e.tipo}{e.canal && e.canal !== 'app' ? ` · ${NOMBRE_CANAL[e.canal] ?? e.canal}` : ''} · {fechaHora(e.creadoEn)}
+        <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300 whitespace-pre-line break-words">
+          <span className="text-slate-400">{TITULO_EVENTO[e.tipo] ?? e.tipo} · {quien}{canal} · {fechaHora(e.creadoEn)}</span>
+          {e.texto ? <><br />{e.texto}</> : null}
         </p>
-        <p className={`text-[0.8125rem] text-slate-800 dark:text-neutral-100 whitespace-pre-line break-words ${e.tipo === 'mensaje_entrante' ? 'mt-0.5 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30' : ''}`}>{e.texto}</p>
-        {/* La prueba de cada precio que anotó Lalan: lo que dijo el proveedor, o su papel */}
-        {e.tipo === 'lalan' && Array.isArray(e.datos?.precios) && e.datos.precios.some((x: any) => x?.dijo) && (
-          <ul className="mt-1 space-y-0.5">
-            {e.datos.precios.filter((x: any) => x?.dijo).map((x: any) => (
-              <li key={x.linea} className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
-                Renglón {x.linea}: {x.precio} · {x.dijo === 'documento' ? 'sale de su documento' : <>dijo «{x.dijo}»</>}
-              </li>
-            ))}
-          </ul>
-        )}
-        {e.adjuntoId && e.tipo !== 'adjunto' && (
-          <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {e.datos?.como === 'orden' ? 'Ver la orden (PDF)' : 'Ver la hoja que se mandó'}</button>
-        )}
-        {e.tipo === 'adjunto' && e.adjuntoId && (
-          <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">Abrir</button>
-        )}
-        {noLlego && (
-          <div className="mt-1 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[0.75rem] space-y-1.5">
-            <p className="flex items-start gap-1.5 font-semibold"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> No le llegó. {e.datos?.fallo ?? 'Meta no lo entregó.'}</p>
-            {e.datos?.a && (
-              <a href={enlaceWa(e.datos.a, mensaje ?? e.texto ?? '')} target="_blank" rel="noreferrer" className={`${botonWhatsapp} !inline-flex !py-1.5`}>
-                <MessageCircle className="w-3.5 h-3.5" /> Mándaselo desde tu WhatsApp
-              </a>
-            )}
-          </div>
-        )}
-        {mensaje && (
-          <>
-            <button type="button" onClick={() => setVer(!ver)} className="text-[0.75rem] font-bold text-slate-500 cursor-pointer">{ver ? 'Ocultar el mensaje' : 'Ver el mensaje'}</button>
-            {ver && <p className="mt-1 p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[0.75rem] whitespace-pre-line">{mensaje}</p>}
-          </>
-        )}
+        {extras}
       </div>
     </li>
   );
