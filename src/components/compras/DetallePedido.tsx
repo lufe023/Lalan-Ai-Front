@@ -15,7 +15,7 @@ import { RecibirPedido } from './RecibirPedido';
 import { CambiarProveedor } from './CambiarProveedor';
 import { CuentaDelPedido } from './PorPagar';
 import {
-  IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, botonWhatsapp, campo, deInputFecha, etiqueta, fechaHora, paraInputFecha,
+  IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, botonWhatsapp, campo, deInputFecha, etiqueta, fechaCorta, fechaHora, hoyLocal, paraInputFecha,
 } from './piezas';
 
 interface Renglon { productId: string; descripcion: string; cantidad: string; precio: string; impuestoPct: string; unidad: string | null; hay: number; unidadInv: string }
@@ -152,6 +152,8 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   const porRecibir = p.estado === 'confirmada' || p.estado === 'recibida_parcial';
   const sinRenglones = !renglones.length;
   const seEditaEntrega = p.estado !== 'recibida' && p.estado !== 'cancelada';
+  // La entrega esperada ya pasó (el mismo día todavía vale): sin confirmar no se le pide; confirmada, va atrasada
+  const entregaPasada = seEditaEntrega && !!p.entregaEsperada && paraInputFecha(p.entregaEsperada) < hoyLocal();
   const pasoActual = p.estado === 'recibida_parcial' ? 'confirmada' : p.estado;
   const indicePaso = PASOS.findIndex((x) => x.id === pasoActual);
 
@@ -184,7 +186,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
           <Bot className="w-4 h-4 text-violet-600 shrink-0" />
           <span className="flex-1 min-w-[12rem] text-[0.8125rem] text-violet-900 dark:text-violet-200">{p.preguntaDuena ?? 'Lalan espera tu sí para seguir con este pedido.'}</span>
           {p.pagoReportado && <button type="button" onClick={() => setPedirPago((n) => n + 1)} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, anotar el pago</button>}
-          {enCotizacion && <button type="button" onClick={() => void pasar('confirmada', { titulo: `¿Confirmar la compra a ${p.proveedor.nombre}?`, mensaje: `Total ${dinero(s, p.total)}.`, boton: 'Sí, comprar' })} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, comprar</button>}
+          {enCotizacion && <button type="button" onClick={() => void pasar('confirmada', { titulo: `¿Confirmar la compra a ${p.proveedor.nombre}?`, mensaje: `Total ${dinero(s, p.total)}.${entregaPasada ? ` La entrega del ${fechaCorta(p.entregaEsperada)} ya pasó: la quito y pones la que te dé ${p.proveedor.nombre}.` : ''}`, boton: 'Sí, comprar' })} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, comprar</button>}
           <button type="button" onClick={() => setDileALalan((n) => n + 1)} className={botonSuave}><MessageCircle className="w-4 h-4" /> Dile otra cosa</button>
           {/* «No» es no comprar: solo mientras se cotiza o está confirmada */}
           {(enCotizacion || p.estado === 'confirmada') && !p.pagoReportado && <button type="button" onClick={() => void pasar('cancelada', { titulo: '¿No comprar este pedido?', peligro: true, boton: 'No comprar' })} className={botonSuave}>No</button>}
@@ -314,7 +316,12 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             )}
             <label>
               <span className={etiqueta}>Entrega esperada</span>
-              <input type="date" className={campo} value={paraInputFecha(p.entregaEsperada)} disabled={p.estado === 'recibida' || p.estado === 'cancelada'} onChange={(e) => void campoPedido({ entregaEsperada: deInputFecha(e.target.value) })} />
+              <input type="date" className={`${campo} ${entregaPasada ? '!border-amber-400' : ''}`} value={paraInputFecha(p.entregaEsperada)} min={enCotizacion ? hoyLocal() : undefined} disabled={p.estado === 'recibida' || p.estado === 'cancelada'} onChange={(e) => void campoPedido({ entregaEsperada: deInputFecha(e.target.value) })} />
+              {entregaPasada && (
+                <span className="block mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  {enCotizacion ? 'Ya pasó. No se le pide al proveedor: pon el día que te dé.' : `Va atrasada: tenía que llegar el ${fechaCorta(p.entregaEsperada)}.`}
+                </span>
+              )}
             </label>
             <label>
               <span className={etiqueta}>N.º de su cotización o factura</span>
