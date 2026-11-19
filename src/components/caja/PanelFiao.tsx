@@ -9,6 +9,7 @@ import { api } from '../../services/api';
 import { alRecibir } from '../../services/socket';
 import { IOSModal } from '../ui/IOSModal';
 import { FotoClienta } from '../ui/FotoClienta';
+import { miles } from '../../utils/dinero';
 import { useConfirmar } from '../ui/ModalConfirmar';
 
 const METODOS = [
@@ -158,7 +159,7 @@ export const PanelFiao: React.FC<{ plata: (n: any) => string; onPendientes?: (n:
             {TRAMOS.map(t => (
               <div key={t.id} className="p-1.5 rounded-xl bg-slate-50 dark:bg-neutral-800/40">
                 <div className="text-[0.6875rem] text-slate-400 font-medium">{t.texto}</div>
-                <div className="text-[0.75rem] font-bold text-slate-800 dark:text-neutral-200 tabular-nums">{Number(r.tramos?.[t.id] ?? 0).toFixed(2)}</div>
+                <div className="text-[0.75rem] font-bold text-slate-800 dark:text-neutral-200 tabular-nums">{miles(r.tramos?.[t.id])}</div>
               </div>
             ))}
           </div>
