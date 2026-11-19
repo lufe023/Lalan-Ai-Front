@@ -85,6 +85,12 @@ export interface DetalleProveedor extends Omit<Proveedor, 'productos'> {
   historial: Evento[];
 }
 
+/** Qué papel es un adjunto: lo que es documento se maneja como documento */
+export type TipoDocumento = 'cotizacion' | 'orden' | 'factura' | 'conduce' | 'recibo' | 'otro';
+export const NOMBRE_DOCUMENTO: Record<TipoDocumento, string> = {
+  cotizacion: 'Cotización', orden: 'Orden de compra', factura: 'Factura', conduce: 'Conduce', recibo: 'Recibo de pago', otro: 'Otro',
+};
+
 export interface Evento {
   id: string; tipo: string; canal: string | null; autorTipo: 'persona' | 'lalan' | 'proveedor' | 'sistema';
   autorNombre: string | null; texto: string | null; datos: any; adjuntoId: string | null; creadoEn: string;
@@ -153,7 +159,7 @@ export interface Pedido {
   /** Otra persona de la empresa que sí escribió en 24 h (contactoId undefined = número que no está en su ficha) */
   otrasVentanas: VentanaAbierta[];
   lineas: LineaPedido[]; historial: Evento[];
-  adjuntos: { id: string; nombre: string; tipo: string; tamano: number; creadoEn: string }[];
+  adjuntos: { id: string; nombre: string; tipo: string; tamano: number; documento: TipoDocumento | null; creadoEn: string }[];
   cuenta: CuentaPedido | null; condicionesPago: string | null; pagos: PagoPedido[];
   /** El proveedor dijo que ya le pagaron y no se ha anotado: la dueña decide */
   pagoReportado: { monto: number | null; cuando: string; texto: string | null } | null;
@@ -292,7 +298,19 @@ export const comprasApi = {
   editarContacto: (id: string, c: Partial<ContactoGuardado>) => api.patch<ContactoGuardado>(`/compras/contactos/${id}`, c),
   borrarContacto: (id: string) => api.delete<{ ok: true }>(`/compras/contactos/${id}`),
   mensaje: (id: string, como?: 'cotizacion' | 'orden') => api.get<{ texto: string; whatsapp: string | null; correo: string | null; esCotizacion: boolean }>(`/compras/ordenes/${id}/mensaje${como ? `?como=${como}` : ''}`),
-  enviar: (id: string, d: { canal: CanalEnvio; como?: 'cotizacion' | 'orden'; mensaje?: string }) => api.post<{ enlace: string | null; orden: Pedido }>(`/compras/ordenes/${id}/enviar`, d),
+  enviar: (id: string, d: { canal: CanalEnvio; como?: 'cotizacion' | 'orden'; mensaje?: string }) =>
+    api.post<{ enlace: string | null; adjuntoId: string | null; porMandar: boolean; orden: Pedido }>(`/compras/ordenes/${id}/enviar`, d),
+  /** La orden que preparaste en tu WhatsApp salió: pasa a orden de compra */
+  yaLaMande: (id: string) => api.post<Pedido>(`/compras/ordenes/${id}/ya-la-mande`, {}),
+  /** Qué papel es un adjunto (null = sin marcar) */
+  marcarDocumento: (id: string, documento: TipoDocumento | null) => api.patch<{ ok: true; documento: TipoDocumento | null }>(`/compras/adjuntos/${id}`, { documento }),
+  /** La hoja en PDF como archivo, para compartirla por WhatsApp desde el teléfono */
+  pdfComoArchivo: async (id: string, como: 'cotizacion' | 'orden', numero: string): Promise<File> => {
+    const url = await blobProtegido(`/compras/ordenes/${id}/pdf?como=${como}`);
+    const blob = await (await fetch(url)).blob();
+    URL.revokeObjectURL(url);
+    return new File([blob], `${como === 'orden' ? 'Orden' : 'Cotizacion'}-${numero}.pdf`, { type: 'application/pdf' });
+  },
   recibir: (id: string, d: { lineas: { lineaId: string; cantidad: number; costo?: number | null; lote?: string | null; vence?: string | null }[]; cerrarResto?: boolean }) =>
     api.post<Pedido>(`/compras/ordenes/${id}/recibir`, d),
   nota: (id: string, d: { texto: string; tipo?: 'nota' | 'mensaje_entrante'; canal?: string }) => api.post<Pedido>(`/compras/ordenes/${id}/notas`, d),
@@ -302,9 +320,10 @@ export const comprasApi = {
   /** «Encárgaselo a Lalan»: busca quién lo vende (los tuyos y su lista), arma los borradores de la sede y pide precio a todos */
   encargar: (locationId: string, productIds: string[]) => api.post<Encargo>('/compras/encargar', { locationId, productIds }),
   lalanPide: (id: string) => api.post<{ canal: 'whatsapp' | 'correo'; orden: Pedido }>(`/compras/ordenes/${id}/lalan-pide`, {}),
-  adjuntar: (id: string, archivos: File[]) => {
+  adjuntar: (id: string, archivos: File[], documento?: TipoDocumento | null) => {
     const f = new FormData();
     archivos.forEach((a) => f.append('archivos', a));
+    if (documento) f.append('documento', documento);
     return subirArchivo<Pedido>(`/compras/ordenes/${id}/adjuntos`, f);
   },
   quitarAdjunto: (id: string) => api.delete<{ ok: true }>(`/compras/adjuntos/${id}`),

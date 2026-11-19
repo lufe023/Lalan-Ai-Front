@@ -8,7 +8,7 @@ import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import {
-  PASOS, cantidadTexto, comprasApi, dinero, haceCuanto, unidadTexto, type EstadoCompra, type Evento, type LineaNueva, type Pedido,
+  NOMBRE_DOCUMENTO, PASOS, cantidadTexto, comprasApi, dinero, haceCuanto, unidadTexto, type EstadoCompra, type Evento, type LineaNueva, type Pedido, type TipoDocumento,
 } from '../../services/compras';
 import { EnviarPedido } from './EnviarPedido';
 import { RecibirPedido } from './RecibirPedido';
@@ -153,6 +153,14 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   const sinRenglones = !renglones.length;
   const seEditaEntrega = p.estado !== 'recibida' && p.estado !== 'cancelada';
   // La entrega esperada ya pasó (el mismo día todavía vale): sin confirmar no se le pide; confirmada, va atrasada
+  // La orden se preparó en su WhatsApp y nadie sabe si salió: queda por mandar hasta que lo diga
+  const porMandar = enCotizacion && !!p.historial.find((e) => e.tipo === 'envio')?.datos?.porMandar;
+  const yaLaMande = async () => {
+    setOcupado('confirmada');
+    try { actualizado(await comprasApi.yaLaMande(p.id)); showToast('Orden de compra', `${p.numero} quedó como orden de compra, lista para recibir.`, 'success'); }
+    catch (e) { showToast('No se pudo', (e as Error).message, 'warning'); }
+    finally { setOcupado(null); }
+  };
   const entregaPasada = seEditaEntrega && !!p.entregaEsperada && paraInputFecha(p.entregaEsperada) < hoyLocal();
   const pasoActual = p.estado === 'recibida_parcial' ? 'confirmada' : p.estado;
   const indicePaso = PASOS.findIndex((x) => x.id === pasoActual);
@@ -178,6 +186,18 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
           <span className="flex-1 text-[0.8125rem] text-slate-800 dark:text-neutral-200">Lo mismo se les pidió a otros proveedores. Compara los precios y elige ahí.</span>
           <span className="text-[0.8125rem] font-bold text-[var(--primary)] flex items-center gap-0.5">Comparar <ChevronRight className="w-4 h-4" /></span>
         </button>
+      )}
+
+      {/* ── La orden se preparó en su WhatsApp: ¿salió? ── */}
+      {porMandar && (
+        <div className="p-3 rounded-2xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/70 dark:bg-sky-950/20 flex flex-wrap items-center gap-2">
+          <Send className="w-4 h-4 text-sky-600 shrink-0" />
+          <span className="flex-1 min-w-[12rem] text-[0.8125rem] text-sky-900 dark:text-sky-200">¿Ya le mandaste la orden en PDF a {p.contacto.nombre ?? p.proveedor.nombre}? Hasta que salga no cuenta como orden de compra.</span>
+          <button type="button" disabled={!!ocupado} onClick={() => void yaLaMande()} className={botonPrincipal}>
+            {ocupado === 'confirmada' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Sí, ya la mandé
+          </button>
+          <button type="button" onClick={() => setEnviar('orden')} className={botonSuave}><MessageCircle className="w-4 h-4" /> Mandarla otra vez</button>
+        </div>
       )}
 
       {/* ── Lalan pregunta: el sí de la dueña, donde se decide ── */}
@@ -497,6 +517,10 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
     catch (e) { showToast('No se pudo adjuntar', (e as Error).message, 'warning'); }
     finally { setSubiendo(false); if (archivo.current) archivo.current.value = ''; }
   };
+  const marcar = async (id: string, documento: TipoDocumento | null) => {
+    try { await comprasApi.marcarDocumento(id, documento); onCambio(await comprasApi.pedido(pedido.id)); }
+    catch (e) { showToast('No se pudo marcar', (e as Error).message, 'warning'); }
+  };
   const quitarAdjunto = async (id: string, nombre: string) => {
     if (!(await confirmar({ titulo: `¿Quitar ${nombre}?`, tono: 'peligro', textoConfirmar: 'Quitar' }))) return;
     try { await comprasApi.quitarAdjunto(id); onCambio(await comprasApi.pedido(pedido.id)); }
@@ -558,6 +582,16 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
             <div key={a.id} className="flex items-center gap-2 text-[0.8125rem]">
               <FileText className="w-4 h-4 text-slate-400 shrink-0" />
               <button type="button" onClick={() => void comprasApi.abrirAdjunto(a.id)} className="flex-1 min-w-0 truncate text-left font-semibold text-[var(--primary)] cursor-pointer">{a.nombre}</button>
+              {/* Qué papel es: lo marca Lalan al leerlo, o la dueña aquí mismo */}
+              <select
+                aria-label={`Qué es ${a.nombre}`}
+                value={a.documento ?? ''}
+                onChange={(ev) => void marcar(a.id, (ev.target.value || null) as TipoDocumento | null)}
+                className={`shrink-0 text-[0.6875rem] font-bold rounded-full px-2 py-0.5 border cursor-pointer ${a.documento ? 'border-[var(--primary)]/30 bg-[var(--primary)]/10 text-[var(--primary)]' : 'border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'}`}
+              >
+                <option value="">¿Qué es?</option>
+                {(Object.keys(NOMBRE_DOCUMENTO) as TipoDocumento[]).map((d) => <option key={d} value={d}>{NOMBRE_DOCUMENTO[d]}</option>)}
+              </select>
               <span className="text-[0.6875rem] text-slate-400 shrink-0">{Math.max(1, Math.round(a.tamano / 1024))} KB</span>
               <button type="button" onClick={() => void quitarAdjunto(a.id, a.nombre)} aria-label={`Quitar ${a.nombre}`} className="text-slate-400 hover:text-rose-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
@@ -590,8 +624,18 @@ const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
           {' · '}{TITULO_EVENTO[e.tipo] ?? e.tipo}{e.canal && e.canal !== 'app' ? ` · ${NOMBRE_CANAL[e.canal] ?? e.canal}` : ''} · {fechaHora(e.creadoEn)}
         </p>
         <p className={`text-[0.8125rem] text-slate-800 dark:text-neutral-100 whitespace-pre-line break-words ${e.tipo === 'mensaje_entrante' ? 'mt-0.5 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30' : ''}`}>{e.texto}</p>
+        {/* La prueba de cada precio que anotó Lalan: lo que dijo el proveedor, o su papel */}
+        {e.tipo === 'lalan' && Array.isArray(e.datos?.precios) && e.datos.precios.some((x: any) => x?.dijo) && (
+          <ul className="mt-1 space-y-0.5">
+            {e.datos.precios.filter((x: any) => x?.dijo).map((x: any) => (
+              <li key={x.linea} className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+                Renglón {x.linea}: {x.precio} · {x.dijo === 'documento' ? 'sale de su documento' : <>dijo «{x.dijo}»</>}
+              </li>
+            ))}
+          </ul>
+        )}
         {e.adjuntoId && e.tipo !== 'adjunto' && (
-          <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Ver la hoja que se mandó</button>
+          <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {e.datos?.como === 'orden' ? 'Ver la orden (PDF)' : 'Ver la hoja que se mandó'}</button>
         )}
         {e.tipo === 'adjunto' && e.adjuntoId && (
           <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">Abrir</button>
