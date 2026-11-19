@@ -75,13 +75,13 @@ export const ProteccionDelChat: React.FC<{ conversacion: Conversation; puedeBloq
 
 /**
  * Bloquear a alguien que no está en pausa (insulta, manda cosas que no son
- * del salón). Pide confirmación con un segundo toque.
+ * del salón). Va en la herramienta «Bloquear» de la fila de arriba del chat,
+ * y pide el sí antes de hacerlo.
  */
-export const BloquearChat: React.FC<{ conversacion: Conversation }> = ({ conversacion }) => {
+export const BloquearChat: React.FC<{ conversacion: Conversation; onListo: () => void }> = ({ conversacion, onListo }) => {
   const { showToast } = useApp();
-  const [confirmar, setConfirmar] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  if (conversacion.bloqueada) return null;
+  const nombre = conversacion.clientName.split(' ')[0] || conversacion.clientName;
 
   const bloquear = async () => {
     setOcupado(true);
@@ -89,23 +89,24 @@ export const BloquearChat: React.FC<{ conversacion: Conversation }> = ({ convers
       await api.post(`/chat/panel/conversaciones/${conversacion.id}/bloqueo`, { bloquear: true });
       // La app avisa por socket y la lista se refresca sola con el chat bloqueado
       showToast('Bloqueado', 'No se guardará nada más de esta persona.', 'success');
+      onListo();
     } catch (e: any) {
       showToast('No se pudo bloquear', e?.message ?? 'Inténtalo de nuevo.', 'warning');
     } finally {
       setOcupado(false);
-      setConfirmar(false);
     }
   };
 
-  return confirmar ? (
-    <span className="shrink-0 flex items-center gap-2">
-      ¿Bloquear?
-      <button type="button" disabled={ocupado} onClick={() => void bloquear()} className="font-bold underline text-rose-600 dark:text-rose-300 disabled:opacity-50 cursor-pointer">Sí</button>
-      <button type="button" onClick={() => setConfirmar(false)} className="font-bold underline cursor-pointer">No</button>
-    </span>
-  ) : (
-    <button type="button" onClick={() => setConfirmar(true)} className="shrink-0 font-bold underline text-slate-400 hover:text-rose-600 cursor-pointer">
-      Bloquear
-    </button>
+  return (
+    <div className="space-y-2 text-[0.75rem] text-slate-500 dark:text-neutral-400">
+      <p>¿Bloquear a {nombre}? Lo que mande ya no se guarda y Lalan no le contesta. Se puede desbloquear después.</p>
+      <div className="flex gap-2">
+        <button type="button" disabled={ocupado} onClick={() => void bloquear()}
+          className="h-9 px-4 rounded-xl bg-rose-600 text-white text-[0.8125rem] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+          <Ban className="w-4 h-4" /> {ocupado ? 'Bloqueando…' : 'Sí, bloquear'}
+        </button>
+        <button type="button" onClick={onListo} className="h-9 px-4 rounded-xl bg-slate-100 dark:bg-neutral-800 text-[0.8125rem] font-bold cursor-pointer">No</button>
+      </div>
+    </div>
   );
 };

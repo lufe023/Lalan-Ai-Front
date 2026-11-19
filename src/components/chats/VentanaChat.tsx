@@ -5,18 +5,19 @@ import { GrabadorVoz } from './GrabadorVoz';
 import { AdjuntarMedio } from './AdjuntarMedio';
 import { useIrAtras } from '../../hooks/useIrAtras';
 import { motion } from 'motion/react';
-import { AlertTriangle, Bot, Check, CheckCheck, Clock, Minus, Send, ShieldAlert, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
+import { AlertTriangle, Bot, Check, CheckCheck, ChevronRight, Clock, Minus, Send, ShieldAlert, Sparkles, UserCheck, Wand2, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { CommunicationChannel, ChatStatus, ChatMessage } from '../../types';
 import { IOSToggle } from '../ui/IOSToggle';
 import { ContenidoMensaje, OrigenDelChat, ReaccionDeMensaje } from './ContenidoMensaje';
-import { PedidoFueraDeHorario, TurnoEspecial } from './TurnoEspecial';
+import { PedidoFueraDeHorario } from './TurnoEspecial';
 import { VentanaCerrada } from './VentanaCerrada';
-import { ClientaDelChat } from './ClientaDelChat';
-import { SedeDelChat } from './SedeDelChat';
 import { EspecialistaDelChat } from './EspecialistaDelChat';
-import { BloquearChat, ProteccionDelChat } from './ProteccionDelChat';
+import { ProteccionDelChat } from './ProteccionDelChat';
+import { HerramientasDelChat } from './HerramientasDelChat';
+import type { HerramientaDelChat } from './chipsDelChat';
+import { abrirFichaDeClienta } from '../../services/abrirFicha';
 import { useAuth } from '../../context/AuthContext';
 import { CompromisosDelChat } from './CompromisosDelChat';
 
@@ -110,7 +111,7 @@ interface VentanaChatProps {
  * es una ventanita y se pueden tener varias a la vez.
  */
 export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotante = false, minimizada = false, onCerrar, onMinimizar }) => {
-  const { conversations, toggleChatAiStatus, sendMessageToConversation, recargarConversaciones, showToast, settings, descartarAviso, marcarLeida } = useApp();
+  const { conversations, toggleChatAiStatus, sendMessageToConversation, recargarConversaciones, showToast, settings, descartarAviso, marcarLeida, currentScreen, navigateTo } = useApp();
   const agente = settings.aiAgentName || 'Lalan';
   const [inputText, setInputText] = useState('');
   const activeConversation = conversations.find(c => c.id === conversacionId);
@@ -125,6 +126,16 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
   const [paraLaAsistente, setParaLaAsistente] = useState(false);
   const [indicando, setIndicando] = useState(false);
   useEffect(() => { setParaLaAsistente(false); }, [activeConversationId]);
+
+  /* Las herramientas de la fila de arriba: una abierta a la vez */
+  const [herramienta, setHerramienta] = useState<HerramientaDelChat | null>(null);
+  useEffect(() => { setHerramienta(null); }, [activeConversationId]);
+  /* El nombre o la foto de la clienta llevan a su ficha; sin ficha, a unirla a una */
+  const abrirFicha = () => {
+    const id = activeConversation?.clientId;
+    if (id) { setHerramienta(null); abrirFichaDeClienta(id, currentScreen, navigateTo, conversacionId); }
+    else setHerramienta('ficha');
+  };
 
   const darIndicacion = async (texto: string) => {
     if (!activeConversationId) return;
@@ -252,14 +263,19 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           className="px-3 py-2 flex items-center gap-2 border-b border-slate-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 shrink-0 cursor-pointer select-none"
           onClick={onMinimizar}
         >
-          <div className="relative shrink-0">
-            <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-8 h-8 text-xs" />
-            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-900 ${color}`} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold truncate">{activeConversation.clientName}</h4>
-            <div className="flex items-center gap-1.5">{getStatusIndicator(activeConversation.status)}</div>
-          </div>
+          <button type="button" onClick={e => { e.stopPropagation(); abrirFicha(); }}
+            title={activeConversation.clientId ? 'Ver su ficha' : 'Unir a su ficha'}
+            aria-label={activeConversation.clientId ? `Ver la ficha de ${activeConversation.clientName}` : `Unir a ${activeConversation.clientName} a su ficha`}
+            className="flex items-center gap-2 flex-1 min-w-0 text-left rounded-lg hover:opacity-80 cursor-pointer">
+            <span className="relative shrink-0">
+              <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-8 h-8 text-xs" />
+              <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-neutral-900 ${color}`} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-xs font-bold truncate hover:underline">{activeConversation.clientName}</span>
+              <span className="flex items-center gap-1.5">{getStatusIndicator(activeConversation.status)}</span>
+            </span>
+          </button>
           {minimizada && noLeidos > 0 && (
             <span className="px-1.5 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold">{noLeidos}</span>
           )}
@@ -284,6 +300,11 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         </div>
         {!minimizada && (
           <>
+        {/* Su ficha, la sede, la especialista, el turno extra, bloquear: a mano, en una línea */}
+        <HerramientasDelChat
+          conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}
+          abierta={herramienta} onAbrir={setHerramienta} onAbrirFicha={abrirFicha}
+        />
         {/* Lo que pidió fuera de horario, con el sí y el no, donde se ve al entrar */}
         <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
@@ -454,13 +475,9 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           )}
         </form>
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
+        {/* Abajo solo lo que no puede esperar: spam o bloqueo, Lalan pausó a la especialista, las 24 horas */}
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
-        <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
-        <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
-        <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
-        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}>
-          {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
-        </TurnoEspecial>
+        <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} modo="alerta" />
         {ventanaCerrada && <VentanaCerrada conversacion={activeConversation} />}
           </>
         )}
@@ -480,27 +497,33 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {/* Deslizar desde el borde izquierdo o clic derecho = volver a la lista de chats */}
             <BotonAtras onVolver={onCerrar} texto="Volver" textoSoloEnPc />
-            <div className="relative shrink-0">
-              <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-9 h-9 text-xs border border-white/60" />
-              <span
-                className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-neutral-900 ${
-                  activeConversation.status === 'ai_active'
-                    ? 'bg-purple-500'
-                    : activeConversation.status === 'needs_attention'
-                    ? 'bg-amber-500'
-                    : 'bg-emerald-500'
-                }`}
-              />
-            </div>
-            <div className="min-w-0">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                {activeConversation.clientName}
-              </h4>
-              <div className="flex items-center gap-1.5 text-[0.6875rem] text-slate-400 whitespace-nowrap overflow-hidden">
-                {getChannelBadge(activeConversation.channel)}
-                {getStatusIndicator(activeConversation.status)}
-              </div>
-            </div>
+            {/* La foto y el nombre llevan a su ficha (sin ficha: a unirla a una) */}
+            <button type="button" onClick={abrirFicha}
+              aria-label={activeConversation.clientId ? `Ver la ficha de ${activeConversation.clientName}` : `Unir a ${activeConversation.clientName} a su ficha`}
+              className="flex items-center gap-2.5 min-w-0 text-left rounded-xl ios-touch cursor-pointer">
+              <span className="relative shrink-0">
+                <FotoClienta foto={activeConversation.clientAvatar} nombre={activeConversation.clientName} className="w-9 h-9 text-xs border border-white/60" />
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-neutral-900 ${
+                    activeConversation.status === 'ai_active'
+                      ? 'bg-purple-500'
+                      : activeConversation.status === 'needs_attention'
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                  }`}
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-1 text-xs font-bold text-slate-900 dark:text-white">
+                  <span className="truncate">{activeConversation.clientName}</span>
+                  <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                </span>
+                <span className="flex items-center gap-1.5 text-[0.6875rem] text-slate-400 whitespace-nowrap overflow-hidden">
+                  {getChannelBadge(activeConversation.channel)}
+                  {getStatusIndicator(activeConversation.status)}
+                </span>
+              </span>
+            </button>
           </div>
 
           {/* AI vs Manual Control Toggle. En el teléfono solo el interruptor: quién responde ya lo dice la línea de estado */}
@@ -526,6 +549,11 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           </div>
         </div>
 
+        {/* Su ficha, la sede, la especialista, el turno extra, bloquear: a mano, en una línea */}
+        <HerramientasDelChat
+          conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}
+          abierta={herramienta} onAbrir={setHerramienta} onAbrirFicha={abrirFicha}
+        />
         {/* Lo que pidió fuera de horario, con el sí y el no, donde se ve al entrar */}
         <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
@@ -696,13 +724,9 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
           )}
         </form>
         {/* Regla de Meta: pasadas 24 h desde su último mensaje, no se le puede escribir */}
+        {/* Abajo solo lo que no puede esperar: spam o bloqueo, Lalan pausó a la especialista, las 24 horas */}
         <ProteccionDelChat key={activeConversation.id} conversacion={activeConversation} puedeBloquear={puedeAutorizarTurno} />
-        <ClientaDelChat key={`clienta-${activeConversation.id}`} conversacion={activeConversation} />
-        <SedeDelChat key={`sede-${activeConversation.id}`} conversacion={activeConversation} />
-        <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} />
-        <TurnoEspecial key={activeConversation.id} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada}>
-          {puedeAutorizarTurno && <BloquearChat conversacion={activeConversation} />}
-        </TurnoEspecial>
+        <EspecialistaDelChat key={`especialista-${activeConversation.id}`} conversacion={activeConversation} modo="alerta" />
         {ventanaCerrada && <VentanaCerrada conversacion={activeConversation} />}
       </div>
     </div>

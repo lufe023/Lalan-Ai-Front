@@ -377,7 +377,10 @@ export interface Conversation {
   clientName: string;
   clientHandle?: string;
   clientPhone?: string;
+  /** La foto que se ve: la de su ficha, o la de este canal si la ficha no tiene */
   clientAvatar: string;
+  /** La foto de perfil que trajo este canal (Instagram, Messenger), para elegirla en la ficha */
+  fotoDelCanal?: string;
   channel: CommunicationChannel;
   status: ChatStatus;
   lastMessage: string;

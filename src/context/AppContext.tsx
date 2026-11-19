@@ -881,6 +881,8 @@ function mapApiConversation(c: any): Conversation {
     locationId: c.locationId ?? undefined, sedePorElegir: !!c.sedePorElegir,
     clientHandle: c.clientHandle, clientPhone: c.clientPhone,
     clientAvatar: urlDeFoto(c.clientAvatar) ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.clientName)}&background=e2e8f0&color=475569`,
+    // Un backend que aún no la manda: la del chat era la del canal
+    fotoDelCanal: urlDeFoto(c.fotoDelCanal !== undefined ? c.fotoDelCanal : c.clientAvatar) ?? undefined,
     channel: c.channel, status: c.status, lastMessage: c.lastMessage ?? '',
     lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' }) : '',
     unreadCount: c.unreadCount ?? 0, serviceInterest: c.serviceInterest,

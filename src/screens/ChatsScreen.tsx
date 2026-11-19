@@ -30,6 +30,7 @@ import { IOSToggle } from '../components/ui/IOSToggle';
 import { PageContent } from '../components/ui/PageContent';
 import { ChipsFiltro, Insignia, ItemAnimado, ListaAnimada, NumeroAnimado, PuntoEstado, Vacio } from '../components/ui/movimiento';
 
+import { abrirFichaDeClienta } from '../services/abrirFicha';
 import { VentanaChat, getChannelBadge, getStatusIndicator, horaDeMensaje } from '../components/chats/VentanaChat';
 
 export const ChatsScreen: React.FC = () => {
@@ -44,6 +45,7 @@ export const ChatsScreen: React.FC = () => {
     descartarAviso,
     botConfigs,
     navigateTo,
+    currentScreen,
   } = useApp();
   /* Si ningún canal está conectado, aquí no va a entrar nada: se dice dónde conectarlo */
   const sinCanales = botConfigs.length > 0 && !botConfigs.some(b => b.channelIdentifier);
@@ -148,7 +150,15 @@ export const ChatsScreen: React.FC = () => {
               onClick={() => setActiveConversationId(conv.id)}
               className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-center justify-between gap-3"
             >
-              <div className="relative shrink-0">
+              {/* La foto lleva a su ficha (si ya la tiene); el resto de la tarjeta abre el chat */}
+              <div
+                className={`relative shrink-0 ${conv.clientId ? 'cursor-pointer' : ''}`}
+                role={conv.clientId ? 'button' : undefined}
+                tabIndex={conv.clientId ? 0 : undefined}
+                aria-label={conv.clientId ? `Ver la ficha de ${conv.clientName}` : undefined}
+                onClick={conv.clientId ? (e) => { e.stopPropagation(); abrirFichaDeClienta(conv.clientId!, currentScreen, navigateTo); } : undefined}
+                onKeyDown={conv.clientId ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); abrirFichaDeClienta(conv.clientId!, currentScreen, navigateTo); } } : undefined}
+              >
                 <FotoClienta foto={conv.clientAvatar} nombre={conv.clientName} className="w-12 h-12 text-base border border-slate-200 dark:border-neutral-700" />
                 <PuntoEstado
                   late={conv.status === 'needs_attention'}

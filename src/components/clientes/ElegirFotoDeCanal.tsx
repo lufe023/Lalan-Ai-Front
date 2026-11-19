@@ -24,9 +24,9 @@ export const ElegirFotoDeCanal: React.FC<{ clienta: Client; onCambio: (avatar: s
 
   const vistas = new Set<string>();
   const fotos = conversations
-    .filter(c => c.clientId === clienta.id && c.clientAvatar && !RELLENO.test(c.clientAvatar))
-    .filter(c => (vistas.has(c.clientAvatar) ? false : (vistas.add(c.clientAvatar), true)));
-  if (!fotos.length || (fotos.length === 1 && fotos[0].clientAvatar === clienta.avatar)) return null;
+    .flatMap(c => (c.clientId === clienta.id && c.fotoDelCanal && !RELLENO.test(c.fotoDelCanal) ? [{ ...c, foto: c.fotoDelCanal }] : []))
+    .filter(c => (vistas.has(c.foto) ? false : (vistas.add(c.foto), true)));
+  if (!fotos.length || (fotos.length === 1 && fotos[0].foto === clienta.avatar)) return null;
 
   const elegir = async (url: string) => {
     if (url === clienta.avatar || guardando) return;
@@ -46,17 +46,17 @@ export const ElegirFotoDeCanal: React.FC<{ clienta: Client; onCambio: (avatar: s
       <span className="text-[0.6875rem] uppercase font-bold text-slate-400 block mb-1.5">Foto de la ficha</span>
       <div className="flex flex-wrap gap-3">
         {fotos.map(c => {
-          const actual = c.clientAvatar === clienta.avatar;
+          const actual = c.foto === clienta.avatar;
           return (
             <button
-              key={c.id} type="button" onClick={() => elegir(c.clientAvatar)} disabled={!!guardando}
+              key={c.id} type="button" onClick={() => elegir(c.foto)} disabled={!!guardando}
               title={actual ? 'Es la foto de la ficha' : `Usar la foto de ${NOMBRE_CANAL[c.channel] ?? c.channel}`}
               className="flex flex-col items-center gap-1 cursor-pointer disabled:cursor-wait ios-touch"
             >
               <span className="relative">
                 <img
-                  src={c.clientAvatar} alt={`Foto de ${NOMBRE_CANAL[c.channel] ?? c.channel}`}
-                  className={`w-12 h-12 rounded-full object-cover border-2 ${actual ? 'border-[var(--primary)]' : 'border-transparent opacity-80 hover:opacity-100'} ${guardando === c.clientAvatar ? 'animate-pulse' : ''}`}
+                  src={c.foto} alt={`Foto de ${NOMBRE_CANAL[c.channel] ?? c.channel}`}
+                  className={`w-12 h-12 rounded-full object-cover border-2 ${actual ? 'border-[var(--primary)]' : 'border-transparent opacity-80 hover:opacity-100'} ${guardando === c.foto ? 'animate-pulse' : ''}`}
                 />
                 {actual && (
                   <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[var(--primary)] text-white flex items-center justify-center">
