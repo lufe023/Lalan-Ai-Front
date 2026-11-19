@@ -190,6 +190,39 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
     setCobroMonto(pendiente > 0 ? (pendiente / tasa).toFixed(2) : '');
   }, [cobroMoneda]);
 
+  // La barra de abajo sobra cuando el botón de cobrar de la comanda ya se ve
+  const ticketRef = React.useRef<HTMLDivElement>(null);
+  const cobrarRef = React.useRef<HTMLDivElement>(null);
+  const [cobrarVisible, setCobrarVisible] = useState(false);
+  const hayLineas = !!activeSale?.items?.length;
+  useEffect(() => {
+    const el = cobrarRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setCobrarVisible(false); return; }
+    const io = new IntersectionObserver(([e]) => setCobrarVisible(e.isIntersecting), { threshold: 0.6 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hayLineas]);
+
+  // La esfera de Lalan flota en un borde: si cae encima de la barra de
+  // abajo, la barra le deja su hueco para que «Cobrar» no quede tapado.
+  const barraRef = React.useRef<HTMLDivElement>(null);
+  const [huecoEsfera, setHuecoEsfera] = useState<'izq' | 'der' | null>(null);
+  useEffect(() => {
+    if (compact || !hayLineas) return;
+    const medir = () => {
+      const barra = barraRef.current?.getBoundingClientRect();
+      const esfera = document.querySelector('[data-medir="Abrir Lalan"]')?.getBoundingClientRect();
+      if (!barra || !esfera || !esfera.width) { setHuecoEsfera(null); return; }
+      const encima = esfera.bottom > barra.top - 8 && esfera.top < barra.bottom + 8;
+      setHuecoEsfera(encima ? (esfera.left + esfera.width / 2 > window.innerWidth / 2 ? 'der' : 'izq') : null);
+    };
+    const luego = () => window.setTimeout(medir, 450);
+    const t = window.setTimeout(medir, 300);
+    window.addEventListener('resize', medir);
+    window.addEventListener('pointerup', luego);
+    return () => { window.clearTimeout(t); window.removeEventListener('resize', medir); window.removeEventListener('pointerup', luego); };
+  }, [compact, hayLineas, cobrarVisible]);
+
   const opcionesRecibo = useOpcionesRecibo();
   const imprimir = useCallback((venta: any) => {
     imprimirRecibo(venta, opcionesRecibo(venta, { simbolo: sim }));
@@ -215,8 +248,15 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
     );
   }
 
+  // Lo que va en la comanda, para la barra de abajo del teléfono
+  const unidades = (activeSale?.items ?? []).reduce((t, i) => t + Number(i.quantity || 0), 0);
+
   return (
-    <div className="space-y-4">
+    <div className={compact
+      ? 'space-y-4'
+      // En la PC la carta a la izquierda y la comanda fija a la derecha:
+      // se sirve y se ve el total sin bajar.
+      : 'space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)] lg:gap-4 lg:items-start'}>
           {/* ── Servir o vender (OFERTA) ──────────────────────────── */}
           {/* Esto SÍ es el catálogo: productos reales, con precio y
               stock, que se editan desde Catálogo como todo lo demás. */}
@@ -230,8 +270,8 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                     Servir o vender
                   </h3>
-                  <p className="text-[0.75rem] text-slate-400">
-                    Entra a la comanda con su precio · 0.00 es cortesía
+                  <p className="hidden sm:block text-[0.75rem] text-slate-400">
+                    Toca lo que pidió y entra a la comanda · 0.00 es cortesía
                   </p>
                 </div>
               </div>
@@ -257,12 +297,12 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
             </div>
 
             {!cartaBusca && (
-              <div className="flex items-center gap-1 p-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 overflow-x-auto">
+              <div className="flex items-center gap-1 p-0.5 rounded-full bg-slate-100 dark:bg-neutral-800 overflow-x-auto hide-scrollbar">
                 {GRUPOS.map(g => (
                   <button
                     key={g.id}
                     onClick={() => setCartaTipo(g.id)}
-                    className={`px-2.5 py-1 rounded-full text-[0.6875rem] font-bold whitespace-nowrap transition ${
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-[0.6875rem] font-bold whitespace-nowrap transition ${
                       cartaTipo === g.id
                         ? 'bg-white dark:bg-neutral-700 text-slate-900 dark:text-white shadow-2xs'
                         : 'text-slate-500 dark:text-neutral-400'
@@ -275,9 +315,15 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
             )}
 
             {carta.length ? (
+              /* Renglones compactos: tocar el renglón lo sirve, y si ya está
+                 en la comanda el + y el − quedan a la derecha. Antes cada
+                 cosa era una tarjeta con un botón «Servir» a lo ancho y en el
+                 teléfono solo cabían dos. */
               <motion.div
                 layout
-                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[46vh] overflow-y-auto pr-1 -mr-1"
+                className={`grid grid-cols-1 sm:grid-cols-2 gap-1.5 ${compact ? '' : '2xl:grid-cols-3'} ${
+                  compact ? 'max-h-[46vh] overflow-y-auto pr-1 -mr-1' : 'lg:max-h-[60vh] lg:overflow-y-auto lg:pr-1 lg:-mr-1'
+                } hide-scrollbar`}
               >
                 {carta.map(p => {
                   // Un servicio no se agota; un producto sí
@@ -285,14 +331,15 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   const enComanda = activeSale?.items?.find(i =>
                     p.tipo === 'service' ? i.serviceId === p.id : i.productId === p.id,
                   );
+                  const cantidad = Number(enComanda?.quantity ?? 0);
                   return (
                     <motion.div
                       key={p.id}
                       layout="position"
-                      initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.18 }}
-                      className={`relative p-3.5 rounded-2xl border flex flex-col gap-3 transition-colors ${
+                      transition={{ duration: 0.16 }}
+                      className={`relative flex items-center gap-2 pl-3 pr-1.5 py-1.5 min-h-[3.25rem] rounded-2xl border transition-colors ${
                         agotado
                           ? 'border-slate-200/60 dark:border-neutral-800 opacity-50'
                           : enComanda
@@ -300,51 +347,59 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                             : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
                       }`}
                     >
-                      {!!enComanda && (
-                        <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1.5 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold flex items-center justify-center tabular-nums">
-                          {Number(enComanda.quantity)}
-                        </span>
-                      )}
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-800 dark:text-neutral-100 leading-snug">
+                      <button
+                        type="button"
+                        disabled={agotado || saleBusy}
+                        onClick={() => servir(p)}
+                        aria-label={`Servir ${p.name}`}
+                        className="flex-1 min-w-0 text-left py-0.5 cursor-pointer disabled:cursor-not-allowed active:opacity-70 transition"
+                      >
+                        <div className="text-xs font-bold text-slate-800 dark:text-neutral-100 leading-snug line-clamp-2">
                           {p.name}
                         </div>
-                        <div className="text-[0.6875rem] text-slate-400 tabular-nums">
-                          {plata(p.price)}
-                          {p.stock === null
-                            ? ' · servicio'
-                            : agotado ? ' · sin stock' : ` · ${p.stock} disp.`}
+                        <div className="text-[0.6875rem] tabular-nums truncate">
+                          <span className="font-bold text-slate-600 dark:text-neutral-300">{plata(p.price)}</span>
+                          <span className={agotado ? 'text-red-500 font-semibold' : 'text-slate-400'}>
+                            {p.stock === null
+                              ? ' · servicio'
+                              : agotado ? ' · sin stock' : ` · ${p.stock} disp.`}
+                          </span>
                         </div>
-                      </div>
+                      </button>
                       {enComanda ? (
-                        // Ya está en la comanda: el botón se convierte
-                        // en el contador, ahí mismo, sin bajar a mirar.
-                        <div className="flex items-center gap-1">
+                        // Ya está en la comanda: el contador ahí mismo
+                        <div className="shrink-0 flex items-center gap-0.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 p-0.5">
                           <button
+                            type="button"
                             disabled={saleBusy}
-                            onClick={() => setSaleItemQty(enComanda.id, Number(enComanda.quantity) - 1)}
-                            className="w-9 h-8 rounded-lg bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-neutral-700 transition disabled:opacity-40"
+                            onClick={() => setSaleItemQty(enComanda.id, cantidad - 1)}
+                            aria-label={`Quitar un ${p.name}`}
+                            className="w-8 h-8 rounded-lg text-slate-600 dark:text-neutral-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="flex-1 text-center text-xs font-extrabold text-slate-800 dark:text-neutral-100 tabular-nums">
-                            {Number(enComanda.quantity)}
+                          <span className="w-5 text-center text-xs font-extrabold text-[var(--primary)] tabular-nums">
+                            {cantidad}
                           </span>
                           <button
+                            type="button"
                             disabled={agotado || saleBusy}
-                            onClick={() => setSaleItemQty(enComanda.id, Number(enComanda.quantity) + 1)}
-                            className="w-9 h-8 rounded-lg bg-[var(--primary)] text-white flex items-center justify-center hover:opacity-90 transition disabled:opacity-40"
+                            onClick={() => setSaleItemQty(enComanda.id, cantidad + 1)}
+                            aria-label={`Uno más de ${p.name}`}
+                            className="w-8 h-8 rounded-lg bg-[var(--primary)] text-white flex items-center justify-center hover:opacity-90 transition disabled:opacity-40"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       ) : (
                         <button
+                          type="button"
                           disabled={agotado || saleBusy}
                           onClick={() => servir(p)}
-                          className="w-full py-2 rounded-lg bg-[var(--primary)] text-white text-[0.75rem] font-extrabold hover:opacity-90 active:scale-98 transition disabled:opacity-40"
+                          aria-label={`Servir ${p.name}`}
+                          className="shrink-0 w-10 h-10 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition disabled:opacity-40 disabled:bg-slate-300 dark:disabled:bg-neutral-700"
                         >
-                          Servir
+                          <Plus className="w-5 h-5" />
                         </button>
                       )}
                     </motion.div>
@@ -386,7 +441,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
           </div>
 
           {/* ── El consumo (TICKET) ───────────────────────────────── */}
-          <div className="p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-3">
+          <div ref={ticketRef} className={`scroll-mt-4 ${compact ? '' : 'lg:sticky lg:top-0'} p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-2xs space-y-3`}>
             {/* Cuentas abiertas. Como en un hotel: cada quien tiene su
                 folio y al final cada quien paga el suyo. */}
             {(openFolios?.length ?? 0) > 0 && (
@@ -413,7 +468,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                           className="pl-2.5 py-1.5 cursor-pointer"
                         >
                           {(f.clientName ?? f.label ?? 'Cuenta').split(' ')[0]}
-                          <span className={`ml-1.5 font-mono tabular-nums ${activa ? 'opacity-80' : 'text-slate-400'}`}>
+                          <span className={`ml-1.5 tabular-nums ${activa ? 'opacity-80' : 'text-slate-400'}`}>
                             {plata(pend)}
                           </span>
                         </button>
@@ -629,111 +684,124 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs overflow-hidden"
+                        className="py-2.5 text-xs overflow-hidden space-y-1.5"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {/* El contador vive aquí: es donde uno mira
-                              cuando quiere corregir «puse 1, eran 2». */}
-                          {!prepagado && (
-                            <div className="flex items-center gap-0.5 shrink-0 rounded-lg bg-slate-100 dark:bg-neutral-800 p-0.5">
-                              <button
-                                onClick={() => setSaleItemQty(it.id, Number(it.quantity) - 1)}
-                                disabled={saleBusy}
-                                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-neutral-700 transition disabled:opacity-40"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <span className="w-5 text-center font-extrabold tabular-nums text-slate-700 dark:text-neutral-200">
-                                {Number(it.quantity)}
+                        {/* Arriba: qué es y cuánto. Abajo: el contador y las
+                            acciones. Así no se apretuja en el teléfono. */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-slate-800 dark:text-neutral-200 break-words">
+                              {it.label}
+                            </span>
+                            {prepagado && (
+                              <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-extrabold">
+                                PAGADO EN LÍNEA
                               </span>
-                              <button
-                                onClick={() => setSaleItemQty(it.id, Number(it.quantity) + 1)}
-                                disabled={saleBusy}
-                                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-neutral-700 transition disabled:opacity-40"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
-                          <span className="font-semibold text-slate-800 dark:text-neutral-200 truncate">
-                            {it.label}
-                          </span>
-                          {/* Quién lo hizo: de aquí sale su comisión */}
-                          {it.kind !== 'courtesy' && delEquipo.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setQuienDe(quienDe === it.id ? null : it.id)}
-                              aria-expanded={quienDe === it.id}
-                              title={it.staffName ? `Lo hizo ${it.staffName}: su comisión va con esta línea. Toca para cambiarlo.` : '¿Quién lo hizo? Para su comisión'}
-                              className={`shrink-0 flex items-center gap-1 text-[0.6875rem] px-1.5 py-0.5 rounded-full font-bold transition ${
-                                it.staffName
-                                  ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
-                                  : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-                              }`}
-                            >
-                              <UserRound className="w-3 h-3" />
-                              {it.staffName ? it.staffName.split(' ')[0] : '¿Quién?'}
-                            </button>
-                          )}
-                          {prepagado && (
-                            <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-extrabold">
-                              PAGADO EN LÍNEA
-                            </span>
-                          )}
-                          {cortesia && (
-                            <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-extrabold">
-                              CORTESÍA
-                            </span>
-                          )}
-                          {!!it.discountPercent && (
-                            <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 font-extrabold">
-                              −{Number(it.discountPercent).toFixed(0)}%
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`font-mono tabular-nums ${
+                            )}
+                            {cortesia && (
+                              <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-extrabold">
+                                CORTESÍA
+                              </span>
+                            )}
+                            {!!it.discountPercent && (
+                              <span className="shrink-0 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 font-extrabold">
+                                −{Number(it.discountPercent).toFixed(0)}%
+                              </span>
+                            )}
+                          </div>
+                          <span className={`shrink-0 tabular-nums ${
                             prepagado || cortesia
                               ? 'text-slate-400'
-                              : 'text-slate-700 dark:text-neutral-200 font-bold'
+                              : 'text-slate-800 dark:text-neutral-100 font-extrabold'
                           }`}>
-                            {Number(it.lineTotal).toFixed(2)}
+                            {plata(it.lineTotal)}
                           </span>
-                          {!prepagado && (openFolios?.length ?? 0) > 1 && (
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {/* El contador vive aquí: es donde uno mira
+                                cuando quiere corregir «puse 1, eran 2». */}
+                            {!prepagado && (
+                              <div className="flex items-center gap-0.5 shrink-0 rounded-lg bg-slate-100 dark:bg-neutral-800 p-0.5">
+                                <button
+                                  onClick={() => setSaleItemQty(it.id, Number(it.quantity) - 1)}
+                                  disabled={saleBusy}
+                                  aria-label={`Quitar un ${it.label}`}
+                                  className="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-neutral-700 transition disabled:opacity-40"
+                                >
+                                  <Minus className="w-3.5 h-3.5" />
+                                </button>
+                                <span className="w-5 text-center font-extrabold tabular-nums text-slate-700 dark:text-neutral-200">
+                                  {Number(it.quantity)}
+                                </span>
+                                <button
+                                  onClick={() => setSaleItemQty(it.id, Number(it.quantity) + 1)}
+                                  disabled={saleBusy}
+                                  aria-label={`Uno más de ${it.label}`}
+                                  className="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-neutral-700 transition disabled:opacity-40"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                            {/* Quién lo hizo: de aquí sale su comisión */}
+                            {it.kind !== 'courtesy' && delEquipo.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setQuienDe(quienDe === it.id ? null : it.id)}
+                                aria-expanded={quienDe === it.id}
+                                title={it.staffName ? `Lo hizo ${it.staffName}: su comisión va con esta línea. Toca para cambiarlo.` : '¿Quién lo hizo? Para su comisión'}
+                                className={`min-w-0 flex items-center gap-1 text-[0.6875rem] px-2 py-1 rounded-full font-bold transition ${
+                                  it.staffName
+                                    ? 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                                    : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                                }`}
+                              >
+                                <UserRound className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{it.staffName ? it.staffName.split(' ')[0] : '¿Quién?'}</span>
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            {!prepagado && (openFolios?.length ?? 0) > 1 && (
+                              <button
+                                onClick={() => setMoviendo(moviendo === it.id ? null : it.id)}
+                                disabled={saleBusy}
+                                title="Pasar esta línea a otra cuenta"
+                                aria-label="Pasar esta línea a otra cuenta"
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition disabled:opacity-40 ${
+                                  moviendo === it.id
+                                    ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600'
+                                    : 'text-slate-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40'
+                                }`}
+                              >
+                                <Split className="w-4 h-4" />
+                              </button>
+                            )}
+                            {!prepagado && (
+                              <button
+                                onClick={() => toggleSaleItemCourtesy(it.id)}
+                                disabled={saleBusy}
+                                title={cortesia ? 'Volver a cobrarla' : 'Invitarla: ponerla en 0'}
+                                aria-label={cortesia ? 'Volver a cobrarla' : 'Invitarla: ponerla en 0'}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition disabled:opacity-40 ${
+                                  cortesia
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600'
+                                    : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                                }`}
+                              >
+                                <Gift className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
-                              onClick={() => setMoviendo(moviendo === it.id ? null : it.id)}
+                              onClick={() => removeSaleItem(it.id)}
                               disabled={saleBusy}
-                              title="Pasar esta línea a otra cuenta"
-                              className={`w-6 h-6 rounded-full flex items-center justify-center transition disabled:opacity-40 ${
-                                moviendo === it.id
-                                  ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600'
-                                  : 'text-slate-300 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/40'
-                              }`}
+                              aria-label={`Quitar ${it.label} de la comanda`}
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition disabled:opacity-40"
                             >
-                              <Split className="w-3.5 h-3.5" />
+                              <X className="w-4 h-4" />
                             </button>
-                          )}
-                          {!prepagado && (
-                            <button
-                              onClick={() => toggleSaleItemCourtesy(it.id)}
-                              disabled={saleBusy}
-                              title={cortesia ? 'Volver a cobrarla' : 'Invitarla — ponerla en 0'}
-                              className={`w-6 h-6 rounded-full flex items-center justify-center transition disabled:opacity-40 ${
-                                cortesia
-                                  ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600'
-                                  : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-                              }`}
-                            >
-                              <Gift className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => removeSaleItem(it.id)}
-                            disabled={saleBusy}
-                            className="w-5 h-5 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition disabled:opacity-40"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                          </div>
                         </div>
                         {quienDe === it.id && (
                           <div className="w-full flex flex-wrap items-center gap-1 pt-2 pl-1">
@@ -808,7 +876,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   </div>
                 )}
 
-                <div className="flex gap-2">
+                <div ref={cobrarRef} className="flex gap-2">
                   <button
                     onClick={() => imprimir(activeSale)}
                     title="Imprimir la cuenta sin cobrar todavía"
@@ -830,7 +898,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 <p className="text-xs text-slate-400">
                   {citaDeHoy
                     ? 'Abriendo la comanda de su cita…'
-                    : 'No tiene cita hoy. Toca Servir arriba para venderle igual.'}
+                    : 'Toca lo que pidió arriba y entra aquí.'}
                 </p>
                 {!citaDeHoy && !activeSale && (
                   <button
@@ -845,6 +913,39 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
             )}
           </div>
 
+        {/* ── Barra de la comanda (teléfono y tableta) ─────────────────────
+            Con la carta larga, la comanda queda abajo y el total no se veía.
+            La barra se queda pegada abajo con lo servido y el botón de
+            cobrar; se esconde cuando la comanda ya está a la vista. */}
+        {!compact && !!activeSale?.items?.length && !cobrarVisible && (
+          <div ref={barraRef} className={`lg:hidden sticky bottom-2 z-20 pt-1 ${
+            huecoEsfera === 'der' ? 'mr-[4.25rem]' : huecoEsfera === 'izq' ? 'ml-[4.25rem]' : ''
+          } transition-[margin]`}>
+            <div className="flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-slate-900/95 dark:bg-neutral-800/95 backdrop-blur-xl text-white shadow-xl shadow-black/20">
+              <button
+                type="button"
+                onClick={() => ticketRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })}
+                className="flex-1 min-w-0 text-left cursor-pointer"
+              >
+                <div className="text-[0.6875rem] text-white/60 truncate">
+                  Comanda de {(activeSale.clientName ?? activeSale.label ?? 'Mostrador').split(' ')[0]} · {unidades} {unidades === 1 ? 'cosa' : 'cosas'}
+                </div>
+                <div className="text-sm font-extrabold tabular-nums truncate">
+                  {plata(activeSale.total)} <span className="text-[0.6875rem] font-bold text-white/60">ver</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMostrarCobro(true)}
+                disabled={saleBusy}
+                className="shrink-0 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-xs font-extrabold hover:opacity-90 transition disabled:opacity-40"
+              >
+                Cobrar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── Cobro del consumo ──────────────────────────────────────────── */}
         <AnimatePresence>
           {mostrarCobro && activeSale && (
@@ -858,7 +959,8 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                 initial={{ y: 24, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 24, opacity: 0 }}
-                className="w-full max-w-sm rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 p-4 shadow-2xl space-y-4"
+                className="w-full max-w-sm max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain hide-scrollbar rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 p-4 shadow-2xl space-y-4"
+                style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}
               >
                 <div className="flex items-start justify-between">
                   <div>
