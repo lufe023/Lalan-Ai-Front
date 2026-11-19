@@ -8,6 +8,9 @@ import { useApp } from '../../context/AppContext';
 import { imprimirRecibo } from '../../utils/recibo';
 import { useOpcionesRecibo } from '../../hooks/useOpcionesRecibo';
 import { CobroFiao } from './CobroFiao';
+import { MiniaturaCatalogo } from '../catalogo/FotoDelCatalogo';
+import { miles } from '../../utils/dinero';
+import { useEncuadres } from '../../hooks/useEncuadres';
 
 /** Algo que se le puede despachar a la clienta: producto o servicio */
 type Vendible = {
@@ -15,6 +18,11 @@ type Vendible = {
   stock: number | null;          // null = servicio, no se agota
   tipo: 'product' | 'service';
   grupo: 'beverage' | 'snack' | 'product' | 'service';
+  /** Su foto de portada, para reconocerlo de un vistazo */
+  fotoId: string | null;
+  /** Ícono de su categoría, cuando no tiene foto */
+  icono: string;
+  color?: string;
 };
 
 const GRUPOS = [
@@ -84,7 +92,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
   const sim = baseCurrency?.symbol ?? '';
   const plata = useCallback(
     (n: number | string | null | undefined, simbolo = sim) =>
-      `${Number(n ?? 0).toFixed(2)}${simbolo ? ` ${simbolo}` : ''}`,
+      `${miles(n)}${simbolo ? ` ${simbolo}` : ''}`,
     [sim],
   );
 
@@ -102,6 +110,8 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
           stock: p.preparedToOrder ? (p.porcionesPosibles ?? null) : Number(p.stock ?? 0),
           tipo: 'product' as const,
           grupo: (papel === 'drink' ? 'beverage' : papel === 'food' ? 'snack' : 'product') as Vendible['grupo'],
+          fotoId: p.fotoId ?? null,
+          icono: categoriaPorClave('product', p.category)?.icon || '📦',
         };
       });
     const deServicios: Vendible[] = (services ?? []).map(sv => ({
@@ -110,9 +120,14 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
       stock: null,
       tipo: 'service' as const,
       grupo: 'service' as const,
+      fotoId: sv.fotoId ?? null,
+      icono: categoriaPorClave('service', sv.category)?.icon || '✨',
+      color: sv.color || undefined,
     }));
     return [...deProductos, ...deServicios];
-  }, [products, services]);
+  }, [products, services, categoriaPorClave]);
+  // Cómo acomodó la dueña cada foto, y cuáles son videos (igual que en Catálogo)
+  const { encuadres, videos } = useEncuadres();
 
   const cartaCompleta = useMemo(() => {
     const q = normalizar(cartaBusca);
@@ -190,38 +205,8 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
     setCobroMonto(pendiente > 0 ? (pendiente / tasa).toFixed(2) : '');
   }, [cobroMoneda]);
 
-  // La barra de abajo sobra cuando el botón de cobrar de la comanda ya se ve
+  // Para bajar a la comanda desde el resumen de arriba
   const ticketRef = React.useRef<HTMLDivElement>(null);
-  const cobrarRef = React.useRef<HTMLDivElement>(null);
-  const [cobrarVisible, setCobrarVisible] = useState(false);
-  const hayLineas = !!activeSale?.items?.length;
-  useEffect(() => {
-    const el = cobrarRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setCobrarVisible(false); return; }
-    const io = new IntersectionObserver(([e]) => setCobrarVisible(e.isIntersecting), { threshold: 0.6 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hayLineas]);
-
-  // La esfera de Lalan flota en un borde: si cae encima de la barra de
-  // abajo, la barra le deja su hueco para que «Cobrar» no quede tapado.
-  const barraRef = React.useRef<HTMLDivElement>(null);
-  const [huecoEsfera, setHuecoEsfera] = useState<'izq' | 'der' | null>(null);
-  useEffect(() => {
-    if (compact || !hayLineas) return;
-    const medir = () => {
-      const barra = barraRef.current?.getBoundingClientRect();
-      const esfera = document.querySelector('[data-medir="Abrir Lalan"]')?.getBoundingClientRect();
-      if (!barra || !esfera || !esfera.width) { setHuecoEsfera(null); return; }
-      const encima = esfera.bottom > barra.top - 8 && esfera.top < barra.bottom + 8;
-      setHuecoEsfera(encima ? (esfera.left + esfera.width / 2 > window.innerWidth / 2 ? 'der' : 'izq') : null);
-    };
-    const luego = () => window.setTimeout(medir, 450);
-    const t = window.setTimeout(medir, 300);
-    window.addEventListener('resize', medir);
-    window.addEventListener('pointerup', luego);
-    return () => { window.clearTimeout(t); window.removeEventListener('resize', medir); window.removeEventListener('pointerup', luego); };
-  }, [compact, hayLineas, cobrarVisible]);
 
   const opcionesRecibo = useOpcionesRecibo();
   const imprimir = useCallback((venta: any) => {
@@ -277,6 +262,33 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
               </div>
             </div>
 
+            {/* Lo servido y el total, quietos arriba de la carta (teléfono y
+                tableta). Antes era una barra flotante que tapaba la carta. */}
+            {!compact && !!activeSale?.items?.length && (
+              <div className="lg:hidden flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-[var(--primary)]/8 border border-[var(--primary)]/20">
+                <button
+                  type="button"
+                  onClick={() => ticketRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })}
+                  className="flex-1 min-w-0 text-left cursor-pointer"
+                >
+                  <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 truncate">
+                    {unidades} {unidades === 1 ? 'cosa' : 'cosas'} en la comanda · <span className="font-bold text-[var(--primary)]">ver</span>
+                  </div>
+                  <div className="text-sm font-extrabold text-slate-900 dark:text-white tabular-nums truncate">
+                    {plata(activeSale.total)}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarCobro(true)}
+                  disabled={saleBusy}
+                  className="shrink-0 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-xs font-extrabold hover:opacity-90 transition disabled:opacity-40"
+                >
+                  Cobrar
+                </button>
+              </div>
+            )}
+
             {/* Buscador: escribir ignora la pestaña y busca en todo */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -321,7 +333,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                  teléfono solo cabían dos. */
               <motion.div
                 layout
-                className={`grid grid-cols-1 sm:grid-cols-2 gap-1.5 ${compact ? '' : '2xl:grid-cols-3'} ${
+                className={`grid grid-cols-1 sm:grid-cols-2 gap-1.5 ${compact ? '' : 'lg:grid-cols-1 2xl:grid-cols-2'} ${
                   compact ? 'max-h-[46vh] overflow-y-auto pr-1 -mr-1' : 'lg:max-h-[60vh] lg:overflow-y-auto lg:pr-1 lg:-mr-1'
                 } hide-scrollbar`}
               >
@@ -339,7 +351,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                       initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.16 }}
-                      className={`relative flex items-center gap-2 pl-3 pr-1.5 py-1.5 min-h-[3.25rem] rounded-2xl border transition-colors ${
+                      className={`relative flex items-center gap-2.5 pl-1.5 pr-1.5 py-1.5 min-h-[3.25rem] rounded-2xl border transition-colors ${
                         agotado
                           ? 'border-slate-200/60 dark:border-neutral-800 opacity-50'
                           : enComanda
@@ -352,8 +364,20 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                         disabled={agotado || saleBusy}
                         onClick={() => servir(p)}
                         aria-label={`Servir ${p.name}`}
-                        className="flex-1 min-w-0 text-left py-0.5 cursor-pointer disabled:cursor-not-allowed active:opacity-70 transition"
+                        className="flex-1 min-w-0 flex items-center gap-2.5 text-left py-0.5 cursor-pointer disabled:cursor-not-allowed active:opacity-70 transition"
                       >
+                        {/* La foto: se reconoce más rápido que el nombre */}
+                        <MiniaturaCatalogo
+                          fotoId={p.fotoId}
+                          encuadre={p.fotoId ? encuadres[p.fotoId] : null}
+                          esVideo={!!p.fotoId && videos[p.fotoId] != null}
+                          nombre={p.name}
+                          icono={p.icono}
+                          color={p.color}
+                          pideFoto={false}
+                          className="w-11 h-11"
+                        />
+                        <span className="flex-1 min-w-0 block">
                         <div className="text-xs font-bold text-slate-800 dark:text-neutral-100 leading-snug line-clamp-2">
                           {p.name}
                         </div>
@@ -365,6 +389,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                               : agotado ? ' · sin stock' : ` · ${p.stock} disp.`}
                           </span>
                         </div>
+                        </span>
                       </button>
                       {enComanda ? (
                         // Ya está en la comanda: el contador ahí mismo
@@ -876,7 +901,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                   </div>
                 )}
 
-                <div ref={cobrarRef} className="flex gap-2">
+                <div className="flex gap-2">
                   <button
                     onClick={() => imprimir(activeSale)}
                     title="Imprimir la cuenta sin cobrar todavía"
@@ -912,39 +937,6 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
               </div>
             )}
           </div>
-
-        {/* ── Barra de la comanda (teléfono y tableta) ─────────────────────
-            Con la carta larga, la comanda queda abajo y el total no se veía.
-            La barra se queda pegada abajo con lo servido y el botón de
-            cobrar; se esconde cuando la comanda ya está a la vista. */}
-        {!compact && !!activeSale?.items?.length && !cobrarVisible && (
-          <div ref={barraRef} className={`lg:hidden sticky bottom-2 z-20 pt-1 ${
-            huecoEsfera === 'der' ? 'mr-[4.25rem]' : huecoEsfera === 'izq' ? 'ml-[4.25rem]' : ''
-          } transition-[margin]`}>
-            <div className="flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-slate-900/95 dark:bg-neutral-800/95 backdrop-blur-xl text-white shadow-xl shadow-black/20">
-              <button
-                type="button"
-                onClick={() => ticketRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })}
-                className="flex-1 min-w-0 text-left cursor-pointer"
-              >
-                <div className="text-[0.6875rem] text-white/60 truncate">
-                  Comanda de {(activeSale.clientName ?? activeSale.label ?? 'Mostrador').split(' ')[0]} · {unidades} {unidades === 1 ? 'cosa' : 'cosas'}
-                </div>
-                <div className="text-sm font-extrabold tabular-nums truncate">
-                  {plata(activeSale.total)} <span className="text-[0.6875rem] font-bold text-white/60">ver</span>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMostrarCobro(true)}
-                disabled={saleBusy}
-                className="shrink-0 px-4 py-2.5 rounded-xl bg-[var(--primary)] text-white text-xs font-extrabold hover:opacity-90 transition disabled:opacity-40"
-              >
-                Cobrar
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* ── Cobro del consumo ──────────────────────────────────────────── */}
         <AnimatePresence>
@@ -1068,7 +1060,7 @@ export const PosPanel: React.FC<{ compact?: boolean }> = ({ compact = false }) =
                               onClick={() => setCobroMonto(String(Number(d.value)))}
                               className="py-2 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-xs font-bold text-slate-700 dark:text-neutral-200 tabular-nums hover:border-[var(--primary)] hover:text-[var(--primary)] transition"
                             >
-                              {monedaActiva.symbol}{Number(d.value).toLocaleString()}
+                              {monedaActiva.symbol}{miles(d.value, 0)}
                             </button>
                           ))}
                         <button

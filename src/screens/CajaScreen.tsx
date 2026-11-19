@@ -18,6 +18,7 @@ import { imprimirRecibo } from '../utils/recibo';
 import { ListaRecibos } from '../components/caja/ListaRecibos';
 import { PanelFiao } from '../components/caja/PanelFiao';
 import { useSedeActiva } from '../context/SedeActivaContext';
+import { miles } from '../utils/dinero';
 import { useOpcionesRecibo } from '../hooks/useOpcionesRecibo';
 
 /**
@@ -82,7 +83,7 @@ export const CajaScreen: React.FC = () => {
   const enTodas = varias && !actual;
 
   const sim = baseCurrency?.symbol ?? '';
-  const plata = (n: any) => `${Number(n ?? 0).toFixed(2)}${sim ? ` ${sim}` : ''}`;
+  const plata = (n: any) => `${miles(n)}${sim ? ` ${sim}` : ''}`;
 
   useEffect(() => { void loadCurrencies?.(); void loadOpenFolios?.(); }, []);
 
@@ -582,7 +583,7 @@ export const CajaScreen: React.FC = () => {
                         >
                           {({ cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transf.', other: 'Otro' } as any)[m] ?? m}
                           {' · '}
-                          <span className="font-mono tabular-nums">{Number(d.monto).toFixed(2)}</span>
+                          <span className="font-mono tabular-nums">{miles(d.monto)}</span>
                         </span>
                       ))}
                     </div>
@@ -616,7 +617,7 @@ export const CajaScreen: React.FC = () => {
                           <span className={`text-xs font-mono tabular-nums shrink-0 ${
                             m.kind === 'in' ? 'text-emerald-600' : 'text-red-500'
                           }`}>
-                            {m.kind === 'in' ? '+' : '−'}{Number(m.amount).toFixed(2)}
+                            {m.kind === 'in' ? '+' : '−'}{miles(m.amount)}
                           </span>
                         </div>
                       ))}
@@ -716,7 +717,7 @@ export const CajaScreen: React.FC = () => {
                         .map(d => (
                           <div key={d.id} className="flex items-center gap-2">
                             <span className="w-16 shrink-0 text-[0.75rem] font-bold text-slate-600 dark:text-neutral-300 tabular-nums">
-                              {baseCurrency.symbol}{Number(d.value).toLocaleString()}
+                              {baseCurrency.symbol}{miles(d.value, 0)}
                             </span>
                             <input
                               type="number"
@@ -861,7 +862,7 @@ export const CajaScreen: React.FC = () => {
                               ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
                               : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
                         }`}>
-                          {cuadra ? 'cuadró' : `${dif > 0 ? '+' : ''}${dif.toFixed(2)}`}
+                          {cuadra ? 'cuadró' : `${dif > 0 ? '+' : ''}${miles(dif)}`}
                         </span>
                       </div>
                     );
