@@ -39,5 +39,7 @@ export const fechaHora = (iso: string) =>
   new Date(iso).toLocaleString('es-DO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 /** "2026-11-01" para un <input type="date"> */
 export const paraInputFecha = (iso: string | null | undefined) => (iso ? new Date(iso).toISOString().slice(0, 10) : '');
+/** Hoy en este aparato, "2026-11-18", para comparar con paraInputFecha */
+export const hoyLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 /** El mediodía de ese día, para que la zona horaria no lo corra al día anterior */
 export const deInputFecha = (v: string) => (v ? new Date(`${v}T12:00:00`).toISOString() : null);

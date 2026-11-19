@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, Mail, MessageCircle, Printer } from 'lucide-react';
 import { IOSModal } from '../ui/IOSModal';
 import { useApp } from '../../context/AppContext';
@@ -24,9 +24,13 @@ export const EnviarPedido: React.FC<{
   const [enviando, setEnviando] = useState<string | null>(null);
   const [whatsapp, setWhatsapp] = useState('');
   const [correo, setCorreo] = useState('');
+  // La orden va como documento: el PDF se baja al abrir, para compartirlo en el mismo toque
+  const pdf = useRef<File | null>(null);
 
   useEffect(() => {
     if (!pedido) return;
+    pdf.current = null;
+    if (como === 'orden') void comprasApi.pdfComoArchivo(pedido.id, 'orden', pedido.numero).then((f) => { pdf.current = f; }).catch(() => undefined);
     setCargando(true);
     setWhatsapp(pedido.contacto.whatsapp ?? '');
     setCorreo(pedido.contacto.correo ?? '');
@@ -46,7 +50,54 @@ export const EnviarPedido: React.FC<{
     else await comprasApi.editarProveedor(pedido.proveedor.id, { [que]: valor });
   };
 
+  /** El PDF baja al teléfono o a la computadora, para adjuntarlo a mano en WhatsApp */
+  const bajarPdf = (f: File) => {
+    const url = URL.createObjectURL(f);
+    const a = document.createElement('a');
+    a.href = url; a.download = f.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  };
+
+  /**
+   * La orden por tu WhatsApp: en el teléfono se comparte el PDF con el
+   * mensaje (WhatsApp lo muestra como documento). En la computadora se abre
+   * WhatsApp con el mensaje y el PDF baja para adjuntarlo. Queda «por
+   * mandar» hasta que digas que salió.
+   */
+  const ordenPorWhatsapp = async () => {
+    const f = pdf.current;
+    const sePuedeCompartir = !!f && typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [f] });
+    if (sePuedeCompartir) {
+      try { await navigator.share({ files: [f!], text: texto }); }
+      catch (e) { if ((e as Error).name === 'AbortError') return; throw e; }
+      setEnviando('whatsapp');
+      if (faltaWhatsapp) await completarFicha('whatsapp');
+      const r = await comprasApi.enviar(pedido.id, { canal: 'whatsapp', como, mensaje: texto });
+      showToast('Orden compartida', 'Cuando salga en WhatsApp, toca «Ya la mandé» en el pedido.', 'success');
+      onEnviado(r.orden);
+      onClose();
+      return;
+    }
+    const ventana = window.open('', '_blank');
+    setEnviando('whatsapp');
+    try {
+      if (faltaWhatsapp) await completarFicha('whatsapp');
+      const r = await comprasApi.enviar(pedido.id, { canal: 'whatsapp', como, mensaje: texto });
+      if (r.enlace) { if (ventana) ventana.location.href = r.enlace; else window.location.href = r.enlace; }
+      bajarPdf(f ?? await comprasApi.pdfComoArchivo(pedido.id, 'orden', pedido.numero));
+      showToast('Adjunta el PDF en WhatsApp', 'Se bajó la orden en PDF: arrástrala al chat (o usa el clip). Después toca «Ya la mandé» en el pedido.', 'success');
+      onEnviado(r.orden);
+      onClose();
+    } catch (e) { ventana?.close(); throw e; }
+  };
+
   const mandar = async (canal: 'whatsapp' | 'correo' | 'impreso') => {
+    if (canal === 'whatsapp' && como === 'orden') {
+      try { await ordenPorWhatsapp(); }
+      catch (e) { showToast('No se pudo mandar', (e as Error).message || 'Intenta otra vez.', 'warning'); }
+      finally { setEnviando(null); }
+      return;
+    }
     // La ventana se abre en el mismo toque: si se abre después de esperar al servidor, el navegador la bloquea
     const ventana = canal === 'whatsapp' ? window.open('', '_blank') : null;
     setEnviando(canal);
@@ -78,7 +129,7 @@ export const EnviarPedido: React.FC<{
         <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
           {como === 'cotizacion'
             ? 'Así le llega al proveedor. No lleva precios: se los pides. Cuando te conteste, anota lo que dijo en el historial.'
-            : 'Así le llega al proveedor, con precios y total. Al mandarla, el pedido pasa a orden de compra.'}
+            : 'La orden va como documento (PDF, con productos, precios y total). Este mensaje solo la acompaña. Por correo sale con el PDF y pasa a orden de compra; por tu WhatsApp, pasa cuando digas que salió.'}
         </p>
         <label className="block">
           <span className={etiqueta}>Mensaje</span>
@@ -105,7 +156,7 @@ export const EnviarPedido: React.FC<{
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
           <button type="button" disabled={!!enviando || cargando || (faltaWhatsapp && !whatsapp.trim())} onClick={() => void mandar('whatsapp')} className={botonWhatsapp}>
-            {enviando === 'whatsapp' ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />} Por WhatsApp
+            {enviando === 'whatsapp' ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />} {como === 'orden' ? 'PDF por WhatsApp' : 'Por WhatsApp'}
           </button>
           <button type="button" disabled={!!enviando || cargando || (faltaCorreo && !correo.trim())} onClick={() => void mandar('correo')} className={botonPrincipal}>
             {enviando === 'correo' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />} Por correo

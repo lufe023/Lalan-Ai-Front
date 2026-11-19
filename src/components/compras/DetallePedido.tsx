@@ -8,14 +8,14 @@ import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import {
-  PASOS, cantidadTexto, comprasApi, dinero, haceCuanto, unidadTexto, type EstadoCompra, type Evento, type LineaNueva, type Pedido,
+  NOMBRE_DOCUMENTO, PASOS, cantidadTexto, comprasApi, dinero, haceCuanto, unidadTexto, type EstadoCompra, type Evento, type LineaNueva, type Pedido, type TipoDocumento,
 } from '../../services/compras';
 import { EnviarPedido } from './EnviarPedido';
 import { RecibirPedido } from './RecibirPedido';
 import { CambiarProveedor } from './CambiarProveedor';
 import { CuentaDelPedido } from './PorPagar';
 import {
-  IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, botonWhatsapp, campo, deInputFecha, etiqueta, fechaHora, paraInputFecha,
+  IconoCanal, NOMBRE_CANAL, PastillaEstado, botonPrincipal, botonSuave, botonWhatsapp, campo, deInputFecha, etiqueta, fechaCorta, fechaHora, hoyLocal, paraInputFecha,
 } from './piezas';
 
 interface Renglon { productId: string; descripcion: string; cantidad: string; precio: string; impuestoPct: string; unidad: string | null; hay: number; unidadInv: string }
@@ -152,6 +152,30 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
   const porRecibir = p.estado === 'confirmada' || p.estado === 'recibida_parcial';
   const sinRenglones = !renglones.length;
   const seEditaEntrega = p.estado !== 'recibida' && p.estado !== 'cancelada';
+  // La entrega esperada ya pasó (el mismo día todavía vale): sin confirmar no se le pide; confirmada, va atrasada
+  // La orden se preparó en su WhatsApp y nadie sabe si salió: queda por mandar hasta que lo diga
+  const porMandar = enCotizacion && !!p.historial.find((e) => e.tipo === 'envio')?.datos?.porMandar;
+  const yaLaMande = async () => {
+    setOcupado('confirmada');
+    try { actualizado(await comprasApi.yaLaMande(p.id)); showToast('Orden de compra', `${p.numero} quedó como orden de compra, lista para recibir.`, 'success'); }
+    catch (e) { showToast('No se pudo', (e as Error).message, 'warning'); }
+    finally { setOcupado(null); }
+  };
+  /**
+   * Freno al recibir: si la orden se confirmó hace un momento, casi seguro
+   * todavía no ha llegado (en OC-0009 se recibió el mismo minuto). Recibir
+   * suma al inventario, así que se pregunta antes.
+   */
+  const abrirRecibir = async () => {
+    const recien = p.estado === 'confirmada' && !!p.confirmadaEn && Date.now() - new Date(p.confirmadaEn).getTime() < 10 * 60_000;
+    if (recien && !(await confirmar({
+      titulo: '¿Ya llegó el pedido?',
+      mensaje: `La orden ${p.numero} se confirmó hace unos minutos. Recibir suma los productos al inventario de la sede: hazlo solo cuando lo tengas en la mano.`,
+      textoConfirmar: 'Sí, ya llegó',
+    }))) return;
+    setRecibir(true);
+  };
+  const entregaPasada = seEditaEntrega && !!p.entregaEsperada && paraInputFecha(p.entregaEsperada) < hoyLocal();
   const pasoActual = p.estado === 'recibida_parcial' ? 'confirmada' : p.estado;
   const indicePaso = PASOS.findIndex((x) => x.id === pasoActual);
 
@@ -178,13 +202,25 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
         </button>
       )}
 
+      {/* ── La orden se preparó en su WhatsApp: ¿salió? ── */}
+      {porMandar && (
+        <div className="p-3 rounded-2xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/70 dark:bg-sky-950/20 flex flex-wrap items-center gap-2">
+          <Send className="w-4 h-4 text-sky-600 shrink-0" />
+          <span className="flex-1 min-w-[12rem] text-[0.8125rem] text-sky-900 dark:text-sky-200">¿Ya le mandaste la orden en PDF a {p.contacto.nombre ?? p.proveedor.nombre}? Hasta que salga no cuenta como orden de compra.</span>
+          <button type="button" disabled={!!ocupado} onClick={() => void yaLaMande()} className={botonPrincipal}>
+            {ocupado === 'confirmada' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Sí, ya la mandé
+          </button>
+          <button type="button" onClick={() => setEnviar('orden')} className={botonSuave}><MessageCircle className="w-4 h-4" /> Mandarla otra vez</button>
+        </div>
+      )}
+
       {/* ── Lalan pregunta: el sí de la dueña, donde se decide ── */}
       {p.esperaDuena && (
         <div className="p-3 rounded-2xl border border-violet-200 dark:border-violet-900/60 bg-violet-50/70 dark:bg-violet-950/20 flex flex-wrap items-center gap-2">
           <Bot className="w-4 h-4 text-violet-600 shrink-0" />
           <span className="flex-1 min-w-[12rem] text-[0.8125rem] text-violet-900 dark:text-violet-200">{p.preguntaDuena ?? 'Lalan espera tu sí para seguir con este pedido.'}</span>
           {p.pagoReportado && <button type="button" onClick={() => setPedirPago((n) => n + 1)} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, anotar el pago</button>}
-          {enCotizacion && <button type="button" onClick={() => void pasar('confirmada', { titulo: `¿Confirmar la compra a ${p.proveedor.nombre}?`, mensaje: `Total ${dinero(s, p.total)}.`, boton: 'Sí, comprar' })} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, comprar</button>}
+          {enCotizacion && <button type="button" onClick={() => void pasar('confirmada', { titulo: `¿Confirmar la compra a ${p.proveedor.nombre}?`, mensaje: `Total ${dinero(s, p.total)}.${entregaPasada ? ` La entrega del ${fechaCorta(p.entregaEsperada)} ya pasó: la quito y pones la que te dé ${p.proveedor.nombre}.` : ''}`, boton: 'Sí, comprar' })} className={botonPrincipal}><Check className="w-4 h-4" /> Sí, comprar</button>}
           <button type="button" onClick={() => setDileALalan((n) => n + 1)} className={botonSuave}><MessageCircle className="w-4 h-4" /> Dile otra cosa</button>
           {/* «No» es no comprar: solo mientras se cotiza o está confirmada */}
           {(enCotizacion || p.estado === 'confirmada') && !p.pagoReportado && <button type="button" onClick={() => void pasar('cancelada', { titulo: '¿No comprar este pedido?', peligro: true, boton: 'No comprar' })} className={botonSuave}>No</button>}
@@ -218,7 +254,7 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             </button>
           </>}
           {porRecibir && <>
-            <button type="button" onClick={() => setRecibir(true)} className={botonPrincipal}><PackageCheck className="w-4 h-4" /> Recibir</button>
+            <button type="button" onClick={() => void abrirRecibir()} className={botonPrincipal}><PackageCheck className="w-4 h-4" /> Recibir</button>
             <button type="button" onClick={() => setEnviar('orden')} className={botonSuave}><Send className="w-4 h-4" /> Mandar la orden</button>
           </>}
           <button type="button" onClick={() => void comprasApi.abrirPdf(p.id).catch((e) => showToast('No se pudo abrir', (e as Error).message, 'warning'))} className={botonSuave}><Printer className="w-4 h-4" /> Imprimir</button>
@@ -314,7 +350,12 @@ export const DetallePedido: React.FC<{ id: string; onVolver: () => void; onCambi
             )}
             <label>
               <span className={etiqueta}>Entrega esperada</span>
-              <input type="date" className={campo} value={paraInputFecha(p.entregaEsperada)} disabled={p.estado === 'recibida' || p.estado === 'cancelada'} onChange={(e) => void campoPedido({ entregaEsperada: deInputFecha(e.target.value) })} />
+              <input type="date" className={`${campo} ${entregaPasada ? '!border-amber-400' : ''}`} value={paraInputFecha(p.entregaEsperada)} min={enCotizacion ? hoyLocal() : undefined} disabled={p.estado === 'recibida' || p.estado === 'cancelada'} onChange={(e) => void campoPedido({ entregaEsperada: deInputFecha(e.target.value) })} />
+              {entregaPasada && (
+                <span className="block mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  {enCotizacion ? 'Ya pasó. No se le pide al proveedor: pon el día que te dé.' : `Va atrasada: tenía que llegar el ${fechaCorta(p.entregaEsperada)}.`}
+                </span>
+              )}
             </label>
             <label>
               <span className={etiqueta}>N.º de su cotización o factura</span>
@@ -490,6 +531,10 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
     catch (e) { showToast('No se pudo adjuntar', (e as Error).message, 'warning'); }
     finally { setSubiendo(false); if (archivo.current) archivo.current.value = ''; }
   };
+  const marcar = async (id: string, documento: TipoDocumento | null) => {
+    try { await comprasApi.marcarDocumento(id, documento); onCambio(await comprasApi.pedido(pedido.id)); }
+    catch (e) { showToast('No se pudo marcar', (e as Error).message, 'warning'); }
+  };
   const quitarAdjunto = async (id: string, nombre: string) => {
     if (!(await confirmar({ titulo: `¿Quitar ${nombre}?`, tono: 'peligro', textoConfirmar: 'Quitar' }))) return;
     try { await comprasApi.quitarAdjunto(id); onCambio(await comprasApi.pedido(pedido.id)); }
@@ -551,6 +596,16 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
             <div key={a.id} className="flex items-center gap-2 text-[0.8125rem]">
               <FileText className="w-4 h-4 text-slate-400 shrink-0" />
               <button type="button" onClick={() => void comprasApi.abrirAdjunto(a.id)} className="flex-1 min-w-0 truncate text-left font-semibold text-[var(--primary)] cursor-pointer">{a.nombre}</button>
+              {/* Qué papel es: lo marca Lalan al leerlo, o la dueña aquí mismo */}
+              <select
+                aria-label={`Qué es ${a.nombre}`}
+                value={a.documento ?? ''}
+                onChange={(ev) => void marcar(a.id, (ev.target.value || null) as TipoDocumento | null)}
+                className={`shrink-0 text-[0.6875rem] font-bold rounded-full px-2 py-0.5 border cursor-pointer ${a.documento ? 'border-[var(--primary)]/30 bg-[var(--primary)]/10 text-[var(--primary)]' : 'border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'}`}
+              >
+                <option value="">¿Qué es?</option>
+                {(Object.keys(NOMBRE_DOCUMENTO) as TipoDocumento[]).map((d) => <option key={d} value={d}>{NOMBRE_DOCUMENTO[d]}</option>)}
+              </select>
               <span className="text-[0.6875rem] text-slate-400 shrink-0">{Math.max(1, Math.round(a.tamano / 1024))} KB</span>
               <button type="button" onClick={() => void quitarAdjunto(a.id, a.nombre)} aria-label={`Quitar ${a.nombre}`} className="text-slate-400 hover:text-rose-500 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
@@ -558,12 +613,15 @@ const Historial: React.FC<{ pedido: Pedido; onCambio: (p: Pedido) => void; dileA
         </div>
       )}
 
-      <ol className="space-y-3 pt-1">
+      <ol className="space-y-2.5 pt-1">
         {pedido.historial.map((e) => <LineaHistorial key={e.id} e={e} />)}
       </ol>
     </aside>
   );
 };
+
+/** Lo que se dijeron con el proveedor va como chat: él a la izquierda, el salón y Lalan a la derecha */
+const ES_MENSAJE = ['mensaje_entrante', 'mensaje_saliente', 'envio'];
 
 const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
   const color = e.autorTipo === 'lalan' ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
@@ -573,38 +631,71 @@ const LineaHistorial: React.FC<{ e: Evento }> = ({ e }) => {
   const mensaje: string | null = e.tipo === 'envio' && e.datos?.mensaje ? e.datos.mensaje : null;
   // Meta no lo entregó (o n8n no lo pudo mandar): se dice aquí mismo, con el botón para mandarlo desde su WhatsApp
   const noLlego = e.datos?.entrega === 'fallido';
-  const [ver, setVer] = useState(false);
+  const quien = e.autorNombre ?? (e.autorTipo === 'proveedor' ? 'Proveedor' : e.autorTipo === 'lalan' ? 'Lalan' : 'Salón');
+  const canal = e.canal && e.canal !== 'app' ? ` · ${NOMBRE_CANAL[e.canal] ?? e.canal}` : '';
+
+  const extras = (
+    <>
+      {/* La prueba de cada precio que anotó Lalan: lo que dijo el proveedor, o su papel */}
+      {e.tipo === 'lalan' && Array.isArray(e.datos?.precios) && e.datos.precios.some((x: any) => x?.dijo) && (
+        <ul className="mt-1 space-y-0.5">
+          {e.datos.precios.filter((x: any) => x?.dijo).map((x: any) => (
+            <li key={x.linea} className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+              Renglón {x.linea}: {x.precio} · {x.dijo === 'documento' ? 'sale de su documento' : <>dijo «{x.dijo}»</>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {e.adjuntoId && e.tipo !== 'adjunto' && (
+        <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="mt-1 text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {e.datos?.como === 'orden' ? 'Ver la orden (PDF)' : 'Ver la hoja que se mandó'}</button>
+      )}
+      {e.tipo === 'adjunto' && e.adjuntoId && (
+        <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">Abrir</button>
+      )}
+      {noLlego && (
+        <div className="mt-1 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[0.75rem] space-y-1.5 text-left">
+          <p className="flex items-start gap-1.5 font-semibold"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> No le llegó. {e.datos?.fallo ?? 'Meta no lo entregó.'}</p>
+          {e.datos?.a && (
+            <a href={enlaceWa(e.datos.a, mensaje ?? e.texto ?? '')} target="_blank" rel="noreferrer" className={`${botonWhatsapp} !inline-flex !py-1.5`}>
+              <MessageCircle className="w-3.5 h-3.5" /> Mándaselo desde tu WhatsApp
+            </a>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  if (ES_MENSAJE.includes(e.tipo)) {
+    const suyo = e.tipo === 'mensaje_entrante';
+    const fondo = suyo ? 'bg-emerald-50 dark:bg-emerald-950/30 rounded-bl-md'
+      : e.autorTipo === 'lalan' ? 'bg-violet-50 dark:bg-violet-950/30 rounded-br-md'
+      : 'bg-sky-50 dark:bg-sky-950/30 rounded-br-md';
+    return (
+      <li className={`flex ${suyo ? 'justify-start' : 'justify-end'}`}>
+        <div className={`max-w-[88%] rounded-2xl px-3 py-2 ${fondo}`}>
+          <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1 flex-wrap">
+            <b className="text-slate-600 dark:text-neutral-300">{quien}</b>{canal} · {fechaHora(e.creadoEn)}
+            {e.datos?.esRecordatorio && <span className="ml-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 px-1.5 font-bold">Recordatorio</span>}
+          </p>
+          {/* La orden: lo que dice el mensaje que la acompaña; arriba, qué se mandó */}
+          {mensaje && e.texto && <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">{e.texto}</p>}
+          <p className="text-[0.8125rem] text-slate-800 dark:text-neutral-100 whitespace-pre-line break-words mt-0.5">{mensaje ?? e.texto}</p>
+          {extras}
+        </div>
+      </li>
+    );
+  }
+
+  // Lo demás (estados, notas, lo que anotó Lalan) va en una línea chica entre los mensajes
   return (
-    <li className="flex gap-2.5">
-      <span className={`grid place-items-center size-7 rounded-full shrink-0 ${color}`}><IconoCanal canal={e.canal} autor={e.autorTipo} /></span>
+    <li className="flex gap-2 items-start px-1">
+      <span className={`grid place-items-center size-5 rounded-full shrink-0 mt-0.5 ${color}`}><IconoCanal canal={e.canal} autor={e.autorTipo} /></span>
       <div className="min-w-0 flex-1">
-        <p className="text-[0.6875rem] text-slate-400">
-          <b className="text-slate-600 dark:text-neutral-300">{e.autorNombre ?? (e.autorTipo === 'proveedor' ? 'Proveedor' : 'Lalan')}</b>
-          {' · '}{TITULO_EVENTO[e.tipo] ?? e.tipo}{e.canal && e.canal !== 'app' ? ` · ${NOMBRE_CANAL[e.canal] ?? e.canal}` : ''} · {fechaHora(e.creadoEn)}
+        <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300 whitespace-pre-line break-words">
+          <span className="text-slate-400">{TITULO_EVENTO[e.tipo] ?? e.tipo} · {quien}{canal} · {fechaHora(e.creadoEn)}</span>
+          {e.texto ? <><br />{e.texto}</> : null}
         </p>
-        <p className={`text-[0.8125rem] text-slate-800 dark:text-neutral-100 whitespace-pre-line break-words ${e.tipo === 'mensaje_entrante' ? 'mt-0.5 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30' : ''}`}>{e.texto}</p>
-        {e.adjuntoId && e.tipo !== 'adjunto' && (
-          <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Ver la hoja que se mandó</button>
-        )}
-        {e.tipo === 'adjunto' && e.adjuntoId && (
-          <button type="button" onClick={() => void comprasApi.abrirAdjunto(e.adjuntoId!)} className="text-[0.75rem] font-bold text-[var(--primary)] cursor-pointer">Abrir</button>
-        )}
-        {noLlego && (
-          <div className="mt-1 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-[0.75rem] space-y-1.5">
-            <p className="flex items-start gap-1.5 font-semibold"><AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> No le llegó. {e.datos?.fallo ?? 'Meta no lo entregó.'}</p>
-            {e.datos?.a && (
-              <a href={enlaceWa(e.datos.a, mensaje ?? e.texto ?? '')} target="_blank" rel="noreferrer" className={`${botonWhatsapp} !inline-flex !py-1.5`}>
-                <MessageCircle className="w-3.5 h-3.5" /> Mándaselo desde tu WhatsApp
-              </a>
-            )}
-          </div>
-        )}
-        {mensaje && (
-          <>
-            <button type="button" onClick={() => setVer(!ver)} className="text-[0.75rem] font-bold text-slate-500 cursor-pointer">{ver ? 'Ocultar el mensaje' : 'Ver el mensaje'}</button>
-            {ver && <p className="mt-1 p-2 rounded-xl bg-slate-50 dark:bg-neutral-800/60 text-[0.75rem] whitespace-pre-line">{mensaje}</p>}
-          </>
-        )}
+        {extras}
       </div>
     </li>
   );
