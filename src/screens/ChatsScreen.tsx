@@ -33,6 +33,18 @@ import { ChipsFiltro, Insignia, ItemAnimado, ListaAnimada, NumeroAnimado, PuntoE
 import { abrirFichaDeClienta } from '../services/abrirFicha';
 import { VentanaChat, getChannelBadge, getStatusIndicator, horaDeMensaje } from '../components/chats/VentanaChat';
 
+/**
+ * Un chat por atender: tiene mensajes que nadie del salón ha abierto y nadie
+ * los contestó (Lalan está apagada, lo pasó a una persona, o lo último que
+ * hay es de la clienta). Si Lalan ya le respondió, no se resalta: está atendido.
+ */
+function porAtender(c: Conversation): boolean {
+  if (c.unreadCount <= 0) return false;
+  if (c.status !== 'ai_active') return true;
+  const ultimo = [...c.messages].reverse().find(m => !m.isSuggestion && m.sender !== 'system');
+  return !ultimo || ultimo.sender === 'client';
+}
+
 export const ChatsScreen: React.FC = () => {
   const {
     conversations,
@@ -143,12 +155,16 @@ export const ChatsScreen: React.FC = () => {
 
         {/* Conversations List: entran en cascada; el chat que recibe un mensaje sube deslizándose */}
         <ListaAnimada className="space-y-2">
-          {filteredConversations.map((conv, i) => (
+          {filteredConversations.map((conv, i) => {
+            const pendiente = porAtender(conv);
+            return (
             <ItemAnimado
               key={conv.id}
               indice={i}
               onClick={() => setActiveConversationId(conv.id)}
-              className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-neutral-700 transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-center justify-between gap-3"
+              className={`p-3 rounded-2xl border shadow-xs hover:shadow-md transition-[border-color,box-shadow] cursor-pointer ios-touch flex items-center justify-between gap-3 ${pendiente
+                ? 'bg-[var(--primary)]/[0.06] dark:bg-[var(--primary)]/[0.12] border-[var(--primary)]/40 border-l-4 border-l-[var(--primary)]'
+                : 'bg-white dark:bg-neutral-900 border-slate-200/80 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700'}`}
             >
               {/* La foto lleva a su ficha (si ya la tiene); el resto de la tarjeta abre el chat */}
               <div
@@ -168,15 +184,15 @@ export const ChatsScreen: React.FC = () => {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className={`text-xs text-slate-900 dark:text-white truncate ${conv.unreadCount > 0 ? 'font-extrabold' : 'font-bold'}`}>
+                  <h4 className={`text-xs text-slate-900 dark:text-white truncate ${pendiente ? 'font-black' : 'font-semibold'}`}>
                     {conv.clientName}
                   </h4>
-                  <span className="text-[0.6875rem] text-slate-400 font-medium shrink-0">
+                  <span className={`text-[0.6875rem] shrink-0 ${pendiente ? 'text-[var(--primary)] font-extrabold' : 'text-slate-400 font-medium'}`}>
                     {conv.lastMessageAt ? horaDeMensaje(conv.lastMessageAt) : conv.lastMessageTime}
                   </span>
                 </div>
 
-                <p className={`text-[0.75rem] truncate mt-0.5 ${conv.unreadCount > 0 ? 'text-slate-800 dark:text-neutral-200 font-semibold' : 'text-slate-500 dark:text-neutral-400'}`}>
+                <p className={`text-[0.75rem] truncate mt-0.5 ${pendiente ? 'text-slate-900 dark:text-white font-bold' : 'text-slate-500 dark:text-neutral-400'}`}>
                   {conv.lastMessage}
                 </p>
 
@@ -192,13 +208,16 @@ export const ChatsScreen: React.FC = () => {
                     )}
                   </div>
 
-                  <Insignia cuenta={conv.unreadCount} className="px-1.5 py-0.2 rounded-full bg-[var(--primary)] text-white text-[0.6875rem] font-extrabold">
-                    {conv.unreadCount} nuevo
+                  {/* Sin leer y sin respuesta: rojo. Sin leer pero Lalan ya contestó: gris, solo para que sepas */}
+                  <Insignia cuenta={conv.unreadCount} className={`px-1.5 py-0.2 rounded-full text-[0.6875rem] font-extrabold shrink-0 ${pendiente
+                    ? 'bg-[var(--primary)] text-white' : 'bg-slate-100 text-slate-500 dark:bg-neutral-800 dark:text-neutral-400'}`}>
+                    {conv.unreadCount} {conv.unreadCount === 1 ? 'nuevo' : 'nuevos'}
                   </Insignia>
                 </div>
               </div>
             </ItemAnimado>
-          ))}
+            );
+          })}
         </ListaAnimada>
         <Vacio visible={conversations.length > 0 && filteredConversations.length === 0}>Ningún chat coincide con eso.</Vacio>
       </PageContent>
