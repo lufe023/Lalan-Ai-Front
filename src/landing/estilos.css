@@ -1291,14 +1291,14 @@
   .puesto-iso:nth-child(2n) .robot-iso > * { animation-delay: -1.1s; }
   .puesto-iso:nth-child(3n) .robot-iso > * { animation-delay: -2.2s; }
   .robot-iso * { transform-box: fill-box; }
-  .r-cabeza, .r-cuerpo { fill: #FFFFFF; stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 1.8; }
+  .r-cabeza, .r-cuerpo { fill: #FFFFFF; stroke: #9A8D93; stroke-width: 1.8; }
   .r-visor { fill: #1A1F26; }
   .r-ojos circle { fill: var(--acento-marca); }
   .robot-iso .r-ojos { transform-origin: center; animation: robot-parpadea 4.5s infinite; }
-  .r-antena-palo { stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 1.8; }
+  .r-antena-palo { stroke: #9A8D93; stroke-width: 1.8; }
   .r-antena { fill: var(--acento-marca); transition: fill .3s; }
-  .r-brazo path { fill: none; stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 3; stroke-linecap: round; }
-  .r-brazo circle { fill: #FFFFFF; stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 1.6; }
+  .r-brazo path { fill: none; stroke: #9A8D93; stroke-width: 3; stroke-linecap: round; }
+  .r-brazo circle { fill: #FFFFFF; stroke: #9A8D93; stroke-width: 1.6; }
   .r-izq { transform-origin: 100% 0; }
   .r-der { transform-origin: 0 0; }
   .r-pecho { fill: var(--marca); transform-origin: center; }
@@ -1313,6 +1313,45 @@
   @keyframes robot-brazo-i { from { rotate: -8deg; } to { rotate: 40deg; } }
   @keyframes robot-brazo-d { from { rotate: 8deg; } to { rotate: -40deg; } }
   @keyframes robot-luz { from { opacity: 1; } to { opacity: .35; } }
+
+  /* La calle de atrás y el camión del proveedor */
+  .calle .cara-tapa { fill: color-mix(in srgb, var(--tinta) 16%, var(--papel)); }
+  .calle .cara-frente, .calle .cara-lado { fill: color-mix(in srgb, var(--tinta) 22%, var(--papel)); }
+  .camion-carga .cara-tapa { fill: #FFFFFF; }
+  .camion-carga .cara-frente { fill: #EEF0F3; }
+  .camion-carga .cara-lado { fill: #D9DDE3; }
+  .camion-cabina .cara-tapa { fill: color-mix(in srgb, var(--acento-marca) 60%, #fff); }
+  .camion-cabina .cara-frente { fill: var(--acento-marca); }
+  .camion-cabina .cara-lado { fill: color-mix(in srgb, var(--acento-marca) 70%, #000); }
+  .camion-iso polygon { stroke: rgba(37, 26, 31, .25); stroke-width: .8; stroke-linejoin: round; }
+  .rueda polygon { fill: #2A2328; }
+  .camion-rotulo { font: 800 11px/1 var(--sans); fill: color-mix(in srgb, var(--acento-marca) 70%, #000); letter-spacing: .04em; }
+  /* El robotito que va al camión: aparece solo cuando sale, y trae la caja de productos en la cabeza */
+  .caminante { opacity: 0; transition: opacity .2s; }
+  .caminante.se-ve { opacity: 1; }
+  .caminante.anda > * { animation: robot-anda .26s ease-in-out infinite alternate; }
+  .carga-robot { font-size: 20px; text-anchor: middle; opacity: 0; transition: opacity .2s; }
+  .caminante.lleva .carga-robot { opacity: 1; }
+  .puesto-iso.fuera .robot-iso { opacity: 0; }
+  .estante text { font-size: 20px; text-anchor: middle; }
+  @keyframes robot-anda { from { translate: 0 0; rotate: -3deg; } to { translate: 0 -4px; rotate: 3deg; } }
+  /* La caja registradora: el monto sube con lo que entra y baja con lo que sale */
+  .registradora rect { fill: #1A1F26; stroke: color-mix(in srgb, var(--verde) 40%, transparent); stroke-width: 1.5; transition: stroke .3s; }
+  .registradora text { font: 700 12.5px/1 var(--sans); fill: #9FE8C3; text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .entra-plata .registradora rect { stroke: var(--verde); }
+  .sale-plata .registradora rect { stroke: var(--ambar); }
+  .sale-plata .registradora text { fill: #F5CF8A; }
+  /* Lo que lleva la caja encima y lo que vuela de un lado a otro */
+  .carga text { font-size: 15px; text-anchor: middle; }
+  .vuela { font-size: 17px; text-anchor: middle; pointer-events: none; }
+  /* Al terminar, la robotita da un saltico */
+  .salta .robot-iso > * { animation: robot-salta .6s cubic-bezier(.3, 1.6, .5, 1) !important; }
+  @keyframes robot-salta { 0% { translate: 0 0; } 40% { translate: 0 -10px; } 100% { translate: 0 0; } }
+  /* «Por dentro» llega con punteros (punteros.ts) */
+  .cadena.por-arrastrar .cadena-pedido, .cadena.por-arrastrar .paso-actual, .cadena.por-arrastrar .escena-iso, .cadena.por-arrastrar .pasos-iso > li { opacity: 0; }
+  .cadena .puntero { top: 6px; right: 16px; }
+  .cadena .cadena-pedido, .cadena .paso-actual, .pasos-iso > li { position: relative; }
+  .cadena .en-vuelo { z-index: 3; }
 
   /* Los seis pasos debajo de la escena, con lo que hizo cada ayudante */
   .pasos-iso { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }

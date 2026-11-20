@@ -90,9 +90,10 @@
     informe: [
       { q: 'clienta', t: 'Lalan, ¿cómo nos fue hoy?', h: '8:10 noche' },
       { q: 'lalan', t: '¡Buenas noches, Alanny! 📊 Hoy atendimos 14 citas, 3 las agendé yo de madrugada. En caja entraron RD$ 38,450 entre Naco y Piantini.', h: '8:10 noche' },
-      { q: 'lalan', t: 'Queda poco esmalte rojo en Naco: ya le pedí precio a tu proveedor. Mañana hay 11 citas y Valentina está llena desde las 2.', h: '8:10 noche' },
-      { q: 'clienta', t: 'Perfecto, gracias 🙏', h: '8:11 noche' },
-      { q: 'sistema', t: 'Informe del día enviado a tu número de confianza' }
+      { q: 'lalan', t: 'Queda poco esmalte rojo en Naco. Tu proveedor lo tiene a RD$ 3,200 la docena. ¿Se lo pido?', h: '8:10 noche' },
+      { q: 'clienta', t: 'Sí, pídelo 👍', h: '8:11 noche' },
+      { q: 'lalan', t: 'Hecho. Cuando llegue entra solo al inventario de Naco y el pago sale de caja. Mañana hay 11 citas y Valentina está llena desde las 2.', h: '8:11 noche' },
+      { q: 'sistema', t: 'Informe del día enviado · pedido al proveedor aprobado por ti' }
     ]
   };
   // En el informe, quien escribe es la dueña: el chat es con Lalan, no con el salón
