@@ -15,6 +15,7 @@ import { iniciarPlanes } from './planes';
 import { iniciarHistoria } from './historiaPerezosa';
 import { iniciarPortadaViva } from './portadaViva';
 import { iniciarPunteros } from './punteros';
+import { iniciarFabrica } from './fabrica';
 
 // Quien ya tiene sesión en este aparato ve "Ir a mi salón" en vez de "Entrar"
 if (haySesion()) {
@@ -32,3 +33,4 @@ void iniciarPlanes();
 iniciarHistoria();
 iniciarPortadaViva();
 iniciarPunteros();
+iniciarFabrica();

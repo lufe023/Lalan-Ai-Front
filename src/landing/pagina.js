@@ -85,8 +85,28 @@
       { q: 'lalan', t: '¡Buenas noticias, Carmen! Alanny abre más temprano para ustedes: mañana a las 8 de la mañana, peinado y uñas para las dos. ¿Se las dejo agendadas?', h: '7:52 noche' },
       { q: 'clienta', t: '¡Sí! Mil gracias 😍', h: '7:53 noche' },
       { q: 'sistema', t: 'Citas agendadas por Lalan · 8 de la mañana, antes de abrir' }
+    ],
+    // La dueña le pregunta a Lalan desde su número de confianza
+    informe: [
+      { q: 'clienta', t: 'Lalan, ¿cómo nos fue hoy?', h: '8:10 noche' },
+      { q: 'lalan', t: '¡Buenas noches, Alanny! 📊 Hoy atendimos 14 citas, 3 las agendé yo de madrugada. En caja entraron RD$ 38,450 entre Naco y Piantini.', h: '8:10 noche' },
+      { q: 'lalan', t: 'Queda poco esmalte rojo en Naco: ya le pedí precio a tu proveedor. Mañana hay 11 citas y Valentina está llena desde las 2.', h: '8:10 noche' },
+      { q: 'clienta', t: 'Perfecto, gracias 🙏', h: '8:11 noche' },
+      { q: 'sistema', t: 'Informe del día enviado a tu número de confianza' }
     ]
   };
+  // En el informe, quien escribe es la dueña: el chat es con Lalan, no con el salón
+  var CONTACTO = {
+    salon: { nombre: 'Tu Salón', sub: 'en línea · Lalan responde' },
+    informe: { nombre: 'Lalan', sub: 'tu asistente · número de confianza' }
+  };
+  function ponerContacto(nombre) {
+    var c = CONTACTO[nombre === 'informe' ? 'informe' : 'salon'];
+    var n = document.querySelector('#app .wa-nombre-linea b');
+    var sub = document.querySelector('#app .wa-subtitulo');
+    if (n) n.textContent = c.nombre;
+    if (sub) sub.textContent = c.sub;
+  }
 
   var hilo = document.getElementById('hilo');
   var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -216,6 +236,9 @@
     var mio = ++turno;
     var mensajes = ESCENAS[nombre];
     hilo.innerHTML = '';
+    ponerContacto(nombre);
+    // La cadena de montaje (fabrica.ts) arranca con el mismo ejemplo
+    document.dispatchEvent(new CustomEvent('lalan:escena', { detail: { nombre: nombre } }));
 
     // Insignia de fecha de WhatsApp
     var badgeFecha = document.createElement('div');
