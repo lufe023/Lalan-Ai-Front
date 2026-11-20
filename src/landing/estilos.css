@@ -1228,129 +1228,123 @@
 .visor-boton[hidden], .visor-leyenda[hidden], .visor-plan[hidden], .visor-miniaturas[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .visor-ejemplo[open] { animation: none; } }
 
-  /* ── Por dentro: la cadena de montaje (fabrica.ts) ─────────────────
-     El mensaje sale del teléfono como una ficha que corre por la cinta y
-     en cada estación una ayudante robot de Lalan hace su parte. */
-  .fabrica { position: relative; display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 56px; align-items: center; }
+  /* ── Por dentro: la cadena de montaje isométrica (fabrica.ts) ─────
+     El mensaje sale del teléfono como una caja que corre por la cinta y
+     para en seis puestos; en cada uno una ayudante robot de Lalan trabaja. */
+  .fabrica { position: relative; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 48px; align-items: center; }
   .fabrica-tel { position: relative; z-index: 2; display: grid; gap: 4px; }
   .fabrica-tel .pie-demo { margin-top: 4px; }
   .escenarios.invita button:nth-child(4) { animation-delay: .3s, 2.1s; }
-  .cadena { position: relative; z-index: 1; display: grid; gap: 18px; }
+  .cadena { position: relative; display: grid; gap: 14px; min-width: 0; }
   .cadena-pedido { justify-self: start; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; background: var(--papel); border: 1px solid var(--linea); border-radius: 999px; padding: 8px 16px; font-size: .88rem; }
   .cadena-pedido b { color: var(--tinta); font-weight: 700; }
-  .estaciones { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 26px; }
-  /* La cinta va en zigzag: la segunda fila corre de derecha a izquierda */
-  .estaciones > :nth-child(4) { grid-area: 2 / 3; }
-  .estaciones > :nth-child(5) { grid-area: 2 / 2; }
-  .estaciones > :nth-child(6) { grid-area: 2 / 1; }
-  .estacion {
-    position: relative; display: grid; gap: 10px; align-content: start;
-    background: var(--papel); border: 1px solid var(--linea); border-radius: 20px; padding: 14px 16px 16px;
-    transition: border-color .3s, box-shadow .3s, translate .4s cubic-bezier(.3, 1.5, .5, 1);
-  }
-  .estacion.trabaja { border-color: var(--rosa); box-shadow: 0 0 0 4px color-mix(in srgb, var(--rosa) 16%, transparent), var(--sombra); translate: 0 -4px; }
-  .estacion.ojo { border-color: color-mix(in srgb, var(--ambar) 60%, var(--linea)); }
-  .puesto { display: flex; align-items: flex-end; gap: 10px; }
-  .bandeja {
-    width: 46px; height: 32px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 6px;
-    border: 1.5px dashed color-mix(in srgb, var(--tinta-3) 45%, transparent); background: var(--banda);
-  }
-  .herramienta { font-style: normal; font-size: 16px; line-height: 1; opacity: .85; }
-  .estacion-texto { display: grid; gap: 4px; }
-  .estacion-texto .ceja { display: flex; align-items: center; gap: 7px; }
-  .estacion-texto .ceja b { display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: var(--rubor-2); color: var(--tinta); font-size: .66rem; letter-spacing: 0; }
-  .estacion-texto h3 { font-family: var(--serif); font-size: 1.05rem; font-weight: 600; line-height: 1.2; }
-  .estado { display: flex; gap: 7px; align-items: flex-start; font-size: .84rem; line-height: 1.4; color: var(--tinta-2); min-height: 2.8em; }
-  .estado-txt { display: inline-block; }
-  .hecho { flex: none; width: 17px; height: 17px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; background: var(--linea); color: #fff; font-size: .66rem; font-weight: 800; scale: .6; opacity: .5; transition: scale .45s cubic-bezier(.3, 1.8, .5, 1), opacity .3s, background-color .3s; }
-  .hecho::before { content: "✓"; }
-  .estacion.listo .hecho { background: var(--verde); scale: 1; opacity: 1; }
-  .estacion.ojo .hecho { background: var(--ambar); }
-  .estacion.ojo .hecho::before { content: "!"; }
-  .estacion.trabaja .hecho { opacity: 0; }
+  /* El paso de ahora, como el rótulo del video: número grande y lo que hizo */
+  .paso-actual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 2.2em; font-size: 1rem; }
+  .paso-actual b { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--boton); color: #fff; font: 600 1rem/1 var(--serif); align-self: center; }
+  .paso-actual span { font-family: var(--serif); font-size: 1.35rem; font-weight: 600; color: var(--tinta); }
+  .paso-actual em { font-style: normal; color: var(--tinta-2); }
+  .escena-iso { position: relative; overflow: hidden; border-radius: 22px; }
+  .escena-iso svg { display: block; width: 100%; height: auto; overflow: visible; transition: transform .25s linear; }
 
-  /* La ayudante robot */
-  .robotito { width: 58px; height: auto; overflow: visible; flex: none; animation: robot-flota 3.2s ease-in-out infinite; }
-  .estacion:nth-child(2n) .robotito { animation-delay: -1.1s; }
-  .estacion:nth-child(3n) .robotito { animation-delay: -2.2s; }
-  .robotito * { transform-box: fill-box; }
-  .r-cabeza, .r-cuerpo { fill: var(--papel); stroke: color-mix(in srgb, var(--tinta) 40%, transparent); stroke-width: 1.8; }
+  /* Colores de la escena: salen del tema, así funciona en claro, oscuro y con cada color */
+  .piso .cara-tapa { fill: color-mix(in srgb, var(--marca) 13%, var(--papel)); }
+  .piso .cara-frente { fill: color-mix(in srgb, var(--marca) 22%, var(--papel)); }
+  .piso .cara-lado { fill: color-mix(in srgb, var(--marca) 30%, var(--papel)); }
+  .mesa .cara-tapa { fill: var(--papel); }
+  .mesa .cara-frente { fill: color-mix(in srgb, var(--tinta) 10%, var(--papel)); }
+  .mesa .cara-lado { fill: color-mix(in srgb, var(--tinta) 18%, var(--papel)); }
+  .mesa polygon, .panel polygon, .piso polygon { stroke: color-mix(in srgb, var(--tinta) 14%, transparent); stroke-width: .8; stroke-linejoin: round; }
+  .panel .cara-tapa { fill: color-mix(in srgb, var(--acento-marca) 30%, var(--papel)); }
+  .panel .cara-frente { fill: color-mix(in srgb, var(--acento-marca) 16%, var(--papel)); transition: fill .3s; }
+  .panel .cara-lado { fill: color-mix(in srgb, var(--acento-marca) 40%, var(--papel)); }
+  .puesto-iso.trabaja .panel .cara-frente { fill: color-mix(in srgb, var(--rosa) 30%, var(--papel)); }
+  .panel-icono { font-size: 21px; text-anchor: middle; }
+  .numero-iso circle { fill: var(--papel); stroke: var(--linea); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+  .numero-iso text { font: 700 13px/1 var(--sans); fill: var(--tinta); text-anchor: middle; }
+  .puesto-iso.trabaja .numero-iso circle { fill: var(--boton); stroke: var(--boton); }
+  .puesto-iso.trabaja .numero-iso text { fill: #fff; }
+  .puesto-iso.listo .numero-iso circle { fill: var(--verde); stroke: var(--verde); }
+  .puesto-iso.listo .numero-iso text { fill: #fff; }
+  .puesto-iso.ojo .numero-iso circle { fill: var(--ambar); stroke: var(--ambar); }
+  .telefono-iso .cara-tapa { fill: #2C3440; }
+  .telefono-iso .cara-frente { fill: #1A1F26; }
+  .telefono-iso .cara-lado { fill: #128C7E; }
+  .telefono-iso-icono { font-size: 22px; }
+  .pata polygon { fill: color-mix(in srgb, var(--tinta) 45%, var(--papel)); }
+  .cinta-iso .cara-tapa { fill: color-mix(in srgb, var(--tinta) 62%, var(--papel)); }
+  .cinta-iso .cara-frente { fill: color-mix(in srgb, var(--tinta) 40%, var(--papel)); }
+  .cinta-iso .cara-lado { fill: color-mix(in srgb, var(--tinta) 50%, var(--papel)); }
+  .rodillos path { stroke: color-mix(in srgb, var(--papel) 35%, transparent); stroke-width: 2; fill: none; }
+  .caja-iso { opacity: 0; transition: opacity .3s; }
+  .caja-iso.se-ve { opacity: 1; }
+  .caja-iso .cara-tapa { fill: #E7C08F; }
+  .caja-iso .cara-frente { fill: #C99A62; }
+  .caja-iso .cara-lado { fill: #B0834F; }
+  .caja-iso polygon { stroke: #8A6236; stroke-width: .8; stroke-linejoin: round; }
+  .caja-letra { font: 700 17px/1 var(--serif); fill: var(--boton-hondo); text-anchor: middle; dominant-baseline: middle; }
+  .avion-iso { opacity: 0; }
+  .avion-iso path { fill: var(--acento-marca); stroke: color-mix(in srgb, var(--acento-marca) 60%, #000); stroke-width: 1; stroke-linejoin: round; }
+
+  /* La ayudante robot (dentro de la escena) */
+  .robot-iso { transform-box: view-box; }
+  .robot-iso > * { animation: robot-flota 3.2s ease-in-out infinite; }
+  .puesto-iso:nth-child(2n) .robot-iso > * { animation-delay: -1.1s; }
+  .puesto-iso:nth-child(3n) .robot-iso > * { animation-delay: -2.2s; }
+  .robot-iso * { transform-box: fill-box; }
+  .r-cabeza, .r-cuerpo { fill: #FFFFFF; stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 1.8; }
   .r-visor { fill: #1A1F26; }
   .r-ojos circle { fill: var(--acento-marca); }
-  .r-ojos { transform-origin: center; animation: robot-parpadea 4.5s infinite; }
-  .r-antena-palo { stroke: color-mix(in srgb, var(--tinta) 40%, transparent); stroke-width: 1.8; }
+  .robot-iso .r-ojos { transform-origin: center; animation: robot-parpadea 4.5s infinite; }
+  .r-antena-palo { stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 1.8; }
   .r-antena { fill: var(--acento-marca); transition: fill .3s; }
-  .r-brazo path { fill: none; stroke: color-mix(in srgb, var(--tinta) 40%, transparent); stroke-width: 3; stroke-linecap: round; }
-  .r-brazo circle { fill: var(--papel); stroke: color-mix(in srgb, var(--tinta) 40%, transparent); stroke-width: 1.6; }
+  .r-brazo path { fill: none; stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 3; stroke-linecap: round; }
+  .r-brazo circle { fill: #FFFFFF; stroke: color-mix(in srgb, #251A1F 40%, transparent); stroke-width: 1.6; }
   .r-izq { transform-origin: 100% 0; }
   .r-der { transform-origin: 0 0; }
-  .r-pecho { fill: var(--rosa); transform-origin: center; }
-  .r-sombra { fill: var(--tinta); opacity: .1; }
-  .trabaja .robotito { animation-duration: .9s; }
-  .trabaja .r-izq { animation: robot-brazo-i .45s ease-in-out infinite alternate; }
-  .trabaja .r-der { animation: robot-brazo-d .45s ease-in-out infinite alternate -.22s; }
-  .trabaja .r-antena { fill: var(--rosa); animation: robot-luz .5s ease-in-out infinite alternate; }
-  .trabaja .r-pecho { animation: robot-luz .5s ease-in-out infinite alternate; }
-  .trabaja .r-ojos { animation: none; scale: 1 .45; }
-  .listo:not(.trabaja) .r-ojos circle { fill: color-mix(in srgb, var(--acento-marca) 70%, #fff); }
+  .r-pecho { fill: var(--marca); transform-origin: center; }
+  .trabaja .robot-iso > * { animation-duration: .9s; }
+  .trabaja .r-izq { animation: robot-brazo-i .45s ease-in-out infinite alternate !important; }
+  .trabaja .r-der { animation: robot-brazo-d .45s ease-in-out infinite alternate -.22s !important; }
+  .trabaja .r-antena { fill: var(--rosa); animation: robot-luz .5s ease-in-out infinite alternate !important; }
+  .trabaja .r-pecho { animation: robot-luz .5s ease-in-out infinite alternate !important; }
+  .trabaja .robot-iso .r-ojos { animation: none; scale: 1 .45; }
   @keyframes robot-flota { 50% { translate: 0 -3px; } }
   @keyframes robot-parpadea { 0%, 93%, 100% { scale: 1 1; } 96% { scale: 1 .1; } }
-  @keyframes robot-brazo-i { from { rotate: -8deg; } to { rotate: 34deg; } }
-  @keyframes robot-brazo-d { from { rotate: 8deg; } to { rotate: -34deg; } }
+  @keyframes robot-brazo-i { from { rotate: -8deg; } to { rotate: 40deg; } }
+  @keyframes robot-brazo-d { from { rotate: 8deg; } to { rotate: -40deg; } }
   @keyframes robot-luz { from { opacity: 1; } to { opacity: .35; } }
 
-  /* Engranajes: giran despacio mientras la cadena corre, rápido en la estación que trabaja */
-  .engranaje { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; fill: var(--tinta-3); opacity: .18; transition: opacity .3s, fill .3s; }
-  .engranaje + .engranaje { top: 30px; right: 32px; width: 20px; }
-  .corre .engranaje { animation: engranaje-gira 9s linear infinite; }
-  .trabaja .engranaje { fill: var(--rosa); opacity: .55; animation-duration: 1.4s; }
-  @keyframes engranaje-gira { to { rotate: 360deg; } }
-
-  /* La cinta y la ficha que corre por ella */
-  .cinta { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: visible; }
-  .cinta path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-  .cinta-base { stroke: color-mix(in srgb, var(--tinta) 9%, var(--linea)); stroke-width: 16; }
-  .cinta-rodillos { stroke: color-mix(in srgb, var(--tinta-3) 45%, transparent); stroke-width: 16; stroke-dasharray: 2 13; }
-  .corre .cinta-rodillos { animation: cinta-avanza .7s linear infinite; }
-  @keyframes cinta-avanza { to { stroke-dashoffset: -15; } }
-  .ficha-cinta {
-    position: absolute; top: 0; left: 0; z-index: 3; pointer-events: none;
-    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
-    background: var(--boton); color: #fff; font: 600 15px/1 var(--serif);
-    box-shadow: 0 6px 14px -4px color-mix(in srgb, var(--marca) 70%, transparent), 0 0 0 3px var(--papel);
-    opacity: 0; scale: .4; transition: opacity .3s, scale .45s cubic-bezier(.3, 1.7, .5, 1);
-  }
-  .ficha-cinta.se-ve { opacity: 1; scale: 1; }
+  /* Los seis pasos debajo de la escena, con lo que hizo cada ayudante */
+  .pasos-iso { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pasos-iso li { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; background: var(--papel); border: 1px solid var(--linea); border-radius: 14px; padding: 8px 10px; transition: border-color .3s, box-shadow .3s; }
+  .pasos-iso b { grid-row: span 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--linea); color: var(--tinta); font-size: .72rem; align-self: start; transition: background-color .3s, color .3s; }
+  .pasos-iso .paso-nombre { font-weight: 700; font-size: .84rem; color: var(--tinta); }
+  .pasos-iso .estado-txt { font-size: .78rem; line-height: 1.35; color: var(--tinta-2); display: inline-block; }
+  .pasos-iso li.trabaja { border-color: var(--rosa); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rosa) 14%, transparent); }
+  .pasos-iso li.trabaja b { background: var(--boton); color: #fff; }
+  .pasos-iso li.listo b { background: var(--verde); color: #fff; }
+  .pasos-iso li.ojo b { background: var(--ambar); }
   .cadena-fin { justify-self: center; font-size: .95rem; color: var(--tinta-2); opacity: 0; translate: 0 10px; transition: opacity .5s, translate .6s cubic-bezier(.3, 1.6, .5, 1); }
   .cadena-fin b { color: var(--tinta); }
   .cadena-fin.se-ve { opacity: 1; translate: 0 0; }
   .fabrica + .fila-producto { margin-top: 112px; }
 
   @media (max-width: 1100px) {
-    .fabrica { grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 40px; }
-    .estaciones { gap: 40px 18px; }
-    .estacion { padding: 12px 12px 14px; }
-    .robotito { width: 48px; }
-    .bandeja { width: 40px; }
+    .fabrica { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 32px; }
   }
   @media (max-width: 900px) {
-    .fabrica { grid-template-columns: 1fr; gap: 44px; }
+    .fabrica { grid-template-columns: 1fr; gap: 40px; }
     .fabrica-tel { justify-self: center; width: 100%; max-width: 380px; }
-    .estaciones { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 14px; }
-    /* En dos columnas el zigzag sigue: 1 2 / 4 3 / 5 6 */
-    .estaciones > :nth-child(3) { grid-area: 2 / 2; }
-    .estaciones > :nth-child(4) { grid-area: 2 / 1; }
-    .estaciones > :nth-child(5) { grid-area: 3 / 1; }
-    .estaciones > :nth-child(6) { grid-area: 3 / 2; }
     .cadena-pedido { justify-self: stretch; border-radius: 16px; }
   }
-  @media (max-width: 420px) {
-    .estacion-texto h3 { font-size: .95rem; }
-    .estado { font-size: .8rem; }
-    .engranaje { width: 22px; height: 22px; }
-    .robotito { width: 42px; }
-    .bandeja { width: 34px; height: 28px; }
+  /* En el teléfono la escena no se encoge tanto: la cámara sigue a la caja */
+  @media (max-width: 640px) {
+    .escena-iso { margin-inline: -16px; border-radius: 0; }
+    .escena-iso svg { width: 640px; max-width: none; }
+    .pasos-iso { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .paso-actual span { font-size: 1.15rem; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .robotito, .r-ojos, .engranaje, .cinta-rodillos { animation: none !important; }
+    .robot-iso > *, .robot-iso .r-ojos { animation: none !important; }
+    .escena-iso svg { transition: none; }
   }
