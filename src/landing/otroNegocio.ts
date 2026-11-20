@@ -2,7 +2,7 @@
  * «No tengo salón»: alguien con otro negocio que quiere su asistente.
  * No se vende nada todavía: se mide qué tipo de negocio lo pide más.
  */
-import { API } from './api';
+import { API, mensajeDeError } from './api';
 import { visitaActual } from './medicion';
 
 interface Opcion { id: string; descripcion: string }
@@ -80,7 +80,7 @@ export async function iniciarOtroNegocio(): Promise<void> {
       });
       if (!r.ok) {
         const d = await r.json().catch(() => null);
-        throw new Error((d && (Array.isArray(d.message) ? d.message[0] : d.message)) || 'No se pudo enviar.');
+        throw new Error(mensajeDeError(d));
       }
       form.hidden = true;
       const listo = $('otro-listo'); listo.hidden = false; listo.focus();
