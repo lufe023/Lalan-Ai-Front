@@ -67,6 +67,16 @@
   scrollbar-width: none;
 }
 
+/* Barra de desplazamiento fina, redonda y del color del tema (la del chat de Lalan). */
+.scroll-fino {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.15) transparent;
+}
+.dark .scroll-fino,
+.dark.scroll-fino {
+  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+}
+
 /* Smooth spring ease for iOS feel */
 .ios-spring {
   transition: all 0.35s cubic-bezier(0.32, 0.72, 0, 1);

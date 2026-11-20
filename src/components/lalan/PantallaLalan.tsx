@@ -1024,7 +1024,7 @@ export const PantallaLalan: React.FC = () => {
                   )}
                 </AnimatePresence>
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 pb-2 space-y-4 [scrollbar-width:thin]">
+                <div className="flex-1 min-h-0 overflow-y-auto -mx-2 px-2 pb-2 space-y-4 scroll-fino">
                   <TuDiaLalan variante="panel" onIr={irDesdeTuDia} onPreguntar={(t) => void enviar(t)} onEscribir={escribirDesdeTuDia} />
                 {!mensajes.length && !cargando && (
                   <div className="w-full space-y-2 pt-2">
@@ -1058,7 +1058,7 @@ export const PantallaLalan: React.FC = () => {
                 </div>
                 <div ref={lista} aria-live="polite"
                   onScroll={(e) => alMoverLista(e.currentTarget)}
-                  className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:thin] [scrollbar-color:rgb(0_0_0/0.15)_transparent] dark:[scrollbar-color:rgb(255_255_255/0.15)_transparent]">
+                  className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-6 scroll-fino">
                   <div className="max-w-2xl"><DiasAnteriores hoy={hoy} dias={dias} pintar={pintarPanel} lista={lista} espacio="space-y-6" irA={irAlBuscado} /></div>
                   {cargando && !mensajes.length && (
                     <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
