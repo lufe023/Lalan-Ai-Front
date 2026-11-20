@@ -172,17 +172,12 @@
     <div class="envoltura">
       <div class="encabezado entra">
         <span class="ceja">Por dentro</span>
-        <h2>Así se ve tu salón en Lalan</h2>
-        <p>Lo que Lalan hace por WhatsApp aparece al instante en tu app, en la PC y en el teléfono.</p>
+        <h2>Un mensaje entra y todo tu salón se pone a trabajar</h2>
+        <p>Carmen escribe por WhatsApp y las ayudantes de Lalan hacen la cadena completa: agenda, inventario de la sede, especialista, caja y tu informe. Tú no tocas nada.</p>
       </div>
 
-      <div class="fila-producto entra">
-        <div class="fila-texto">
-          <span class="ceja">WhatsApp</span>
-          <h3>Contesta todo el día, también notas de voz</h3>
-          <p>En segundos y a cualquier hora. Si la clienta manda tres mensajes seguidos, le responde una sola vez y con todo. Si alguien del salón escribe en ese chat, Lalan se hace a un lado.</p>
-          <p class="pie-demo">Toca un botón para ver cómo responde Lalan en cada situación.</p>
-        </div>
+      <div class="fabrica entra" id="fabrica">
+        <div class="fabrica-tel">
         <div class="fila-imagen" data-arrastre="telefono">
       <div class="telefono" aria-label="Demostración de una conversación con Lalan en WhatsApp">
         <div class="telefono-bocina" aria-hidden="true"></div>
@@ -241,7 +236,24 @@
         <button type="button" data-escena="noche" aria-pressed="true">🌙 Agendar de noche</button>
         <button type="button" data-escena="cambio" aria-pressed="false">🔄 Cambiar la cita</button>
         <button type="button" data-escena="duena" aria-pressed="false">👑 Un día especial</button>
+        <button type="button" data-escena="informe" aria-pressed="false">📊 Tu informe del día</button>
       </div>
+        </div>
+        <p class="pie-demo">Toca un ejemplo y mira la cadena trabajar.</p>
+        </div>
+        <div class="cadena" data-arrastre="cadena">
+          <p class="cadena-pedido" aria-live="polite"><span class="ceja">En la cinta</span> <b id="cadena-pedido">Carmen · manicure + masaje, mañana en la tarde</b></p>
+          <p class="paso-actual" id="paso-actual" aria-hidden="true"><b>1</b> <span>Recibe</span> <em>Esperando el mensaje…</em></p>
+          <div class="escena-iso" id="escena-iso" role="img" aria-label="Cadena de montaje de Lalan: el mensaje entra por WhatsApp y una caja pasa por seis puestos: recibe, agenda, inventario de la sede, especialista, caja e informe para la dueña."></div>
+          <ol class="pasos-iso" id="estaciones">
+            <li class="listo" data-estacion="recibe"><b>1</b><span class="paso-nombre">Recibe</span><span class="estado-txt">Nota de voz de Carmen, entendida</span></li>
+            <li class="listo" data-estacion="agenda"><b>2</b><span class="paso-nombre">Agenda</span><span class="estado-txt">Mañana 2:00 y 2:30 libres</span></li>
+            <li class="listo" data-estacion="inventario"><b>3</b><span class="paso-nombre">Inventario</span><span class="estado-txt">Esmalte y aceite apartados</span></li>
+            <li class="listo" data-estacion="equipo"><b>4</b><span class="paso-nombre">Equipo</span><span class="estado-txt">Valentina y Carla asignadas</span></li>
+            <li class="listo" data-estacion="caja"><b>5</b><span class="paso-nombre">Caja</span><span class="estado-txt">RD$ 2,950 por cobrar</span></li>
+            <li class="listo" data-estacion="informe"><b>6</b><span class="paso-nombre">Para ti</span><span class="estado-txt">«2 citas nuevas de noche»</span></li>
+          </ol>
+          <p class="cadena-fin" id="cadena-fin">Todo listo en segundos. <b>Tú no tocaste nada.</b></p>
         </div>
       </div>
 

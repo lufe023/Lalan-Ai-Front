@@ -1227,3 +1227,163 @@
 .visor-boton { justify-self: center; }
 .visor-boton[hidden], .visor-leyenda[hidden], .visor-plan[hidden], .visor-miniaturas[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .visor-ejemplo[open] { animation: none; } }
+
+  /* ── Por dentro: la cadena de montaje isométrica (fabrica.ts) ─────
+     El mensaje sale del teléfono como una caja que corre por la cinta y
+     para en seis puestos; en cada uno una ayudante robot de Lalan trabaja. */
+  .fabrica { position: relative; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 48px; align-items: center; }
+  .fabrica-tel { position: relative; z-index: 2; display: grid; gap: 4px; }
+  .fabrica-tel .pie-demo { margin-top: 4px; }
+  .escenarios.invita button:nth-child(4) { animation-delay: .3s, 2.1s; }
+  .cadena { position: relative; display: grid; gap: 14px; min-width: 0; }
+  .cadena-pedido { justify-self: start; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; background: var(--papel); border: 1px solid var(--linea); border-radius: 999px; padding: 8px 16px; font-size: .88rem; }
+  .cadena-pedido b { color: var(--tinta); font-weight: 700; }
+  /* El paso de ahora, como el rótulo del video: número grande y lo que hizo */
+  .paso-actual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 2.2em; font-size: 1rem; }
+  .paso-actual b { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--boton); color: #fff; font: 600 1rem/1 var(--serif); align-self: center; }
+  .paso-actual span { font-family: var(--serif); font-size: 1.35rem; font-weight: 600; color: var(--tinta); }
+  .paso-actual em { font-style: normal; color: var(--tinta-2); }
+  .escena-iso { position: relative; overflow: hidden; border-radius: 22px; }
+  .escena-iso svg { display: block; width: 100%; height: auto; overflow: visible; transition: transform .25s linear; }
+
+  /* Colores de la escena: salen del tema, así funciona en claro, oscuro y con cada color */
+  .piso .cara-tapa { fill: color-mix(in srgb, var(--marca) 13%, var(--papel)); }
+  .piso .cara-frente { fill: color-mix(in srgb, var(--marca) 22%, var(--papel)); }
+  .piso .cara-lado { fill: color-mix(in srgb, var(--marca) 30%, var(--papel)); }
+  .mesa .cara-tapa { fill: var(--papel); }
+  .mesa .cara-frente { fill: color-mix(in srgb, var(--tinta) 10%, var(--papel)); }
+  .mesa .cara-lado { fill: color-mix(in srgb, var(--tinta) 18%, var(--papel)); }
+  .mesa polygon, .panel polygon, .piso polygon { stroke: color-mix(in srgb, var(--tinta) 14%, transparent); stroke-width: .8; stroke-linejoin: round; }
+  .panel .cara-tapa { fill: color-mix(in srgb, var(--acento-marca) 30%, var(--papel)); }
+  .panel .cara-frente { fill: color-mix(in srgb, var(--acento-marca) 16%, var(--papel)); transition: fill .3s; }
+  .panel .cara-lado { fill: color-mix(in srgb, var(--acento-marca) 40%, var(--papel)); }
+  .puesto-iso.trabaja .panel .cara-frente { fill: color-mix(in srgb, var(--rosa) 30%, var(--papel)); }
+  .panel-icono { font-size: 21px; text-anchor: middle; }
+  .numero-iso circle { fill: var(--papel); stroke: var(--linea); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+  .numero-iso text { font: 700 13px/1 var(--sans); fill: var(--tinta); text-anchor: middle; }
+  .puesto-iso.trabaja .numero-iso circle { fill: var(--boton); stroke: var(--boton); }
+  .puesto-iso.trabaja .numero-iso text { fill: #fff; }
+  .puesto-iso.listo .numero-iso circle { fill: var(--verde); stroke: var(--verde); }
+  .puesto-iso.listo .numero-iso text { fill: #fff; }
+  .puesto-iso.ojo .numero-iso circle { fill: var(--ambar); stroke: var(--ambar); }
+  .telefono-iso .cara-tapa { fill: #2C3440; }
+  .telefono-iso .cara-frente { fill: #1A1F26; }
+  .telefono-iso .cara-lado { fill: #128C7E; }
+  .telefono-iso-icono { font-size: 22px; }
+  .pata polygon { fill: color-mix(in srgb, var(--tinta) 45%, var(--papel)); }
+  .cinta-iso .cara-tapa { fill: color-mix(in srgb, var(--tinta) 62%, var(--papel)); }
+  .cinta-iso .cara-frente { fill: color-mix(in srgb, var(--tinta) 40%, var(--papel)); }
+  .cinta-iso .cara-lado { fill: color-mix(in srgb, var(--tinta) 50%, var(--papel)); }
+  .rodillos path { stroke: color-mix(in srgb, var(--papel) 35%, transparent); stroke-width: 2; fill: none; }
+  .caja-iso { opacity: 0; transition: opacity .3s; }
+  .caja-iso.se-ve { opacity: 1; }
+  .caja-iso .cara-tapa { fill: #E7C08F; }
+  .caja-iso .cara-frente { fill: #C99A62; }
+  .caja-iso .cara-lado { fill: #B0834F; }
+  .caja-iso polygon { stroke: #8A6236; stroke-width: .8; stroke-linejoin: round; }
+  .caja-letra { font: 700 17px/1 var(--serif); fill: var(--boton-hondo); text-anchor: middle; dominant-baseline: middle; }
+  .avion-iso { opacity: 0; }
+  .avion-iso path { fill: var(--acento-marca); stroke: color-mix(in srgb, var(--acento-marca) 60%, #000); stroke-width: 1; stroke-linejoin: round; }
+
+  /* La ayudante robot (dentro de la escena) */
+  .robot-iso { transform-box: view-box; }
+  .robot-iso > * { animation: robot-flota 3.2s ease-in-out infinite; }
+  .puesto-iso:nth-child(2n) .robot-iso > * { animation-delay: -1.1s; }
+  .puesto-iso:nth-child(3n) .robot-iso > * { animation-delay: -2.2s; }
+  .robot-iso * { transform-box: fill-box; }
+  .r-cabeza, .r-cuerpo { fill: #FFFFFF; stroke: #9A8D93; stroke-width: 1.8; }
+  .r-visor { fill: #1A1F26; }
+  .r-ojos circle { fill: var(--acento-marca); }
+  .robot-iso .r-ojos { transform-origin: center; animation: robot-parpadea 4.5s infinite; }
+  .r-antena-palo { stroke: #9A8D93; stroke-width: 1.8; }
+  .r-antena { fill: var(--acento-marca); transition: fill .3s; }
+  .r-brazo path { fill: none; stroke: #9A8D93; stroke-width: 3; stroke-linecap: round; }
+  .r-brazo circle { fill: #FFFFFF; stroke: #9A8D93; stroke-width: 1.6; }
+  .r-izq { transform-origin: 100% 0; }
+  .r-der { transform-origin: 0 0; }
+  .r-pecho { fill: var(--marca); transform-origin: center; }
+  .trabaja .robot-iso > * { animation-duration: .9s; }
+  .trabaja .r-izq { animation: robot-brazo-i .45s ease-in-out infinite alternate !important; }
+  .trabaja .r-der { animation: robot-brazo-d .45s ease-in-out infinite alternate -.22s !important; }
+  .trabaja .r-antena { fill: var(--rosa); animation: robot-luz .5s ease-in-out infinite alternate !important; }
+  .trabaja .r-pecho { animation: robot-luz .5s ease-in-out infinite alternate !important; }
+  .trabaja .robot-iso .r-ojos { animation: none; scale: 1 .45; }
+  @keyframes robot-flota { 50% { translate: 0 -3px; } }
+  @keyframes robot-parpadea { 0%, 93%, 100% { scale: 1 1; } 96% { scale: 1 .1; } }
+  @keyframes robot-brazo-i { from { rotate: -8deg; } to { rotate: 40deg; } }
+  @keyframes robot-brazo-d { from { rotate: 8deg; } to { rotate: -40deg; } }
+  @keyframes robot-luz { from { opacity: 1; } to { opacity: .35; } }
+
+  /* La calle de atrás y el camión del proveedor */
+  .calle .cara-tapa { fill: color-mix(in srgb, var(--tinta) 16%, var(--papel)); }
+  .calle .cara-frente, .calle .cara-lado { fill: color-mix(in srgb, var(--tinta) 22%, var(--papel)); }
+  .camion-carga .cara-tapa { fill: #FFFFFF; }
+  .camion-carga .cara-frente { fill: #EEF0F3; }
+  .camion-carga .cara-lado { fill: #D9DDE3; }
+  .camion-cabina .cara-tapa { fill: color-mix(in srgb, var(--acento-marca) 60%, #fff); }
+  .camion-cabina .cara-frente { fill: var(--acento-marca); }
+  .camion-cabina .cara-lado { fill: color-mix(in srgb, var(--acento-marca) 70%, #000); }
+  .camion-iso polygon { stroke: rgba(37, 26, 31, .25); stroke-width: .8; stroke-linejoin: round; }
+  .rueda polygon { fill: #2A2328; }
+  .camion-rotulo { font: 800 11px/1 var(--sans); fill: color-mix(in srgb, var(--acento-marca) 70%, #000); letter-spacing: .04em; }
+  /* El robotito que va al camión: aparece solo cuando sale, y trae la caja de productos en la cabeza */
+  .caminante { opacity: 0; transition: opacity .2s; }
+  .caminante.se-ve { opacity: 1; }
+  .caminante.anda > * { animation: robot-anda .26s ease-in-out infinite alternate; }
+  .carga-robot { font-size: 20px; text-anchor: middle; opacity: 0; transition: opacity .2s; }
+  .caminante.lleva .carga-robot { opacity: 1; }
+  .puesto-iso.fuera .robot-iso { opacity: 0; }
+  .estante text { font-size: 20px; text-anchor: middle; }
+  @keyframes robot-anda { from { translate: 0 0; rotate: -3deg; } to { translate: 0 -4px; rotate: 3deg; } }
+  /* La caja registradora: el monto sube con lo que entra y baja con lo que sale */
+  .registradora rect { fill: #1A1F26; stroke: color-mix(in srgb, var(--verde) 40%, transparent); stroke-width: 1.5; transition: stroke .3s; }
+  .registradora text { font: 700 12.5px/1 var(--sans); fill: #9FE8C3; text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .entra-plata .registradora rect { stroke: var(--verde); }
+  .sale-plata .registradora rect { stroke: var(--ambar); }
+  .sale-plata .registradora text { fill: #F5CF8A; }
+  /* Lo que lleva la caja encima y lo que vuela de un lado a otro */
+  .carga text { font-size: 15px; text-anchor: middle; }
+  .vuela { font-size: 17px; text-anchor: middle; pointer-events: none; }
+  /* Al terminar, la robotita da un saltico */
+  .salta .robot-iso > * { animation: robot-salta .6s cubic-bezier(.3, 1.6, .5, 1) !important; }
+  @keyframes robot-salta { 0% { translate: 0 0; } 40% { translate: 0 -10px; } 100% { translate: 0 0; } }
+  /* «Por dentro» llega con punteros (punteros.ts) */
+  .cadena.por-arrastrar .cadena-pedido, .cadena.por-arrastrar .paso-actual, .cadena.por-arrastrar .escena-iso, .cadena.por-arrastrar .pasos-iso > li { opacity: 0; }
+  .cadena .puntero { top: 6px; right: 16px; }
+  .cadena .cadena-pedido, .cadena .paso-actual, .pasos-iso > li { position: relative; }
+  .cadena .en-vuelo { z-index: 3; }
+
+  /* Los seis pasos debajo de la escena, con lo que hizo cada ayudante */
+  .pasos-iso { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pasos-iso li { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; background: var(--papel); border: 1px solid var(--linea); border-radius: 14px; padding: 8px 10px; transition: border-color .3s, box-shadow .3s; }
+  .pasos-iso b { grid-row: span 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--linea); color: var(--tinta); font-size: .72rem; align-self: start; transition: background-color .3s, color .3s; }
+  .pasos-iso .paso-nombre { font-weight: 700; font-size: .84rem; color: var(--tinta); }
+  .pasos-iso .estado-txt { font-size: .78rem; line-height: 1.35; color: var(--tinta-2); display: inline-block; }
+  .pasos-iso li.trabaja { border-color: var(--rosa); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rosa) 14%, transparent); }
+  .pasos-iso li.trabaja b { background: var(--boton); color: #fff; }
+  .pasos-iso li.listo b { background: var(--verde); color: #fff; }
+  .pasos-iso li.ojo b { background: var(--ambar); }
+  .cadena-fin { justify-self: center; font-size: .95rem; color: var(--tinta-2); opacity: 0; translate: 0 10px; transition: opacity .5s, translate .6s cubic-bezier(.3, 1.6, .5, 1); }
+  .cadena-fin b { color: var(--tinta); }
+  .cadena-fin.se-ve { opacity: 1; translate: 0 0; }
+  .fabrica + .fila-producto { margin-top: 112px; }
+
+  @media (max-width: 1100px) {
+    .fabrica { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 32px; }
+  }
+  @media (max-width: 900px) {
+    .fabrica { grid-template-columns: 1fr; gap: 40px; }
+    .fabrica-tel { justify-self: center; width: 100%; max-width: 380px; }
+    .cadena-pedido { justify-self: stretch; border-radius: 16px; }
+  }
+  /* En el teléfono la escena no se encoge tanto: la cámara sigue a la caja */
+  @media (max-width: 640px) {
+    .escena-iso { margin-inline: -16px; border-radius: 0; }
+    .escena-iso svg { width: 640px; max-width: none; }
+    .pasos-iso { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .paso-actual span { font-size: 1.15rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .robot-iso > *, .robot-iso .r-ojos { animation: none !important; }
+    .escena-iso svg { transition: none; }
+  }

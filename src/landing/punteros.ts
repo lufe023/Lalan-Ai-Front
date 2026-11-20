@@ -1,7 +1,8 @@
 /**
  * Punteros que traen las cosas: al bajar, los cuatro cuadros de «Un día
  * cualquiera» llegan al mismo tiempo arrastrados por un puntero de ratón cada
- * uno, y el teléfono de WhatsApp entra desde fuera de la página con el suyo.
+ * uno, el teléfono de WhatsApp entra desde fuera de la página con el suyo y
+ * en «Por dentro» la escena, el pedido y cada paso llegan con el suyo.
  * Cuando los botones de ejemplo se ven, saltan, llaman con un halo y un puntero
  * llega a tocar uno, para que se note que se pueden tocar. Se reproduce una sola vez.
  *
@@ -71,6 +72,35 @@ async function arrastrarDia(dia: HTMLElement): Promise<void> {
   dia.classList.remove('arrastrando');
 }
 
+/** «Por dentro»: el pedido, el paso de ahora, la escena y cada paso de la lista llegan con su puntero, en cascada */
+async function arrastrarCadena(cadena: HTMLElement): Promise<void> {
+  const piezas = [
+    cadena.querySelector<HTMLElement>('.cadena-pedido'),
+    cadena.querySelector<HTMLElement>('.paso-actual'),
+    cadena.querySelector<HTMLElement>('.escena-iso'),
+    ...Array.from(cadena.querySelectorAll<HTMLElement>('.pasos-iso > li')),
+  ].filter((x): x is HTMLElement => !!x);
+  const W = window.innerWidth, H = window.innerHeight;
+  const desde = (el: HTMLElement, i: number) => {
+    if (el.classList.contains('escena-iso')) return { x: W * 0.7, y: -60, giro: 5 };
+    if (el.tagName === 'LI') return { x: (i % 2 ? 1 : -1) * W * 0.5, y: H * 0.5, giro: i % 2 ? 6 : -6 };
+    return { x: -W * 0.6, y: -40, giro: -5 };
+  };
+  cadena.classList.remove('por-arrastrar');
+  cadena.classList.add('arrastrando');
+  await Promise.all(piezas.map(async (el, i) => {
+    const d = desde(el, i);
+    await new Promise((ok) => window.setTimeout(ok, i * 110));
+    const p = puntero();
+    el.append(p);
+    el.classList.add('en-vuelo');
+    await esperar(traer(el, d.x, d.y, d.giro, el.classList.contains('escena-iso') ? 1600 : 1300));
+    el.classList.remove('en-vuelo');
+    await soltar(p, Math.sign(d.x || 1) * 30, 50);
+  }));
+  cadena.classList.remove('arrastrando');
+}
+
 async function arrastrarTelefono(caja: HTMLElement): Promise<void> {
   const tel = caja.querySelector<HTMLElement>('.telefono');
   const botones = caja.querySelector<HTMLElement>('.escenarios');
@@ -138,6 +168,7 @@ export function iniciarPunteros(): void {
       if (!es[0].isIntersecting) return;
       obs.disconnect();
       if (el.dataset.arrastre === 'dia') void arrastrarDia(el);
+      else if (el.dataset.arrastre === 'cadena') void arrastrarCadena(el);
       else void arrastrarTelefono(el);
     }, { threshold: 0.3 });
     obs.observe(el);
