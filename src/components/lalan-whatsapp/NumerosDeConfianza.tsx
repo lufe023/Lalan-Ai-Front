@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Loader2, Send, ShieldCheck, Unlink } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSedes } from '../../hooks/useSedes';
 import { useConfirmar } from '../ui/ModalConfirmar';
-import { lalanWhatsapp, olvidarMiWhatsappLalan, type PersonaDeConfianza } from '../../services/lalanWhatsapp';
+import { lalanWhatsapp, olvidarMiWhatsappLalan, tocaVer, VER_NUMEROS_CONFIANZA, type PersonaDeConfianza } from '../../services/lalanWhatsapp';
 
 /**
  * Lalan en los chats → Números de confianza (de la sede elegida arriba).
@@ -19,6 +19,17 @@ export const NumerosDeConfianza: React.FC<{ sede: string; agente: string }> = ({
   const [personas, setPersonas] = useState<PersonaDeConfianza[] | null>(null);
   const [sinWhatsapp, setSinWhatsapp] = useState(false);
   const [trabajando, setTrabajando] = useState<string | null>(null);
+  const caja = useRef<HTMLDivElement>(null);
+  // Desde el buscador, Ajustes o Lalan: se pone a la vista y resalta un momento
+  useEffect(() => {
+    if (!tocaVer(VER_NUMEROS_CONFIANZA)) return;
+    const t = window.setTimeout(() => {
+      caja.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      caja.current?.classList.add('ring-2', 'ring-emerald-400');
+      window.setTimeout(() => caja.current?.classList.remove('ring-2', 'ring-emerald-400'), 2500);
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const cargar = useCallback(async () => {
     if (!sede) return;
@@ -76,7 +87,7 @@ export const NumerosDeConfianza: React.FC<{ sede: string; agente: string }> = ({
   };
 
   return (
-    <div className="py-1.5 border-b border-slate-100 dark:border-neutral-800/80 space-y-2">
+    <div ref={caja} id="numeros-confianza" data-guia="numeros-confianza" className="py-1.5 border-b border-slate-100 dark:border-neutral-800/80 space-y-2 rounded-xl scroll-mt-24 transition-shadow">
       {modalConfirmar}
       <div>
         <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Números de confianza</div>
@@ -103,6 +114,7 @@ export const NumerosDeConfianza: React.FC<{ sede: string; agente: string }> = ({
                       : p.esperandoCodigo ? 'Esperando que envíe el mensaje' : 'Sin conectar'}
                     {p.conectado && !p.estaSede && ' · por WhatsApp no ve esta sede'}
                   </div>
+                  {p.choque && <div className="text-[0.6875rem] font-semibold text-amber-700 dark:text-amber-300">{p.choque}</div>}
                 </div>
                 {ocupada ? <Loader2 className="w-4 h-4 animate-spin text-slate-400 shrink-0" />
                   : p.conectado

@@ -162,6 +162,14 @@ export const GUIAS: GuiaApp[] = [
     ],
   },
   {
+    id: 'numeros-confianza', nombre: 'Números de confianza (WhatsApp con Lalan del equipo)', pantalla: 'settings', ajustes: true,
+    pasos: [
+      fila('chats', 'Lalan en los chats'),
+      { ancla: 'abrir-numeros-confianza', texto: 'Toca «Números de confianza».' },
+      { ancla: 'numeros-confianza', texto: 'Arriba eliges la sede. Aquí está cada persona de la administración: toca sus sedes (una, varias o Todas) y «Pasarle el enlace» para que conecte su WhatsApp.', leer: true },
+    ],
+  },
+  {
     id: 'lalan-whatsapp', nombre: 'Hablar con Lalan por WhatsApp', pantalla: 'settings', ajustes: true,
     pasos: [
       fila('cuenta', 'Mi cuenta'),
