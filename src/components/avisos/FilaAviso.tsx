@@ -1,6 +1,8 @@
 import React from 'react';
-import { CalendarDays, FileText, MapPin, MessageSquareText, ShoppingCart, UserRound, Wallet } from 'lucide-react';
+import { CalendarDays, FileText, MapPin, MessageCircle, MessageSquareText, ShoppingCart, UserRound, Wallet } from 'lucide-react';
 import { avisoDe, botonDe, horaDe, type Aviso, type GrupoAviso } from '../../services/avisos';
+import { useAuth } from '../../context/AuthContext';
+import { enlaceWaMe, textoParaAviso, useMiWhatsappLalan, ventanaAbierta } from '../../services/lalanWhatsapp';
 
 /** Icono y color de cada grupo (los mismos en la campana y en la pantalla Avisos) */
 export const ICONO_GRUPO: Record<GrupoAviso, { icono: React.ElementType; color: string }> = {
@@ -29,6 +31,12 @@ interface Props {
 export const FilaAviso: React.FC<Props> = ({ aviso: a, onAbrir, onLeer, conSede }) => {
   const g = ICONO_GRUPO[a.grupo] ?? ICONO_GRUPO.cuenta;
   const Icono = g.icono;
+  const { currentUser } = useAuth();
+  const wa = useMiWhatsappLalan(currentUser?.role === 'admin');
+  // Su WhatsApp con Lalan está conectado pero la ventana cerró: un toque abre su WhatsApp
+  // con «Cuéntame qué pasa con…» y, al enviarlo, Lalan le cuenta por ahí (solo de sus sedes)
+  const porWhatsapp = !!wa?.conectado && !!wa.salon && !ventanaAbierta(wa.ventanaHasta)
+    && (!a.sede?.id || wa.todas || wa.sedes.some(s => s.id === a.sede!.id));
   return (
     <div className={`relative flex gap-3 px-4 py-3 ${a.leida ? '' : 'bg-[var(--primary)]/[0.06]'}`}>
       <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${g.color}`} aria-hidden="true">
@@ -51,6 +59,16 @@ export const FilaAviso: React.FC<Props> = ({ aviso: a, onAbrir, onLeer, conSede 
           >
             {botonDe(a.ir, avisoDe(a))}
           </button>
+          {porWhatsapp && (
+            <a
+              href={enlaceWaMe(wa!.salon!.numero, textoParaAviso(a.titulo))}
+              target="_blank" rel="noopener noreferrer"
+              onClick={() => { if (!a.leida) onLeer?.(a); }}
+              className="min-h-[32px] px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[0.75rem] font-bold inline-flex items-center gap-1 transition"
+            >
+              <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> Por WhatsApp
+            </a>
+          )}
           {!a.leida && onLeer && (
             <button
               type="button"
