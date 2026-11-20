@@ -25,6 +25,7 @@ import { VerComo } from '../minitutoriales/VerComo';
 import { usePlan } from '../../context/PlanContext';
 import { ABRIR_FACTURA, ABRIR_PEDIDO, EVENTO_ABRIR_FACTURA, EVENTO_ABRIR_PEDIDO } from '../../services/compras';
 import { irA } from '../../services/avisos';
+import { alRecibir } from '../../services/socket';
 import { avisarCambioPendientes, cuandoConAviso, pendientesApi } from '../../services/pendientes';
 import { TuDiaLalan } from './TuDiaLalan';
 import { ponerCancion, textoDePuesta } from '../musica/BuscarCancion';
@@ -72,6 +73,9 @@ interface Respuesta { mensajes: Mensaje[]; seguir?: boolean }
 const EVENTO_ABRIR = 'lalan:abrir';
 
 /** Une dos listas de mensajes sin repetir (lo nuevo manda: trae la tarjeta al día) */
+/** Si Lalan no contestó en este rato, ya no se muestran los puntitos (algo falló del otro lado) */
+const PENSANDO_POR_WHATSAPP_MS = 3 * 60 * 1000;
+
 function juntar(antes: Mensaje[], nuevos: Mensaje[]): Mensaje[] {
   const ids = new Set(nuevos.map((m) => m.id));
   return [...antes.filter((m) => !ids.has(m.id)), ...nuevos].sort((a, b) => a.creadoEn.localeCompare(b.creadoEn));
@@ -451,6 +455,51 @@ export const PantallaLalan: React.FC = () => {
     api.post<Respuesta>('/asistente/panorama', {})
       .then(async (r) => { await ajustesListos; if (vigente()) recibir(r); })
       .catch(() => vigente() && setModo('reposo'));
+  }, [abierta]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+   * Lo que pasa por WhatsApp sale aquí al momento, sin recargar: su mensaje,
+   * los puntitos mientras Lalan piensa y la respuesta. El servidor solo manda
+   * la señal; la conversación se pide por HTTP con su sesión.
+   */
+  const [pensandoPorWhatsapp, setPensandoPorWhatsapp] = useState(false);
+  const listaViva = useRef(mensajes);
+  listaViva.current = mensajes;
+  useEffect(() => {
+    if (!abierta) { setPensandoPorWhatsapp(false); return; }
+    let pidiendo = false;
+    let otraVez = false;
+    let apagar = 0;
+    const traer = () => {
+      if (pidiendo) { otraVez = true; return; }
+      pidiendo = true;
+      api.get<Respuesta>('/asistente').then((r) => {
+        const antes = listaViva.current;
+        const ya = new Set(antes.map((m) => m.id));
+        const delServidor = new Map(r.mensajes.map((m) => [m.id, m]));
+        // Solo entra lo de WhatsApp: lo de la app ya lo pinta quien lo mandó
+        const nuevos = r.mensajes.filter((m) => m.porWhatsapp && !ya.has(m.id));
+        // Lo que ya estaba se pone al día (una tarjeta que se contestó con «sí» por WhatsApp)
+        setMensajes((ms) => juntar(ms.map((m) => delServidor.get(m.id) ?? m), nuevos));
+        const ultimo = r.mensajes[r.mensajes.length - 1];
+        const espera = ultimo && !ultimo.deLalan && ultimo.porWhatsapp ? PENSANDO_POR_WHATSAPP_MS - (Date.now() - new Date(ultimo.creadoEn).getTime()) : 0;
+        setPensandoPorWhatsapp(espera > 0);
+        window.clearTimeout(apagar);
+        if (espera > 0) apagar = window.setTimeout(() => setPensandoPorWhatsapp(false), espera);
+        if (!nuevos.length) return;
+        if (enBurbuja && nuevos.some((m) => m.deLalan)) setSinLeer(true);
+        if (alFinal.current) bajar();
+        else if (nuevos.some((m) => m.deLalan)) setNuevoDeLalan(true);
+      }).catch(() => undefined).finally(() => {
+        pidiendo = false;
+        if (otraVez) { otraVez = false; traer(); }
+      });
+    };
+    const fuera = alRecibir('lalan:cambio', traer);
+    // Si el teléfono durmió y se perdió la señal, al volver se pone al día
+    const alVolver = () => { if (document.visibilityState === 'visible') traer(); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => { fuera(); document.removeEventListener('visibilitychange', alVolver); window.clearTimeout(apagar); };
   }, [abierta]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const escucha = useEscucha({
@@ -1070,7 +1119,7 @@ export const PantallaLalan: React.FC = () => {
                     </div>
                   )}
                   {mensajes.map(pintarPanel)}
-                  {modo === 'pensando' && (
+                  {(modo === 'pensando' || pensandoPorWhatsapp) && (
                     <div className="flex gap-3">
                       <span className="w-8 h-8 shrink-0 rounded-full bg-[var(--primary)]/12 text-[var(--primary)] flex items-center justify-center"><Sparkles className="w-4 h-4" /></span>
                       <div className="px-5 py-4 rounded-3xl rounded-tl-lg bg-white/90 dark:bg-neutral-800/80 border border-white/80 dark:border-white/5 flex gap-1.5" aria-label="Lalan está pensando">
@@ -1138,6 +1187,17 @@ export const PantallaLalan: React.FC = () => {
                 </div>
               )}
               {mensajes.map(pintarMovil)}
+              {pensandoPorWhatsapp && modo !== 'pensando' && (
+                <div className="flex items-center gap-2 text-[0.75rem] text-slate-500 dark:text-neutral-400" aria-label="Lalan te está contestando por WhatsApp">
+                  <span className="flex gap-1">
+                    {[0, 1, 2].map((i) => (
+                      <motion.span key={i} className="w-1.5 h-1.5 rounded-full bg-[var(--primary)]/60"
+                        animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }} />
+                    ))}
+                  </span>
+                  <span className="inline-flex items-center gap-1"><MessageCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />Contestándote por WhatsApp…</span>
+                </div>
+              )}
             </div>
             {/* Lalan respondió mientras ella leía más arriba: un toque y baja a verlo */}
             <AnimatePresence>
