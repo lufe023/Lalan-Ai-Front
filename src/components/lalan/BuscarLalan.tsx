@@ -94,7 +94,7 @@ export const BuscarLalan: React.FC<Props> = ({ hoy, onCerrar, onElegir }) => {
           <X className="w-5 h-5" />
         </button>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-6 space-y-4 [scrollbar-width:thin]">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-6 space-y-4 scroll-fino">
         {!t && <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 px-1">Escribe un nombre, un producto o algo que le pediste a Lalan. Busca en todos los días.</p>}
         {t.length >= 2 && resultados && !resultados.length && !buscando && (
           <p className="text-[0.875rem] text-slate-500 dark:text-neutral-400 px-1">No encontré «{t}» en lo que hablamos.</p>
