@@ -6,7 +6,7 @@ import {
   MessageSquareText, MessagesSquare, Music, Receipt, Search, Sliders, Sparkles, Tag, Users, Wallet,
   CalendarRange,
   ShoppingCart,
-  Bell, Activity, BellRing,
+  Bell, Activity, BellRing, MessageCircle, ShieldCheck,
 } from 'lucide-react';
 import { useApp, ScreenName } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +16,7 @@ import { gruposPara, pedirSeccionAjustes } from '../ajustes/MenuAjustes';
 import type { SeccionAjustes } from '../ajustes/MenuAjustes';
 import { EVENTO_AJUSTES_MENU } from '../guias/GuiaEnCurso';
 import { abrirLalan, puedeHablarConLalan } from '../lalan/PantallaLalan';
+import { pedirVer, VER_MI_WHATSAPP, VER_NUMEROS_CONFIANZA } from '../../services/lalanWhatsapp';
 import { EsferaLalan } from '../lalan/EsferaLalan';
 import type { ClaveModulo } from '../../types/plataforma';
 
@@ -178,6 +179,8 @@ export const BuscadorOpciones: React.FC = () => {
       lista.push({ id: 'plataforma', titulo: rol === 'support' ? 'Clientes' : 'Plataforma', donde: 'Menú', palabras: 'salones negocios planes landing', icono: Globe2, color: 'bg-slate-700', ir: pantalla('plataforma') });
     }
     if (puedeHablarConLalan(rol)) {
+      lista.push({ id: 'numeros-confianza', titulo: 'Números de confianza', donde: 'Lalan en los chats', palabras: 'whatsapp lalan jefa duena encargada encargado sedes numero telefono confianza asistente hablar escribir', icono: ShieldCheck, color: 'bg-emerald-500', ir: () => { pedirVer(VER_NUMEROS_CONFIANZA); navigateTo('bots'); } });
+      lista.push({ id: 'lalan-whatsapp', titulo: 'Lalan en tu WhatsApp', donde: 'Mi cuenta', palabras: 'whatsapp hablar con lalan mi numero conectar telefono confianza', icono: MessageCircle, color: 'bg-emerald-500', ir: () => { pedirVer(VER_MI_WHATSAPP); ajustes('cuenta')(); } });
       lista.push({ id: 'lalan', titulo: 'Habla con Lalan', donde: 'Lalan', palabras: 'asistente ayuda preguntar voz', icono: Sparkles, color: 'bg-[var(--primary)]', ir: abrirLalan });
     }
     // Lo que la dueña le apagó a la asistente tampoco sale en el buscador

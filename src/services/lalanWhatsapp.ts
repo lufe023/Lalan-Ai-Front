@@ -21,6 +21,8 @@ export interface MiWhatsappLalan {
   sedes: { id: string; nombre: string }[];
   todas: boolean;
   esperandoCodigo: boolean;
+  /** El último intento no se conectó: ese número ya es de una clienta o de un proveedor */
+  choque: string | null;
 }
 
 export interface EnlaceConectar { enlace: string; texto: string; salon: NumeroSalon; venceEn: string }
@@ -39,6 +41,8 @@ export interface PersonaDeConfianza {
   estaSede: boolean;
   esperandoCodigo: boolean;
   ventanaHasta: string | null;
+  /** Su número choca con una clienta o un proveedor (o el último intento no se conectó por eso) */
+  choque: string | null;
 }
 
 export const lalanWhatsapp = {
@@ -89,4 +93,14 @@ export function useMiWhatsappLalan(activo = true): MiWhatsappLalan | null {
     return () => { vivo = false; };
   }, [activo]);
   return d;
+}
+
+/** Ir a una parte de Lalan en WhatsApp: la pantalla la busca y la pone a la vista al abrir */
+export const VER_NUMEROS_CONFIANZA = 'numeros-confianza';
+export const VER_MI_WHATSAPP = 'lalan-whatsapp';
+const CLAVE_VER = 'lalan.verLalanWhatsapp';
+export function pedirVer(que: string) { try { sessionStorage.setItem(CLAVE_VER, que); } catch { /* nada */ } }
+/** La pantalla pregunta si la pidieron: true una sola vez */
+export function tocaVer(que: string): boolean {
+  try { if (sessionStorage.getItem(CLAVE_VER) !== que) return false; sessionStorage.removeItem(CLAVE_VER); return true; } catch { return false; }
 }
