@@ -8,17 +8,18 @@ import { LogoLalan } from '../components/ui/LogoLalan';
 import { useAuth, type RetoDosPasos } from '../context/AuthContext';
 import { PasoDelCodigo } from '../components/ajustes/DosPasos';
 import { BotonAtras } from '../components/ui/BotonAtras';
-import { useApp } from '../context/AppContext';
+import { useApp, type ScreenName } from '../context/AppContext';
 import { quickAuth, QuickAuthRegistration } from '../services/quickAuth';
+import { tomarDestino } from '../services/enlaceEntrada';
 
 export const LoginScreen: React.FC = () => {
-  const { login, loginWithQuickDevice } = useAuth();
+  const { login, loginWithQuickDevice, retoDelEnlace, avisoDelEnlace } = useAuth();
   const { showToast, navigateTo } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  /** La clave estuvo bien y falta el código de dos pasos */
+  /** La clave (o el enlace de un aviso) estuvo bien y falta el código de dos pasos */
   const [reto, setReto] = useState<RetoDosPasos | null>(null);
   const [recuperando, setRecuperando] = useState(false);
   /** «Crear mi cuenta»: llega de la página con ?registro=1 (y el plan que tocó) */
@@ -33,6 +34,10 @@ export const LoginScreen: React.FC = () => {
   useEffect(() => {
     setRegistration(quickAuth.getRegistration());
   }, []);
+
+  /* El enlace de un aviso se canjea al arrancar: con dos pasos falta el código; vencido, se dice por qué */
+  useEffect(() => { if (retoDelEnlace) setReto(retoDelEnlace); }, [retoDelEnlace]);
+  useEffect(() => { if (avisoDelEnlace) { setError(avisoDelEnlace); setModoManual(true); } }, [avisoDelEnlace]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +55,9 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  /** Venía de un enlace (un aviso, una notificación): a esa pantalla, no al inicio */
+  const irAlEntrar = () => navigateTo((tomarDestino() as ScreenName | null) ?? 'dashboard');
+
   /** Ya dentro. Con dos pasos no se ofrece el 1 toque: no se salta el código */
   const entro = (conCodigo = false) => {
       showToast('¡Hola!', 'Sesión iniciada correctamente.', 'success');
@@ -57,7 +65,7 @@ export const LoginScreen: React.FC = () => {
       if (!conCodigo && !quickAuth.getRegistration().isRegistered) {
         setShowActivarModal(true);
       } else {
-        navigateTo('dashboard');
+        irAlEntrar();
       }
   };
 
@@ -69,7 +77,7 @@ export const LoginScreen: React.FC = () => {
       // Con dos pasos el toque reemplaza la clave, no el código
       if (r.dosPasos) { setReto(r.dosPasos); return; }
       showToast('¡Hola!', 'Acceso rápido autenticado en este dispositivo.', 'success');
-      navigateTo('dashboard');
+      irAlEntrar();
     } catch (err: any) {
       setError(err?.message ?? 'No se pudo iniciar con acceso rápido. Prueba con tu clave.');
       setModoManual(true);
@@ -270,7 +278,7 @@ export const LoginScreen: React.FC = () => {
         isOpen={showActivarModal}
         onClose={() => {
           setShowActivarModal(false);
-          navigateTo('dashboard');
+          irAlEntrar();
         }}
       />
     </div>
