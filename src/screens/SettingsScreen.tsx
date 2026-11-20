@@ -70,6 +70,7 @@ import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 import { SeguridadCuenta } from '../components/ajustes/SeguridadCuenta';
 import { LoQueLalanSabe } from '../components/ajustes/LoQueLalanSabe';
+import { MiWhatsappLalan } from '../components/lalan-whatsapp/MiWhatsappLalan';
 import { puedeHablarConLalan } from '../components/lalan/PantallaLalan';
 import { QuioscosSalon } from '../components/ajustes/QuioscosSalon';
 import { AjustesVitrina } from '../components/ajustes/AjustesVitrina';
@@ -507,6 +508,8 @@ export const SettingsScreen: React.FC = () => {
         {/* Dos pasos: obligatoria para Lalan (super admin y soporte), opcional para la dueña */}
         {!enSoporte() && currentUser?.role !== 'assistant' && <DosPasosCuenta />}
         {/* Privado entre ella y Lalan: tampoco se ve desde una sesión de soporte */}
+        {/* Su número de confianza: habla con Lalan desde su WhatsApp */}
+        {!enSoporte() && puedeHablarConLalan(currentUser?.role) && currentUser?.role !== 'super_admin' && <MiWhatsappLalan />}
         {!enSoporte() && puedeHablarConLalan(currentUser?.role) && <LoQueLalanSabe />}
         {/* La dueña ve quién de Lalan entró y quién cambió qué */}
         {currentUser?.role === 'admin' && !currentUser.soporte && <SoporteEnTuSalon />}

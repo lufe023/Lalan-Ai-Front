@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, type TargetAndTransition } from 'motion/react';
-import { ArrowDown, ArrowUp, BellRing, Check, Copy, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Music2, Navigation, Receipt, RotateCcw, Search, Send, ShoppingCart, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BellRing, Check, Copy, FileDown, FileText, Images, Keyboard, Loader2, MapPin, MessageCircle, MessageSquareText, Mic, MicOff, Minimize2, MoreHorizontal, Music2, Navigation, Receipt, RotateCcw, Search, Send, ShoppingCart, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { api, subirArchivo } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { avisarCambioBienvenida } from '../../services/bienvenida';
@@ -61,6 +61,8 @@ interface DocumentoTarjeta { id: string; titulo: string; sede: string }
 interface GuiaTarjeta { id: string; nombre: string; sedeId: string | null; sede: string | null }
 interface Mensaje {
   id: string; deLalan: boolean; texto: string; porVoz: boolean; creadoEn: string; accion: Accion | null; util?: boolean | null;
+  /** Se dijo por WhatsApp (su número de confianza): la misma conversación */
+  porWhatsapp?: boolean;
   /** Se pinta al tocar Enviar, antes de que el servidor conteste (lo hablado sale con puntitos hasta tener su texto) */
   enviando?: boolean;
 }
@@ -294,6 +296,18 @@ export const PantallaLalan: React.FC = () => {
     };
     window.addEventListener(EVENTO_ABRIR, abrir);
     return () => window.removeEventListener(EVENTO_ABRIR, abrir);
+  }, []);
+
+  // Desde WhatsApp: «Te lo dejé en Lalan, dentro de la app» abre /app/?lalan=1 con Lalan abierta
+  useEffect(() => {
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get('lalan') !== '1') return;
+      u.searchParams.delete('lalan');
+      window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+      const t = window.setTimeout(() => window.dispatchEvent(new Event(EVENTO_ABRIR)), 400);
+      return () => window.clearTimeout(t);
+    } catch { /* nada */ }
   }, []);
 
   useEffect(() => alCargarVoces(() => { setVoces(vocesEnEspanol()); if (!usaVozDeNube()) setVozActual(vozDeLalan()?.name ?? null); }), []);
@@ -734,13 +748,13 @@ export const PantallaLalan: React.FC = () => {
                             <p className="text-[0.9844rem] leading-relaxed text-slate-800 dark:text-neutral-100 whitespace-pre-line">{m.texto}</p>
                           </div>
                           {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                          <div className="pl-2 flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /><OirYCopiar texto={m.texto} sonando={repitiendo === m.id && modo === 'hablando'} onOir={() => escucharDeNuevo(m)} /></div>
+                          <div className="pl-2 flex items-center gap-1"><Hora iso={m.creadoEn} />{m.porWhatsapp && <span className="inline-flex items-center gap-0.5 text-[0.6875rem] text-emerald-600 dark:text-emerald-400"><MessageCircle className="w-3 h-3" aria-hidden="true" />WhatsApp</span>}<Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /><OirYCopiar texto={m.texto} sonando={repitiendo === m.id && modo === 'hablando'} onOir={() => escucharDeNuevo(m)} /></div>
                         </div>
                       </div>
                     ) : (
                       <div key={m.id} data-mensaje={m.id} className="flex flex-col items-end gap-1 scroll-mt-6 rounded-3xl">
                         <div className={`max-w-[75%] px-5 py-3 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug shadow-md shadow-[var(--primary)]/20 transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
-                          {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
+                          {m.porWhatsapp && <MessageCircle className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Por WhatsApp" />}{m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
                           {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
                         </div>
                         {!m.enviando && <Hora iso={m.creadoEn} className="pr-2" />}
@@ -752,12 +766,12 @@ export const PantallaLalan: React.FC = () => {
                   <div key={m.id} data-mensaje={m.id} className="space-y-2.5 max-w-[92%] scroll-mt-6 rounded-3xl">
                     <p className={`${escribiendo ? 'text-[0.96875rem] leading-[1.55]' : 'text-[1.0625rem] leading-relaxed'} text-slate-800 dark:text-neutral-100 whitespace-pre-line`}>{m.texto}</p>
                     {m.accion && <Tarjeta accion={m.accion} ocupada={resolviendo === m.accion.id} onResolver={resolver} onVerChat={verChat} onLlevame={llevame} onFallo={fallo} onAbrirPedido={abrirPedido} onIr={irDesdeTuDia} />}
-                    <div className="flex items-center gap-1"><Hora iso={m.creadoEn} /><Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /><OirYCopiar texto={m.texto} sonando={repitiendo === m.id && modo === 'hablando'} onOir={() => escucharDeNuevo(m)} /></div>
+                    <div className="flex items-center gap-1"><Hora iso={m.creadoEn} />{m.porWhatsapp && <span className="inline-flex items-center gap-0.5 text-[0.6875rem] text-emerald-600 dark:text-emerald-400"><MessageCircle className="w-3 h-3" aria-hidden="true" />WhatsApp</span>}<Calificar util={m.util ?? null} onCambio={(u) => void calificar(m.id, u)} /><OirYCopiar texto={m.texto} sonando={repitiendo === m.id && modo === 'hablando'} onOir={() => escucharDeNuevo(m)} /></div>
                   </div>
                 ) : (
                   <div key={m.id} data-mensaje={m.id} className="flex flex-col items-end gap-1 scroll-mt-6 rounded-3xl">
                     <div className={`max-w-[85%] px-4 py-2.5 rounded-3xl rounded-br-lg bg-[var(--primary)] text-white text-[0.9375rem] leading-snug transition-opacity ${m.enviando ? 'opacity-80' : ''}`}>
-                      {m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
+                      {m.porWhatsapp && <MessageCircle className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Por WhatsApp" />}{m.porVoz && <Mic className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 opacity-80" aria-label="Dicho con la voz" />}
                       {m.enviando && !m.texto ? <PasandoATexto /> : m.texto}
                     </div>
                     {!m.enviando && <Hora iso={m.creadoEn} className="pr-2" />}

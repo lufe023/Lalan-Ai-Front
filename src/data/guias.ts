@@ -162,6 +162,13 @@ export const GUIAS: GuiaApp[] = [
     ],
   },
   {
+    id: 'lalan-whatsapp', nombre: 'Hablar con Lalan por WhatsApp', pantalla: 'settings', ajustes: true,
+    pasos: [
+      fila('cuenta', 'Mi cuenta'),
+      { ancla: 'lalan-whatsapp', texto: 'Toca «Conectar mi WhatsApp»: se abre tu WhatsApp con un mensaje y un código. Solo envíalo y Lalan te contesta por ahí.', leer: true },
+    ],
+  },
+  {
     id: 'configurar-vitrina', nombre: 'Armar y publicar la Vitrina', pantalla: 'settings', ajustes: true, cambiaSede: true,
     pasos: [
       fila('vitrina', 'Vitrina'),
