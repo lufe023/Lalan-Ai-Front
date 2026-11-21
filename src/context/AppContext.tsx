@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { guardarDestino } from '../services/enlaceEntrada';
 import {
   Appointment, AppointmentStatus, AvisoCita, MetodoAdelanto, BotChannelConfig, ChatMessage,
   Client, CommunicationChannel, Conversation, LoungeTrack, ServiceCategory,
@@ -1008,10 +1009,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const u = new URL(window.location.href);
       if (u.searchParams.has('ir')) {
+        // Si antes hay que entrar con la clave, al entrar se vuelve aquí (no al inicio)
+        guardarDestino(u.searchParams.get('ir') ?? '');
         abrirDentro(u.searchParams.get('aviso'), u.searchParams.get('conversacion'));
         ['ir', 'aviso', 'conversacion'].forEach(k => u.searchParams.delete(k));
         window.history.replaceState(null, '', u.pathname + u.search + u.hash);
       }
+    } catch { /* nada */ }
+    /* Con la app instalada ya abierta (Android, PC), un enlace de un aviso la
+       trae al frente en vez de abrir otra ventana (launch_handler del manifiesto) */
+    try {
+      (window as any).launchQueue?.setConsumer((p: { targetURL?: string }) => {
+        if (!p?.targetURL) return;
+        const d = new URL(p.targetURL);
+        const ir = d.searchParams.get('ir');
+        if (!ir) return;
+        setCurrentScreen(ir as ScreenName);
+        abrirDentro(d.searchParams.get('aviso'), d.searchParams.get('conversacion'));
+      });
     } catch { /* nada */ }
     if (!('serviceWorker' in navigator)) return;
     const oir = (e: MessageEvent) => {

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ConfirmacionCorreo, UserProfile, UserRole } from '../types';
-import { api, migrarSesionVieja, salirEnServidor, sesionLocal } from '../services/api';
+import { api, apiFetch, migrarSesionVieja, salirEnServidor, sesionLocal } from '../services/api';
+import { tomarLlaveDelEnlace } from '../services/enlaceEntrada';
 import { enSoporte, salirDeSoporte } from '../services/soporte';
 import { quickAuth } from '../services/quickAuth';
 import { puedeCon, type ClavePermisoRol, type MapaPermisosRol } from '../services/permisos';
@@ -41,6 +42,10 @@ interface AuthContextType {
   correoListo: (correo?: string | null) => void;
   /** Aceptó los términos: se quita la pantalla de aceptarlos */
   terminosAceptados: () => void;
+  /** Entró por el enlace de un aviso y falta el código de dos pasos */
+  retoDelEnlace: RetoDosPasos | null;
+  /** El enlace de un aviso ya se usó o venció: lo que se le dice al entrar con la clave */
+  avisoDelEnlace: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,14 +89,46 @@ function buildProfile(u: ApiUser): UserProfile {
   };
 }
 
+/*
+ * El enlace de un aviso por WhatsApp (iPhone lo abre en Safari, sin la sesión
+ * de la app). La llave se saca de la dirección al cargar y se canjea una sola
+ * vez aunque el arranque corra dos veces (vale una vez en el servidor).
+ */
+const LLAVE_DEL_ENLACE = typeof window !== 'undefined' ? tomarLlaveDelEnlace() : null;
+type Canje = { user: ApiUser } | { dosPasos: RetoDosPasos } | { error: string };
+let canje: Promise<Canje> | null = null;
+function canjearEnlace(): Promise<Canje> | null {
+  if (!LLAVE_DEL_ENLACE) return null;
+  canje ??= apiFetch<{ user: ApiUser } | { dosPasos: RetoDosPasos }>(
+    '/auth/enlace',
+    { method: 'POST', body: JSON.stringify({ llave: LLAVE_DEL_ENLACE }) },
+    // Sin reintento: un 401 aquí es "ya se usó o venció", no una sesión que renovar
+    false,
+  ).catch((err: any) => ({ error: err?.message || 'Este enlace ya se usó o venció. Entra con tu clave y te llevo ahí mismo.' }));
+  return canje;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [retoDelEnlace, setRetoDelEnlace] = useState<RetoDosPasos | null>(null);
+  const [avisoDelEnlace, setAvisoDelEnlace] = useState<string | null>(null);
 
   // Restore session on mount
   useEffect(() => {
+    const conEnlace = async () => {
+      const r = await canjearEnlace();
+      if (!r) return;
+      if ('error' in r) setAvisoDelEnlace(r.error);
+      else if ('dosPasos' in r) setRetoDelEnlace(r.dosPasos);
+      else abrir(r.user);
+    };
     const restore = async () => {
-      if (!sesionLocal.hay()) { setIsLoading(false); return; }
+      if (!sesionLocal.hay()) {
+        await conEnlace();
+        setIsLoading(false);
+        return;
+      }
       try {
         // Una sesión de antes (tokens en localStorage) pasa a cookies httpOnly
         await migrarSesionVieja();
@@ -114,6 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (err?.message === 'Session expired') {
           sesionLocal.borrar();
           localStorage.removeItem('lalan_cached_user');
+          // La sesión de este navegador ya murió: el enlace del aviso la abre de nuevo
+          await conEnlace();
         } else if (cachedRaw) {
           // El servidor falló (un despliegue, un 500): eso no cierra la sesión
           try { setCurrentUser(buildProfile(JSON.parse(cachedRaw))); } catch {}
@@ -215,7 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [faltanPermisos]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, entrarConSesion, loginWithQuickDevice, logout, hasPermission, puede, completarDosPasos, dosPasosListo, claveCambiada, correoListo, terminosAceptados }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, isLoading, login, entrarConSesion, loginWithQuickDevice, logout, hasPermission, puede, completarDosPasos, dosPasosListo, claveCambiada, correoListo, terminosAceptados, retoDelEnlace, avisoDelEnlace }}>
       {children}
     </AuthContext.Provider>
   );

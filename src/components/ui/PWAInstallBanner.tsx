@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Download, Share, X, Smartphone, PlusSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { VerComo } from '../minitutoriales/VerComo';
+import { vinoDeUnEnlace } from '../../services/enlaceEntrada';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -72,8 +73,9 @@ export const PWAInstallBanner: React.FC = () => {
     }
   };
 
-  // Si ya está instalada o fue descartada, no mostrar nada
-  if (isInstalled || dismissed) {
+  // Si ya está instalada o fue descartada, no mostrar nada. Tampoco si llegó por
+  // el enlace de un aviso: ya usa Lalan (en iPhone el enlace abre Safari aunque tenga la app)
+  if (isInstalled || dismissed || vinoDeUnEnlace()) {
     return null;
   }
 
