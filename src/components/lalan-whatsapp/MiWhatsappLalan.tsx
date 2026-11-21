@@ -137,8 +137,8 @@ export const MiWhatsappLalan: React.FC = () => {
           )}
           <label className="flex items-center justify-between gap-3">
             <span className="text-[0.8125rem] text-slate-700 dark:text-neutral-200">
-              <b className="block text-xs">Mis avisos también por WhatsApp</b>
-              <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Mientras la ventana está abierta. Gratis.</span>
+              <b className="block text-xs">Lo urgente también por WhatsApp</b>
+              <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">Una clienta que necesita a una persona o algo serio en un chat, con botones para contestar. Lo demás te llega en la app. Mientras la ventana está abierta. Gratis.</span>
             </span>
             <IOSToggle id="toggle-whatsapp-avisos" checked={datos.avisos} onChange={v => void cambiarAvisos(v)} activeColor="#10b981" />
           </label>
