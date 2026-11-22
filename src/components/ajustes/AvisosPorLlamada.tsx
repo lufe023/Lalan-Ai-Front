@@ -15,7 +15,9 @@ interface EstadoLlamadas {
   miTelefono: string | null;
   llamarPor: string[];
   avisos: { id: string; descripcion: string; grupo: string }[];
-  sedes: { id: string; nombre: string; llamarCitaHoras: number | null; textoLlamadaCita: string | null }[];
+  sedes: { id: string; nombre: string; llamarCitaHoras: number | null; textoLlamadaCita: string | null; llamarDesde?: string | null; llamarDesdePendiente?: string | null }[];
+  /** El número de Lalan: sale si la sede no tiene uno suyo */
+  numeroLalan?: string | null;
   horasCita: number[];
   esDireccion: boolean;
   /** Solo la dirección: a quién del equipo llama Lalan en cada sede */
@@ -292,6 +294,23 @@ export const AvisosPorLlamada: React.FC = () => {
         </div>
       )}
 
+      {/* El número que ve quien recibe la llamada: la dirección, por sede */}
+      {datos.esDireccion && (
+        <div className={tarjeta}>
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">El número que ve la clienta</h3>
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+              Contestan más si ven el número del salón. Sin uno verificado, Lalan llama con el suyo{datos.numeroLalan ? ` (${datos.numeroLalan})` : ''}.
+            </p>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
+            {datos.sedes.map((s) => (
+              <NumeroDeLaSede key={s.id} sede={s} unaSola={datos.sedes.length === 1} encendidas={datos.proveedor} onCambio={setDatos} />
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Lo que ya llamó */}
       {!!historial?.length && (
         <div className={tarjeta}>
@@ -372,6 +391,98 @@ const PersonaQueLlama: React.FC<{
           })}
         </div>
       )}
+    </li>
+  );
+};
+
+/**
+ * El número del salón para una sede. Twilio solo deja llamar con un número
+ * que él verificó: la llama y ella marca el código que le mostramos. La
+ * pantalla pregunta cada pocos segundos y se pone sola en «Listo».
+ */
+const NumeroDeLaSede: React.FC<{
+  sede: EstadoLlamadas['sedes'][number]; unaSola: boolean; encendidas: boolean; onCambio: (e: EstadoLlamadas) => void;
+}> = ({ sede, unaSola, encendidas, onCambio }) => {
+  const [editando, setEditando] = useState(false);
+  const [telefono, setTelefono] = useState('');
+  const [codigo, setCodigo] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState('');
+  const esperando = !!codigo || !!sede.llamarDesdePendiente;
+
+  // Mientras espera que marque el código: pregunta cada 4 s, como mucho 3 minutos
+  useEffect(() => {
+    if (!esperando) return;
+    let vueltas = 0;
+    const t = window.setInterval(async () => {
+      vueltas++;
+      try {
+        const r = await api.post<{ listo: boolean; estado: EstadoLlamadas }>('/llamadas/numero/comprobar', { sede: sede.id });
+        if (r.listo) { setCodigo(null); setEditando(false); onCambio(r.estado); window.clearInterval(t); }
+      } catch { /* sigue probando */ }
+      if (vueltas > 45) window.clearInterval(t);
+    }, 4000);
+    return () => window.clearInterval(t);
+  }, [esperando, sede.id, onCambio]);
+
+  const verificar = async () => {
+    setError(''); setOcupado(true);
+    try {
+      const r = await api.post<{ listo: boolean; codigo: string | null; estado: EstadoLlamadas }>('/llamadas/numero', { sede: sede.id, telefono: telefono.trim() });
+      onCambio(r.estado);
+      if (r.listo) { setEditando(false); setCodigo(null); } else setCodigo(r.codigo);
+    } catch (e) { setError((e as Error).message); }
+    finally { setOcupado(false); }
+  };
+
+  const quitar = async () => {
+    setError(''); setOcupado(true);
+    try { onCambio(await api.post<EstadoLlamadas>('/llamadas/numero/quitar', { sede: sede.id })); setCodigo(null); setEditando(false); }
+    catch (e) { setError((e as Error).message); }
+    finally { setOcupado(false); }
+  };
+
+  return (
+    <li className="py-2 space-y-2">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          {!unaSola && <p className="text-[0.8125rem] font-medium truncate">{sede.nombre}</p>}
+          <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+            {sede.llamarDesde
+              ? <span className="text-emerald-600 font-semibold inline-flex items-center gap-1"><Check className="w-3 h-3" /> Llama con {sede.llamarDesde}</span>
+              : esperando ? `Verificando ${sede.llamarDesdePendiente ?? telefono}…` : 'Llama con el número de Lalan'}
+          </p>
+        </div>
+        {sede.llamarDesde || esperando ? (
+          <button type="button" onClick={() => void quitar()} disabled={ocupado} className="text-[0.75rem] font-semibold text-slate-400 hover:text-slate-600 cursor-pointer disabled:opacity-50">
+            {esperando && !sede.llamarDesde ? 'Cancelar' : 'Usar el de Lalan'}
+          </button>
+        ) : !editando && (
+          <button type="button" onClick={() => setEditando(true)} disabled={!encendidas}
+            title={encendidas ? undefined : 'Se puede cuando las llamadas estén encendidas'}
+            className="min-h-[36px] px-3 rounded-full border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-bold cursor-pointer disabled:opacity-50">
+            Poner el del salón
+          </button>
+        )}
+      </div>
+      {editando && !esperando && !sede.llamarDesde && (
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (telefono.trim()) void verificar(); }}>
+          <input type="tel" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="809-555-1234" aria-label={`Número del salón en ${sede.nombre}`} autoFocus
+            className="flex-1 min-w-0 min-h-[40px] px-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[16px] sm:text-[0.875rem]" />
+          <button type="submit" disabled={!telefono.trim() || ocupado}
+            className="min-h-[40px] px-4 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5">
+            {ocupado ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />} Verificar
+          </button>
+        </form>
+      )}
+      {codigo && (
+        <div className="rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/30 p-3 space-y-1.5 text-center" role="status">
+          <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Te va a llamar Twilio (habla en inglés). Contesta y, cuando te lo pida, marca:</p>
+          <p className="text-[2rem] font-bold tracking-[0.3em] text-[var(--primary)] tabular-nums">{codigo}</p>
+          <p className="text-[0.6875rem] text-slate-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Esta pantalla se pone en «Listo» sola</p>
+        </div>
+      )}
+      {error && <p className="text-[0.75rem] font-semibold text-rose-600" role="alert">{error}</p>}
     </li>
   );
 };
