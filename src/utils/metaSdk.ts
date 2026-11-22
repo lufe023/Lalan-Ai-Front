@@ -15,9 +15,15 @@ export interface ConfigMeta {
 
 /** Lo que devuelve el registro insertado de WhatsApp. Sin los ids, Lalan busca el número con el permiso */
 export interface RegistroWhatsapp { code: string; wabaId?: string; phoneNumberId?: string; coexistencia: boolean }
+/** Lo que se sabe del número que eligió en Meta: con la app del teléfono puede venir solo la cuenta */
+type IdsWhatsapp = { wabaId: string; phoneNumberId?: string };
 
 /** Tipos de evento que manda la ventana de WhatsApp */
-const EVENTO_WA = { tipo: 'WA_EMBEDDED_SIGNUP', cancelar: 'CANCEL', error: 'ERROR' } as const;
+const EVENTO_WA = {
+  tipo: 'WA_EMBEDDED_SIGNUP', cancelar: 'CANCEL', error: 'ERROR',
+  /** Terminó con su número de la app WhatsApp Business (coexistencia): Meta solo manda la cuenta (waba_id) */
+  terminoConLaApp: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING',
+} as const;
 
 /** Permisos para Messenger e Instagram si no hay configuración de "Inicio de sesión para empresas" */
 const PERMISOS_PAGINAS = 'pages_show_list,pages_messaging,pages_manage_metadata,business_management';
@@ -53,7 +59,7 @@ function sdk(cfg: ConfigMeta): Promise<any> {
 export async function abrirRegistroWhatsapp(cfg: ConfigMeta, coexistencia: boolean): Promise<RegistroWhatsapp> {
   const FB = await sdk(cfg);
   return new Promise((resolve, reject) => {
-    let ids: { wabaId: string; phoneNumberId: string } | null = null;
+    let ids: IdsWhatsapp | null = null;
     let code: string | null = null;
     const listo = () => {
       if (ids && code) { window.removeEventListener('message', oir); resolve({ code, ...ids, coexistencia }); }
@@ -64,7 +70,9 @@ export async function abrirRegistroWhatsapp(cfg: ConfigMeta, coexistencia: boole
       if (d?.type !== EVENTO_WA.tipo) return;
       if (d.event === EVENTO_WA.cancelar) { window.removeEventListener('message', oir); reject(new Error('Se cerró la ventana antes de terminar.')); return; }
       if (d.event === EVENTO_WA.error) { window.removeEventListener('message', oir); reject(new Error(d.data?.error_message ?? 'Meta reportó un error.')); return; }
-      if (d.data?.waba_id && d.data?.phone_number_id) { ids = { wabaId: String(d.data.waba_id), phoneNumberId: String(d.data.phone_number_id) }; listo(); }
+      if (d.data?.waba_id && d.data?.phone_number_id) { ids = { wabaId: String(d.data.waba_id), phoneNumberId: String(d.data.phone_number_id) }; listo(); return; }
+      // Con la app del teléfono Meta avisa con la cuenta sola: Lalan busca el número con el permiso, sin esperar 8 s
+      if (d.event === EVENTO_WA.terminoConLaApp && d.data?.waba_id) { ids = { wabaId: String(d.data.waba_id) }; listo(); }
     };
     window.addEventListener('message', oir);
     // El SDK no acepta una función async aquí
