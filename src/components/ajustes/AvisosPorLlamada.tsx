@@ -84,6 +84,8 @@ export const AvisosPorLlamada: React.FC = () => {
   const [telefono, setTelefono] = useState('');
   const sedesElegibles = useSedes();
   const [sedeEquipo, setSedeEquipo] = useState('');
+  /** Sin teléfono propio, la dirección prueba llamando a alguien de su equipo */
+  const [probarCon, setProbarCon] = useState('');
 
   const cargar = useCallback(async () => {
     try {
@@ -106,6 +108,11 @@ export const AvisosPorLlamada: React.FC = () => {
     finally { setOcupado(null); }
   };
 
+  // Quién contesta la prueba: yo, o si no tengo teléfono, a quien elija del equipo
+  const conTelefono = (datos?.equipo ?? []).filter((p) => p.telefono && !p.soyYo);
+  const conQuien = !datos?.miTelefono && datos?.esDireccion ? (conTelefono.find((p) => p.id === probarCon) ?? conTelefono[0] ?? null) : null;
+  const puedoProbar = !!datos?.miTelefono || !!conQuien;
+
   /** La dirección enciende o apaga a alguien del equipo en una sede, o cambia por qué avisos la llama */
   const guardarPersona = async (cambio: { persona: string; sede?: string; llamar?: boolean; llamarPor?: string[] }) => {
     setError(''); setOcupado(`persona-${cambio.persona}`);
@@ -118,7 +125,11 @@ export const AvisosPorLlamada: React.FC = () => {
 
   const probar = async () => {
     setError(''); setAviso(''); setOcupado('prueba');
-    try { await api.post('/llamadas/prueba', {}); setAviso('Te estamos llamando. Contesta para oír cómo suena.'); void cargar(); }
+    try {
+      await api.post('/llamadas/prueba', conQuien ? { persona: conQuien.id } : {});
+      setAviso(conQuien ? `Estamos llamando a ${conQuien.nombre}. Que conteste para oír cómo suena.` : 'Te estamos llamando. Contesta para oír cómo suena.');
+      void cargar();
+    }
     catch (e) { setError((e as Error).message); }
     finally { setOcupado(null); }
   };
@@ -126,7 +137,11 @@ export const AvisosPorLlamada: React.FC = () => {
   /** Oír en mi teléfono lo que Lalan le dice a la clienta de esa sede */
   const probarCita = async (sede: string) => {
     setError(''); setAviso(''); setOcupado(`prueba-${sede}`);
-    try { await api.post('/llamadas/prueba-cita', { sede }); setAviso('Te estamos llamando con el recordatorio de la cita. Contesta y prueba marcar 1.'); void cargar(); }
+    try {
+      await api.post('/llamadas/prueba-cita', { sede, ...(conQuien ? { persona: conQuien.id } : {}) });
+      setAviso(`${conQuien ? `Estamos llamando a ${conQuien.nombre}` : 'Te estamos llamando'} con el recordatorio de la cita. Contesta y prueba marcar 1.`);
+      void cargar();
+    }
     catch (e) { setError((e as Error).message); }
     finally { setOcupado(null); }
   };
@@ -186,10 +201,22 @@ export const AvisosPorLlamada: React.FC = () => {
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.75rem] font-semibold ${sinCupo ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
               {datos.usadas}{datos.tope !== null ? ` de ${datos.tope}` : ''} llamadas este mes
             </span>
-            <button type="button" onClick={() => void probar()} disabled={ocupado === 'prueba' || !datos.miTelefono || sinCupo}
+            <button type="button" onClick={() => void probar()} disabled={ocupado === 'prueba' || !puedoProbar || sinCupo}
+              title={!puedoProbar ? 'Anota tu teléfono en «Llámame cuando…»' : undefined}
               className="min-h-[36px] px-3 rounded-full border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
-              {ocupado === 'prueba' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />} Llámame para probar
+              {ocupado === 'prueba' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />} {conQuien ? `Probar llamando a ${conQuien.nombre.split(' ')[0]}` : 'Llámame para probar'}
             </button>
+            {conQuien && conTelefono.length > 1 && (
+              <select value={conQuien.id} onChange={(e) => setProbarCon(e.target.value)} aria-label="A quién llama la prueba"
+                className="min-h-[36px] px-2 rounded-full bg-slate-100 dark:bg-neutral-800 border-0 text-[0.75rem]">
+                {conTelefono.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.telefono}</option>)}
+              </select>
+            )}
+            {!datos.miTelefono && (
+              <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                {conQuien ? 'No tienes teléfono anotado: la prueba llama a esta persona.' : 'Anota tu teléfono abajo para probar.'}
+              </span>
+            )}
           </div>
         )}
         {aviso && <p className="text-[0.75rem] font-semibold text-emerald-600" role="status">{aviso}</p>}
@@ -281,7 +308,7 @@ export const AvisosPorLlamada: React.FC = () => {
               </label>
               {s.llamarCitaHoras !== null && (
                 <TextoDeLaLlamada sede={s} guardando={ocupado === `texto-${s.id}`} probando={ocupado === `prueba-${s.id}`}
-                  puedeProbar={listo && !!datos.miTelefono && !sinCupo}
+                  puedeProbar={listo && puedoProbar && !sinCupo}
                   onGuardar={(t) => void guardar({ sedes: [{ id: s.id, textoLlamadaCita: t }] }, `texto-${s.id}`)}
                   onProbar={() => void probarCita(s.id)} />
               )}
