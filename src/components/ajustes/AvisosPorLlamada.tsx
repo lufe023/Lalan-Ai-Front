@@ -305,7 +305,8 @@ export const AvisosPorLlamada: React.FC = () => {
           </div>
           <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
             {datos.sedes.map((s) => (
-              <NumeroDeLaSede key={s.id} sede={s} unaSola={datos.sedes.length === 1} encendidas={datos.proveedor} onCambio={setDatos} />
+              <NumeroDeLaSede key={s.id} sede={s} unaSola={datos.sedes.length === 1} encendidas={datos.proveedor} onCambio={setDatos}
+                otras={datos.sedes.filter((o) => o.id !== s.id && o.llamarDesde)} />
             ))}
           </ul>
         </div>
@@ -402,7 +403,9 @@ const PersonaQueLlama: React.FC<{
  */
 const NumeroDeLaSede: React.FC<{
   sede: EstadoLlamadas['sedes'][number]; unaSola: boolean; encendidas: boolean; onCambio: (e: EstadoLlamadas) => void;
-}> = ({ sede, unaSola, encendidas, onCambio }) => {
+  /** Otras sedes del salón que ya tienen número: se usa igual, sin verificar otra vez */
+  otras: EstadoLlamadas['sedes'];
+}> = ({ sede, unaSola, encendidas, onCambio, otras }) => {
   const [editando, setEditando] = useState(false);
   const [telefono, setTelefono] = useState('');
   const [codigo, setCodigo] = useState<string | null>(null);
@@ -425,10 +428,10 @@ const NumeroDeLaSede: React.FC<{
     return () => window.clearInterval(t);
   }, [esperando, sede.id, onCambio]);
 
-  const verificar = async () => {
+  const verificar = async (numero = telefono.trim()) => {
     setError(''); setOcupado(true);
     try {
-      const r = await api.post<{ listo: boolean; codigo: string | null; estado: EstadoLlamadas }>('/llamadas/numero', { sede: sede.id, telefono: telefono.trim() });
+      const r = await api.post<{ listo: boolean; codigo: string | null; estado: EstadoLlamadas }>('/llamadas/numero', { sede: sede.id, telefono: numero });
       onCambio(r.estado);
       if (r.listo) { setEditando(false); setCodigo(null); } else setCodigo(r.codigo);
     } catch (e) { setError((e as Error).message); }
@@ -465,6 +468,12 @@ const NumeroDeLaSede: React.FC<{
           </button>
         )}
       </div>
+      {!esperando && !sede.llamarDesde && encendidas && Array.from(new Map(otras.map((o) => [o.llamarDesde, o])).values()).map((o) => (
+        <button key={o.id} type="button" onClick={() => void verificar(o.llamarDesde!)} disabled={ocupado}
+          className="mr-1.5 px-2.5 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-[0.6875rem] font-semibold cursor-pointer disabled:opacity-50">
+          Usar {o.llamarDesde} (el de {o.nombre}), sin verificar otra vez
+        </button>
+      ))}
       {editando && !esperando && !sede.llamarDesde && (
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (telefono.trim()) void verificar(); }}>
           <input type="tel" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="809-555-1234" aria-label={`Número del salón en ${sede.nombre}`} autoFocus
