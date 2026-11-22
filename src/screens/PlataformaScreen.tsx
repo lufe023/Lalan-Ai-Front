@@ -213,6 +213,21 @@ export const PlataformaScreen: React.FC = () => {
   const [dispositivoCalor, setDispositivoCalor] = useState<Dispositivo>('pc');
   const [origenCalor, setOrigenCalor] = useState<'landing' | 'app'>('landing');
 
+  /* El aviso de «Salón nuevo» (registro propio) abre ese salón en Negocios */
+  useEffect(() => {
+    const abrirDelAviso = () => {
+      let aviso: string | null = null;
+      try { aviso = sessionStorage.getItem('lalan.abrirAviso'); } catch { /* nada */ }
+      if (!aviso?.startsWith('negocio:')) return;
+      try { sessionStorage.removeItem('lalan.abrirAviso'); } catch { /* nada */ }
+      setPestana('negocios');
+      setAbrirNegocio(aviso.slice('negocio:'.length));
+    };
+    abrirDelAviso();
+    window.addEventListener('lalan:abrir-aviso', abrirDelAviso);
+    return () => window.removeEventListener('lalan:abrir-aviso', abrirDelAviso);
+  }, []);
+
   const desde = useMemo(() => new Date(Date.now() - Number(rango) * 24 * 60 * 60 * 1000).toISOString(), [rango]);
 
   const cargar = useCallback(async () => {

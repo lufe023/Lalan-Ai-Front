@@ -37,6 +37,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
 import { SelectorSede } from '../components/ui/SelectorSede';
 import { useSedes } from '../hooks/useSedes';
+import { NumerosDeConfianza } from '../components/lalan-whatsapp/NumerosDeConfianza';
 
 export const BotsControlScreen: React.FC = () => {
   const { botConfigs, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes, ponerListas, settings, updateSettings, showToast, navigateTo } = useApp();
@@ -497,6 +498,9 @@ export const BotsControlScreen: React.FC = () => {
               {probandoAviso ? 'Enviando…' : 'Enviar aviso de prueba'}
             </button>
           </div>
+
+          {/* Quién de la administración habla con Lalan por WhatsApp, y de qué sedes */}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && sedeVista && <NumerosDeConfianza sede={sedeVista} agente={agente} />}
 
           {/* Recordatorios de cita a la clienta */}
           <div className="py-1.5 border-b border-slate-100 dark:border-neutral-800/80 space-y-2">

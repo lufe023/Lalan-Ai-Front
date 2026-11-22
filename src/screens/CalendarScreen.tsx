@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { ItemAnimado, ListaAnimada, RESORTE } from '../components/ui/movimiento';
 import { FotoClienta } from '../components/ui/FotoClienta';
 import { motion, AnimatePresence } from 'motion/react';
@@ -19,6 +19,7 @@ import {
   Check,
   UserCheck,
   AlertCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
@@ -41,6 +42,8 @@ import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
 import { SedesDeClienta } from '../components/ui/SedesDeClienta';
+import { compromisosApi, EVENTO_NUEVA_CITA, leerNuevaCita } from '../services/compromisos';
+import { abrirFichaDeClienta } from '../services/abrirFicha';
 
 /** Cuántas clientas se sugieren mientras se escribe su nombre */
 const CLIENTAS_SUGERIDAS = 6;
@@ -101,8 +104,23 @@ export const CalendarScreen: React.FC = () => {
     setCurrentDateStr(a.date);
     setActiveAppointment(a);
   };
+  /**
+   * La ficha de la clienta de la cita: por su id, o por su teléfono si la cita
+   * se anotó sin enlazarla (llegó por la puerta, se escribió el nombre a mano).
+   */
+  const fichaDeLaCita = (a: Appointment): string | undefined => {
+    if (a.clientId) return a.clientId;
+    const tel = (a.clientPhone ?? '').replace(/\D/g, '');
+    if (tel.length < 7) return undefined;
+    return clients.find((c) => (c.phone ?? '').replace(/\D/g, '').endsWith(tel.slice(-10)))?.id;
+  };
+  /** Abre su ficha; al cerrarla se vuelve a la Agenda con esta misma cita abierta */
+  const verFichaDeCita = (a: Appointment, clientId: string) => {
+    try { sessionStorage.setItem(ABRIR_CITA, a.id); } catch { /* sin almacenamiento: se vuelve a la Agenda igual */ }
+    abrirFichaDeClienta(clientId, 'calendar', navigateTo);
+  };
   const totalPendientes = useMemo(() => citasPendientes(appointments).total, [appointments]);
-  // Otra pantalla (Mi semana, Lalán, la campana) pidió abrir una cita: se salta a su día y se abre.
+  // Otra pantalla (Mi semana, Lalan, la campana) pidió abrir una cita: se salta a su día y se abre.
   // Si la Agenda ya estaba abierta, llega el evento y se vuelve a mirar (aunque haya otra cita abierta).
   const [pedidoAbrir, setPedidoAbrir] = useState(0);
   useEffect(() => {
@@ -238,6 +256,35 @@ export const CalendarScreen: React.FC = () => {
     if (cl) { setNewClientName(cl.name); setNewClientPhone(cl.phone); setNewChannel(cl.preferredChannel); }
   };
 
+  /* «Agendar cita» desde un chat (lo que Lalan vio pendiente): «Nueva cita»
+     se abre con quién, el día, la hora y la nota ya puestos. Al guardar, el
+     pendiente del chat queda resuelto. */
+  const compromisoDeLaCita = useRef<string | null>(null);
+  const [pedidoNueva, setPedidoNueva] = useState(0);
+  useEffect(() => {
+    const otra = () => setPedidoNueva((n) => n + 1);
+    window.addEventListener(EVENTO_NUEVA_CITA, otra);
+    return () => window.removeEventListener(EVENTO_NUEVA_CITA, otra);
+  }, []);
+  useEffect(() => {
+    const p = leerNuevaCita();
+    if (!p) return;
+    setActiveAppointment(null);
+    setVerRecordatorios(false);
+    setVerPendientes(false);
+    if (p.fecha) { setCurrentDateStr(p.fecha); setIrA({ fecha: new Date(`${p.fecha}T12:00:00`), vez: Date.now() }); }
+    const cl = p.clientId ? clients.find(c => c.id === p.clientId) : undefined;
+    if (cl) handleSelectClient(cl.id);
+    else { setSelectedClientId(p.clientId ?? ''); setNewClientName(p.clientName); setNewClientPhone(p.clientPhone ?? ''); }
+    if (p.canal) setNewChannel(p.canal);
+    if (p.hora) setNewTime(p.hora);
+    setNewNotes(p.notas ?? '');
+    setErrorAlAgendar(null);
+    compromisoDeLaCita.current = p.compromisoId ?? null;
+    setShowNewAptModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoNueva]);
+
   /* Escribir el nombre busca en TODO el directorio, no solo en lo que hay
      cargado: si la clienta ya existe, aparece en el desplegable de arriba
      mientras escribes. Sin esto, con el directorio paginado, una clienta
@@ -321,6 +368,8 @@ export const CalendarScreen: React.FC = () => {
     } finally {
       setAgendando(false);
     }
+    // Venía de algo pendiente en un chat: queda resuelto
+    if (compromisoDeLaCita.current) { void compromisosApi.agendado(compromisoDeLaCita.current).catch(() => undefined); compromisoDeLaCita.current = null; }
     setNewClientName(''); setNewClientPhone(''); setSelectedClientId('');
     setSelectedTierName(''); setCustomPrice(null); setNewNotes('');
     setShowNewAptModal(false);
@@ -642,21 +691,44 @@ export const CalendarScreen: React.FC = () => {
                los datos quedaban estirados de borde a borde, ilegibles. */
             <div className="max-w-2xl mx-auto space-y-5 pb-4">
 
-              {/* ── Quién ───────────────────────────────────────────────── */}
+              {/* ── Quién: su foto y su nombre abren su ficha ─────────────── */}
               <div className={`p-4 rounded-3xl border ${acento.bg} ${acento.bd} flex items-center gap-4`}>
-                <FotoClienta foto={activeAppointment.clientAvatar ?? clients.find(c => c.id === activeAppointment.clientId)?.avatar} nombre={activeAppointment.clientName} className="w-14 h-14 text-lg shadow-sm" />
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-bold text-base text-slate-900 dark:text-white truncate leading-tight">
-                    {activeAppointment.clientName}
-                  </h4>
-                  <p className="text-slate-500 dark:text-neutral-400 text-[0.75rem] flex items-center gap-1.5 mt-0.5">
-                    <Phone className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{activeAppointment.clientPhone}</span>
-                    <span className="text-slate-300 dark:text-neutral-700">·</span>
-                    <span className="uppercase font-semibold tracking-wide">{activeAppointment.channel}</span>
-                  </p>
-                </div>
-                <div className="shrink-0">{getStatusBadge(activeAppointment.status, activeAppointment)}</div>
+                {(() => {
+                  const fichaId = fichaDeLaCita(activeAppointment);
+                  const contenido = (
+                    <>
+                      <FotoClienta foto={activeAppointment.clientAvatar ?? clients.find(c => c.id === fichaId)?.avatar} nombre={activeAppointment.clientName} className="w-14 h-14 text-lg shadow-sm" />
+                      <span className="min-w-0 flex-1 block">
+                        <span className={`flex items-center gap-1 font-bold text-base text-slate-900 dark:text-white leading-tight ${fichaId ? 'group-hover:underline' : ''}`}>
+                          <span className="truncate">{activeAppointment.clientName}</span>
+                          {fichaId && <ChevronRight className="w-4 h-4 shrink-0 text-slate-400 dark:text-neutral-500" />}
+                        </span>
+                        <span className="text-slate-500 dark:text-neutral-400 text-[0.75rem] flex items-center gap-1.5 mt-0.5">
+                          <Phone className="w-3 h-3 shrink-0" />
+                          <span className="truncate min-w-0">{activeAppointment.clientPhone}</span>
+                          <span className="text-slate-300 dark:text-neutral-700">·</span>
+                          <span className="uppercase font-semibold tracking-wide">{activeAppointment.channel}</span>
+                        </span>
+                        {/* En el teléfono el estado va debajo: al lado se comía el nombre y el número */}
+                        <span className="sm:hidden mt-1.5 inline-flex">{getStatusBadge(activeAppointment.status, activeAppointment)}</span>
+                      </span>
+                    </>
+                  );
+                  return fichaId ? (
+                    <button
+                      type="button"
+                      onClick={() => verFichaDeCita(activeAppointment, fichaId)}
+                      title="Ver su ficha"
+                      aria-label={`Ver la ficha de ${activeAppointment.clientName}`}
+                      className="group flex items-center gap-4 flex-1 min-w-0 text-left rounded-2xl cursor-pointer active:scale-[0.99] transition-transform"
+                    >
+                      {contenido}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-4 flex-1 min-w-0">{contenido}</div>
+                  );
+                })()}
+                <div className="shrink-0 hidden sm:block">{getStatusBadge(activeAppointment.status, activeAppointment)}</div>
               </div>
 
               {/* ── El adelanto: apartada, comprobante por revisar o registrado ── */}
@@ -901,7 +973,7 @@ export const CalendarScreen: React.FC = () => {
       {/* ── New Appointment Modal ─────────────────────────────────────────── */}
       <IOSModal
         isOpen={showNewAptModal}
-        onClose={() => { setShowNewAptModal(false); setCustomPrice(null); setSelectedTierName(''); }}
+        onClose={() => { setShowNewAptModal(false); setCustomPrice(null); setSelectedTierName(''); compromisoDeLaCita.current = null; }}
         title="Nueva Cita en Salón"
         subtitle={`Agendando para el ${currentDateStr}`}
       >

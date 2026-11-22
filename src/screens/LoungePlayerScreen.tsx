@@ -60,6 +60,9 @@ import { IOSModal } from '../components/ui/IOSModal';
 import { IOSSegmentedControl } from '../components/ui/IOSSegmentedControl';
 import { noEsUnGusto } from '../utils/gustos';
 import { useSedes } from '../hooks/useSedes';
+import { BuscarCancion } from '../components/musica/BuscarCancion';
+import { tocarAqui } from '../components/ui/GlobalYouTubePlayer';
+import { avisarEsperaToque, useEsperaToque } from '../services/esperaToque';
 import { conSedeLocal, elegirSedeLocal, sedeLocal } from '../services/sedeLocal';
 
 /** Una preferencia ya asignada a la clienta */
@@ -476,7 +479,16 @@ export const LoungePlayerScreen: React.FC = () => {
   }>({ loading: false, items: [], total: 0, configured: true });
 
   // Canal activo del reproductor. Spotify entra aquí cuando se integre.
-  const [source, setSource] = useState<'radio' | 'youtube'>('radio');
+  const [source, setSource] = useState<'radio' | 'youtube'>(() => (ytPlaying ? 'youtube' : 'radio'));
+
+  /* Cuando YouTube arranca en este aparato (una canción pedida, la de una
+     clienta, una orden del mando), la pantalla muestra YouTube: si se
+     quedaba en la radio, parecía que la canción no había entrado. */
+  useEffect(() => { if (ytPlaying) setSource('youtube'); }, [ytPlaying]);
+
+  /* Una canción que el teléfono no deja sonar sin un toque (iPhone) */
+  const esperaToque = useEsperaToque();
+  useEffect(() => { if (esperaToque) setSource('youtube'); }, [esperaToque]);
 
   // Si el sistema pide menos movimiento, el reordenamiento es instantáneo
   const reduceMotion = useReducedMotion();
@@ -1009,7 +1021,8 @@ export const LoungePlayerScreen: React.FC = () => {
   }, [isPlayingLounge, currentTrack, nextLoungeTrack]);
 
   // Format seconds to mm:ss
-  const formatTime = async (seconds: number) => {
+  // OJO: no es async. Si devuelve una promesa, React no la puede pintar y la pantalla entera se cae.
+  const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
@@ -1131,6 +1144,31 @@ export const LoungePlayerScreen: React.FC = () => {
             transition={{ duration: 0.2 }}
             className="space-y-4"
           >
+            {/* Buscar una canción (escrita o dicha) y tocarla ya o dejarla en
+                la cola: suena en la pantalla de música de esta sede. */}
+            <BuscarCancion />
+
+            {/* El teléfono no dejó sonar la canción pedida sin un toque */}
+            {esperaToque && !ytPlaying && (
+              <button
+                type="button"
+                onClick={() => {
+                  tocarAqui(esperaToque.videoId, esperaToque.titulo);
+                  avisarEsperaToque(null);
+                  setSource('youtube');
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-rose-500 text-white text-left shadow-sm active:scale-[0.99] transition"
+              >
+                <span className="shrink-0 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <Play size={18} className="ml-0.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">Toca para que suene aquí</span>
+                  <span className="block text-xs text-white/85 truncate">{esperaToque.titulo}</span>
+                </span>
+              </button>
+            )}
+
             {/* Active Client Personal Banner */}
             {activeLoungeClient && (
               <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs flex items-center justify-between">

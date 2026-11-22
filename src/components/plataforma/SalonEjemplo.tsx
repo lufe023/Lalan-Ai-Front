@@ -8,10 +8,10 @@ import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
 import { useConfirmar } from '../ui/ModalConfirmar';
 
 /**
- * «Preparar salón de ejemplo»: un salón listo para presentar Lalán en 15
+ * «Preparar salón de ejemplo»: un salón listo para presentar Lalan en 15
  * minutos (la guía de la demo). Pregunta lo justo, lo arma en el servidor y
  * deja a mano lo que se usa en la llamada: con qué se entra, la Vitrina, la
- * factura del suplidor para «Pásale la factura a Lalán» y las fotos y
+ * factura del suplidor para «Pásale la factura a Lalan» y las fotos y
  * videos propios del salón que se va a visitar.
  */
 
@@ -151,7 +151,7 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
       <div className="flex justify-between items-start gap-2">
         <div>
           <b className="text-[0.9375rem] flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-[var(--primary)]" /> Preparar salón de ejemplo</b>
-          <p className="text-[0.75rem] text-slate-500 mt-0.5">Para presentar Lalán en 15 minutos: agenda llena, clientas con gustos, chats de Lalán, algo por pedir, un suplidor y su factura.</p>
+          <p className="text-[0.75rem] text-slate-500 mt-0.5">Para presentar Lalan en 15 minutos: agenda llena, clientas con gustos, chats de Lalan, algo por pedir, un suplidor y su factura.</p>
         </div>
         <button type="button" onClick={onCerrar} aria-label="Cerrar" className="cursor-pointer shrink-0"><X className="w-4 h-4 text-slate-400" /></button>
       </div>
@@ -220,7 +220,7 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
               );
             })}
           </div>
-          {negocio?.masculino && <p className="text-[0.75rem] text-slate-500">Los clientes salen en masculino y Lalán les habla así.</p>}
+          {negocio?.masculino && <p className="text-[0.75rem] text-slate-500">Los clientes salen en masculino y Lalan les habla así.</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -241,7 +241,7 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
             <label className="space-y-1"><span className="text-[0.75rem] text-slate-500">Especialistas</span><Cuantos etiqueta="Especialistas" valor={f.especialistas} opciones={[2, 3, 4, 5, 6]} onChange={(n) => setF({ ...f, especialistas: n })} /></label>
             <label className="space-y-1"><span className="text-[0.75rem] text-slate-500">{negocio?.masculino ? 'Clientes' : 'Clientas'}</span><Cuantos etiqueta="Clientas" valor={f.clientas} opciones={[12, 18, 24, 30]} onChange={(n) => setF({ ...f, clientas: n })} /></label>
           </div>
-          {f.sedes > 1 && <p className="text-[0.75rem] text-slate-500">Con varias sedes enseñas el selector de sede, el inventario y la caja de cada una, y que Lalán pregunta a qué sede va la clienta.</p>}
+          {f.sedes > 1 && <p className="text-[0.75rem] text-slate-500">Con varias sedes enseñas el selector de sede, el inventario y la caja de cada una, y que Lalan pregunta a qué sede va la clienta.</p>}
         </div>
 
         {!rellenar && (
@@ -263,14 +263,14 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
             <input placeholder="WhatsApp del suplidor: pon el tuyo" value={f.suplidorWhatsapp} onChange={(e) => setF({ ...f, suplidorWhatsapp: e.target.value })} className={campo} aria-label="WhatsApp del suplidor" />
             <input placeholder="RNC (opcional)" value={f.rnc} onChange={(e) => setF({ ...f, rnc: e.target.value })} className={campo} aria-label="RNC del suplidor" />
           </div>
-          <p className="text-[0.75rem] text-slate-500">Con tu número, cuando toques «Encárgaselo a Lalán», el pedido de precio te llega a ti y contestas como suplidor delante de la dueña.</p>
+          <p className="text-[0.75rem] text-slate-500">Con tu número, cuando toques «Encárgaselo a Lalan», el pedido de precio te llega a ti y contestas como suplidor delante de la dueña.</p>
         </div>
 
         {!rellenar && (
           <div className="space-y-1.5">
             <div className={titulo}>6. El WhatsApp del salón</div>
             <input placeholder="El número que vas a conectar para la demo (opcional)" value={f.telefonoSalon} onChange={(e) => setF({ ...f, telefonoSalon: e.target.value })} className={campo} aria-label="WhatsApp del salón" />
-            <p className="text-[0.75rem] text-slate-500">Los chats de ejemplo ya vienen. Para que la dueña le escriba a Lalán en vivo, conecta este número en Ajustes → Canales del salón de ejemplo.</p>
+            <p className="text-[0.75rem] text-slate-500">Los chats de ejemplo ya vienen. Para que la dueña le escriba a Lalan en vivo, conecta este número en Ajustes → Canales del salón de ejemplo.</p>
           </div>
         )}
 
@@ -278,9 +278,9 @@ export const SalonEjemplo: React.FC<{ onCerrar: () => void; onAbrirFicha: (negoc
           <div className="font-bold text-slate-700 dark:text-neutral-100">Lo que se siembra para la demo</div>
           <ul className="list-disc pl-4 space-y-0.5">
             <li>90 días de visitas pagadas (casi la mitad con producto) y la agenda de hoy a un mes, llena esta semana, con {negocio?.masculino ? 'un cliente' : 'una clienta'} con alergia y {negocio?.masculino ? 'uno nuevo' : 'una nueva'} mañana.</li>
-            <li>El Lounge completo: cada {negocio?.masculino ? 'cliente' : 'clienta'} con su música (artistas y géneros), su bebida y su snack. Unos están en el menú del salón y otros no, para que Lalán sugiera qué vender.</li>
+            <li>El Lounge completo: cada {negocio?.masculino ? 'cliente' : 'clienta'} con su música (artistas y géneros), su bebida y su snack. Unos están en el menú del salón y otros no, para que Lalan sugiera qué vender.</li>
             <li>Una bebida del menú agotada en la primera sede y dos insumos por pedir.</li>
-            <li>Cuatro chats de Lalán: reserva por WhatsApp, precio por Instagram, fuera de horario por Messenger y «quiero hablar con una persona».</li>
+            <li>Cuatro chats de Lalan: reserva por WhatsApp, precio por Instagram, fuera de horario por Messenger y «quiero hablar con una persona».</li>
             <li>Los recordatorios de estas citas ya salen como enviados: los teléfonos son inventados y no se gasta nada si el salón tiene WhatsApp conectado.</li>
           </ul>
         </div>
@@ -312,7 +312,7 @@ const Listo: React.FC<{ r: Resultado; onCerrar: () => void; onAbrirFicha: () => 
     [s.citasDeLaSemana, 'citas esta semana'], ...(s.citasDelMes ? [[s.citasDelMes, 'citas en el mes'] as [number, string]] : []),
     ...(s.cobrado90 ? [[`${s.moneda ?? ''} ${s.cobrado90.toLocaleString('es')}`.trim(), 'cobrado en 90 días'] as [string, string]] : []),
     [s.clientas, 'clientas con gustos'], [s.visitasPasadas, 'visitas pasadas'],
-    [s.servicios, 'servicios con receta'], [s.especialistas, 'especialistas'], [s.chats, 'chats de Lalán'],
+    [s.servicios, 'servicios con receta'], [s.especialistas, 'especialistas'], [s.chats, 'chats de Lalan'],
   ];
   return (
     <div className={`${tarjeta} space-y-4 border-emerald-400/60`}>
@@ -382,7 +382,7 @@ const Listo: React.FC<{ r: Resultado; onCerrar: () => void; onAbrirFicha: () => 
   );
 };
 
-/** Lo que el Lounge tiene para enseñar: lo que piden y no hay es lo que Lalán sugiere vender */
+/** Lo que el Lounge tiene para enseñar: lo que piden y no hay es lo que Lalan sugiere vender */
 const LoungeDelEjemplo: React.FC<{ l: NonNullable<Resultado['lounge']> }> = ({ l }) => (
   <div className="space-y-1.5">
     <div className={`${titulo} flex items-center gap-1.5`}><Music className="w-3.5 h-3.5" /> El Lounge</div>
@@ -415,12 +415,12 @@ const Recorrido: React.FC<{ r: Resultado }> = ({ r }) => {
     {
       donde: 'Antes de la llamada',
       que: 'Entra con el acceso de arriba en otra ventana (o en incógnito) y deja abierta la Agenda. Ten a mano el teléfono con tu WhatsApp: harás de suplidor.',
-      dato: whatsapp ? `El WhatsApp ${whatsapp.cuenta} está conectado: pídele a la dueña que le escriba a Lalán en vivo.` : 'Sin WhatsApp conectado, enseña los chats de ejemplo (y conecta uno en Ajustes → Canales si quieres el chat en vivo).',
+      dato: whatsapp ? `El WhatsApp ${whatsapp.cuenta} está conectado: pídele a la dueña que le escriba a Lalan en vivo.` : 'Sin WhatsApp conectado, enseña los chats de ejemplo (y conecta uno en Ajustes → Canales si quieres el chat en vivo).',
     },
     {
       donde: 'Chats',
-      que: `Abre los ${s.chats} chats de Lalán: la reserva por WhatsApp (agenda sola y pregunta música y bebida), el precio por Instagram (manda la Vitrina), el de fuera de horario por Messenger y el que pide hablar con una persona.`,
-      dato: 'Di: «Lalán contesta, agenda y te avisa solo cuando de verdad te necesita».',
+      que: `Abre los ${s.chats} chats de Lalan: la reserva por WhatsApp (agenda sola y pregunta música y bebida), el precio por Instagram (manda la Vitrina), el de fuera de horario por Messenger y el que pide hablar con una persona.`,
+      dato: 'Di: «Lalan contesta, agenda y te avisa solo cuando de verdad te necesita».',
     },
     {
       donde: 'Agenda y Mi semana',
@@ -435,7 +435,7 @@ const Recorrido: React.FC<{ r: Resultado }> = ({ r }) => {
       donde: 'Planes de seguimiento (Mi semana y la ficha)',
       que: `${s.planesDeSeguimiento} clientas van en un tratamiento de varias sesiones. En Mi semana sale quién avisó algo y quién se atrasó; toca una y abre su ficha con el plan.`,
       dato: [
-        rc?.planConAviso ? `${rc.planConAviso} le contestó algo a Lalán que hay que atender: sale con sus palabras.` : null,
+        rc?.planConAviso ? `${rc.planConAviso} le contestó algo a Lalan que hay que atender: sale con sus palabras.` : null,
         rc?.planAtrasado ? `${rc.planAtrasado} no vino a su sesión: sale como atrasada.` : null,
         rc?.planPorTerminar ? `${rc.planPorTerminar} va casi al final: enseña cómo bajó la caída en la gráfica.` : null,
       ].filter(Boolean).join(' ') || undefined,
@@ -448,22 +448,22 @@ const Recorrido: React.FC<{ r: Resultado }> = ({ r }) => {
     {
       donde: 'Informes → «Te lo piden y no lo tienes»',
       que: 'Aquí está la venta que se le escapa: lo que sus clientas piden y el salón no tiene.',
-      dato: [top ? `Lo más pedido: ${top}.` : null, l?.agotado ? `Y se le acabó ${l.agotado.producto} en ${l.agotado.sede}.` : null, 'Di: «Lalán te dice qué comprar porque lo pidieron tus clientas».'].filter(Boolean).join(' '),
+      dato: [top ? `Lo más pedido: ${top}.` : null, l?.agotado ? `Y se le acabó ${l.agotado.producto} en ${l.agotado.sede}.` : null, 'Di: «Lalan te dice qué comprar porque lo pidieron tus clientas».'].filter(Boolean).join(' '),
     },
     {
       donde: 'Compras → Por pedir',
-      que: 'Abre el aviso de Por pedir y toca «Encárgaselo a Lalán».',
+      que: 'Abre el aviso de Por pedir y toca «Encárgaselo a Lalan».',
       dato: s.porPedir.length ? `Se acabaron ${s.porPedir.join(' y ')}. El pedido de precio le llega a ${s.suplidor}: contesta tú desde tu WhatsApp.` : `El pedido de precio le llega a ${s.suplidor}.`,
     },
     {
-      donde: 'Pásale la factura a Lalán',
-      que: 'Descarga la factura de abajo antes de la llamada y súbela en Compras (o pásasela a Lalán en su chat).',
+      donde: 'Pásale la factura a Lalan',
+      que: 'Descarga la factura de abajo antes de la llamada y súbela en Compras (o pásasela a Lalan en su chat).',
       dato: 'Reconoce al suplidor, suma al inventario de la sede, avisa del precio que subió y crea el producto nuevo.',
     },
     {
       donde: 'Vitrina',
       que: r.vitrinas.length ? 'Abre la Vitrina desde el botón de abajo: así la ven sus clientas desde Instagram o WhatsApp.' : 'La Vitrina no se publicó en esta vuelta.',
-      dato: 'Cierra con: «Lalán trabaja por ti; tú solo atiendes».',
+      dato: 'Cierra con: «Lalan trabaja por ti; tú solo atiendes».',
     },
   ];
   return (
@@ -545,7 +545,7 @@ export const MediosDelEjemplo: React.FC<{ negocioId: string; factura?: string }>
     <div className="space-y-4">
       <div className="space-y-1.5">
         <div className={titulo}>La factura del suplidor</div>
-        <p className="text-[0.75rem] text-slate-500">Descárgala en la computadora y, en la demo, súbela en Compras → «Registrar factura» (o pásasela a Lalán): reconoce al suplidor, los productos, avisa de un precio que subió y crea uno nuevo.</p>
+        <p className="text-[0.75rem] text-slate-500">Descárgala en la computadora y, en la demo, súbela en Compras → «Registrar factura» (o pásasela a Lalan): reconoce al suplidor, los productos, avisa de un precio que subió y crea uno nuevo.</p>
         <button type="button" onClick={() => { setErrorFactura(''); descargarArchivo(`/${factura ?? `plataforma/ejemplo/${negocioId}/factura`}`, 'factura-suplidor.pdf').catch((e) => setErrorFactura((e as Error).message)); }}
           className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[0.8125rem] font-bold flex items-center gap-1.5 cursor-pointer">
           <FileDown className="w-4 h-4" /> Descargar factura (PDF)

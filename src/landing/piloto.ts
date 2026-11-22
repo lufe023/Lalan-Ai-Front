@@ -6,7 +6,7 @@
  * así la lista vive en un solo sitio. Si el servidor no responde, el
  * formulario queda con lo esencial y siempre está el WhatsApp a mano.
  */
-import { API } from './api';
+import { API, mensajeDeError } from './api';
 import { registrar, visitaActual } from './medicion';
 
 interface Opcion { id: string; descripcion: string }
@@ -41,9 +41,37 @@ function telefonoValido(t: string): boolean {
   return d.length === 10 && /^(809|829|849)/.test(d);
 }
 
+/**
+ * «Crear mi cuenta»: la app abre el registro con el plan que tocó en las
+ * tarjetas (o el que eligió en el formulario) y la visita, para medir.
+ */
+function iniciarRegistro(form: HTMLFormElement) {
+  const enlace = (a: HTMLAnchorElement | null, conPlan: boolean) => {
+    a?.addEventListener('click', () => {
+      const q = new URLSearchParams({ registro: '1' });
+      const plan = conPlan ? (a.dataset.plan || $<HTMLSelectElement>('p-plan')?.value || '') : '';
+      if (plan && plan !== 'no_se') q.set('plan', plan);
+      const visita = visitaActual();
+      if (visita) q.set('visita', visita);
+      a.href = `/app/?${q.toString()}`;
+    });
+  };
+  enlace($<HTMLAnchorElement>('r-crear'), true);
+  enlace($<HTMLAnchorElement>('pie-crear'), false);
+
+  // El formulario de siempre, para quien prefiere que se la instalemos
+  const abrir = $<HTMLButtonElement>('p-abrir');
+  abrir?.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    abrir.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) $<HTMLInputElement>('p-nombre').focus();
+  });
+}
+
 export async function iniciarPiloto(): Promise<void> {
   const form = $<HTMLFormElement>('form-piloto');
   if (!form) return;
+  iniciarRegistro(form);
   const aviso = $<HTMLParagraphElement>('p-aviso');
   const boton = $<HTMLButtonElement>('p-enviar');
 
@@ -57,12 +85,17 @@ export async function iniciarPiloto(): Promise<void> {
   pintarSelect($<HTMLSelectElement>('p-plan'), catalogos.planes);
   pintarSelect($<HTMLSelectElement>('p-como'), catalogos.comoNosConocio);
 
+  // «Empezó a llenarlo» = escribió o marcó algo con su mano. Antes contaba
+  // con solo entrar a un campo, y los robots de Facebook que revisan el
+  // enlace lo inflaban sin haber bajado hasta aquí.
   let abierto = false;
-  form.addEventListener('focusin', () => {
-    if (abierto) return;
+  const empezo = (e: Event) => {
+    if (abierto || !e.isTrusted) return;
     abierto = true;
     registrar({ tipo: 'piloto_abierto', seccion: 'piloto' });
-  });
+  };
+  form.addEventListener('input', empezo);
+  form.addEventListener('change', empezo);
 
   const decir = (texto: string, error = false) => { aviso.textContent = texto; aviso.classList.toggle('error', error); };
 
@@ -72,6 +105,7 @@ export async function iniciarPiloto(): Promise<void> {
     const salon = $<HTMLInputElement>('p-salon').value.trim();
     const telefono = $<HTMLInputElement>('p-telefono').value.trim();
     if (!nombre || !salon || !telefono) { decir('Escribe tu nombre, el de tu salón y tu WhatsApp para continuar.', true); return; }
+    if (nombre.length < 2 || salon.length < 2) { decir('Escribe tu nombre y el de tu salón completos (2 letras o más).', true); return; }
     if (!telefonoValido(telefono)) { decir('Revisa tu WhatsApp: son 10 dígitos y empieza por 809, 829 u 849.', true); $('p-telefono').focus(); return; }
     if (!$<HTMLInputElement>('p-acepto').checked) { decir('Marca la casilla para que podamos escribirte por WhatsApp.', true); return; }
 
@@ -93,7 +127,7 @@ export async function iniciarPiloto(): Promise<void> {
       const r = await fetch(`${API}/public/landing/piloto`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
       if (!r.ok) {
         const d = await r.json().catch(() => null);
-        throw new Error((d && (Array.isArray(d.message) ? d.message[0] : d.message)) || 'No se pudo enviar.');
+        throw new Error(mensajeDeError(d));
       }
       const mensaje = `Hola, soy ${nombre} de ${salon}. Acabo de pedir mi prueba gratis de Lalan AI.`;
       $<HTMLAnchorElement>('piloto-wa').href = `https://wa.me/${WHATSAPP_LALAN}?text=${encodeURIComponent(mensaje)}`;

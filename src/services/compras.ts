@@ -37,13 +37,42 @@ export const PASOS: { id: EstadoCompra; nombre: string }[] = [
   { id: 'recibida', nombre: 'Recibida' },
 ];
 
+/** Un proveedor que ya tiene ese WhatsApp (en su ficha o como otra persona de la empresa) */
+export interface DuenoDeNumero { proveedorId: string; proveedor: string; contactoId: string | null; contacto: string | null }
+
 export interface Proveedor {
   id: string; nombre: string; contacto: string | null; whatsapp: string | null; correo: string | null; telefono: string | null;
   direccion: string | null; rnc: string | null; currencyCode: string | null; diasEntrega: number | null;
   condicionesPago: string | null; pedidoMinimo: number | null; notas: string | null; sedes: string[];
   lalanHabla: boolean; plataformaId: string | null; activo: boolean;
   productos?: number; pedidosAbiertos?: number;
+  /** Las demás personas de la empresa (la de la ficha es la principal) */
+  contactos?: ContactoGuardado[];
+  /** Quién le escribió al salón por WhatsApp en las últimas 24 h: a esos Lalan les escribe ya, gratis */
+  ventanas?: VentanaAbierta[];
 }
+
+/** Otra persona del proveedor (un vendedor por zona, el de cobros) */
+export interface ContactoGuardado { id: string; proveedorId: string; nombre: string; cargo: string | null; whatsapp: string | null; correo: string | null; telefono: string | null }
+/** Con quién se habla: id null = el contacto de la ficha */
+export interface ContactoProveedor { id: string | null; nombre: string | null; cargo: string | null; whatsapp: string | null; correo: string | null; telefono: string | null; principal: boolean }
+export interface VentanaAbierta { numero: string; escribio: string; hasta: string; contactoId?: string | null; nombre: string | null }
+
+/** «Cambiar proveedor» y «Pedirle lo mismo a otro»: los que le venden a la sede del pedido */
+export interface OtroProveedor extends Omit<Proveedor, 'contactos'> {
+  contactos: ContactoProveedor[];
+  ventanas: VentanaAbierta[];
+  vende: { productId: string; precio: number | null; currencyCode: string | null; unidadCompra: string | null }[];
+  esElActual: boolean; yaCotiza: boolean;
+}
+
+/** «Hace 2 h», «hace 15 min» */
+export const haceCuanto = (iso: string) => {
+  const min = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  return `hace ${h} ${h === 1 ? 'hora' : 'horas'}`;
+};
 
 export interface Vinculo {
   id: string; proveedorId: string; productId: string; codigo: string | null; precio: number | null; currencyCode: string | null;
@@ -55,6 +84,12 @@ export interface DetalleProveedor extends Omit<Proveedor, 'productos'> {
   ordenes: { id: string; numeroTexto: string; estado: EstadoCompra; total: number; currencyCode: string; creadoEn: string; locationId: string; esperaDuena: boolean }[];
   historial: Evento[];
 }
+
+/** Qué papel es un adjunto: lo que es documento se maneja como documento */
+export type TipoDocumento = 'cotizacion' | 'orden' | 'factura' | 'conduce' | 'recibo' | 'otro';
+export const NOMBRE_DOCUMENTO: Record<TipoDocumento, string> = {
+  cotizacion: 'Cotización', orden: 'Orden de compra', factura: 'Factura', conduce: 'Conduce', recibo: 'Recibo de pago', otro: 'Otro',
+};
 
 export interface Evento {
   id: string; tipo: string; canal: string | null; autorTipo: 'persona' | 'lalan' | 'proveedor' | 'sistema';
@@ -117,8 +152,14 @@ export interface Pedido {
   entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null;
   manejaLalan: boolean; esperaDuena: boolean; preguntaDuena: string | null; creadoEn: string; seEdita: boolean;
   comparacionId: string | null;
+  /** Con quién del proveedor se habla en este pedido (id null = el de la ficha) */
+  contactoId: string | null; contacto: ContactoProveedor;
+  /** Su WhatsApp está abierto: escribió en las últimas 24 h (Lalan le escribe ya, sin plantilla) */
+  ventana: { escribio: string; hasta: string } | null;
+  /** Otra persona de la empresa que sí escribió en 24 h (contactoId undefined = número que no está en su ficha) */
+  otrasVentanas: VentanaAbierta[];
   lineas: LineaPedido[]; historial: Evento[];
-  adjuntos: { id: string; nombre: string; tipo: string; tamano: number; creadoEn: string }[];
+  adjuntos: { id: string; nombre: string; tipo: string; tamano: number; documento: TipoDocumento | null; creadoEn: string }[];
   cuenta: CuentaPedido | null; condicionesPago: string | null; pagos: PagoPedido[];
   /** El proveedor dijo que ya le pagaron y no se ha anotado: la dueña decide */
   pagoReportado: { monto: number | null; cuando: string; texto: string | null } | null;
@@ -240,16 +281,36 @@ export const comprasApi = {
   },
   pedido: (id: string) => api.get<Pedido>(`/compras/ordenes/${id}`),
   crear: (d: { proveedorId: string; locationId?: string | null; lineas: LineaNueva[]; origen?: string }) => api.post<Pedido>('/compras/ordenes', d),
-  editar: (id: string, d: Partial<{ proveedorId: string; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null; entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null; condicionesPago: string | null; venceEl: string | null }>) =>
+  editar: (id: string, d: Partial<{ proveedorId: string; contactoId: string | null; locationId: string; lineas: LineaNueva[]; fechaLimite: string | null; entregaEsperada: string | null; referenciaProveedor: string | null; terminos: string | null; entregarEn: string | null; recibeNombre: string | null; recibeTelefono: string | null; condicionesPago: string | null; venceEl: string | null }>) =>
     api.patch<Pedido>(`/compras/ordenes/${id}`, d),
   estado: (id: string, estado: EstadoCompra, motivo?: string) => api.post<Pedido>(`/compras/ordenes/${id}/estado`, { estado, motivo }),
   porPagar: (sede?: string) => api.get<PorPagar>(conSede('/compras/por-pagar', sede)),
   pagar: (id: string, d: { monto: number; fecha?: string | null; forma?: FormaDePago | null; referencia?: string | null; nota?: string | null }) =>
     api.post<Pedido>(`/compras/ordenes/${id}/pagos`, d),
   quitarPago: (pagoId: string) => api.delete<Pedido>(`/compras/pagos/${pagoId}`),
-  duplicar: (id: string) => api.post<Pedido>(`/compras/ordenes/${id}/duplicar`, {}),
+  /** Copia el pedido; a otro proveedor, le pide lo mismo y quedan en una comparación */
+  duplicar: (id: string, d: { proveedorId?: string; contactoId?: string | null } = {}) => api.post<Pedido>(`/compras/ordenes/${id}/duplicar`, d),
+  otrosProveedores: (id: string) => api.get<{ productos: number; sede: string; proveedores: OtroProveedor[] }>(`/compras/ordenes/${id}/otros-proveedores`),
+  /** ¿Ese WhatsApp ya está en otro proveedor? (para avisar, no se prohíbe) */
+  quienTieneNumero: (whatsapp: string, excepto: string | null) =>
+    api.get<DuenoDeNumero[]>(`/compras/proveedores/numero?whatsapp=${encodeURIComponent(whatsapp)}${excepto ? `&excepto=${excepto}` : ''}`),
+  crearContacto: (proveedorId: string, c: Partial<ContactoGuardado>) => api.post<ContactoGuardado>(`/compras/proveedores/${proveedorId}/contactos`, c),
+  editarContacto: (id: string, c: Partial<ContactoGuardado>) => api.patch<ContactoGuardado>(`/compras/contactos/${id}`, c),
+  borrarContacto: (id: string) => api.delete<{ ok: true }>(`/compras/contactos/${id}`),
   mensaje: (id: string, como?: 'cotizacion' | 'orden') => api.get<{ texto: string; whatsapp: string | null; correo: string | null; esCotizacion: boolean }>(`/compras/ordenes/${id}/mensaje${como ? `?como=${como}` : ''}`),
-  enviar: (id: string, d: { canal: CanalEnvio; como?: 'cotizacion' | 'orden'; mensaje?: string }) => api.post<{ enlace: string | null; orden: Pedido }>(`/compras/ordenes/${id}/enviar`, d),
+  enviar: (id: string, d: { canal: CanalEnvio; como?: 'cotizacion' | 'orden'; mensaje?: string }) =>
+    api.post<{ enlace: string | null; adjuntoId: string | null; porMandar: boolean; orden: Pedido }>(`/compras/ordenes/${id}/enviar`, d),
+  /** La orden que preparaste en tu WhatsApp salió: pasa a orden de compra */
+  yaLaMande: (id: string) => api.post<Pedido>(`/compras/ordenes/${id}/ya-la-mande`, {}),
+  /** Qué papel es un adjunto (null = sin marcar) */
+  marcarDocumento: (id: string, documento: TipoDocumento | null) => api.patch<{ ok: true; documento: TipoDocumento | null }>(`/compras/adjuntos/${id}`, { documento }),
+  /** La hoja en PDF como archivo, para compartirla por WhatsApp desde el teléfono */
+  pdfComoArchivo: async (id: string, como: 'cotizacion' | 'orden', numero: string): Promise<File> => {
+    const url = await blobProtegido(`/compras/ordenes/${id}/pdf?como=${como}`);
+    const blob = await (await fetch(url)).blob();
+    URL.revokeObjectURL(url);
+    return new File([blob], `${como === 'orden' ? 'Orden' : 'Cotizacion'}-${numero}.pdf`, { type: 'application/pdf' });
+  },
   recibir: (id: string, d: { lineas: { lineaId: string; cantidad: number; costo?: number | null; lote?: string | null; vence?: string | null }[]; cerrarResto?: boolean }) =>
     api.post<Pedido>(`/compras/ordenes/${id}/recibir`, d),
   nota: (id: string, d: { texto: string; tipo?: 'nota' | 'mensaje_entrante'; canal?: string }) => api.post<Pedido>(`/compras/ordenes/${id}/notas`, d),
@@ -259,9 +320,10 @@ export const comprasApi = {
   /** «Encárgaselo a Lalan»: busca quién lo vende (los tuyos y su lista), arma los borradores de la sede y pide precio a todos */
   encargar: (locationId: string, productIds: string[]) => api.post<Encargo>('/compras/encargar', { locationId, productIds }),
   lalanPide: (id: string) => api.post<{ canal: 'whatsapp' | 'correo'; orden: Pedido }>(`/compras/ordenes/${id}/lalan-pide`, {}),
-  adjuntar: (id: string, archivos: File[]) => {
+  adjuntar: (id: string, archivos: File[], documento?: TipoDocumento | null) => {
     const f = new FormData();
     archivos.forEach((a) => f.append('archivos', a));
+    if (documento) f.append('documento', documento);
     return subirArchivo<Pedido>(`/compras/ordenes/${id}/adjuntos`, f);
   },
   quitarAdjunto: (id: string) => api.delete<{ ok: true }>(`/compras/adjuntos/${id}`),
@@ -407,6 +469,8 @@ export interface PanoramaProveedor {
 export interface MensajeProveedor {
   id: string; tipo: string; canal: string | null; autorTipo: string; autorNombre: string | null; texto: string | null;
   adjuntoId: string | null; creadoEn: string; pedido: { id: string; numero: string; estado: EstadoCompra } | null;
+  /** Lo que salió por WhatsApp: «fallido» si Meta no lo entregó, con el motivo en `fallo` */
+  entrega?: 'enviando' | 'enviado' | 'fallido' | null; fallo?: string | null;
 }
 
 export interface ChatProveedor {

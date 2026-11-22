@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { guardarDestino } from '../services/enlaceEntrada';
 import {
   Appointment, AppointmentStatus, AvisoCita, MetodoAdelanto, BotChannelConfig, ChatMessage,
   Client, CommunicationChannel, Conversation, LoungeTrack, ServiceCategory,
@@ -129,7 +130,7 @@ export interface SalonStaff {
   fotoId?: string | null;
   phone?: string | null;
   active: boolean;
-  /** Cumpleaños "MM-DD" y el año si se sabe: Lalán lo recuerda en «Tu día» */
+  /** Cumpleaños "MM-DD" y el año si se sabe: Lalan lo recuerda en «Tu día» */
   cumpleMesDia?: string | null;
   cumpleAnio?: number | null;
   zoneId?: string | null;
@@ -881,6 +882,8 @@ function mapApiConversation(c: any): Conversation {
     locationId: c.locationId ?? undefined, sedePorElegir: !!c.sedePorElegir,
     clientHandle: c.clientHandle, clientPhone: c.clientPhone,
     clientAvatar: urlDeFoto(c.clientAvatar) ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.clientName)}&background=e2e8f0&color=475569`,
+    // Un backend que aún no la manda: la del chat era la del canal
+    fotoDelCanal: urlDeFoto(c.fotoDelCanal !== undefined ? c.fotoDelCanal : c.clientAvatar) ?? undefined,
     channel: c.channel, status: c.status, lastMessage: c.lastMessage ?? '',
     lastMessageTime: c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleTimeString('es', { hour: 'numeric', hour12: true, minute: '2-digit' }) : '',
     unreadCount: c.unreadCount ?? 0, serviceInterest: c.serviceInterest,
@@ -1006,10 +1009,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const u = new URL(window.location.href);
       if (u.searchParams.has('ir')) {
+        // Si antes hay que entrar con la clave, al entrar se vuelve aquí (no al inicio)
+        guardarDestino(u.searchParams.get('ir') ?? '');
         abrirDentro(u.searchParams.get('aviso'), u.searchParams.get('conversacion'));
         ['ir', 'aviso', 'conversacion'].forEach(k => u.searchParams.delete(k));
         window.history.replaceState(null, '', u.pathname + u.search + u.hash);
       }
+    } catch { /* nada */ }
+    /* Con la app instalada ya abierta (Android, PC), un enlace de un aviso la
+       trae al frente en vez de abrir otra ventana (launch_handler del manifiesto) */
+    try {
+      (window as any).launchQueue?.setConsumer((p: { targetURL?: string }) => {
+        if (!p?.targetURL) return;
+        const d = new URL(p.targetURL);
+        const ir = d.searchParams.get('ir');
+        if (!ir) return;
+        setCurrentScreen(ir as ScreenName);
+        abrirDentro(d.searchParams.get('aviso'), d.searchParams.get('conversacion'));
+      });
     } catch { /* nada */ }
     if (!('serviceWorker' in navigator)) return;
     const oir = (e: MessageEvent) => {

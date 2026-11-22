@@ -10,7 +10,7 @@ import { API, MODO_CALOR } from './api';
 
 export type TipoEvento =
   | 'seccion' | 'clic' | 'historia_inicio' | 'historia_sonido' | 'historia_final' | 'historia_pantalla_completa'
-  | 'historia_repetir' | 'piloto_abierto' | 'piloto_enviado' | 'entrar' | 'whatsapp';
+  | 'historia_repetir' | 'piloto_abierto' | 'piloto_enviado' | 'entrar' | 'whatsapp' | 'registro_abierto';
 
 interface Evento { tipo: TipoEvento; seccion?: string; x?: number; y?: number; detalle?: string }
 
@@ -124,7 +124,8 @@ function escuchar() {
     registrar({ tipo: 'clic', seccion: idDeSeccion(sec), x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)), detalle: texto || undefined });
     const href = control?.getAttribute('href') || '';
     if (/wa\.me|whatsapp/i.test(href)) registrar({ tipo: 'whatsapp', seccion: idDeSeccion(sec) });
-    if (href.startsWith('/app')) registrar({ tipo: 'entrar', seccion: idDeSeccion(sec) });
+    // «Crear mi cuenta» se cuenta aparte de «Entrar»
+    if (href.startsWith('/app')) registrar({ tipo: href.includes('registro=1') ? 'registro_abierto' : 'entrar', seccion: idDeSeccion(sec) });
   }, { capture: true });
 
   // La historia avisa cuando empieza, termina, suena…

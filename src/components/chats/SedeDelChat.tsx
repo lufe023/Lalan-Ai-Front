@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { ChevronDown, MapPin } from 'lucide-react';
+import { CHIP_AMBAR, CHIP_CHAT, CHIP_NEUTRO } from './chipsDelChat';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { useSedes } from '../../hooks/useSedes';
@@ -11,6 +12,7 @@ import type { Conversation } from '../../types';
  * Por un número o un Instagram de todas las sedes, Lalan le pregunta a la
  * clienta en cuál quiere atenderse y pasa el chat ahí. Si escribió al
  * número de una sede pero va a otra, aquí el equipo lo pasa a mano.
+ * Es un chip de la fila de herramientas de arriba del chat.
  */
 export const SedeDelChat: React.FC<{ conversacion: Conversation }> = ({ conversacion }) => {
   const { showToast, recargarConversaciones } = useApp();
@@ -34,26 +36,26 @@ export const SedeDelChat: React.FC<{ conversacion: Conversation }> = ({ conversa
     }
   };
 
+  const texto = conversacion.sedePorElegir ? 'Sede por elegir' : actual?.name ?? 'Otra sede';
   return (
-    <div className="border-t border-slate-100 dark:border-neutral-900 bg-white dark:bg-neutral-950 text-[0.75rem] text-slate-500 dark:text-neutral-400">
-      <div className="px-4 py-1.5 flex items-center gap-2">
-        <MapPin className="w-3.5 h-3.5 shrink-0" />
-        <span className="flex-1 min-w-0 truncate">
-          {conversacion.sedePorElegir
-            ? 'Sede por elegir: Lalan le pregunta en cuál quiere atenderse'
-            : `Se atiende en ${actual?.name ?? 'otra sede'}`}
-        </span>
-        <select
-          value="" disabled={ocupado} onChange={e => void pasar(e.target.value)}
-          aria-label="Pasar a otra sede"
-          className="shrink-0 font-bold underline bg-transparent border-0 cursor-pointer"
-        >
-          <option value="">{conversacion.sedePorElegir ? 'Elegir sede…' : 'Pasar a…'}</option>
-          {sedes.filter(s => s.id !== conversacion.locationId || conversacion.sedePorElegir).map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </div>
-    </div>
+    /* Un chip que abre la lista de sedes del teléfono: un toque y se elige */
+    <label
+      title={conversacion.sedePorElegir ? 'Lalan le pregunta en cuál quiere atenderse. Puedes elegirla tú.' : `Se atiende en ${texto}. Toca para pasarlo a otra sede.`}
+      className={`${CHIP_CHAT} ${conversacion.sedePorElegir ? CHIP_AMBAR : CHIP_NEUTRO} relative max-w-[13rem] ${ocupado ? 'opacity-60' : ''}`}
+    >
+      <MapPin className="w-3.5 h-3.5 shrink-0" />
+      <span className="truncate">{texto}</span>
+      <ChevronDown className="w-3.5 h-3.5 shrink-0 opacity-60" />
+      <select
+        value="" disabled={ocupado} onChange={e => void pasar(e.target.value)}
+        aria-label={conversacion.sedePorElegir ? 'Elegir la sede de este chat' : `Se atiende en ${texto}. Pasar a otra sede`}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      >
+        <option value="">{conversacion.sedePorElegir ? 'Elegir sede…' : 'Pasar a…'}</option>
+        {sedes.filter(s => s.id !== conversacion.locationId || conversacion.sedePorElegir).map(s => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+      </select>
+    </label>
   );
 };

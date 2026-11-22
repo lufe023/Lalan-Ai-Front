@@ -74,6 +74,8 @@ export interface EstadoSala {
 
 export type OrdenMusica =
   | 'play' | 'pause' | 'next' | 'prev' | 'seek' | 'volumen' | 'pista'
+  /** Tocar YA una canción concreta, por su videoId (la que puso la dueña o Lalan) */
+  | 'cancion'
   /** Cómo se VE en la pantalla del salón, no qué suena */
   | 'video' | 'pantalla';
 

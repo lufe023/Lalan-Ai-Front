@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, ChevronRight, Loader2, Lock, Phone, PhoneCall, PhoneMissed, PhoneOff, Sparkles } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Loader2, Lock, Phone, PhoneCall, PhoneMissed, PhoneOff, Sparkles } from 'lucide-react';
 import { irA } from '../../services/avisos';
 import { api } from '../../services/api';
 import { pedirSeccionAjustes } from './MenuAjustes';
+import { SelectorSede } from '../ui/SelectorSede';
+import { useSedes } from '../../hooks/useSedes';
 import { EVENTO_AJUSTES_MENU } from '../guias/GuiaEnCurso';
 
 interface EstadoLlamadas {
@@ -13,10 +15,26 @@ interface EstadoLlamadas {
   miTelefono: string | null;
   llamarPor: string[];
   avisos: { id: string; descripcion: string; grupo: string }[];
-  sedes: { id: string; nombre: string; llamarCitaHoras: number | null; textoLlamadaCita: string | null }[];
+  sedes: { id: string; nombre: string; llamarCitaHoras: number | null; textoLlamadaCita: string | null; llamarDesde?: string | null; llamarDesdePendiente?: string | null }[];
+  /** El número de Lalan: sale si la sede no tiene uno suyo */
+  numeroLalan?: string | null;
   horasCita: number[];
   esDireccion: boolean;
+  /** Solo la dirección: a quién del equipo llama Lalan en cada sede */
+  equipo?: PersonaLlamada[];
 }
+
+interface PersonaLlamada {
+  id: string; nombre: string; cargo: string | null; telefono: string | null;
+  /** Su sede (null = ve todas) */
+  sede: string | null;
+  llamarPor: string[];
+  /** Vacío = todas las que ve */
+  llamarSedes: string[];
+  soyYo: boolean;
+}
+
+const laLlamaEnSede = (p: PersonaLlamada, sede: string) => p.llamarPor.length > 0 && (!p.llamarSedes.length || p.llamarSedes.includes(sede));
 
 interface Llamada {
   id: string; tipo: 'aviso' | 'cita' | 'prueba'; para: string; texto: string;
@@ -51,10 +69,10 @@ const tarjeta = 'p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slat
 const cuando = (iso: string) => new Date(iso).toLocaleString('es-DO', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 /**
- * Ajustes → Avisos por llamada. Lalán llama por teléfono:
+ * Ajustes → Avisos por llamada. Lalan llama por teléfono:
  *  - a esta persona, por los avisos que ella elija (lo urgente);
  *  - a las clientas, unas horas antes de su cita (lo elige la dirección por sede).
- * Sale apagado: hace falta el módulo en el plan y que Lalán tenga las llamadas
+ * Sale apagado: hace falta el módulo en el plan y que Lalan tenga las llamadas
  * encendidas. Mientras tanto se puede dejar todo elegido.
  */
 export const AvisosPorLlamada: React.FC = () => {
@@ -64,6 +82,10 @@ export const AvisosPorLlamada: React.FC = () => {
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState('');
   const [telefono, setTelefono] = useState('');
+  const sedesElegibles = useSedes();
+  const [sedeEquipo, setSedeEquipo] = useState('');
+  /** Sin teléfono propio, la dirección prueba llamando a alguien de su equipo */
+  const [probarCon, setProbarCon] = useState('');
 
   const cargar = useCallback(async () => {
     try {
@@ -86,17 +108,40 @@ export const AvisosPorLlamada: React.FC = () => {
     finally { setOcupado(null); }
   };
 
+  // Quién contesta la prueba: yo, o si no tengo teléfono, a quien elija del equipo
+  const conTelefono = (datos?.equipo ?? []).filter((p) => p.telefono && !p.soyYo);
+  const conQuien = !datos?.miTelefono && datos?.esDireccion ? (conTelefono.find((p) => p.id === probarCon) ?? conTelefono[0] ?? null) : null;
+  const puedoProbar = !!datos?.miTelefono || !!conQuien;
+
+  /** La dirección enciende o apaga a alguien del equipo en una sede, o cambia por qué avisos la llama */
+  const guardarPersona = async (cambio: { persona: string; sede?: string; llamar?: boolean; llamarPor?: string[] }) => {
+    setError(''); setOcupado(`persona-${cambio.persona}`);
+    try { setDatos(await api.patch<EstadoLlamadas>('/llamadas/equipo', cambio)); }
+    catch (e) { setError((e as Error).message); void cargar(); }
+    finally { setOcupado(null); }
+  };
+
+  const irAEquipo = () => { pedirSeccionAjustes('equipo'); window.dispatchEvent(new CustomEvent(EVENTO_AJUSTES_MENU, { detail: 'equipo' })); };
+
   const probar = async () => {
     setError(''); setAviso(''); setOcupado('prueba');
-    try { await api.post('/llamadas/prueba', {}); setAviso('Te estamos llamando. Contesta para oír cómo suena.'); void cargar(); }
+    try {
+      await api.post('/llamadas/prueba', conQuien ? { persona: conQuien.id } : {});
+      setAviso(conQuien ? `Estamos llamando a ${conQuien.nombre}. Que conteste para oír cómo suena.` : 'Te estamos llamando. Contesta para oír cómo suena.');
+      void cargar();
+    }
     catch (e) { setError((e as Error).message); }
     finally { setOcupado(null); }
   };
 
-  /** Oír en mi teléfono lo que Lalán le dice a la clienta de esa sede */
+  /** Oír en mi teléfono lo que Lalan le dice a la clienta de esa sede */
   const probarCita = async (sede: string) => {
     setError(''); setAviso(''); setOcupado(`prueba-${sede}`);
-    try { await api.post('/llamadas/prueba-cita', { sede }); setAviso('Te estamos llamando con el recordatorio de la cita. Contesta y prueba marcar 1.'); void cargar(); }
+    try {
+      await api.post('/llamadas/prueba-cita', { sede, ...(conQuien ? { persona: conQuien.id } : {}) });
+      setAviso(`${conQuien ? `Estamos llamando a ${conQuien.nombre}` : 'Te estamos llamando'} con el recordatorio de la cita. Contesta y prueba marcar 1.`);
+      void cargar();
+    }
     catch (e) { setError((e as Error).message); }
     finally { setOcupado(null); }
   };
@@ -125,7 +170,7 @@ export const AvisosPorLlamada: React.FC = () => {
         <div className="flex items-start gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0"><PhoneCall className="w-4 h-4" /></div>
           <div className="min-w-0">
-            <h3 className="text-[0.9375rem] font-bold">Lalán te llama cuando es urgente</h3>
+            <h3 className="text-[0.9375rem] font-bold">Lalan te llama cuando es urgente</h3>
             <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 mt-0.5">
               Una llamada de verdad, con su voz, para lo que no puede esperar. Y a tus clientas, para recordarles la cita: marcan 1 y queda confirmada.
             </p>
@@ -149,17 +194,29 @@ export const AvisosPorLlamada: React.FC = () => {
         ) : !datos.proveedor ? (
           <div className="rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 p-3 flex items-start gap-2.5">
             <PhoneOff className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
-            <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Las llamadas se están encendiendo en Lalán. Deja elegido lo que quieres: empieza a llamar solo, sin que hagas nada más.</p>
+            <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Las llamadas se están encendiendo en Lalan. Deja elegido lo que quieres: empieza a llamar solo, sin que hagas nada más.</p>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[0.75rem] font-semibold ${sinCupo ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
               {datos.usadas}{datos.tope !== null ? ` de ${datos.tope}` : ''} llamadas este mes
             </span>
-            <button type="button" onClick={() => void probar()} disabled={ocupado === 'prueba' || !datos.miTelefono || sinCupo}
+            <button type="button" onClick={() => void probar()} disabled={ocupado === 'prueba' || !puedoProbar || sinCupo}
+              title={!puedoProbar ? 'Anota tu teléfono en «Llámame cuando…»' : undefined}
               className="min-h-[36px] px-3 rounded-full border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
-              {ocupado === 'prueba' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />} Llámame para probar
+              {ocupado === 'prueba' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />} {conQuien ? `Probar llamando a ${conQuien.nombre.split(' ')[0]}` : 'Llámame para probar'}
             </button>
+            {conQuien && conTelefono.length > 1 && (
+              <select value={conQuien.id} onChange={(e) => setProbarCon(e.target.value)} aria-label="A quién llama la prueba"
+                className="min-h-[36px] px-2 rounded-full bg-slate-100 dark:bg-neutral-800 border-0 text-[0.75rem]">
+                {conTelefono.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.telefono}</option>)}
+              </select>
+            )}
+            {!datos.miTelefono && (
+              <span className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                {conQuien ? 'No tienes teléfono anotado: la prueba llama a esta persona.' : 'Anota tu teléfono abajo para probar.'}
+              </span>
+            )}
           </div>
         )}
         {aviso && <p className="text-[0.75rem] font-semibold text-emerald-600" role="status">{aviso}</p>}
@@ -171,7 +228,7 @@ export const AvisosPorLlamada: React.FC = () => {
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">Llámame cuando…</h3>
           <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-            {datos.miTelefono ? `Te llama al ${datos.miTelefono}. Además de la notificación, y como mucho una vez cada 15 minutos por el mismo aviso.` : 'Anota tu teléfono: es al que te llama (y también puedes entrar a Lalán con él).'}
+            {datos.miTelefono ? `Te llama al ${datos.miTelefono}. Además de la notificación, y como mucho una vez cada 15 minutos por el mismo aviso.` : 'Anota tu teléfono: es al que te llama (y también puedes entrar a Lalan con él).'}
           </p>
           {!datos.miTelefono && (
             <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (telefono.trim()) void guardar({ telefono: telefono.trim() }, 'telefono'); }}>
@@ -199,13 +256,41 @@ export const AvisosPorLlamada: React.FC = () => {
         </ul>
       </div>
 
+      {/* A quién del equipo llama Lalan: la dirección, por sede */}
+      {datos.esDireccion && !!datos.equipo?.length && (() => {
+        const sede = sedeEquipo || sedesElegibles[0]?.id || datos.sedes[0]?.id || '';
+        const nombreSede = (sedesElegibles.find((x) => x.id === sede)?.name) ?? datos.sedes.find((x) => x.id === sede)?.nombre ?? '';
+        const personas = (datos.equipo ?? []).filter((p) => !p.sede || p.sede === sede);
+        return (
+          <div className={tarjeta}>
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">¿A quién llama Lalan?</h3>
+                <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                  Cuando pasa algo urgente{nombreSede && sedesElegibles.length > 1 ? ` en ${nombreSede}` : ''}, Lalan llama a quien marques. Usa el teléfono que tiene en Equipo.
+                </p>
+              </div>
+              <SelectorSede sedes={sedesElegibles} value={sede} onChange={setSedeEquipo} />
+            </div>
+            <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
+              {personas.map((p) => (
+                <PersonaQueLlama key={p.id} p={p} sede={sede} avisos={avisosOrdenados} ocupado={ocupado === `persona-${p.id}`}
+                  onLlamar={(llamar) => void guardarPersona({ persona: p.id, sede, llamar })}
+                  onAvisos={(llamarPor) => void guardarPersona({ persona: p.id, llamarPor })}
+                  onAnotarTelefono={irAEquipo} />
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
+
       {/* A las clientas: la dirección, por sede */}
       {datos.esDireccion && (
         <div className={tarjeta}>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">Recordar la cita llamando a la clienta</h3>
             <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-              Lalán le recuerda la cita y le pide marcar 1 para confirmar o 2 para cambiarla. Si marca 2, te avisa para darle otra hora. Solo llama entre 8 a. m. y 8 p. m.
+              Lalan le recuerda la cita y le pide marcar 1 para confirmar o 2 para cambiarla. Si marca 2, te avisa para darle otra hora. Solo llama entre 8 a. m. y 8 p. m.
             </p>
           </div>
           <div className="space-y-2">
@@ -223,7 +308,7 @@ export const AvisosPorLlamada: React.FC = () => {
               </label>
               {s.llamarCitaHoras !== null && (
                 <TextoDeLaLlamada sede={s} guardando={ocupado === `texto-${s.id}`} probando={ocupado === `prueba-${s.id}`}
-                  puedeProbar={listo && !!datos.miTelefono && !sinCupo}
+                  puedeProbar={listo && puedoProbar && !sinCupo}
                   onGuardar={(t) => void guardar({ sedes: [{ id: s.id, textoLlamadaCita: t }] }, `texto-${s.id}`)}
                   onProbar={() => void probarCita(s.id)} />
               )}
@@ -233,6 +318,24 @@ export const AvisosPorLlamada: React.FC = () => {
           {!listo && datos.sedes.some((s) => s.llamarCitaHoras) && (
             <p className="text-[0.6875rem] text-slate-400 flex items-center gap-1"><Check className="w-3 h-3" /> Guardado: empieza cuando se enciendan las llamadas.</p>
           )}
+        </div>
+      )}
+
+      {/* El número que ve quien recibe la llamada: la dirección, por sede */}
+      {datos.esDireccion && (
+        <div className={tarjeta}>
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">El número que ve la clienta</h3>
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+              Contestan más si ven el número del salón. Sin uno verificado, Lalan llama con el suyo{datos.numeroLalan ? ` (${datos.numeroLalan})` : ''}.
+            </p>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
+            {datos.sedes.map((s) => (
+              <NumeroDeLaSede key={s.id} sede={s} unaSola={datos.sedes.length === 1} encendidas={datos.proveedor} onCambio={setDatos}
+                otras={datos.sedes.filter((o) => o.id !== s.id && o.llamarDesde)} />
+            ))}
+          </ul>
         </div>
       )}
 
@@ -271,6 +374,155 @@ export const AvisosPorLlamada: React.FC = () => {
   );
 };
 
+/** Una persona del equipo: si Lalan la llama en esta sede y por qué avisos */
+const PersonaQueLlama: React.FC<{
+  p: PersonaLlamada; sede: string; avisos: { id: string; descripcion: string; grupo: string }[]; ocupado: boolean;
+  onLlamar: (llamar: boolean) => void; onAvisos: (llamarPor: string[]) => void; onAnotarTelefono: () => void;
+}> = ({ p, sede, avisos, ocupado, onLlamar, onAvisos, onAnotarTelefono }) => {
+  const [abierto, setAbierto] = useState(false);
+  const encendida = laLlamaEnSede(p, sede);
+  return (
+    <li className="py-2 space-y-2">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[0.8125rem] font-medium leading-snug truncate">{p.nombre}{p.soyYo ? ' (tú)' : ''}</p>
+          {p.telefono ? (
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+              {p.telefono}{p.cargo ? ` · ${p.cargo}` : ''}
+              {encendida && (
+                <button type="button" onClick={() => setAbierto((a) => !a)} className="ml-1.5 font-semibold text-[var(--primary)] inline-flex items-center gap-0.5 cursor-pointer">
+                  {p.llamarPor.length} {p.llamarPor.length === 1 ? 'aviso' : 'avisos'} <ChevronDown className={`w-3 h-3 transition-transform ${abierto ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            </p>
+          ) : (
+            <button type="button" onClick={onAnotarTelefono} className="text-[0.6875rem] font-semibold text-amber-600 cursor-pointer">
+              Sin teléfono · Anotarlo en Equipo
+            </button>
+          )}
+        </div>
+        {ocupado && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+        <Interruptor encendido={encendida} etiqueta={`Llamar a ${p.nombre}`} deshabilitado={ocupado || (!p.telefono && !encendida)}
+          onCambio={() => onLlamar(!encendida)} />
+      </div>
+      {encendida && abierto && (
+        <div className="flex flex-wrap gap-1.5">
+          {avisos.map((a) => {
+            const marcado = p.llamarPor.includes(a.id);
+            return (
+              <button key={a.id} type="button" disabled={ocupado} aria-pressed={marcado}
+                onClick={() => onAvisos(marcado ? p.llamarPor.filter((x) => x !== a.id) : [...p.llamarPor, a.id])}
+                className={`px-2.5 py-1 rounded-full border text-[0.6875rem] font-semibold cursor-pointer disabled:opacity-50 ${marcado ? 'bg-[var(--primary)]/10 border-[var(--primary)]/40 text-[var(--primary)]' : 'bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-500'}`}>
+                {marcado && <Check className="w-3 h-3 inline -mt-0.5 mr-0.5" />}{a.descripcion}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </li>
+  );
+};
+
+/**
+ * El número del salón para una sede. Twilio solo deja llamar con un número
+ * que él verificó: la llama y ella marca el código que le mostramos. La
+ * pantalla pregunta cada pocos segundos y se pone sola en «Listo».
+ */
+const NumeroDeLaSede: React.FC<{
+  sede: EstadoLlamadas['sedes'][number]; unaSola: boolean; encendidas: boolean; onCambio: (e: EstadoLlamadas) => void;
+  /** Otras sedes del salón que ya tienen número: se usa igual, sin verificar otra vez */
+  otras: EstadoLlamadas['sedes'];
+}> = ({ sede, unaSola, encendidas, onCambio, otras }) => {
+  const [editando, setEditando] = useState(false);
+  const [telefono, setTelefono] = useState('');
+  const [codigo, setCodigo] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState('');
+  const esperando = !!codigo || !!sede.llamarDesdePendiente;
+
+  // Mientras espera que marque el código: pregunta cada 4 s, como mucho 3 minutos
+  useEffect(() => {
+    if (!esperando) return;
+    let vueltas = 0;
+    const t = window.setInterval(async () => {
+      vueltas++;
+      try {
+        const r = await api.post<{ listo: boolean; estado: EstadoLlamadas }>('/llamadas/numero/comprobar', { sede: sede.id });
+        if (r.listo) { setCodigo(null); setEditando(false); onCambio(r.estado); window.clearInterval(t); }
+      } catch { /* sigue probando */ }
+      if (vueltas > 45) window.clearInterval(t);
+    }, 4000);
+    return () => window.clearInterval(t);
+  }, [esperando, sede.id, onCambio]);
+
+  const verificar = async (numero = telefono.trim()) => {
+    setError(''); setOcupado(true);
+    try {
+      const r = await api.post<{ listo: boolean; codigo: string | null; estado: EstadoLlamadas }>('/llamadas/numero', { sede: sede.id, telefono: numero });
+      onCambio(r.estado);
+      if (r.listo) { setEditando(false); setCodigo(null); } else setCodigo(r.codigo);
+    } catch (e) { setError((e as Error).message); }
+    finally { setOcupado(false); }
+  };
+
+  const quitar = async () => {
+    setError(''); setOcupado(true);
+    try { onCambio(await api.post<EstadoLlamadas>('/llamadas/numero/quitar', { sede: sede.id })); setCodigo(null); setEditando(false); }
+    catch (e) { setError((e as Error).message); }
+    finally { setOcupado(false); }
+  };
+
+  return (
+    <li className="py-2 space-y-2">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          {!unaSola && <p className="text-[0.8125rem] font-medium truncate">{sede.nombre}</p>}
+          <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
+            {sede.llamarDesde
+              ? <span className="text-emerald-600 font-semibold inline-flex items-center gap-1"><Check className="w-3 h-3" /> Llama con {sede.llamarDesde}</span>
+              : esperando ? `Verificando ${sede.llamarDesdePendiente ?? telefono}…` : 'Llama con el número de Lalan'}
+          </p>
+        </div>
+        {sede.llamarDesde || esperando ? (
+          <button type="button" onClick={() => void quitar()} disabled={ocupado} className="text-[0.75rem] font-semibold text-slate-400 hover:text-slate-600 cursor-pointer disabled:opacity-50">
+            {esperando && !sede.llamarDesde ? 'Cancelar' : 'Usar el de Lalan'}
+          </button>
+        ) : !editando && (
+          <button type="button" onClick={() => setEditando(true)} disabled={!encendidas}
+            title={encendidas ? undefined : 'Se puede cuando las llamadas estén encendidas'}
+            className="min-h-[36px] px-3 rounded-full border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-bold cursor-pointer disabled:opacity-50">
+            Poner el del salón
+          </button>
+        )}
+      </div>
+      {!esperando && !sede.llamarDesde && encendidas && Array.from(new Map(otras.map((o) => [o.llamarDesde, o])).values()).map((o) => (
+        <button key={o.id} type="button" onClick={() => void verificar(o.llamarDesde!)} disabled={ocupado}
+          className="mr-1.5 px-2.5 py-1 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-[0.6875rem] font-semibold cursor-pointer disabled:opacity-50">
+          Usar {o.llamarDesde} (el de {o.nombre}), sin verificar otra vez
+        </button>
+      ))}
+      {editando && !esperando && !sede.llamarDesde && (
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (telefono.trim()) void verificar(); }}>
+          <input type="tel" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="809-555-1234" aria-label={`Número del salón en ${sede.nombre}`} autoFocus
+            className="flex-1 min-w-0 min-h-[40px] px-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[16px] sm:text-[0.875rem]" />
+          <button type="submit" disabled={!telefono.trim() || ocupado}
+            className="min-h-[40px] px-4 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5">
+            {ocupado ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Phone className="w-3.5 h-3.5" />} Verificar
+          </button>
+        </form>
+      )}
+      {codigo && (
+        <div className="rounded-xl bg-[var(--primary)]/5 border border-[var(--primary)]/30 p-3 space-y-1.5 text-center" role="status">
+          <p className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Te va a llamar Twilio (habla en inglés). Contesta y, cuando te lo pida, marca:</p>
+          <p className="text-[2rem] font-bold tracking-[0.3em] text-[var(--primary)] tabular-nums">{codigo}</p>
+          <p className="text-[0.6875rem] text-slate-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Esta pantalla se pone en «Listo» sola</p>
+        </div>
+      )}
+      {error && <p className="text-[0.75rem] font-semibold text-rose-600" role="alert">{error}</p>}
+    </li>
+  );
+};
+
 const CAMPOS: { campo: string; etiqueta: string; ejemplo: string }[] = [
   { campo: '{nombre}', etiqueta: 'Nombre', ejemplo: 'Viena' },
   { campo: '{cuando}', etiqueta: 'Día y hora', ejemplo: 'hoy a las 7 de la noche' },
@@ -278,12 +530,12 @@ const CAMPOS: { campo: string; etiqueta: string; ejemplo: string }[] = [
   { campo: '{sede}', etiqueta: 'Sede', ejemplo: 'Piantini' },
   { campo: '{salon}', etiqueta: 'Salón', ejemplo: 'tu salón' },
 ];
-const SUGERIDO = 'Hola {nombre}, soy Lalán, la asistente de {salon}. Le recuerdo su cita de {servicio} {cuando}. Para confirmar, presione 1. Si necesita cambiarla, presione 2.';
+const SUGERIDO = 'Hola {nombre}, soy Lalan, la asistente de {salon}. Le recuerdo su cita de {servicio} {cuando}. Para confirmar, presione 1. Si necesita cambiarla, presione 2.';
 
 /**
- * Lo que dice Lalán al llamar a la clienta, con las palabras del salón.
+ * Lo que dice Lalan al llamar a la clienta, con las palabras del salón.
  * Los campos entre llaves se llenan con los datos de cada cita; si el texto
- * no dice que marque 1, Lalán lo agrega al final.
+ * no dice que marque 1, Lalan lo agrega al final.
  */
 const TextoDeLaLlamada: React.FC<{
   sede: { id: string; nombre: string; textoLlamadaCita: string | null };
@@ -300,13 +552,13 @@ const TextoDeLaLlamada: React.FC<{
   if (!abierto) {
     return (
       <button type="button" onClick={() => setAbierto(true)} className="ml-0.5 text-[0.75rem] font-semibold text-[var(--primary)] flex items-center gap-1 cursor-pointer">
-        <ChevronRight className="w-3.5 h-3.5" /> Lo que dice Lalán en {sede.nombre}
+        <ChevronRight className="w-3.5 h-3.5" /> Lo que dice Lalan en {sede.nombre}
       </button>
     );
   }
   return (
     <div className="rounded-xl bg-slate-50 dark:bg-neutral-800/60 border border-slate-200 dark:border-neutral-700 p-3 space-y-2">
-      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Lo que dice Lalán al llamar</div>
+      <div className="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">Lo que dice Lalan al llamar</div>
       <textarea value={texto} onChange={(e) => setTexto(e.target.value.slice(0, 400))} rows={3} placeholder={SUGERIDO}
         className="w-full px-3 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[16px] sm:text-[0.8125rem] leading-snug resize-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
       <div className="flex flex-wrap gap-1.5">

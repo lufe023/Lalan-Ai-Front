@@ -155,15 +155,24 @@ const ofertas = new Map<string, OfertaTexto>();
 
 function decirOferta() {
   const select = document.getElementById('p-plan') as HTMLSelectElement | null;
-  const linea = document.getElementById('p-oferta');
-  if (!select || !linea) return;
-  const o = ofertas.get(select.value);
-  linea.hidden = !o;
-  linea.textContent = o ? `${botonOferta(o).replace('Pruébalo', 'Lo pruebas')}. ${detalleOferta(o)}` : '';
+  const crear = document.getElementById('r-crear');
+  // La misma frase en el formulario y junto a «Crear mi cuenta» (cada uno con su plan)
+  const decir = (id: string, clave: string | undefined) => {
+    const linea = document.getElementById(id);
+    if (!linea) return;
+    const o = clave ? ofertas.get(clave) : undefined;
+    linea.hidden = !o;
+    linea.textContent = o ? `${botonOferta(o).replace('Pruébalo', 'Lo pruebas')}. ${detalleOferta(o)}` : '';
+  };
+  decir('p-oferta', select?.value);
+  decir('r-oferta', crear?.dataset.plan || select?.value);
 }
 
 /** El botón de cada plan deja ese plan elegido en el formulario (y dice su oferta) */
 function elegirPlan(clave: string) {
+  // «Crear mi cuenta» arranca con este plan (y su prueba gratis)
+  const crear = document.getElementById('r-crear');
+  if (crear) crear.dataset.plan = clave;
   const select = document.getElementById('p-plan') as HTMLSelectElement | null;
   if (!select) return;
   if ([...select.options].some((o) => o.value === clave)) select.value = clave;

@@ -1,7 +1,7 @@
 import type { TargetAndTransition } from 'motion/react';
 
 /**
- * Cómo se va la pantalla de Lalán a su burbuja al minimizar (a mano o porque
+ * Cómo se va la pantalla de Lalan a su burbuja al minimizar (a mano o porque
  * un botón lleva a otro lado de la app). Cada efecto termina justo donde está
  * la burbuja; la burbuja aparece cuando el efecto llega.
  */
@@ -45,7 +45,7 @@ const SUAVE: [number, number, number, number] = [0.32, 0.72, 0, 1];
 const ENTRA: [number, number, number, number] = [0.65, 0, 0.35, 1];
 
 /**
- * El `exit` de la pantalla de Lalán para cada efecto. La pantalla mide toda la
+ * El `exit` de la pantalla de Lalan para cada efecto. La pantalla mide toda la
  * ventana, así que mover su centro al de la burbuja es (cx - ancho/2, cy - alto/2).
  */
 export function salidaHaciaBurbuja(estilo: EstiloMinimizar, d: Destino): TargetAndTransition {

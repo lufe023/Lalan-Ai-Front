@@ -1,7 +1,7 @@
 /**
  * Los videos del teléfono pesan cientos de MB y el servidor acepta hasta
  * 100 MB (y los PDF hasta 8 MB): subirlos enteros daba «File too large».
- * Lalán no necesita el archivo entero para leerlo, así que aquí, en el
+ * Lalan no necesita el archivo entero para leerlo, así que aquí, en el
  * navegador, se saca solo lo que usa:
  *  - de un video, unos cuadros en JPG y el audio en WAV de 16 kHz;
  *  - de un PDF, cada página como foto.

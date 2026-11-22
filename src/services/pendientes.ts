@@ -1,7 +1,7 @@
 import { api } from './api';
 
 /**
- * Recordatorios y encargos del equipo, y «Tu día» (lo que Lalán enseña al
+ * Recordatorios y encargos del equipo, y «Tu día» (lo que Lalan enseña al
  * abrirla). Todo es de una sede: el servidor usa la sede activa.
  */
 
@@ -13,12 +13,26 @@ export const REPETIR: { id: Repetir; nombre: string }[] = [
   { id: 'anio', nombre: 'Cada año' },
 ];
 
+/** Cuánto antes avisar («a las 8, avísame media hora antes») */
+export const AVISAR_ANTES: { min: number; nombre: string }[] = [
+  { min: 0, nombre: 'A la hora' },
+  { min: 15, nombre: '15 min antes' },
+  { min: 30, nombre: '30 min antes' },
+  { min: 60, nombre: '1 hora antes' },
+  { min: 120, nombre: '2 horas antes' },
+  { min: 1440, nombre: '1 día antes' },
+];
+
 export type FiltroPendientes = 'todos' | 'mios' | 'encargados' | 'hechos';
 
 export interface Pendiente {
   id: string;
   texto: string;
   vence: string;
+  /** Minutos antes de la hora que sale el aviso (null = a la hora) */
+  antesMin: number | null;
+  /** Cuándo sale el aviso (null = a la hora) */
+  avisarEn: string | null;
   repetir: Repetir | null;
   estado: 'pendiente' | 'hecho' | 'descartado';
   vencido: boolean;
@@ -39,7 +53,9 @@ export type ItemTuDia =
   | { tipo: 'recordatorio'; id: string; titulo: string; detalle: string; cuando: string; vencido: boolean; relacion: Pendiente['relacion']; enlace: string | null }
   | { tipo: 'cita'; id: string; motivo: 'por_confirmar' | 'sin_especialista'; titulo: string; detalle: string; cuando: string; clientId: string | null; conversationId: string | null }
   | { tipo: 'cumple'; id: string; quien: 'clienta' | 'equipo'; nombre: string; titulo: string; detalle: string; dias: number; clientId: string | null; telefono: string | null; conversationId: string | null }
-  | { tipo: 'producto'; id: string; titulo: string; detalle: string; sede: { id: string; nombre: string } };
+  | { tipo: 'producto'; id: string; titulo: string; detalle: string; sede: { id: string; nombre: string } }
+  /** Algo que quedó pendiente en un chat (Lalan lo vio): se agenda o se recuerda desde el chat */
+  | { tipo: 'compromiso'; id: string; titulo: string; detalle: string; conversationId: string; clientId: string | null };
 
 export interface TuDia {
   nombre: string;
@@ -47,15 +63,21 @@ export interface TuDia {
   sede: { id: string; nombre: string } | null;
   resumen: { citas: number; porConfirmar: number; libres: number; pendientes: number };
   items: ItemTuDia[];
+  /** La próxima cita de hoy (o la que está pasando) */
+  proxima?: { id: string; hora: string; clienta: string; servicio: string; especialista: string | null; clientId: string | null; enCurso: boolean } | null;
 }
 
 export interface NuevoPendiente {
   texto: string;
   vence: string;
+  antesMin?: number | null;
   repetir?: Repetir | null;
   paraUserId?: string | null;
   sede?: string | null;
 }
+
+/** Lo que se cambia de uno ya creado (lo que no va, se queda igual) */
+export type CambiosPendiente = Partial<NuevoPendiente>;
 
 /** Algo cambió en los recordatorios: «Tu día» y la pantalla se recargan */
 export const EVENTO_PENDIENTES = 'lalan:pendientes';
@@ -66,6 +88,7 @@ export const pendientesApi = {
   lista: (filtro: FiltroPendientes = 'todos') => api.get<Pendiente[]>(`/pendientes?filtro=${filtro}`),
   equipo: () => api.get<PersonaDelEquipo[]>('/pendientes/equipo'),
   crear: (d: NuevoPendiente) => api.post<Pendiente>('/pendientes', d),
+  editar: (id: string, c: CambiosPendiente) => api.patch<Pendiente>(`/pendientes/${id}`, c),
   hecho: (id: string) => api.post<Pendiente>(`/pendientes/${id}/hecho`, {}),
   posponer: (id: string, hasta: { minutos?: number; manana?: boolean; vence?: string }) => api.post<Pendiente>(`/pendientes/${id}/posponer`, hasta),
   quitar: (id: string) => api.delete<{ ok: true }>(`/pendientes/${id}`),
@@ -80,6 +103,13 @@ export function cuandoCorto(iso: string, ahora = new Date()): string {
   if (dia(d) === dia(ahora)) return `hoy ${hora}`;
   if (dia(d) === dia(manana)) return `mañana ${hora}`;
   return `${d.toLocaleDateString('es-DO', { weekday: 'short', day: 'numeric', month: 'short' })} · ${hora}`;
+}
+
+/** "mañana 8:00 a. m. · te aviso 7:30 a. m." o solo la hora */
+export function cuandoConAviso(vence: string, avisarEn: string | null | undefined, ahora = new Date()): string {
+  const cuando = cuandoCorto(vence, ahora);
+  if (!avisarEn) return cuando;
+  return `${cuando} · te aviso ${new Date(avisarEn).toLocaleTimeString('es-DO', { hour: 'numeric', minute: '2-digit' })}`;
 }
 
 /** Mensaje de felicitación listo para mandar por WhatsApp */

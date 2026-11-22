@@ -85,8 +85,29 @@
       { q: 'lalan', t: '¡Buenas noticias, Carmen! Alanny abre más temprano para ustedes: mañana a las 8 de la mañana, peinado y uñas para las dos. ¿Se las dejo agendadas?', h: '7:52 noche' },
       { q: 'clienta', t: '¡Sí! Mil gracias 😍', h: '7:53 noche' },
       { q: 'sistema', t: 'Citas agendadas por Lalan · 8 de la mañana, antes de abrir' }
+    ],
+    // La dueña le pregunta a Lalan desde su número de confianza
+    informe: [
+      { q: 'clienta', t: 'Lalan, ¿cómo nos fue hoy?', h: '8:10 noche' },
+      { q: 'lalan', t: '¡Buenas noches, Alanny! 📊 Hoy atendimos 14 citas, 3 las agendé yo de madrugada. En caja entraron RD$ 38,450 entre Naco y Piantini.', h: '8:10 noche' },
+      { q: 'lalan', t: 'Queda poco esmalte rojo en Naco. Tu proveedor lo tiene a RD$ 3,200 la docena. ¿Se lo pido?', h: '8:10 noche' },
+      { q: 'clienta', t: 'Sí, pídelo 👍', h: '8:11 noche' },
+      { q: 'lalan', t: 'Hecho. Cuando llegue entra solo al inventario de Naco y el pago sale de caja. Mañana hay 11 citas y Valentina está llena desde las 2.', h: '8:11 noche' },
+      { q: 'sistema', t: 'Informe del día enviado · pedido al proveedor aprobado por ti' }
     ]
   };
+  // En el informe, quien escribe es la dueña: el chat es con Lalan, no con el salón
+  var CONTACTO = {
+    salon: { nombre: 'Tu Salón', sub: 'en línea · Lalan responde' },
+    informe: { nombre: 'Lalan', sub: 'tu asistente · número de confianza' }
+  };
+  function ponerContacto(nombre) {
+    var c = CONTACTO[nombre === 'informe' ? 'informe' : 'salon'];
+    var n = document.querySelector('#app .wa-nombre-linea b');
+    var sub = document.querySelector('#app .wa-subtitulo');
+    if (n) n.textContent = c.nombre;
+    if (sub) sub.textContent = c.sub;
+  }
 
   var hilo = document.getElementById('hilo');
   var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -216,6 +237,9 @@
     var mio = ++turno;
     var mensajes = ESCENAS[nombre];
     hilo.innerHTML = '';
+    ponerContacto(nombre);
+    // La cadena de montaje (fabrica.ts) arranca con el mismo ejemplo
+    document.dispatchEvent(new CustomEvent('lalan:escena', { detail: { nombre: nombre } }));
 
     // Insignia de fecha de WhatsApp
     var badgeFecha = document.createElement('div');
@@ -283,16 +307,56 @@
     var quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (quieto || !('IntersectionObserver' in window) || /[?&]calor=/.test(location.search)) return;
     var partes = document.querySelectorAll('.entra');
+    // Cada parte entra por piezas, en cascada: el título, el texto, cada punto
+    // de la lista y al final la foto o el teléfono, que crece con un resorte.
+    // Se entra hasta dos niveles en los bloques de texto y las listas.
+    var FOTO = 'figure, img, picture, .telefono, .historia, .marco-pc, .marco-tel, .marco-captura, .fila-imagen';
+    function esContenedor(c) {
+      if (!/^(DIV|UL|OL)$/.test(c.tagName) || c.children.length < 2 || c.children.length > 8) return false;
+      if (c.matches(FOTO) || c.id) return false;
+      for (var k = 0; k < c.children.length; k++) if (c.children[k].matches(FOTO)) return false;
+      return true;
+    }
+    function piezas(el, nivel, lista) {
+      for (var k = 0; k < el.children.length; k++) {
+        var c = el.children[k];
+        if (c.hasAttribute('data-arrastre')) continue; // lo trae un puntero (punteros.ts)
+        if (nivel < 2 && esContenedor(c)) piezas(c, nivel + 1, lista);
+        else lista.push(c);
+      }
+      return lista;
+    }
+    function armarPiezas(p) {
+      if (p.classList.contains('portada')) return;
+      var lista = piezas(p, 0, []);
+      if (lista.length < 2) return;
+      p.classList.add('con-piezas');
+      lista.forEach(function (c, i) {
+        c.classList.add('pieza');
+        if (c.matches(FOTO) || c.querySelector(FOTO)) c.classList.add('pieza-foto');
+        c.style.setProperty('--i', String(Math.min(i, 10)));
+      });
+    }
+    // Cuando ya entró, se quitan las clases: cada pieza recupera sus propias transiciones
+    function soltarPiezas(p) {
+      window.setTimeout(function () {
+        p.querySelectorAll('.pieza').forEach(function (c) { c.classList.remove('pieza', 'pieza-foto'); c.style.removeProperty('--i'); });
+      }, 1800);
+    }
     var obs = new IntersectionObserver(function (es) {
       es.forEach(function (e) {
         if (!e.isIntersecting) return;
         e.target.classList.add('visto');
+        soltarPiezas(e.target);
         obs.unobserve(e.target);
       });
     }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
     partes.forEach(function (p) {
       // Lo que ya está en pantalla al cargar no se esconde: no parpadea
       if (p.getBoundingClientRect().top < window.innerHeight) { p.classList.add('visto'); return; }
+      // Lo que traen los punteros no se esconde aquí: punteros.ts lo anima
+      if (p.hasAttribute('data-arrastre')) { p.classList.add('visto'); return; }
+      armarPiezas(p);
       obs.observe(p);
     });
     document.documentElement.classList.add('anima');

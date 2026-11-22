@@ -273,7 +273,7 @@ const MainAppContent: React.FC = () => {
                   © {CURRENT_YEAR} Gomez Santana Solutions Group SRL
                 </span>
                 <span className="text-[0.75rem] text-slate-300 dark:text-neutral-700">
-                  Lalan AI Studio & Lounge
+                  Lalan AI · Live Assistant for Logistics, Appointments & Networking
                 </span>
               </footer>
             </div>

@@ -52,6 +52,8 @@ import { useBusquedaDeClientas } from '../hooks/useBusquedaDeClientas';
 import { hora12 } from '../utils/hora';
 import { SedesDeClienta } from '../components/ui/SedesDeClienta';
 import { ABRIR_CLIENTA } from '../services/saberProductos';
+import { FICHA_VUELVE } from '../services/abrirFicha';
+import { mapApiClient } from '../context/AppContext';
 import { ClientasArchivadas } from '../components/clientas/ClientasArchivadas';
 import { useConfirmar } from '../components/ui/ModalConfirmar';
 import { CampoCumple, cumpleTexto } from '../components/ui/CampoCumple';
@@ -73,6 +75,7 @@ export const ClientsScreen: React.FC = () => {
     restaurarClienta,
     startChatWithClient,
     navigateTo,
+    goBack,
     appointments,
     playMusicForClient,
     clientsHasMore, clientsTotal, cargarMasClientas, buscarClientas,
@@ -158,15 +161,40 @@ export const ClientsScreen: React.FC = () => {
     window.addEventListener('lalan:abrir-clienta', otra);
     return () => window.removeEventListener('lalan:abrir-clienta', otra);
   }, []);
+  /* Abierta desde un chat: al cerrarla se vuelve al chat, como estaba */
+  const volverAlCerrar = useRef(false);
+  const cerrarFicha = () => {
+    setSelectedClient(null);
+    if (volverAlCerrar.current) { volverAlCerrar.current = false; goBack(); }
+  };
+  // Cerrada por otro camino (borrarla, ponerle música): ya no se vuelve al chat
+  const habiaFicha = useRef(false);
+  useEffect(() => {
+    if (habiaFicha.current && !selectedClient) volverAlCerrar.current = false;
+    habiaFicha.current = !!selectedClient;
+  }, [selectedClient]);
   useEffect(() => {
     let id: string | null = null;
-    try { id = sessionStorage.getItem(ABRIR_CLIENTA); } catch { /* sin almacenamiento */ }
+    let vuelve = false;
+    try { id = sessionStorage.getItem(ABRIR_CLIENTA); vuelve = sessionStorage.getItem(FICHA_VUELVE) === '1'; } catch { /* sin almacenamiento */ }
     if (!id) return;
+    const abrir = (c: Client) => {
+      try { sessionStorage.removeItem(ABRIR_CLIENTA); sessionStorage.removeItem(FICHA_VUELVE); } catch { /* nada */ }
+      volverAlCerrar.current = vuelve;
+      setSelectedClient(c);
+      // Desde un chat se abre arriba (quién es); desde un aviso de alergia, en sus alergias
+      if (!vuelve) setTimeout(() => document.getElementById('alergias-clienta')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
+    };
     const c = clients.find((x) => x.id === id);
-    if (!c) return; // aún cargando: se intenta de nuevo cuando lleguen
-    try { sessionStorage.removeItem(ABRIR_CLIENTA); } catch { /* nada */ }
-    setSelectedClient(c);
-    setTimeout(() => document.getElementById('alergias-clienta')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
+    if (c) { abrir(c); return; }
+    if (!clients.length) return; // aún cargando: se intenta de nuevo cuando lleguen
+    // No está en las páginas ya cargadas del directorio: se pide esa ficha sola
+    let vigente = true;
+    const buscada = id;
+    api.get<any>(`/clients/${buscada}`)
+      .then((r) => { if (vigente) abrir(mapApiClient(r)); })
+      .catch(() => { try { sessionStorage.removeItem(ABRIR_CLIENTA); sessionStorage.removeItem(FICHA_VUELVE); } catch { /* nada */ } });
+    return () => { vigente = false; };
   }, [clients, pedidoAbrir]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -832,7 +860,7 @@ export const ClientsScreen: React.FC = () => {
       {/* Client Detail Sheet / Modal */}
       <IOSModal
         isOpen={!!selectedClient}
-        onClose={() => setSelectedClient(null)}
+        onClose={cerrarFicha}
         title="Ficha Integral de Clienta"
         subtitle={selectedClient ? `Registrada el ${selectedClient.registeredDate}` : ''}
       >
@@ -1342,7 +1370,7 @@ export const ClientsScreen: React.FC = () => {
             />
           </div>
 
-          {/* Cumpleaños: Lalán lo recuerda en «Tu día» */}
+          {/* Cumpleaños: Lalan lo recuerda en «Tu día» */}
           <CampoCumple valor={formData.cumpleanos} onCambio={v => setFormData({ ...formData, cumpleanos: v })} />
 
           {/* Trato: Lalan no supone que quien escribe es mujer (también hay barberías) */}

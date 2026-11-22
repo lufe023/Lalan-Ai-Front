@@ -39,7 +39,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Unbounded:wght@700;800&display=swap" />
   <!--
     Los estilos van aquí, en la cabeza, y no importados desde el JavaScript:
     así el navegador los aplica ANTES de pintar y nunca se ve la página sin
@@ -52,7 +52,7 @@
   <div class="envoltura">
     <a class="marca" href="#inicio" aria-label="Lalan AI, inicio">
       <span class="marca-logo"><svg viewBox="0 0 120 120" aria-hidden="true" focusable="false"><path d="M52 18V74H94" fill="none" stroke="currentColor" stroke-opacity=".62" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 42V98H72" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span>Lalan AI<small>Studio &amp; Lounge</small></span>
+      <span>Lalan AI<small>Asistente virtual de tu salón</small></span>
     </a>
     <nav aria-label="Secciones">
       <a href="#dia">Cómo trabaja</a>
@@ -88,13 +88,37 @@
         <span>Tu agenda al día</span>
       </div>
     </div>
-    <div class="collage" aria-label="Capturas reales de la app de Lalan">
+    <div class="collage" id="collage-vivo">
+      <!--
+        Las cuatro etiquetas flotan y se encienden cuando el teléfono muestra lo
+        que dicen (portadaViva.ts). data-e une cada etiqueta con su tarjeta.
+      -->
+      <span class="etiqueta-flot e1" data-e="1" aria-hidden="true">Entiende notas de voz</span>
+      <span class="etiqueta-flot e2" data-e="2" aria-hidden="true">Busca la hora libre</span>
+      <span class="etiqueta-flot e3" data-e="3" aria-hidden="true">Te avisa lo delicado</span>
+      <span class="etiqueta-flot e4" data-e="4" aria-hidden="true">Siempre te recuerda todo y a todos</span>
       <figure class="marco-pc">
         <div class="marco-barra" aria-hidden="true"><i></i><i></i><i></i></div>
-        <img src="/landing/capturas/conversiones.webp" width="1210" height="620" alt="El informe de conversiones de Lalan en la PC: 19 de 48 conversaciones terminaron en cita o compra" fetchpriority="high">
+        <!-- La captura larga baja sola, como si alguien leyera el informe; el menú de la izquierda se queda quieto -->
+        <div class="pc-ventana">
+          <img class="pc-rollo" src="/landing/capturas/conversiones-largo.webp" width="1210" height="1660" alt="El informe de conversiones de Lalan en la PC: 19 de 48 conversaciones terminaron en cita o compra" fetchpriority="high">
+          <div class="pc-menu" aria-hidden="true"><img src="/landing/capturas/conversiones-largo.webp" width="1210" height="1660" alt=""></div>
+        </div>
       </figure>
-      <figure class="marco-tel">
-        <img src="/landing/capturas/agenda.webp" width="560" height="875" alt="La agenda del día en el teléfono, con una cita confirmada y otra por confirmar">
+      <figure class="marco-tel vivo" role="img" aria-label="El teléfono de la dueña mientras Lalan trabaja: entiende una nota de voz, agenda la cita, avisa de una alergia y recuerda las citas a todos">
+        <div class="vivo-pantalla" aria-hidden="true">
+          <div class="vivo-cabeza">
+            <span class="vivo-marca"><i></i>Lalan AI</span>
+            <b>Hoy</b>
+            <small>Lalan está atendiendo tu WhatsApp</small>
+          </div>
+          <ol class="vivo-lista">
+            <li class="vivo-tarjeta" data-e="1"><span class="vivo-icono"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg></span><div><b>Nota de voz de María</b><span class="vivo-onda"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><p>«¿Tienes algo mañana en la tarde?»</p></div></li>
+            <li class="vivo-tarjeta" data-e="2"><span class="vivo-icono"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18m-12 6 2 2 4-4"/></svg></span><div><b>Cita agendada</b><p>Mañana, 3:00 p. m. · Manicure con Camila</p><span class="vivo-sello verde">Confirmada</span></div></li>
+            <li class="vivo-tarjeta vivo-alerta" data-e="3"><span class="vivo-icono"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4m0 4h.01"/></svg></span><div><b>Ana Pérez: piel sensible</b><p>El tinte de las 4:00 lleva amoníaco.</p><span class="vivo-boton">Ver su ficha</span></div></li>
+            <li class="vivo-tarjeta" data-e="4"><span class="vivo-icono"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9m4.3 13a1.94 1.94 0 0 0 3.4 0"/></svg></span><div><b>Recordatorios enviados</b><p>A 8 clientas de mañana, a Camila y a ti: pedir acetona.</p></div></li>
+          </ol>
+        </div>
       </figure>
     </div>
   </section>
@@ -107,7 +131,7 @@
         <h2>Lo que pasa en tu salón mientras tú trabajas</h2>
         <p>Lalan no reemplaza a tu equipo. Se encarga de los mensajes para que ustedes se encarguen de las clientas.</p>
       </div>
-      <div class="dia entra">
+      <div class="dia entra" data-arrastre="dia">
         <article>
           <span class="reloj">7:40 <small>de la mañana</small></span>
           <h3>Antes de abrir</h3>
@@ -148,18 +172,13 @@
     <div class="envoltura">
       <div class="encabezado entra">
         <span class="ceja">Por dentro</span>
-        <h2>Así se ve tu salón en Lalan</h2>
-        <p>Lo que Lalan hace por WhatsApp aparece al instante en tu app, en la PC y en el teléfono.</p>
+        <h2>Un mensaje entra y todo tu salón se pone a trabajar</h2>
+        <p>Carmen escribe por WhatsApp y las ayudantes de Lalan hacen la cadena completa: agenda, inventario de la sede, especialista, caja y tu informe. Tú no tocas nada.</p>
       </div>
 
-      <div class="fila-producto entra">
-        <div class="fila-texto">
-          <span class="ceja">WhatsApp</span>
-          <h3>Contesta todo el día, también notas de voz</h3>
-          <p>En segundos y a cualquier hora. Si la clienta manda tres mensajes seguidos, le responde una sola vez y con todo. Si alguien del salón escribe en ese chat, Lalan se hace a un lado.</p>
-          <p class="pie-demo">Toca un botón para ver cómo responde Lalan en cada situación.</p>
-        </div>
-        <div class="fila-imagen">
+      <div class="fabrica entra" id="fabrica">
+        <div class="fabrica-tel">
+        <div class="fila-imagen" data-arrastre="telefono">
       <div class="telefono" aria-label="Demostración de una conversación con Lalan en WhatsApp">
         <div class="telefono-bocina" aria-hidden="true"></div>
         <div class="pantalla">
@@ -217,7 +236,24 @@
         <button type="button" data-escena="noche" aria-pressed="true">🌙 Agendar de noche</button>
         <button type="button" data-escena="cambio" aria-pressed="false">🔄 Cambiar la cita</button>
         <button type="button" data-escena="duena" aria-pressed="false">👑 Un día especial</button>
+        <button type="button" data-escena="informe" aria-pressed="false">📊 Tu informe del día</button>
       </div>
+        </div>
+        <p class="pie-demo">Toca un ejemplo y mira la cadena trabajar.</p>
+        </div>
+        <div class="cadena" data-arrastre="cadena">
+          <p class="cadena-pedido" aria-live="polite"><span class="ceja">En la cinta</span> <b id="cadena-pedido">Carmen · manicure + masaje, mañana en la tarde</b></p>
+          <p class="paso-actual" id="paso-actual" aria-hidden="true"><b>1</b> <span>Recibe</span> <em>Esperando el mensaje…</em></p>
+          <div class="escena-iso" id="escena-iso" role="img" aria-label="Cadena de montaje de Lalan: el mensaje entra por WhatsApp y una caja pasa por seis puestos: recibe, agenda, inventario de la sede, especialista, caja e informe para la dueña."></div>
+          <ol class="pasos-iso" id="estaciones">
+            <li class="listo" data-estacion="recibe"><b>1</b><span class="paso-nombre">Recibe</span><span class="estado-txt">Nota de voz de Carmen, entendida</span></li>
+            <li class="listo" data-estacion="agenda"><b>2</b><span class="paso-nombre">Agenda</span><span class="estado-txt">Mañana 2:00 y 2:30 libres</span></li>
+            <li class="listo" data-estacion="inventario"><b>3</b><span class="paso-nombre">Inventario</span><span class="estado-txt">Esmalte y aceite apartados</span></li>
+            <li class="listo" data-estacion="equipo"><b>4</b><span class="paso-nombre">Equipo</span><span class="estado-txt">Valentina y Carla asignadas</span></li>
+            <li class="listo" data-estacion="caja"><b>5</b><span class="paso-nombre">Caja</span><span class="estado-txt">RD$ 2,950 por cobrar</span></li>
+            <li class="listo" data-estacion="informe"><b>6</b><span class="paso-nombre">Para ti</span><span class="estado-txt">«2 citas nuevas de noche»</span></li>
+          </ol>
+          <p class="cadena-fin" id="cadena-fin">Todo listo en segundos. <b>Tú no tocaste nada.</b></p>
         </div>
       </div>
 
@@ -563,7 +599,7 @@
       </details>
       <details>
         <summary>¿Cómo empiezo?</summary>
-        <p>Te visitamos, conectamos el WhatsApp de tu salón, cargamos tus servicios y especialistas y te mostramos el panel en 15 minutos.</p>
+        <p>Crea tu cuenta aquí mismo: pones tu correo, te llega un código y ya estás dentro. Lalan te guía para cargar tus servicios, tu horario y tu equipo. Si prefieres, te visitamos y la dejamos lista contigo en 15 minutos.</p>
       </details>
     </div>
     </div>
@@ -576,10 +612,10 @@
       <div class="encabezado" style="margin:0">
         <span class="ceja">Prueba gratis · Cupos limitados este mes</span>
         <h2>Pruébala gratis, <em class="acento">con tu mismo número.</em></h2>
-        <p>Lalan atiende tu mismo WhatsApp Business, tu Instagram y tu página de Facebook: tus clientas te escriben donde siempre y no notan el cambio. Te la instalamos, la configuramos contigo y la pruebas sin pagar nada. Los meses de prueba dependen del plan que elijas.</p>
+        <p>Lalan atiende tu mismo WhatsApp Business, tu Instagram y tu página de Facebook: tus clientas te escriben donde siempre y no notan el cambio. Créala tú en 2 minutos o, si prefieres, te la instalamos nosotros. La pruebas sin pagar nada. Los meses de prueba dependen del plan que elijas.</p>
         <ul class="piloto-lista">
           <li>Sin tarjeta y sin contrato</li>
-          <li>Te la instalamos y la configuramos contigo</li>
+          <li>Entras hoy mismo, sin esperar a nadie</li>
           <li>Tu mismo número, tu Instagram y tu Facebook</li>
           <li>Al terminar la prueba decides si sigues. Si no, te llevas tus contactos y tus chats quedan guardados</li>
         </ul>
@@ -587,7 +623,15 @@
       </div>
 
       <div class="piloto-caja">
-        <form class="contacto" id="form-piloto" novalidate>
+        <!-- Registro propio: crea su cuenta y entra sola (la app abre «Crear mi cuenta» con ?registro=1) -->
+        <div class="registro-ya" id="registro-ya">
+          <h3>Créala tú, en 2 minutos</h3>
+          <p>Tu nombre, el de tu salón y tu correo. Te llega un código, lo pones y ya estás dentro de tu salón. Lalan te guía para cargar tus servicios y tu equipo.</p>
+          <p class="oferta-elegida" id="r-oferta" role="status" hidden></p>
+          <a class="boton" id="r-crear" href="/app/?registro=1">Crear mi cuenta</a>
+          <button type="button" class="registro-otra" id="p-abrir" aria-expanded="false" aria-controls="form-piloto">¿Prefieres que te la instalemos? Déjanos tus datos</button>
+        </div>
+        <form class="contacto" id="form-piloto" novalidate hidden>
           <div class="fila-2">
             <div><label for="p-nombre">Tu nombre *</label><input id="p-nombre" name="nombre" autocomplete="name" placeholder="Ej.: Alanny" required maxlength="80"></div>
             <div><label for="p-salon">Nombre del salón *</label><input id="p-salon" name="salon" autocomplete="organization" placeholder="Ej.: Glam Studio" required maxlength="100"></div>
@@ -671,8 +715,8 @@
 
 <footer class="envoltura" id="pie">
   <div class="pie-fila">
-    <span>© 2026 Gomez Santana Solutions Group SRL · Lalan AI Studio &amp; Lounge</span>
-    <span><a href="/app/">Entrar a Lalan</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes.html">Condiciones de los planes</a> · <a href="/privacidad.html">Privacidad</a> · <a href="/terminos.html">Términos</a></span>
+    <span>© 2026 Gomez Santana Solutions Group SRL · Lalan AI</span>
+    <span><a href="/app/">Entrar a Lalan</a> · <a href="/app/?registro=1" id="pie-crear">Crear mi cuenta</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes.html">Condiciones de los planes</a> · <a href="/privacidad.html">Privacidad</a> · <a href="/terminos.html">Términos</a></span>
   </div>
   <div class="pie-fila">
     <!-- Las cinco letras siguen siendo el camino al huevo de pascua (huevo.ts) -->

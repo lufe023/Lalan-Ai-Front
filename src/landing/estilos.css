@@ -161,6 +161,25 @@
   /* ── Portada ───────────────────────────────── */
   .portada { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; padding-block: 64px 72px; }
   .portada .texto { display: grid; gap: 22px; }
+  /* Portada con letra gruesa en mayúsculas y la frase clave resaltada en el rosa de los botones */
+  .portada h1 {
+    font-family: "Unbounded", var(--sans); font-weight: 800; text-transform: uppercase;
+    font-size: clamp(2rem, 4.3vw, 3.5rem); line-height: 1.06; letter-spacing: -0.02em;
+  }
+  .portada h1 em.acento {
+    font-style: normal; font-weight: 800; color: #fff; background: var(--boton);
+    padding: 0 .14em; border-radius: .14em; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+  .etiqueta-flot {
+    position: absolute; z-index: 2; white-space: nowrap; font-size: .8rem; font-weight: 700; color: var(--tinta);
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 999px; padding: 7px 13px;
+    box-shadow: 0 10px 24px -14px rgba(37,26,31,.45);
+  }
+  .etiqueta-flot::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--acento-marca); margin-right: 8px; vertical-align: 1px; }
+  .etiqueta-flot.e1 { left: -6%; top: 14%; }
+  .etiqueta-flot.e2 { left: -4%; bottom: 24%; }
+  .etiqueta-flot.e3 { right: 26%; top: -16px; }
+  .etiqueta-flot.e4 { right: 32%; bottom: 0; }
   .portada .bajada { font-size: 1.12rem; color: var(--tinta-2); max-width: 34em; }
   .acciones { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .sellos { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .86rem; color: var(--tinta-2); }
@@ -514,7 +533,106 @@
   .marco-barra { display: flex; gap: 6px; padding: 10px 12px; background: var(--banda); border-bottom: 1px solid var(--linea); }
   .marco-barra i { width: 9px; height: 9px; border-radius: 50%; background: var(--linea); }
   .marco-tel { margin: 0; border: 7px solid #221A1E; border-radius: 30px; overflow: hidden; background: #fff; box-shadow: 0 30px 50px -28px rgba(37,26,31,.55); }
-  .collage .marco-tel { position: absolute; right: -8px; bottom: 0; width: 34%; }
+  .collage .marco-tel { position: absolute; right: -8px; bottom: 0; width: 37%; }
+
+  /* ── Portada viva ─────────────────────────────────────────────
+     Entrada de cine (una vez, ~1.6 s), etiquetas que flotan y se encienden
+     con lo que muestra el teléfono, la PC que baja sola por el informe y un
+     teléfono donde Lalan va trabajando. Todo con CSS que ya está al pintar:
+     no hay cuadro en blanco. «Reducir movimiento» lo deja quieto (regla de abajo). */
+  .pc-ventana { position: relative; aspect-ratio: 1210 / 620; overflow: hidden; }
+  .pc-ventana img { display: block; width: 100%; height: auto; }
+  .pc-rollo { will-change: transform; animation: pc-baja 16s 2.4s ease-in-out infinite; }
+  /* El menú de la app no se mueve: es la misma captura, recortada a su columna */
+  .pc-menu { position: absolute; inset: 0 auto 0 0; width: 25.3%; overflow: hidden; border-right: 1px solid #E5E9EF; }
+  .pc-menu img { width: 395.3%; max-width: none; }
+  @keyframes pc-baja {
+    0%, 16% { transform: translate3d(0, 0, 0); }
+    50%, 64% { transform: translate3d(0, -62.6%, 0); }
+    92%, 100% { transform: translate3d(0, 0, 0); }
+  }
+
+  /* Profundidad: el ratón mueve un poco cada capa (portadaViva.ts pone --mx/--my) */
+  .collage { --mx: 0; --my: 0; }
+  .collage .marco-pc { translate: calc(var(--mx) * -6px) calc(var(--my) * -4px); transition: translate .5s cubic-bezier(.2, .7, .2, 1); }
+  .collage .marco-tel { translate: calc(var(--mx) * 10px) calc(var(--my) * 8px); transition: translate .5s cubic-bezier(.2, .7, .2, 1); }
+  .collage .etiqueta-flot { translate: calc(var(--mx) * 16px) calc(var(--my) * 12px); transition: translate .6s cubic-bezier(.2, .7, .2, 1), box-shadow .35s, border-color .35s, color .35s; }
+  /* En órbita (portadaViva.ts pone --ox/--oy cada cuadro): la posición va en translate, sin transición */
+  .collage.orbita .etiqueta-flot { left: 0; top: 0; right: auto; bottom: auto; translate: calc(var(--ox, 0) * 1px + var(--mx) * 16px) calc(var(--oy, 0) * 1px + var(--my) * 12px); transition: box-shadow .35s, border-color .35s, color .35s; will-change: translate; }
+  /* Un resplandor de la marca respira detrás */
+  .collage::before {
+    content: ""; position: absolute; z-index: -1; inset: -12% 0 -4% 0; pointer-events: none;
+    background:
+      radial-gradient(42% 46% at 28% 36%, color-mix(in srgb, var(--marca) 22%, transparent), transparent 70%),
+      radial-gradient(36% 40% at 78% 70%, color-mix(in srgb, var(--acento-marca) 24%, transparent), transparent 70%);
+    filter: blur(8px); animation: resplandor 12s ease-in-out infinite alternate;
+  }
+  .portada { position: relative; isolation: isolate; }
+  @keyframes resplandor { from { transform: translate(-2%, 1%) scale(1); } to { transform: translate(3%, -2%) scale(1.08); } }
+
+  /* Etiquetas: aparecen con resorte, flotan cada una a su ritmo y se encienden */
+  .etiqueta-flot { animation: etiqueta-sale .7s cubic-bezier(.3, 1.5, .5, 1) both, flotar 5.6s ease-in-out infinite; }
+  .etiqueta-flot.e1 { animation-delay: 1.05s, 1.75s; animation-duration: .7s, 5.2s; }
+  .etiqueta-flot.e2 { animation-delay: 1.2s, 1.9s; animation-duration: .7s, 6.1s; }
+  .etiqueta-flot.e3 { animation-delay: 1.35s, 2.05s; animation-duration: .7s, 5.6s; }
+  .etiqueta-flot.e4 { animation-delay: 1.5s, 2.2s; animation-duration: .7s, 6.6s; }
+  @keyframes etiqueta-sale { from { opacity: 0; scale: .6; } to { opacity: 1; scale: 1; } }
+  @keyframes flotar { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-7px) rotate(-.6deg); } 70% { transform: translateY(4px) rotate(.5deg); } }
+  .etiqueta-flot.activa { border-color: color-mix(in srgb, var(--acento-marca) 60%, var(--linea)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--acento-marca) 18%, transparent), 0 16px 30px -16px color-mix(in srgb, var(--acento-marca) 70%, transparent); }
+  .etiqueta-flot.activa::before { animation: punto-late 1.2s ease-out infinite; }
+  @keyframes punto-late { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acento-marca) 70%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+
+  /* Entrada de cine: la ceja, el título, la bajada y los botones suben en cascada;
+     la frase rosa se pinta de izquierda a derecha; la PC se endereza y el teléfono llega */
+  .portada .texto > * { animation: cine-sube .9s cubic-bezier(.2, .8, .2, 1.05) both; }
+  .portada .texto > :nth-child(1) { animation-delay: .05s; }
+  .portada .texto > :nth-child(2) { animation-delay: .15s; }
+  .portada .texto > :nth-child(3) { animation-delay: .45s; }
+  .portada .texto > :nth-child(4) { animation-delay: .55s; }
+  .portada .texto > :nth-child(5) { animation-delay: .65s; }
+  @keyframes cine-sube { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: none; } }
+  .portada h1 em.acento {
+    background-image: linear-gradient(var(--boton), var(--boton)); background-color: transparent;
+    background-repeat: no-repeat; background-size: 100% 100%;
+    animation: acento-pinta .8s .6s cubic-bezier(.6, 0, .2, 1) both;
+  }
+  @keyframes acento-pinta { from { background-size: 0% 100%; color: var(--tinta); } 60% { color: var(--tinta); } to { background-size: 100% 100%; color: #fff; } }
+  .collage .marco-pc { animation: pc-llega 1.1s .25s cubic-bezier(.2, .8, .2, 1) both; transform-origin: 50% 100%; }
+  @keyframes pc-llega { from { opacity: 0; transform: perspective(1200px) translateY(40px) rotateX(14deg) scale(.96); } to { opacity: 1; transform: none; } }
+  .collage .marco-tel { animation: tel-llega 1s .6s cubic-bezier(.25, 1.25, .4, 1) both; }
+  @keyframes tel-llega { from { opacity: 0; transform: translate(40px, 30px) rotate(6deg); } to { opacity: 1; transform: none; } }
+  /* Fuera de pantalla o con la pestaña escondida, todo se queda quieto: no gasta batería */
+  .collage.en-pausa *, .collage.en-pausa::before { animation-play-state: paused !important; }
+
+  /* ── El teléfono vivo: lo que la dueña ve mientras Lalan trabaja ──
+     Todo mide en cqi (ancho del teléfono): se ve igual de grande que una captura */
+  .marco-tel.vivo { container-type: inline-size; aspect-ratio: 560 / 900; background: var(--pantalla); }
+  .vivo-pantalla { position: absolute; inset: 0; display: flex; flex-direction: column; font-size: 5.6cqi; line-height: 1.3; color: var(--tinta); }
+  .vivo-cabeza { display: grid; gap: .1em; padding: 9cqi 6cqi 3cqi; background: linear-gradient(var(--pantalla) 75%, transparent); position: relative; z-index: 1; }
+  .vivo-marca { display: flex; align-items: center; gap: .45em; font-size: .82em; font-weight: 700; color: var(--tinta-2); }
+  .vivo-marca i { width: .55em; height: .55em; border-radius: 50%; background: var(--verde); animation: punto-late 1.6s ease-out infinite; }
+  .vivo-cabeza b { font-size: 1.9em; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; }
+  .vivo-cabeza small { font-size: .78em; color: var(--tinta-3); }
+  .vivo-lista { list-style: none; margin: 0; padding: 0 4.5cqi 5cqi; display: flex; flex-direction: column; gap: 3cqi; flex: 1; justify-content: flex-end; overflow: hidden; }
+  .vivo-tarjeta { display: grid; grid-template-columns: auto 1fr; gap: 3cqi; align-items: start; padding: 3.6cqi; border-radius: 4cqi; background: var(--papel); border: 1px solid var(--linea); box-shadow: 0 2cqi 5cqi -3cqi rgba(37, 26, 31, .35); }
+  .vivo-tarjeta b { display: block; font-size: .95em; font-weight: 800; }
+  .vivo-tarjeta p { margin: .15em 0 0; font-size: .86em; color: var(--tinta-2); }
+  .vivo-icono { width: 9cqi; height: 9cqi; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--acento-marca) 18%, var(--papel)); color: var(--acento-texto); }
+  .vivo-icono svg { width: 58%; height: 58%; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .vivo-tarjeta.vivo-alerta { background: color-mix(in srgb, var(--ambar) 12%, var(--papel)); border-color: color-mix(in srgb, var(--ambar) 45%, var(--linea)); }
+  .vivo-tarjeta.vivo-alerta .vivo-icono { background: color-mix(in srgb, var(--ambar) 22%, var(--papel)); color: var(--ambar); }
+  .vivo-sello { display: inline-block; margin-top: .45em; padding: .2em .65em; border-radius: 99px; font-size: .74em; font-weight: 700; }
+  .vivo-sello.verde { color: var(--verde); background: color-mix(in srgb, var(--verde) 14%, var(--papel)); }
+  .vivo-boton { display: inline-block; margin-top: .5em; padding: .35em .8em; border-radius: 99px; font-size: .76em; font-weight: 700; color: #fff; background: var(--boton); }
+  .vivo-onda { display: flex; align-items: center; gap: .9cqi; height: 5cqi; margin-top: .35em; }
+  .vivo-onda i { width: 1cqi; height: 30%; border-radius: 1cqi; background: var(--acento-marca); }
+  .vivo-tarjeta.llega .vivo-onda i { animation: onda .9s ease-in-out 3; }
+  .vivo-onda i:nth-child(3n) { animation-delay: .15s; } .vivo-onda i:nth-child(3n+1) { animation-delay: .3s; }
+  @keyframes onda { 50% { height: 100%; } }
+  /* Cada tarjeta nueva sube con resorte; las de arriba se van corriendo (portadaViva.ts) */
+  .vivo-tarjeta.llega { animation: tarjeta-llega .65s cubic-bezier(.25, 1.3, .4, 1) both; }
+  @keyframes tarjeta-llega { from { opacity: 0; transform: translateY(30%) scale(.94); } to { opacity: 1; transform: none; } }
+  .vivo-tarjeta.se-va { opacity: 0; transition: opacity .4s; }
   .marco-tel.grande { width: min(320px, 100%); margin-inline: auto; }
   .marco-captura { margin: 0 auto; max-width: 440px; border-radius: 22px; overflow: hidden; border: 1px solid var(--linea); box-shadow: var(--sombra); background: #fff; }
 
@@ -587,13 +705,47 @@
   /* ── Pie ── */
   .pie-fila { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; width: 100%; }
   .siglas-pie { margin: 0; font-size: .82rem; color: var(--tinta-2); }
-  .siglas-pie b { font-family: var(--serif); font-size: 1rem; color: var(--tinta); }
+  /* Las cinco letras son el camino al huevo de pascua (huevo.ts): se pueden tocar y se encienden en orden */
+  .siglas-pie b { font-family: var(--serif); font-size: 1rem; color: var(--tinta); display: inline-block; padding: 6px 1px; margin: -6px 0; cursor: pointer; border-radius: 6px; transition: color .2s ease, transform .2s ease, text-shadow .2s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .siglas-pie b:hover { color: var(--rosa); }
+  .siglas-pie b.encendida { color: var(--rosa); transform: translateY(-2px) scale(1.15); text-shadow: 0 0 12px color-mix(in srgb, var(--rosa) 55%, transparent); }
+  @media (prefers-reduced-motion: reduce) { .siglas-pie b, .siglas-pie b.encendida { transition: none; transform: none; } }
   .pie-nota { margin: 0; width: 100%; }
   footer .tema-panel { top: auto; bottom: calc(100% + 10px); }
 
   /* ── Entrada suave: sube un poco y aparece, una vez (pagina.js pone .anima solo si se puede) ── */
   .entra { transition: opacity .7s ease, transform .7s cubic-bezier(.2, .7, .2, 1); }
   .anima .entra:not(.visto) { opacity: 0; transform: translateY(18px); }
+  /* Por piezas (pagina.js): la parte se queda quieta y sus piezas entran en cascada.
+     Va en translate/scale, no en transform, para no pisar lo que cada pieza ya mueve */
+  .anima .entra.con-piezas:not(.visto) { opacity: 1; transform: none; }
+  .anima .entra .pieza { transition: opacity .6s ease, translate .8s cubic-bezier(.2, .9, .25, 1.1), scale .8s cubic-bezier(.2, .9, .25, 1.1), filter .6s ease; transition-delay: calc(var(--i, 0) * 75ms); }
+  .anima .entra:not(.visto) .pieza { opacity: 0; translate: 0 26px; filter: blur(4px); }
+  .anima .entra .pieza-foto { transition-duration: .7s, 1.1s, 1.1s, .7s; transition-delay: calc(var(--i, 0) * 75ms + 120ms); }
+  .anima .entra:not(.visto) .pieza-foto { translate: 0 40px; scale: .92; filter: none; }
+  /* ── Punteros que traen las cosas (punteros.ts) ── */
+  .puntero { position: absolute; z-index: 6; width: 26px; height: 26px; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .28)); transform-origin: 20% 10%; }
+  .puntero svg { width: 100%; height: 100%; display: block; fill: #1B1416; stroke: #fff; stroke-width: 1.6; stroke-linejoin: round; }
+  .puntero.agarra { scale: .88; }
+  .dia.por-arrastrar article, .fila-imagen.por-arrastrar .telefono, .fila-imagen.por-arrastrar .escenarios button, .fila-imagen.sin-botones .escenarios button { opacity: 0; }
+  .dia.arrastrando { overflow: visible; }
+  .dia.arrastrando article { position: relative; }
+  .dia article .puntero { top: 16px; right: 20px; }
+  .dia article { transition: box-shadow .4s, background-color .4s, border-radius .4s; }
+  .dia article.en-vuelo { z-index: 2; background: var(--papel); border-radius: 18px; box-shadow: 0 0 0 1px var(--linea), 0 26px 50px -22px rgba(37, 26, 31, .45); }
+  .fila-imagen { position: relative; }
+  .telefono .puntero.en-telefono { top: -10px; left: 58%; }
+  /* Los botones de ejemplo saltan uno tras otro y luego llaman con un halo, para que se note que se tocan */
+  .escenarios.invita button { animation: boton-sale .55s cubic-bezier(.3, 1.6, .5, 1) backwards, boton-llama 1.8s 1.2s ease-out 5; }
+  .escenarios.invita button:nth-child(2) { animation-delay: .1s, 1.5s; }
+  .escenarios.invita button:nth-child(3) { animation-delay: .2s, 1.8s; }
+  @keyframes boton-sale { from { opacity: 0; transform: translateY(12px) scale(.8); } to { opacity: 1; transform: none; } }
+  @keyframes boton-llama { 0% { box-shadow: 0 0 0 0 rgba(0, 128, 105, .45); } 70%, 100% { box-shadow: 0 0 0 10px rgba(0, 128, 105, 0); } }
+  .escenarios button.toque-falso { transform: scale(.94); border-color: #008069; color: #008069; }
+  .collage.orbita .etiqueta-flot { pointer-events: none; }
+  /* Lo que llega arrastrado desde fuera (punteros.ts) no debe abrir scroll de lado.
+     Solo estas dos secciones: recortar main cortaba las bandas y el carrusel de planes en el teléfono */
+  #dia, #app { overflow-x: clip; }
 
   /* Planes: 3 o 4 columnas en la PC (--columnas lo pone planes.ts), de lado en el teléfono */
   .planes { --columnas: 3; display: grid; grid-template-columns: repeat(var(--columnas), minmax(0, 1fr)); gap: 18px; align-items: stretch; padding-top: 14px; }
@@ -701,6 +853,11 @@
     /* El teléfono de la portada a la izquierda: a la derecha lo tapa el globito de Lalan */
     .collage .marco-tel { left: 6%; right: auto; width: 36%; }
     .collage .marco-pc { margin-left: 16%; width: 84%; }
+    .etiqueta-flot { font-size: .7rem; padding: 5px 10px; }
+    .etiqueta-flot.e1 { left: 0; top: -14px; }
+    .etiqueta-flot.e2 { left: auto; right: 0; bottom: 6px; }
+    .etiqueta-flot.e3 { right: 0; top: 34%; }
+    .etiqueta-flot.e4 { left: auto; right: 2%; bottom: -30px; }
     #metricas .marco-pc { max-width: 390px; margin-inline: auto; }
     #metricas .marco-barra { display: none; }
     .flexible { gap: 12px; }
@@ -894,6 +1051,13 @@
   .piloto-lista li::before { content: '✓'; position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; background: var(--tinta); color: var(--fondo); }
   .suave a { color: var(--tinta); font-weight: 700; }
   .piloto-caja { min-width: 0; }
+  .registro-ya { background: var(--papel); border-radius: 22px; padding: 26px; border: 1px solid var(--linea); display: grid; gap: 12px; justify-items: start; }
+  .registro-ya h3 { margin: 0; font-family: var(--serif); font-size: 1.6rem; }
+  .registro-ya p { margin: 0; color: var(--tinta-2); }
+  .registro-ya .boton { justify-self: stretch; justify-content: center; }
+  .registro-otra { font: inherit; font-size: .85rem; font-weight: 700; color: var(--tinta-2); background: none; border: 0; padding: 6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .registro-otra:hover { color: var(--tinta); }
+  .piloto-caja .registro-ya + .contacto { margin-top: 14px; }
   .contacto fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
   .contacto legend { font-size: .8rem; font-weight: 700; color: var(--tinta-2); margin-bottom: 8px; padding: 0; }
   .contacto textarea { font: inherit; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--linea); background: var(--fondo); color: var(--tinta); resize: vertical; }
@@ -935,7 +1099,21 @@
 }
 .asis-lanzar:hover { transform: translateY(-2px); }
 .asis-lanzar:focus-visible { outline: 2px solid var(--tinta); outline-offset: 3px; }
-.asis-logo { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); flex-shrink: 0; }
+.asis-logo { position: relative; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); flex-shrink: 0; }
+/* «IA»: que se sepa de un vistazo que el botón es una asistente, no el logo */
+.asis-ia {
+  position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px;
+  height: 15px; padding: 0 5px; border-radius: 999px; background: #fff; color: var(--rosa-hondo);
+  font: 800 .58rem/1 var(--sans); letter-spacing: .04em; font-style: normal; box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+.asis-cab .asis-ia { display: none; }
+/* Mientras no la ha abierto nunca: un halo suave que sale del botón */
+.asis-nueva .asis-lanzar::before, .asis-nueva .asis-lanzar::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--rosa); z-index: -1; pointer-events: none;
+  animation: asis-halo 2.4s ease-out infinite;
+}
+.asis-nueva .asis-lanzar::after { animation-delay: 1.2s; }
+@keyframes asis-halo { from { transform: scale(1); opacity: .35; } to { transform: scale(1.1, 1.45); opacity: 0; } }
 .asis-logo svg { width: 62%; height: 62%; }
 .asis-punto { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #34C759; box-shadow: 0 0 0 2px var(--papel); }
 .asis-abierta .asis-lanzar { padding-right: 8px; }
@@ -945,6 +1123,7 @@
   background: var(--papel); color: var(--tinta); border: 1px solid var(--linea); box-shadow: var(--sombra); font-size: .86rem; line-height: 1.35;
   animation: asis-aparece .4s cubic-bezier(.2,.9,.3,1.2) both;
 }
+.asis-invita b { display: block; margin-bottom: 2px; font-size: .9rem; }
 .asis-invita-x { position: absolute; top: 4px; right: 6px; border: 0; background: none; color: var(--tinta-3); font-size: 1.1rem; cursor: pointer; }
 .asis-panel {
   width: min(380px, calc(100vw - 36px)); height: min(560px, calc(100dvh - 120px)); display: flex; flex-direction: column; overflow: hidden;
@@ -1017,12 +1196,13 @@
 @keyframes asis-resalta { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 20%, 60% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--rosa) 35%, transparent); } }
 @media (max-width: 640px) {
   .asis { right: 12px; left: 12px; align-items: flex-end; }
-  .asis-lanzar-txt { display: none; }
-  .asis-lanzar { padding: 8px; }
+  /* En el teléfono el texto se queda: solo el logo parecía un adorno */
+  .asis-lanzar { padding: 7px 16px 7px 7px; font-size: .86rem; }
   .asis-panel { width: 100%; height: min(78dvh, 620px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .asis-lanzar, .asis-invita, .asis-panel, .asis-entra, .asis-resaltado { animation: none; }
+  .asis-nueva .asis-lanzar::before, .asis-nueva .asis-lanzar::after { display: none; }
 }
 
 /* ── El visor de ejemplos de los planes ── */
@@ -1047,3 +1227,163 @@
 .visor-boton { justify-self: center; }
 .visor-boton[hidden], .visor-leyenda[hidden], .visor-plan[hidden], .visor-miniaturas[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .visor-ejemplo[open] { animation: none; } }
+
+  /* ── Por dentro: la cadena de montaje isométrica (fabrica.ts) ─────
+     El mensaje sale del teléfono como una caja que corre por la cinta y
+     para en seis puestos; en cada uno una ayudante robot de Lalan trabaja. */
+  .fabrica { position: relative; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 48px; align-items: center; }
+  .fabrica-tel { position: relative; z-index: 2; display: grid; gap: 4px; }
+  .fabrica-tel .pie-demo { margin-top: 4px; }
+  .escenarios.invita button:nth-child(4) { animation-delay: .3s, 2.1s; }
+  .cadena { position: relative; display: grid; gap: 14px; min-width: 0; }
+  .cadena-pedido { justify-self: start; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; background: var(--papel); border: 1px solid var(--linea); border-radius: 999px; padding: 8px 16px; font-size: .88rem; }
+  .cadena-pedido b { color: var(--tinta); font-weight: 700; }
+  /* El paso de ahora, como el rótulo del video: número grande y lo que hizo */
+  .paso-actual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 2.2em; font-size: 1rem; }
+  .paso-actual b { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--boton); color: #fff; font: 600 1rem/1 var(--serif); align-self: center; }
+  .paso-actual span { font-family: var(--serif); font-size: 1.35rem; font-weight: 600; color: var(--tinta); }
+  .paso-actual em { font-style: normal; color: var(--tinta-2); }
+  .escena-iso { position: relative; overflow: hidden; border-radius: 22px; }
+  .escena-iso svg { display: block; width: 100%; height: auto; overflow: visible; transition: transform .25s linear; }
+
+  /* Colores de la escena: salen del tema, así funciona en claro, oscuro y con cada color */
+  .piso .cara-tapa { fill: color-mix(in srgb, var(--marca) 13%, var(--papel)); }
+  .piso .cara-frente { fill: color-mix(in srgb, var(--marca) 22%, var(--papel)); }
+  .piso .cara-lado { fill: color-mix(in srgb, var(--marca) 30%, var(--papel)); }
+  .mesa .cara-tapa { fill: var(--papel); }
+  .mesa .cara-frente { fill: color-mix(in srgb, var(--tinta) 10%, var(--papel)); }
+  .mesa .cara-lado { fill: color-mix(in srgb, var(--tinta) 18%, var(--papel)); }
+  .mesa polygon, .panel polygon, .piso polygon { stroke: color-mix(in srgb, var(--tinta) 14%, transparent); stroke-width: .8; stroke-linejoin: round; }
+  .panel .cara-tapa { fill: color-mix(in srgb, var(--acento-marca) 30%, var(--papel)); }
+  .panel .cara-frente { fill: color-mix(in srgb, var(--acento-marca) 16%, var(--papel)); transition: fill .3s; }
+  .panel .cara-lado { fill: color-mix(in srgb, var(--acento-marca) 40%, var(--papel)); }
+  .puesto-iso.trabaja .panel .cara-frente { fill: color-mix(in srgb, var(--rosa) 30%, var(--papel)); }
+  .panel-icono { font-size: 21px; text-anchor: middle; }
+  .numero-iso circle { fill: var(--papel); stroke: var(--linea); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+  .numero-iso text { font: 700 13px/1 var(--sans); fill: var(--tinta); text-anchor: middle; }
+  .puesto-iso.trabaja .numero-iso circle { fill: var(--boton); stroke: var(--boton); }
+  .puesto-iso.trabaja .numero-iso text { fill: #fff; }
+  .puesto-iso.listo .numero-iso circle { fill: var(--verde); stroke: var(--verde); }
+  .puesto-iso.listo .numero-iso text { fill: #fff; }
+  .puesto-iso.ojo .numero-iso circle { fill: var(--ambar); stroke: var(--ambar); }
+  .telefono-iso .cara-tapa { fill: #2C3440; }
+  .telefono-iso .cara-frente { fill: #1A1F26; }
+  .telefono-iso .cara-lado { fill: #128C7E; }
+  .telefono-iso-icono { font-size: 22px; }
+  .pata polygon { fill: color-mix(in srgb, var(--tinta) 45%, var(--papel)); }
+  .cinta-iso .cara-tapa { fill: color-mix(in srgb, var(--tinta) 62%, var(--papel)); }
+  .cinta-iso .cara-frente { fill: color-mix(in srgb, var(--tinta) 40%, var(--papel)); }
+  .cinta-iso .cara-lado { fill: color-mix(in srgb, var(--tinta) 50%, var(--papel)); }
+  .rodillos path { stroke: color-mix(in srgb, var(--papel) 35%, transparent); stroke-width: 2; fill: none; }
+  .caja-iso { opacity: 0; transition: opacity .3s; }
+  .caja-iso.se-ve { opacity: 1; }
+  .caja-iso .cara-tapa { fill: #E7C08F; }
+  .caja-iso .cara-frente { fill: #C99A62; }
+  .caja-iso .cara-lado { fill: #B0834F; }
+  .caja-iso polygon { stroke: #8A6236; stroke-width: .8; stroke-linejoin: round; }
+  .caja-letra { font: 700 17px/1 var(--serif); fill: var(--boton-hondo); text-anchor: middle; dominant-baseline: middle; }
+  .avion-iso { opacity: 0; }
+  .avion-iso path { fill: var(--acento-marca); stroke: color-mix(in srgb, var(--acento-marca) 60%, #000); stroke-width: 1; stroke-linejoin: round; }
+
+  /* La ayudante robot (dentro de la escena) */
+  .robot-iso { transform-box: view-box; }
+  .robot-iso > * { animation: robot-flota 3.2s ease-in-out infinite; }
+  .puesto-iso:nth-child(2n) .robot-iso > * { animation-delay: -1.1s; }
+  .puesto-iso:nth-child(3n) .robot-iso > * { animation-delay: -2.2s; }
+  .robot-iso * { transform-box: fill-box; }
+  .r-cabeza, .r-cuerpo { fill: #FFFFFF; stroke: #9A8D93; stroke-width: 1.8; }
+  .r-visor { fill: #1A1F26; }
+  .r-ojos circle { fill: var(--acento-marca); }
+  .robot-iso .r-ojos { transform-origin: center; animation: robot-parpadea 4.5s infinite; }
+  .r-antena-palo { stroke: #9A8D93; stroke-width: 1.8; }
+  .r-antena { fill: var(--acento-marca); transition: fill .3s; }
+  .r-brazo path { fill: none; stroke: #9A8D93; stroke-width: 3; stroke-linecap: round; }
+  .r-brazo circle { fill: #FFFFFF; stroke: #9A8D93; stroke-width: 1.6; }
+  .r-izq { transform-origin: 100% 0; }
+  .r-der { transform-origin: 0 0; }
+  .r-pecho { fill: var(--marca); transform-origin: center; }
+  .trabaja .robot-iso > * { animation-duration: .9s; }
+  .trabaja .r-izq { animation: robot-brazo-i .45s ease-in-out infinite alternate !important; }
+  .trabaja .r-der { animation: robot-brazo-d .45s ease-in-out infinite alternate -.22s !important; }
+  .trabaja .r-antena { fill: var(--rosa); animation: robot-luz .5s ease-in-out infinite alternate !important; }
+  .trabaja .r-pecho { animation: robot-luz .5s ease-in-out infinite alternate !important; }
+  .trabaja .robot-iso .r-ojos { animation: none; scale: 1 .45; }
+  @keyframes robot-flota { 50% { translate: 0 -3px; } }
+  @keyframes robot-parpadea { 0%, 93%, 100% { scale: 1 1; } 96% { scale: 1 .1; } }
+  @keyframes robot-brazo-i { from { rotate: -8deg; } to { rotate: 40deg; } }
+  @keyframes robot-brazo-d { from { rotate: 8deg; } to { rotate: -40deg; } }
+  @keyframes robot-luz { from { opacity: 1; } to { opacity: .35; } }
+
+  /* La calle de atrás y el camión del proveedor */
+  .calle .cara-tapa { fill: color-mix(in srgb, var(--tinta) 16%, var(--papel)); }
+  .calle .cara-frente, .calle .cara-lado { fill: color-mix(in srgb, var(--tinta) 22%, var(--papel)); }
+  .camion-carga .cara-tapa { fill: #FFFFFF; }
+  .camion-carga .cara-frente { fill: #EEF0F3; }
+  .camion-carga .cara-lado { fill: #D9DDE3; }
+  .camion-cabina .cara-tapa { fill: color-mix(in srgb, var(--acento-marca) 60%, #fff); }
+  .camion-cabina .cara-frente { fill: var(--acento-marca); }
+  .camion-cabina .cara-lado { fill: color-mix(in srgb, var(--acento-marca) 70%, #000); }
+  .camion-iso polygon { stroke: rgba(37, 26, 31, .25); stroke-width: .8; stroke-linejoin: round; }
+  .rueda polygon { fill: #2A2328; }
+  .camion-rotulo { font: 800 11px/1 var(--sans); fill: color-mix(in srgb, var(--acento-marca) 70%, #000); letter-spacing: .04em; }
+  /* El robotito que va al camión: aparece solo cuando sale, y trae la caja de productos en la cabeza */
+  .caminante { opacity: 0; transition: opacity .2s; }
+  .caminante.se-ve { opacity: 1; }
+  .caminante.anda > * { animation: robot-anda .26s ease-in-out infinite alternate; }
+  .carga-robot { font-size: 20px; text-anchor: middle; opacity: 0; transition: opacity .2s; }
+  .caminante.lleva .carga-robot { opacity: 1; }
+  .puesto-iso.fuera .robot-iso { opacity: 0; }
+  .estante text { font-size: 20px; text-anchor: middle; }
+  @keyframes robot-anda { from { translate: 0 0; rotate: -3deg; } to { translate: 0 -4px; rotate: 3deg; } }
+  /* La caja registradora: el monto sube con lo que entra y baja con lo que sale */
+  .registradora rect { fill: #1A1F26; stroke: color-mix(in srgb, var(--verde) 40%, transparent); stroke-width: 1.5; transition: stroke .3s; }
+  .registradora text { font: 700 12.5px/1 var(--sans); fill: #9FE8C3; text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .entra-plata .registradora rect { stroke: var(--verde); }
+  .sale-plata .registradora rect { stroke: var(--ambar); }
+  .sale-plata .registradora text { fill: #F5CF8A; }
+  /* Lo que lleva la caja encima y lo que vuela de un lado a otro */
+  .carga text { font-size: 15px; text-anchor: middle; }
+  .vuela { font-size: 17px; text-anchor: middle; pointer-events: none; }
+  /* Al terminar, la robotita da un saltico */
+  .salta .robot-iso > * { animation: robot-salta .6s cubic-bezier(.3, 1.6, .5, 1) !important; }
+  @keyframes robot-salta { 0% { translate: 0 0; } 40% { translate: 0 -10px; } 100% { translate: 0 0; } }
+  /* «Por dentro» llega con punteros (punteros.ts) */
+  .cadena.por-arrastrar .cadena-pedido, .cadena.por-arrastrar .paso-actual, .cadena.por-arrastrar .escena-iso, .cadena.por-arrastrar .pasos-iso > li { opacity: 0; }
+  .cadena .puntero { top: 6px; right: 16px; }
+  .cadena .cadena-pedido, .cadena .paso-actual, .pasos-iso > li { position: relative; }
+  .cadena .en-vuelo { z-index: 3; }
+
+  /* Los seis pasos debajo de la escena, con lo que hizo cada ayudante */
+  .pasos-iso { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pasos-iso li { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; background: var(--papel); border: 1px solid var(--linea); border-radius: 14px; padding: 8px 10px; transition: border-color .3s, box-shadow .3s; }
+  .pasos-iso b { grid-row: span 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--linea); color: var(--tinta); font-size: .72rem; align-self: start; transition: background-color .3s, color .3s; }
+  .pasos-iso .paso-nombre { font-weight: 700; font-size: .84rem; color: var(--tinta); }
+  .pasos-iso .estado-txt { font-size: .78rem; line-height: 1.35; color: var(--tinta-2); display: inline-block; }
+  .pasos-iso li.trabaja { border-color: var(--rosa); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rosa) 14%, transparent); }
+  .pasos-iso li.trabaja b { background: var(--boton); color: #fff; }
+  .pasos-iso li.listo b { background: var(--verde); color: #fff; }
+  .pasos-iso li.ojo b { background: var(--ambar); }
+  .cadena-fin { justify-self: center; font-size: .95rem; color: var(--tinta-2); opacity: 0; translate: 0 10px; transition: opacity .5s, translate .6s cubic-bezier(.3, 1.6, .5, 1); }
+  .cadena-fin b { color: var(--tinta); }
+  .cadena-fin.se-ve { opacity: 1; translate: 0 0; }
+  .fabrica + .fila-producto { margin-top: 112px; }
+
+  @media (max-width: 1100px) {
+    .fabrica { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 32px; }
+  }
+  @media (max-width: 900px) {
+    .fabrica { grid-template-columns: 1fr; gap: 40px; }
+    .fabrica-tel { justify-self: center; width: 100%; max-width: 380px; }
+    .cadena-pedido { justify-self: stretch; border-radius: 16px; }
+  }
+  /* En el teléfono la escena no se encoge tanto: la cámara sigue a la caja */
+  @media (max-width: 640px) {
+    .escena-iso { margin-inline: -16px; border-radius: 0; }
+    .escena-iso svg { width: 640px; max-width: none; }
+    .pasos-iso { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .paso-actual span { font-size: 1.15rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .robot-iso > *, .robot-iso .r-ojos { animation: none !important; }
+    .escena-iso svg { transition: none; }
+  }

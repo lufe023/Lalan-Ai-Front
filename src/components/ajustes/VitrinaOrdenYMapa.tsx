@@ -208,7 +208,7 @@ export const UbicacionSede: React.FC<{
 
 /**
  * El Instagram y el Facebook que la Vitrina muestra en «Cómo llegar». Son de
- * la sede y van aparte de las cuentas conectadas a Lalán (esas salen en
+ * la sede y van aparte de las cuentas conectadas a Lalan (esas salen en
  * «Escríbenos» solas). Vacío: no sale.
  */
 export const RedesSede: React.FC<{ cfg: ConfigVitrina; q: string; recargar: (c: ConfigVitrina) => void }> = ({ cfg, q, recargar }) => {
@@ -233,7 +233,7 @@ export const RedesSede: React.FC<{ cfg: ConfigVitrina; q: string; recargar: (c: 
   return (
     <div data-guia="vitrina-redes" className={`${TARJETA} space-y-3`}>
       <div className="flex items-center justify-between gap-2"><h2 className={TITULO}>Redes de la sede</h2><Etiqueta sede={cfg.sede.nombre} /></div>
-      <p className={AYUDA}>Salen en «Cómo llegar» para que te sigan. Para chatear con Lalán, los botones de «Escríbenos» usan las cuentas conectadas en Lalan en los chats. Déjalos vacíos para que no salgan.</p>
+      <p className={AYUDA}>Salen en «Cómo llegar» para que te sigan. Para chatear con Lalan, los botones de «Escríbenos» usan las cuentas conectadas en Lalan en los chats. Déjalos vacíos para que no salgan.</p>
       <label className={CAMPO}>
         <Instagram className="w-4 h-4 text-slate-400 shrink-0" />
         <input value={v.instagram} onChange={(e) => setV({ ...v, instagram: e.target.value })} placeholder="@tusalon" aria-label="Instagram de la sede"

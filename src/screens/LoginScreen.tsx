@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RecuperarClave } from '../components/ui/RecuperarClave';
+import { CrearCuenta, registroPedido } from '../components/registro/CrearCuenta';
 import { ActivarAccesoRapidoModal } from '../components/ui/ActivarAccesoRapidoModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, AtSign as Mail, Lock, Loader2, AlertCircle, Zap, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
@@ -7,19 +8,22 @@ import { LogoLalan } from '../components/ui/LogoLalan';
 import { useAuth, type RetoDosPasos } from '../context/AuthContext';
 import { PasoDelCodigo } from '../components/ajustes/DosPasos';
 import { BotonAtras } from '../components/ui/BotonAtras';
-import { useApp } from '../context/AppContext';
+import { useApp, type ScreenName } from '../context/AppContext';
 import { quickAuth, QuickAuthRegistration } from '../services/quickAuth';
+import { tomarDestino } from '../services/enlaceEntrada';
 
 export const LoginScreen: React.FC = () => {
-  const { login, loginWithQuickDevice } = useAuth();
+  const { login, loginWithQuickDevice, retoDelEnlace, avisoDelEnlace } = useAuth();
   const { showToast, navigateTo } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  /** La clave estuvo bien y falta el código de dos pasos */
+  /** La clave (o el enlace de un aviso) estuvo bien y falta el código de dos pasos */
   const [reto, setReto] = useState<RetoDosPasos | null>(null);
   const [recuperando, setRecuperando] = useState(false);
+  /** «Crear mi cuenta»: llega de la página con ?registro=1 (y el plan que tocó) */
+  const [registro, setRegistro] = useState(() => registroPedido());
   const [showActivarModal, setShowActivarModal] = useState(false);
 
   // Consulta de registro de acceso rápido en este dispositivo
@@ -30,6 +34,10 @@ export const LoginScreen: React.FC = () => {
   useEffect(() => {
     setRegistration(quickAuth.getRegistration());
   }, []);
+
+  /* El enlace de un aviso se canjea al arrancar: con dos pasos falta el código; vencido, se dice por qué */
+  useEffect(() => { if (retoDelEnlace) setReto(retoDelEnlace); }, [retoDelEnlace]);
+  useEffect(() => { if (avisoDelEnlace) { setError(avisoDelEnlace); setModoManual(true); } }, [avisoDelEnlace]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +55,9 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  /** Venía de un enlace (un aviso, una notificación): a esa pantalla, no al inicio */
+  const irAlEntrar = () => navigateTo((tomarDestino() as ScreenName | null) ?? 'dashboard');
+
   /** Ya dentro. Con dos pasos no se ofrece el 1 toque: no se salta el código */
   const entro = (conCodigo = false) => {
       showToast('¡Hola!', 'Sesión iniciada correctamente.', 'success');
@@ -54,7 +65,7 @@ export const LoginScreen: React.FC = () => {
       if (!conCodigo && !quickAuth.getRegistration().isRegistered) {
         setShowActivarModal(true);
       } else {
-        navigateTo('dashboard');
+        irAlEntrar();
       }
   };
 
@@ -66,7 +77,7 @@ export const LoginScreen: React.FC = () => {
       // Con dos pasos el toque reemplaza la clave, no el código
       if (r.dosPasos) { setReto(r.dosPasos); return; }
       showToast('¡Hola!', 'Acceso rápido autenticado en este dispositivo.', 'success');
-      navigateTo('dashboard');
+      irAlEntrar();
     } catch (err: any) {
       setError(err?.message ?? 'No se pudo iniciar con acceso rápido. Prueba con tu clave.');
       setModoManual(true);
@@ -95,10 +106,12 @@ export const LoginScreen: React.FC = () => {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Lalan AI</h1>
-          <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">Studio & Lounge · Gestión inteligente</p>
+          <p className="text-sm text-slate-500 dark:text-neutral-400 mt-1">Live Assistant for Logistics, Appointments & Networking</p>
         </div>
 
-        {reto ? (
+        {registro ? (
+          <CrearCuenta plan={registro.plan} visita={registro.visita} onVolver={(c) => { setRegistro(null); setModoManual(true); if (c) setEmail(c); setError(''); }} />
+        ) : reto ? (
           <PasoDelCodigo reto={reto} onListo={() => { setReto(null); entro(true); }} onVolver={() => { setReto(null); setPassword(''); }} />
         ) : recuperando ? (
           <RecuperarClave emailInicial={email} onVolver={(e) => { setRecuperando(false); if (e) setEmail(e); setPassword(''); setError(''); }} />
@@ -239,8 +252,17 @@ export const LoginScreen: React.FC = () => {
               </button>
 
               {registration.isRegistered && (
-                <BotonAtras onVolver={() => { setError(''); setModoManual(false); }} activo={modoManual && !reto && !recuperando} texto="Volver a Acceso Rápido" />
+                <BotonAtras onVolver={() => { setError(''); setModoManual(false); }} activo={modoManual && !reto && !recuperando && !registro} texto="Volver a Acceso Rápido" />
               )}
+            </div>
+
+            {/* La dueña que todavía no tiene Lalan crea su cuenta sola */}
+            <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-neutral-800 text-center">
+              <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400">¿Tu salón todavía no usa Lalan?</p>
+              <button type="button" onClick={() => { setError(''); setRegistro({ plan: null, visita: null }); }}
+                className="mt-2 w-full py-3 rounded-xl border border-[var(--primary)]/40 text-[var(--primary)] font-semibold text-sm hover:bg-[var(--primary)]/5 active:scale-[0.98] transition cursor-pointer">
+                Crear la cuenta de mi salón
+              </button>
             </div>
 
           </>
@@ -256,7 +278,7 @@ export const LoginScreen: React.FC = () => {
         isOpen={showActivarModal}
         onClose={() => {
           setShowActivarModal(false);
-          navigateTo('dashboard');
+          irAlEntrar();
         }}
       />
     </div>

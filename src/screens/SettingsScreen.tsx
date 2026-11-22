@@ -32,6 +32,7 @@ import {
   Music,
   Bot,
   ChevronRight,
+  ShieldCheck,
   Zap,
   Check,
   Loader2,
@@ -70,6 +71,8 @@ import { abrirBienvenida } from '../services/bienvenida';
 import { ActivarNotificaciones } from '../components/ui/ActivarNotificaciones';
 import { SeguridadCuenta } from '../components/ajustes/SeguridadCuenta';
 import { LoQueLalanSabe } from '../components/ajustes/LoQueLalanSabe';
+import { MiWhatsappLalan } from '../components/lalan-whatsapp/MiWhatsappLalan';
+import { pedirVer, VER_NUMEROS_CONFIANZA } from '../services/lalanWhatsapp';
 import { puedeHablarConLalan } from '../components/lalan/PantallaLalan';
 import { QuioscosSalon } from '../components/ajustes/QuioscosSalon';
 import { AjustesVitrina } from '../components/ajustes/AjustesVitrina';
@@ -507,6 +510,8 @@ export const SettingsScreen: React.FC = () => {
         {/* Dos pasos: obligatoria para Lalan (super admin y soporte), opcional para la dueña */}
         {!enSoporte() && currentUser?.role !== 'assistant' && <DosPasosCuenta />}
         {/* Privado entre ella y Lalan: tampoco se ve desde una sesión de soporte */}
+        {/* Su número de confianza: habla con Lalan desde su WhatsApp */}
+        {!enSoporte() && puedeHablarConLalan(currentUser?.role) && <MiWhatsappLalan />}
         {!enSoporte() && puedeHablarConLalan(currentUser?.role) && <LoQueLalanSabe />}
         {/* La dueña ve quién de Lalan entró y quién cambió qué */}
         {currentUser?.role === 'admin' && !currentUser.soporte && <SoporteEnTuSalon />}
@@ -586,7 +591,7 @@ export const SettingsScreen: React.FC = () => {
               className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none"
             />
             <p className="mt-1 text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-              Sale en el menú de sedes, en la Vitrina y cuando Lalán ofrece dónde atender.
+              Sale en el menú de sedes, en la Vitrina y cuando Lalan ofrece dónde atender.
             </p>
           </div>
 
@@ -978,6 +983,22 @@ export const SettingsScreen: React.FC = () => {
             </h3>
           </div>
           {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <ConectarMeta incrustado />}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+            <button
+              type="button"
+              data-guia="abrir-numeros-confianza"
+              onClick={() => { pedirVer(VER_NUMEROS_CONFIANZA); navigateTo('bots'); }}
+              className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"
+            >
+              <div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Números de confianza</div>
+                <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+                  Quién habla con {settings.aiAgentName || 'Lalan'} por WhatsApp como su asistente, y de qué sedes
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+            </button>
+          )}
           <button
             onClick={() => navigateTo('bots')}
             className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 text-left flex items-center justify-between gap-2 ios-touch cursor-pointer"

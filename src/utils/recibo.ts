@@ -1,3 +1,4 @@
+import { miles } from './dinero';
 /**
  * Impresión de recibos en térmica / matricial.
  *
@@ -69,7 +70,7 @@ const esc = (t: any) =>
   String(t ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
 
 const money = (n: any, sim = '') =>
-  `${Number(n ?? 0).toFixed(2)}${sim ? ` ${sim}` : ''}`;
+  `${miles(n)}${sim ? ` ${sim}` : ''}`;
 
 const METODOS: Record<string, string> = {
   cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', other: 'Otro',
@@ -99,16 +100,16 @@ export function construirRecibo(venta: any, o: ReciboOpts = {}): string {
       }${
         it.discountPercent ? `<br><span class="mini">−${Number(it.discountPercent).toFixed(0)}%</span>` : ''
       }</td>
-      <td class="m">${Number(it.lineTotal ?? 0).toFixed(2)}</td>
+      <td class="m">${miles(it.lineTotal ?? 0)}</td>
     </tr>`;
   }).join('');
 
   const filasPago = pagos.map(p => {
     const extra = p.receivedCurrency && Number(p.exchangeRate) !== 1
-      ? ` (${Number(p.receivedAmount).toFixed(2)} ${p.receivedCurrency} @ ${Number(p.exchangeRate).toFixed(2)})`
+      ? ` (${miles(p.receivedAmount)} ${p.receivedCurrency} @ ${miles(p.exchangeRate)})`
       : '';
     return `<div class="row"><span>${esc(METODOS[p.method] ?? p.method)}${esc(extra)}</span>
-      <span>${Number(p.amount ?? 0).toFixed(2)}</span></div>`;
+      <span>${miles(p.amount ?? 0)}</span></div>`;
   }).join('');
 
   const vueltoTotal = pagos.reduce((s, p) => s + Number(p.changeGiven ?? 0), 0);
@@ -130,10 +131,10 @@ export function construirRecibo(venta: any, o: ReciboOpts = {}): string {
     tarifa: () => venta?.priceList && !venta.priceList.isDefault ? `<div class="mini">Tarifa: ${esc(venta.priceList.name)}</div>` : '',
     detalle: () => `<table>${filas}</table>`,
     totales: () => `${Number(venta?.discountTotal) > 0
-      ? `<div class="row"><span>Ahorró</span><span>${Number(venta.discountTotal).toFixed(2)}</span></div>` : ''}
+      ? `<div class="row"><span>Ahorró</span><span>${miles(venta.discountTotal)}</span></div>` : ''}
   <div class="row tot"><span>TOTAL</span><span>${money(venta?.total, sim)}</span></div>
   ${filasPago}
-  ${propinaTotal > 0 ? `<div class="row"><span>Propina</span><span>${propinaTotal.toFixed(2)}</span></div>` : ''}
+  ${propinaTotal > 0 ? `<div class="row"><span>Propina</span><span>${miles(propinaTotal)}</span></div>` : ''}
   ${vueltoTotal > 0 ? `<div class="row b"><span>Devuelta</span><span>${money(vueltoTotal, sim)}</span></div>` : ''}`,
     pie: () => pie ? `<div class="mini">${esc(pie)}</div>` : '',
   };
