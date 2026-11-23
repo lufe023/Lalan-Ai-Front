@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { urlDelQuiosco } from '../../services/quiosco';
 import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
+import { VerComoTenerlo } from '../plan/VerComoTenerlo';
 
 type ModoImprimir = 'no' | 'preguntar' | 'siempre';
 interface Quiosco {
@@ -99,7 +100,7 @@ export const QuioscosSalon: React.FC = () => {
 
       {!incluido ? (
         <p className="text-[0.75rem] p-3 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">
-          El quiosco no está incluido en tu plan. Escríbenos para activarlo.
+          El quiosco no está incluido en tu plan. <VerComoTenerlo modulo="quiosco" />
         </p>
       ) : (
         <>

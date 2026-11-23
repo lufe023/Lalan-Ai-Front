@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { NumeroAnimado, RESORTE } from '../components/ui/movimiento';
-import { ArrowRight, BarChart3, CalendarCheck2, Gauge, Loader2, MessagesSquare, PackageSearch, Receipt, Wallet } from 'lucide-react';
+import { ArrowRight, BarChart3, CalendarCheck2, Gauge, Loader2, Lock, MessagesSquare, PackageSearch, Receipt, Wallet } from 'lucide-react';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
 import type { ScreenName } from '../context/AppContext';
@@ -123,31 +123,44 @@ const ProductosLentos: React.FC = () => {
 /** El centro de informes: todos en un solo lugar, sin quitar los accesos de siempre */
 export const InformesScreen: React.FC = () => {
   const { navigateTo } = useApp();
-  const { tieneModulo } = usePlan();
-  const accesos = ACCESOS.filter(a => !a.modulo || tieneModulo(a.modulo));
+  const { tieneModulo, bloqueado, verModulo } = usePlan();
+  // Lo que el plan no trae, la dueña lo ve con candado: tocarlo explica el módulo y cómo tenerlo
+  const accesos = ACCESOS.filter(a => !a.modulo || tieneModulo(a.modulo) || bloqueado(a.modulo));
   return (
     <div className="relative flex-1 w-full h-full flex flex-col overflow-hidden text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
       <IOSHeader title="Informes" subtitle="Todo lo que pasa en tu salón, en un solo lugar" />
       <PageContent className="space-y-5">
         <InformesDeLalan />
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {accesos.map((a, i) => (
-            <motion.button key={a.pantalla} type="button" onClick={() => navigateTo(a.pantalla)} data-medir={`Informes: ${a.titulo}`}
+          {accesos.map((a, i) => {
+            const conCandado = !!a.modulo && !tieneModulo(a.modulo);
+            return (
+            <motion.button key={a.pantalla} type="button" onClick={() => (conCandado ? verModulo(a.modulo!) : navigateTo(a.pantalla))} data-medir={`Informes: ${a.titulo}${conCandado ? ' (candado)' : ''}`}
               initial={false} transition={RESORTE} style={{ animationDelay: `${i * 0.05}s`, ['--entrar-y' as string]: '16px' }} whileTap={{ scale: 0.97 }} whileHover={{ y: -3 }}
               className="entrar-suave text-left rounded-3xl border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-[var(--primary)] hover:shadow-md transition-[border-color,box-shadow] cursor-pointer flex flex-col gap-2">
               <span className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center"><a.icono className="w-5 h-5" /></span>
               <span className="text-sm font-bold">{a.titulo}</span>
               <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400 flex-1">{a.texto}</span>
-              <span className="text-[0.75rem] font-bold text-[var(--primary)] flex items-center gap-1">Abrir <ArrowRight className="w-3.5 h-3.5" /></span>
+              {conCandado
+                ? <span className="text-[0.75rem] font-bold text-slate-500 dark:text-neutral-400 flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> No está en tu plan · Ver cómo tenerlo</span>
+                : <span className="text-[0.75rem] font-bold text-[var(--primary)] flex items-center gap-1">Abrir <ArrowRight className="w-3.5 h-3.5" /></span>}
             </motion.button>
-          ))}
+            );
+          })}
         </div>
         {tieneModulo('inventario')
           ? <ProductosLentos />
           : (
+            bloqueado('inventario') ? (
+            <button type="button" onClick={() => verModulo('inventario')} data-medir="Informes: productos lentos (candado)"
+              className="w-full text-left rounded-3xl border border-dashed border-slate-300 dark:border-neutral-700 p-4 text-xs text-slate-500 flex items-center gap-2 cursor-pointer hover:border-[var(--primary)]/50">
+              <Lock className="w-4 h-4 shrink-0" /> <span className="flex-1">El informe de lo que tarda en venderse viene con Inventario y recetas.</span> <span className="font-bold text-[var(--primary)] shrink-0">Ver cómo tenerlo</span>
+            </button>
+            ) : (
             <div className="rounded-3xl border border-dashed border-slate-300 dark:border-neutral-700 p-4 text-xs text-slate-500 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" /> El informe de lo que tarda en venderse viene con Inventario y recetas (Plan Salón y Plan Lounge).
+              <BarChart3 className="w-4 h-4" /> El informe de lo que tarda en venderse viene con Inventario y recetas.
             </div>
+            )
           )}
       </PageContent>
     </div>

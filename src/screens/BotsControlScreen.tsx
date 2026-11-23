@@ -21,6 +21,7 @@ import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../context/PlanContext';
+import { VerComoTenerlo } from '../components/plan/VerComoTenerlo';
 
 /** Cuántas horas antes va el segundo recordatorio (0 = no se manda) */
 const HORAS_RECORDATORIO = [
@@ -510,7 +511,7 @@ export const BotsControlScreen: React.FC = () => {
                 <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
                   {conRecordatorios
                     ? `${agente} le recuerda la cita a la clienta por WhatsApp. Si ella contesta que necesita cambiarla, ${agente} la reagenda. Cada recordatorio que sale fuera de una conversación abierta tiene un costo pequeño en Meta.`
-                    : 'Incluidos en el Plan Salón y en el Plan Lounge. Escríbenos para activarlos.'}
+                    : <>No están en tu plan. <VerComoTenerlo modulo="recordatorios" /></>}
                 </div>
               </div>
               <IOSToggle

@@ -3,6 +3,7 @@ import { MonitorSmartphone } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
+import { VerComoTenerlo } from '../plan/VerComoTenerlo';
 import { IOSModal } from '../ui/IOSModal';
 
 const RUTA = /^#\/quiosco-aprobar\/(\d{6})$/;
@@ -65,7 +66,7 @@ export const AprobarQuiosco: React.FC = () => {
           <p className="text-[0.8125rem] text-slate-700 dark:text-neutral-200 leading-snug">
             {incluido
               ? 'La tablet que muestra este código quedará como quiosco de tu salón: tus clientas se anotan solas al llegar y pasan a la pizarra.'
-              : 'El quiosco no está incluido en tu plan. Escríbenos para activarlo.'}
+              : <>El quiosco no está incluido en tu plan. <VerComoTenerlo modulo="quiosco" /></>}
           </p>
         </div>
         {incluido && (
