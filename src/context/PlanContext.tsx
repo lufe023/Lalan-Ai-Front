@@ -20,11 +20,16 @@ interface PlanContextType {
   bloqueado: (m: ClaveModulo) => boolean;
   /** Abre la hoja que explica el módulo, enseña ejemplos y lleva a subir de plan o a pedirlo aparte */
   verModulo: (m: ClaveModulo) => void;
+  /**
+   * Lalan mirando el salón de un cliente (soporte): se ve el menú como lo ve
+   * la dueña, con los candados de su plan, aunque quien entra sea super admin.
+   */
+  mirandoComoDuena: boolean;
 }
 
 const PlanContext = createContext<PlanContextType>({
   miPlan: null, tieneModulo: () => true, recargarPlan: async () => {},
-  catalogo: null, verBloqueados: false, bloqueado: () => false, verModulo: () => {},
+  catalogo: null, verBloqueados: false, bloqueado: () => false, verModulo: () => {}, mirandoComoDuena: false,
 });
 
 /** Qué incluye el plan del salón: lo que no incluye, la dueña lo ve con candado; el resto del equipo no lo ve */
@@ -33,7 +38,10 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [miPlan, setMiPlan] = useState<MiPlan | null>(null);
   const [catalogo, setCatalogo] = useState<CatalogoModulos | null>(null);
   const [abierto, setAbierto] = useState<ClaveModulo | null>(null);
-  const esDuena = currentUser?.role === 'admin';
+  // En soporte se mira el salón con los ojos de la dueña: su plan y sus candados,
+  // no los permisos de super admin de quien entra
+  const mirandoComoDuena = !!currentUser?.soporte;
+  const esDuena = currentUser?.role === 'admin' || mirandoComoDuena;
 
   const recargarPlan = useCallback(async () => {
     try { setMiPlan(await api.get<MiPlan>('/mi-plan')); } catch { /* sin servidor: se queda como estaba */ }
@@ -50,9 +58,9 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isAuthenticated, esDuena]);
 
   const tieneModulo = useCallback((m: ClaveModulo) => {
-    if (currentUser?.role === 'super_admin') return true;
+    if (currentUser?.role === 'super_admin' && !mirandoComoDuena) return true;
     return miPlan ? miPlan.modulos.includes(m) : true;
-  }, [miPlan, currentUser?.role]);
+  }, [miPlan, currentUser?.role, mirandoComoDuena]);
 
   // Con el plan y el catálogo ya cargados: mientras no, nada sale con candado
   const verBloqueados = esDuena && !!miPlan && !!catalogo;
@@ -60,7 +68,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const verModulo = useCallback((m: ClaveModulo) => setAbierto(m), []);
 
   return (
-    <PlanContext.Provider value={{ miPlan, tieneModulo, recargarPlan, catalogo, verBloqueados, bloqueado, verModulo }}>
+    <PlanContext.Provider value={{ miPlan, tieneModulo, recargarPlan, catalogo, verBloqueados, bloqueado, verModulo, mirandoComoDuena }}>
       {children}
       <HojaModuloBloqueado
         modulo={abierto}
@@ -68,6 +76,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         incluido={abierto ? tieneModulo(abierto) : false}
         planActual={miPlan?.plan?.nombre ?? null}
         tiene={tieneModulo}
+        soporte={mirandoComoDuena}
         onClose={() => setAbierto(null)}
       />
     </PlanContext.Provider>

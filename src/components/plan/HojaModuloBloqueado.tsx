@@ -28,8 +28,10 @@ export const HojaModuloBloqueado: React.FC<{
   planActual: string | null;
   /** Para no pedir lo que ya tiene (Compras necesita Inventario, que quizá ya viene en su plan) */
   tiene: (m: ClaveModulo) => boolean;
+  /** Lalan mirando en soporte: se enseña lo mismo que ve la dueña, pero sus botones no le escriben a ventas */
+  soporte?: boolean;
   onClose: () => void;
-}> = ({ modulo, catalogo, incluido, planActual, tiene, onClose }) => {
+}> = ({ modulo, catalogo, incluido, planActual, tiene, soporte = false, onClose }) => {
   const [ejemplos, setEjemplos] = useState<Record<string, Ejemplo[]>>({});
   const [cual, setCual] = useState(0);
   useEffect(() => { if (modulo) void ejemplosDe().then(setEjemplos).catch(() => undefined); setCual(0); }, [modulo]);
@@ -61,7 +63,13 @@ export const HojaModuloBloqueado: React.FC<{
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
+              {soporte && (
+                <p className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-[0.8125rem] text-amber-800 dark:text-amber-200">
+                  Así lo ve la dueña. Para dárselo, cámbiale el plan o actívale el módulo en Plataforma → Negocios.
+                </p>
+              )}
+
+              <div className={`flex flex-col sm:flex-row gap-2 ${soporte ? 'opacity-50 pointer-events-none' : ''}`} aria-disabled={soporte || undefined}>
                 {viene && (
                   <a href={wa(`Hola, quiero pasar mi salón al ${viene.nombre} en Lalan para tener ${m.nombre}.`)} target="_blank" rel="noopener"
                     data-medir={`Módulo bloqueado: subir de plan (${m.id})`}
