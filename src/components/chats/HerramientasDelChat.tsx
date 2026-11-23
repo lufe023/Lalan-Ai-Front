@@ -43,7 +43,7 @@ export const HerramientasDelChat: React.FC<Props> = ({ conversacion, puedeAutori
         <button type="button" aria-expanded={abierta === 'ficha'} onClick={() => onAbrir(abierta === 'ficha' ? null : 'ficha')}
           className={`${CHIP_CHAT} ${abierta === 'ficha' ? CHIP_ABIERTO : tieneFicha ? CHIP_NEUTRO : CHIP_AMBAR}`}>
           {tieneFicha ? <IdCard className="w-3.5 h-3.5 shrink-0" /> : <Link2 className="w-3.5 h-3.5 shrink-0" />}
-          {tieneFicha ? 'Ficha' : 'Sin ficha · unir'}
+          {tieneFicha ? 'Ficha' : 'Sin ficha · crear'}
         </button>
         <SedeDelChat conversacion={conversacion} />
         <EspecialistaDelChat conversacion={conversacion} modo="chip" abierta={abierta === 'especialista'} onAbrir={alternar('especialista')} />

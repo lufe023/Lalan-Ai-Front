@@ -296,6 +296,22 @@ const MainAppContent: React.FC = () => {
 };
 
 /**
+ * Cada sesión arranca en limpio.
+ *
+ * Cerrar sesión no recarga la página: los datos que la app tenía en memoria
+ * (comandas abiertas, citas, chats, sede activa…) se quedaban puestos y, al
+ * entrar con otra cuenta, el salón nuevo enseñaba cosas del anterior. La
+ * llave hace que, al cambiar de persona o de negocio (también al entrar o
+ * salir de soporte), todo lo de adentro se monte de nuevo y pida sus datos
+ * al servidor con la sesión nueva.
+ */
+function SesionAparte({ children }: { children: React.ReactNode }) {
+  const { currentUser } = useAuth();
+  const llave = currentUser ? `${currentUser.id}|${currentUser.soporte?.negocio ?? ''}` : 'sin-sesion';
+  return <React.Fragment key={llave}>{children}</React.Fragment>;
+}
+
+/**
  * La pantalla de pared, si la URL la pide.
  *
  * Se mira ANTES de montar AuthProvider y AppProvider: el televisor no tiene
@@ -477,6 +493,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <SesionAparte>
         <PlanProvider>
         <SedeActivaProvider>
         <AppProvider>
@@ -487,6 +504,7 @@ export default function App() {
         </AppProvider>
         </SedeActivaProvider>
         </PlanProvider>
+        </SesionAparte>
       </AuthProvider>
     </ThemeProvider>
   );

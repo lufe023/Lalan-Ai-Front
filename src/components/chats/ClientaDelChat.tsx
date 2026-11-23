@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FotoClienta } from '../ui/FotoClienta';
-import { IdCard, Link2, Search, X } from 'lucide-react';
+import { IdCard, Link2, Search, UserPlus, X } from 'lucide-react';
 import { api, urlDeFoto } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import type { Conversation } from '../../types';
@@ -54,8 +54,32 @@ export const ClientaDelChat: React.FC<{ conversacion: Conversation; onAbrirFicha
     }
   };
 
+  /** «Crear su ficha»: con el nombre, el teléfono y la foto del chat. Si ese teléfono ya es de una clienta, se une a ella */
+  const crear = async () => {
+    setOcupado('nueva');
+    try {
+      const r = await api.post<{ ficha: { name: string; nueva: boolean } }>(`/conversations/${conversacion.id}/ficha`, {});
+      showToast(
+        r.ficha.nueva ? 'Ficha creada' : 'Ya era clienta',
+        r.ficha.nueva ? `${r.ficha.name} ya está en Clientas.` : `Este chat quedó unido a la ficha de ${r.ficha.name}.`,
+        'success',
+      );
+      onListo();
+    } catch (e: any) {
+      showToast('No se pudo crear la ficha', e?.message ?? 'Inténtalo de nuevo.', 'warning');
+    } finally {
+      setOcupado(null);
+    }
+  };
+
   return (
     <div className="space-y-2 text-[0.75rem] text-slate-500 dark:text-neutral-400">
+      {!conversacion.clientId && (
+        <button type="button" disabled={!!ocupado} onClick={() => void crear()}
+          className="w-full h-10 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center justify-center gap-1.5 ios-touch cursor-pointer shadow-sm disabled:opacity-50">
+          <UserPlus className="w-4 h-4" /> {ocupado === 'nueva' ? 'Creando…' : `Crear la ficha de ${nombre}`}
+        </button>
+      )}
       {conversacion.clientId && onAbrirFicha ? (
         <button type="button" onClick={onAbrirFicha}
           className="w-full h-10 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center justify-center gap-1.5 ios-touch cursor-pointer shadow-sm">
@@ -64,7 +88,7 @@ export const ClientaDelChat: React.FC<{ conversacion: Conversation; onAbrirFicha
       ) : (
         <p className="flex items-start gap-1.5">
           <Link2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-          <span>Todavía sin ficha{!conversacion.clientPhone && conversacion.channel !== 'whatsapp' ? ' y sin número' : ''}. Si ya es clienta, búscala y únela: Lalan verá sus citas y sus gustos.</span>
+          <span>O, si ya es clienta{!conversacion.clientPhone && conversacion.channel !== 'whatsapp' ? ' (este chat no trae número)' : ''}, búscala y únela: Lalan verá sus citas y sus gustos.</span>
         </p>
       )}
       {conversacion.clientId && (
