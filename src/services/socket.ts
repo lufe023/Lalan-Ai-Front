@@ -26,10 +26,10 @@ const URL_BASE = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:300
  * lo que pasa cuando dos servidores de sockets escuchan la misma ruta del
  * mismo puerto. Tiene que coincidir con `RUTA_SOCKET` del backend.
  */
-const RUTA = '/rt';
+export const RUTA = '/rt';
 
 /** El socket cuelga de la raíz del servidor, no del prefijo /api/v1 */
-const origenDelServidor = () => {
+export const origenDelServidor = () => {
   try { return new URL(URL_BASE, window.location.origin).origin; }
   catch { return window.location.origin; }
 };
