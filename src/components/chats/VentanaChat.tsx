@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BotonAtras } from '../ui/BotonAtras';
 import { FotoClienta } from '../ui/FotoClienta';
 import { GrabadorVoz } from './GrabadorVoz';
@@ -249,6 +249,83 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
     if (el && (cercaDelFinal.current || ultimoEsDelSalon)) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [cantidad, ultimoEsDelSalon, sugerenciaVigente?.id]);
 
+  /* Las burbujas solo se vuelven a pintar si cambian los mensajes: al escribir
+     cada letra cambia el texto de abajo, y repintar cien burbujas por letra
+     hacía que lo que se escribe apareciera tarde. */
+  const nombreClienta = activeConversation?.clientName ?? '';
+  const burbujas = useMemo(() => (
+    <>
+      <OrigenDelChat mensajes={hilo} />
+      {hilo.map((msg, idx) => {
+        const isClient = msg.sender === 'client';
+        const isBot = msg.sender === 'bot';
+
+        // Avisos del sistema ("pasó a una persona"): al centro, no son de nadie
+        if (msg.sender === 'system') {
+          return (
+            <div key={msg.id || idx} className="flex justify-center">
+              <div className={`px-3 py-1.5 rounded-xl text-[0.75rem] flex items-center gap-1.5 max-w-[90%] ${msg.conducta
+                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-semibold'
+                : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200'}`}>
+                {msg.conducta ? <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
+                <span>{msg.text}</span>
+                <span className="opacity-60 shrink-0">· {horaDeMensaje(msg.timestamp)}</span>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <motion.div
+            key={msg.id || idx}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
+          >
+            <div
+              className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
+                isClient
+                  ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white rounded-bl-xs border border-slate-200/60 dark:border-neutral-700/60'
+                  : isBot
+                  ? 'bg-gradient-to-tr from-purple-700 to-indigo-600 text-white rounded-br-xs'
+                  : 'bg-gradient-to-tr from-[var(--primary)] to-rose-500 text-white rounded-br-xs'
+              }`}
+            >
+              {/* Sender Tag */}
+              <div className="flex items-center gap-1 text-[0.6875rem] font-bold opacity-80 mb-0.5">
+                {isClient ? (
+                  <span>{nombreClienta}</span>
+                ) : isBot ? (
+                  <span className="flex items-center gap-0.5">
+                    <Bot className="w-2.5 h-2.5" /> {agente}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-0.5">
+                    <UserCheck className="w-2.5 h-2.5" /> {msg.autorNombre ?? 'Equipo del salón'}
+                  </span>
+                )}
+              </div>
+
+              <ContenidoMensaje msg={msg} sobreColor={!isClient} esSuperAdmin={esSuperAdmin} />
+
+              <div className="flex items-center justify-end gap-1 text-[0.6875rem] opacity-70 mt-1">
+                <span>{horaDeMensaje(msg.timestamp)}</span>
+                {!isClient && <EstadoDeEnvio estado={msg.deliveryStatus} />}
+              </div>
+              {msg.deliveryStatus === 'fallido' && (
+                <div className="mt-1 text-[0.6875rem] font-semibold bg-black/20 rounded-lg px-2 py-1">
+                  No se envió{msg.failureReason ? `: ${msg.failureReason}` : ''}
+                </div>
+              )}
+            </div>
+            <ReaccionDeMensaje emoji={msg.reaccion} aLaDerecha={!isClient} />
+          </motion.div>
+        );
+      })}
+    </>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [activeConversation?.messages, nombreClienta, agente, esSuperAdmin]);
+
   if (!activeConversation) return null;
 
   if (flotante) {
@@ -309,73 +386,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
-          <OrigenDelChat mensajes={hilo} />
-          {hilo.map((msg, idx) => {
-            const isClient = msg.sender === 'client';
-            const isBot = msg.sender === 'bot';
-
-            // Avisos del sistema ("pasó a una persona"): al centro, no son de nadie
-            if (msg.sender === 'system') {
-              return (
-                <div key={msg.id || idx} className="flex justify-center">
-                  <div className={`px-3 py-1.5 rounded-xl text-[0.75rem] flex items-center gap-1.5 max-w-[90%] ${msg.conducta
-                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-semibold'
-                    : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200'}`}>
-                    {msg.conducta ? <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
-                    <span>{msg.text}</span>
-                    <span className="opacity-60 shrink-0">· {horaDeMensaje(msg.timestamp)}</span>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <motion.div
-                key={msg.id || idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
-              >
-                <div
-                  className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
-                    isClient
-                      ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white rounded-bl-xs border border-slate-200/60 dark:border-neutral-700/60'
-                      : isBot
-                      ? 'bg-gradient-to-tr from-purple-700 to-indigo-600 text-white rounded-br-xs'
-                      : 'bg-gradient-to-tr from-[var(--primary)] to-rose-500 text-white rounded-br-xs'
-                  }`}
-                >
-                  {/* Sender Tag */}
-                  <div className="flex items-center gap-1 text-[0.6875rem] font-bold opacity-80 mb-0.5">
-                    {isClient ? (
-                      <span>{activeConversation.clientName}</span>
-                    ) : isBot ? (
-                      <span className="flex items-center gap-0.5">
-                        <Bot className="w-2.5 h-2.5" /> {agente}
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-0.5">
-                        <UserCheck className="w-2.5 h-2.5" /> {msg.autorNombre ?? 'Equipo del salón'}
-                      </span>
-                    )}
-                  </div>
-
-                  <ContenidoMensaje msg={msg} sobreColor={!isClient} esSuperAdmin={esSuperAdmin} />
-
-                  <div className="flex items-center justify-end gap-1 text-[0.6875rem] opacity-70 mt-1">
-                    <span>{horaDeMensaje(msg.timestamp)}</span>
-                    {!isClient && <EstadoDeEnvio estado={msg.deliveryStatus} />}
-                  </div>
-                  {msg.deliveryStatus === 'fallido' && (
-                    <div className="mt-1 text-[0.6875rem] font-semibold bg-black/20 rounded-lg px-2 py-1">
-                      No se envió{msg.failureReason ? `: ${msg.failureReason}` : ''}
-                    </div>
-                  )}
-                </div>
-                <ReaccionDeMensaje emoji={msg.reaccion} aLaDerecha={!isClient} />
-              </motion.div>
-            );
-          })}
+          {burbujas}
         </div>
 
         {/* La respuesta que propone la asistente mientras atiende una persona */}
@@ -558,73 +569,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
-          <OrigenDelChat mensajes={hilo} />
-          {hilo.map((msg, idx) => {
-            const isClient = msg.sender === 'client';
-            const isBot = msg.sender === 'bot';
-
-            // Avisos del sistema ("pasó a una persona"): al centro, no son de nadie
-            if (msg.sender === 'system') {
-              return (
-                <div key={msg.id || idx} className="flex justify-center">
-                  <div className={`px-3 py-1.5 rounded-xl text-[0.75rem] flex items-center gap-1.5 max-w-[90%] ${msg.conducta
-                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 font-semibold'
-                    : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200'}`}>
-                    {msg.conducta ? <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3 h-3 shrink-0" />}
-                    <span>{msg.text}</span>
-                    <span className="opacity-60 shrink-0">· {horaDeMensaje(msg.timestamp)}</span>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <motion.div
-                key={msg.id || idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
-              >
-                <div
-                  className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-xs ${
-                    isClient
-                      ? 'bg-white dark:bg-neutral-800 text-slate-900 dark:text-white rounded-bl-xs border border-slate-200/60 dark:border-neutral-700/60'
-                      : isBot
-                      ? 'bg-gradient-to-tr from-purple-700 to-indigo-600 text-white rounded-br-xs'
-                      : 'bg-gradient-to-tr from-[var(--primary)] to-rose-500 text-white rounded-br-xs'
-                  }`}
-                >
-                  {/* Sender Tag */}
-                  <div className="flex items-center gap-1 text-[0.6875rem] font-bold opacity-80 mb-0.5">
-                    {isClient ? (
-                      <span>{activeConversation.clientName}</span>
-                    ) : isBot ? (
-                      <span className="flex items-center gap-0.5">
-                        <Bot className="w-2.5 h-2.5" /> {agente}
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-0.5">
-                        <UserCheck className="w-2.5 h-2.5" /> {msg.autorNombre ?? 'Equipo del salón'}
-                      </span>
-                    )}
-                  </div>
-
-                  <ContenidoMensaje msg={msg} sobreColor={!isClient} esSuperAdmin={esSuperAdmin} />
-
-                  <div className="flex items-center justify-end gap-1 text-[0.6875rem] opacity-70 mt-1">
-                    <span>{horaDeMensaje(msg.timestamp)}</span>
-                    {!isClient && <EstadoDeEnvio estado={msg.deliveryStatus} />}
-                  </div>
-                  {msg.deliveryStatus === 'fallido' && (
-                    <div className="mt-1 text-[0.6875rem] font-semibold bg-black/20 rounded-lg px-2 py-1">
-                      No se envió{msg.failureReason ? `: ${msg.failureReason}` : ''}
-                    </div>
-                  )}
-                </div>
-                <ReaccionDeMensaje emoji={msg.reaccion} aLaDerecha={!isClient} />
-              </motion.div>
-            );
-          })}
+          {burbujas}
         </div>
 
         {/* La respuesta que propone la asistente mientras atiende una persona */}

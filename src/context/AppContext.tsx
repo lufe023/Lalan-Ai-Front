@@ -1,3 +1,4 @@
+import { ponerSegundoMusica } from '../services/segunderoMusica';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { guardarDestino } from '../services/enlaceEntrada';
 import {
@@ -562,7 +563,7 @@ interface AppContextType {
   ytRepeatMode: 'off' | 'all' | 'one';
   ytMuted: boolean;
   ytVolume: number;
-  ytTime: number;
+  /** El segundero NO está aquí: ver services/segunderoMusica (repintaría toda la app) */
   ytDuration: number;
   ytReady: boolean;
   setYtQueue: (tracks: YtTrack[], opts?: { keepCurrent?: boolean }) => void;
@@ -2080,7 +2081,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [ytRepeatMode, setYtRepeatMode] = useState<'off' | 'all' | 'one'>('all');
   const [ytMuted, setYtMuted] = useState(false);
   const [ytVolume, setYtVolumeState] = useState(80);
-  const [ytTime, setYtTime] = useState(0);
   const [ytDuration, setYtDuration] = useState(0);
   const [ytReady, setYtReady] = useState(false);
 
@@ -2283,7 +2283,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const ytSeek = useCallback((sec: number) => {
     if (mandoRemoto()) { ordenar('seek', sec); return; }
     try { ytPlayerRef.current?.seekTo(sec, true); } catch { /* noop */ }
-    setYtTime(sec);
+    ponerSegundoMusica(sec);
   }, []);
 
   const ytSetVolume = useCallback((v: number) => {
@@ -3185,8 +3185,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createPlaylist, deletePlaylist, addTrackToPlaylist, addTracksToPlaylist,
       updatePlaylist, reorderPlaylistTracks, removeTrackFromPlaylist,
       ytPlayerRef, ytQueue, ytOrder, ytIndex, ytPlaying, ytShuffle, ytRepeatMode,
-      ytMuted, ytVolume, ytTime, ytDuration, ytReady,
-      setYtQueue, setYtPlaying, setYtReady, setYtTime, setYtDuration,
+      ytMuted, ytVolume, ytDuration, ytReady,
+      setYtQueue, setYtPlaying, setYtReady, setYtTime: ponerSegundoMusica, setYtDuration,
       ytPlayIndex, ytToggle, ytNext, ytPrev, ytOnEnded, ytSeek, ytSetVolume,
       ytToggleMute, toggleYtShuffle, cycleYtRepeat,
     }}>

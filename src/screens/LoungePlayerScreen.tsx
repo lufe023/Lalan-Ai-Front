@@ -64,6 +64,7 @@ import { BuscarCancion } from '../components/musica/BuscarCancion';
 import { tocarAqui } from '../components/ui/GlobalYouTubePlayer';
 import { avisarEsperaToque, useEsperaToque } from '../services/esperaToque';
 import { conSedeLocal, elegirSedeLocal, sedeLocal } from '../services/sedeLocal';
+import { useSegundoMusica } from '../services/segunderoMusica';
 
 /** Una preferencia ya asignada a la clienta */
 type PrefItem = {
@@ -154,13 +155,15 @@ export const LoungePlayerScreen: React.FC = () => {
     updatePlaylist, reorderPlaylistTracks, removeTrackFromPlaylist,
     // Cola de YouTube controlable (IFrame Player API)
     ytQueue, ytOrder, ytIndex, ytPlaying, ytShuffle, ytRepeatMode, ytMuted, ytVolume,
-    ytTime, ytDuration, setYtQueue, ytPlayIndex, ytToggle, ytNext, ytPrev,
+    ytDuration, setYtQueue, ytPlayIndex, ytToggle, ytNext, ytPrev,
     ytSeek, ytSetVolume, ytToggleMute, toggleYtShuffle, cycleYtRepeat,
     ytRotos,
     // Canciones pedidas por las clientas desde el QR
     quitarPeticion,
     categoriaPorClave,
   } = useApp();
+  // El segundero va aparte del contexto (si no, toda la app se repinta dos veces por segundo)
+  const ytTime = useSegundoMusica();
 
   /**
    * ¿La música suena en la pantalla del salón?
@@ -789,7 +792,7 @@ export const LoungePlayerScreen: React.FC = () => {
         sourceLabel: 'YouTube',
         vibe: queueInfo.items[0]?.value ?? 'Gustos de la clienta',
         duration: Math.round(ytDuration || ytTrack.durationSeconds || 0),
-        time: Math.round(ytTime),
+        time: ytTime,
         playing: ytPlaying,
         shuffle: ytShuffle,
         repeatMode: ytRepeatMode,

@@ -81,6 +81,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Solo lo de la web (http/https). Las extensiones del navegador
+  // (chrome-extension://…) no se pueden guardar en la caché: antes cada una
+  // dejaba un error rojo en la consola.
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return;
+  }
+
+  // Lo de otros sitios (YouTube, Cloudflare, Facebook…) lo maneja el
+  // navegador tal cual. Solo se guardan copias de lo nuestro y de las
+  // fuentes de Google. Si un bloqueador de anuncios corta una de esas
+  // peticiones, ya no pasa por aquí ni deja "Failed to convert value to
+  // 'Response'" en la consola.
+  const esFuente = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
+  if (url.origin !== self.location.origin && !esFuente) {
+    return;
+  }
+
   // APIs y WebSockets: siempre van a la red directa
   if (url.pathname.startsWith('/api/') || url.pathname.includes('socket.io')) {
     return;
@@ -169,7 +186,7 @@ self.addEventListener('fetch', (event) => {
               .then((networkResponse) => {
                 if (networkResponse && networkResponse.status === 200) {
                   const clone = networkResponse.clone();
-                  caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+                  caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
                 }
               })
               .catch(() => {});
@@ -182,7 +199,7 @@ self.addEventListener('fetch', (event) => {
           const networkResponse = await fetch(req);
           if (networkResponse && networkResponse.status === 200) {
             const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
           }
           return networkResponse;
         } catch {
@@ -194,8 +211,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Todo lo demás: pasar a red con fallback a caché
+  // (si tampoco hay copia, un error de red normal: nunca "undefined", que
+  // el navegador no sabe convertir en respuesta)
   event.respondWith(
-    fetch(req).catch(() => caches.match(req))
+    fetch(req).catch(async () => (await caches.match(req)) || Response.error())
   );
 });
 

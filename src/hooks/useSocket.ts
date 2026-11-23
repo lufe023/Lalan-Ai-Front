@@ -1,9 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-
-// Strip /api/v1 (or any /api... suffix) to get the bare origin for Socket.IO
-const _apiUrl: string = (import.meta as any).env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
-const WS_URL = _apiUrl.replace(/\/api.*$/, '');
+import { origenDelServidor, RUTA } from '../services/socket';
 
 export type DueAppointment = {
   id: string;
@@ -33,7 +30,11 @@ export function useSocket({ token, onAppointmentDue, onAppointmentCreated, onApp
   useEffect(() => {
     if (!token) return;
 
-    const socket = io(`${WS_URL}/ws`, {
+    /* El espacio /ws del mismo servidor de sockets que el resto de la app:
+       misma raíz y misma ruta (/rt). Con la ruta por defecto (/socket.io)
+       el servidor no contesta y la consola se llenaba de "WebSocket failed". */
+    const socket = io(`${origenDelServidor()}/ws`, {
+      path: RUTA,
       // La sesión viaja en la cookie httpOnly; `token` solo dice si hay alguien dentro
       withCredentials: true,
       transports: ['websocket'],

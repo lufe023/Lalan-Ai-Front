@@ -6,6 +6,7 @@ import {
   dispositivoPropio, programar, miAjusteMs, miAutoMs, calibrarme, estadoMusica, soyElAnfitrion,
 } from '../services/musica';
 import { avisarEsperaToque } from '../services/esperaToque';
+import { leerSegundoMusica } from '../services/segunderoMusica';
 import {
   corregirSeguidor, posicionObjetivo, arrancarSincronizado, Calibrador, MemoriaSeguidor,
 } from '../utils/seguirLider';
@@ -31,7 +32,7 @@ import {
  */
 export const PuenteMusica: React.FC = () => {
   const {
-    ytQueue, ytIndex, ytPlaying, ytTime, ytDuration, ytVolume,
+    ytQueue, ytIndex, ytPlaying, ytDuration, ytVolume,
     ytPlayerRef, ytNext, ytPrev, ytSeek, ytSetVolume, ytPlayIndex,
     currentTrack, isPlayingLounge, togglePlayLounge, nextLoungeTrack,
   } = useApp();
@@ -212,7 +213,7 @@ export const PuenteMusica: React.FC = () => {
     const t = hayYt && !enRadio ? pista : null;
     publicarEstado({
       sonando: t ? ytPlaying : isPlayingLounge,
-      posicion: t ? ytTime : 0,
+      posicion: t ? leerSegundoMusica() : 0,
       duracion: t ? ytDuration : 0,
       volumen: ytVolume,
       pista: t
