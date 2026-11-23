@@ -145,7 +145,13 @@ export async function apiFetch<T = unknown>(
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers, credentials: 'include' });
 
-  if (res.status === 401 && retry) {
+  /* En las puertas de entrada (la clave, el código, el enlace) un 401 no es
+     una sesión vencida: es «esos datos no coinciden», «demasiados intentos»…
+     Se enseña lo que dijo el servidor, no un «Session expired» en inglés. */
+  const ruta = path.split('?')[0];
+  const esEntrada = ruta === '/auth/login' || ruta === '/auth/dos-pasos' || ruta === '/auth/enlace' || ruta.startsWith('/auth/recuperar');
+
+  if (res.status === 401 && retry && !esEntrada) {
     // Sin marca de sesión no hay nada que renovar (pantallas antes de entrar)
     const renovada = sesionLocal.hay() ? await refrescarSesion() : null;
     if (renovada) return apiFetch<T>(path, options, false);
