@@ -3,6 +3,7 @@ import { Check, ChevronDown, ChevronRight, Loader2, Lock, Phone, PhoneCall, Phon
 import { irA } from '../../services/avisos';
 import { api } from '../../services/api';
 import { pedirSeccionAjustes } from './MenuAjustes';
+import { usePlan } from '../../context/PlanContext';
 import { SelectorSede } from '../ui/SelectorSede';
 import { useSedes } from '../../hooks/useSedes';
 import { EVENTO_AJUSTES_MENU } from '../guias/GuiaEnCurso';
@@ -76,6 +77,7 @@ const cuando = (iso: string) => new Date(iso).toLocaleString('es-DO', { weekday:
  * encendidas. Mientras tanto se puede dejar todo elegido.
  */
 export const AvisosPorLlamada: React.FC = () => {
+  const { bloqueado, verModulo } = usePlan();
   const [datos, setDatos] = useState<EstadoLlamadas | null>(null);
   const [historial, setHistorial] = useState<Llamada[] | null>(null);
   const [error, setError] = useState('');
@@ -182,11 +184,11 @@ export const AvisosPorLlamada: React.FC = () => {
             <Lock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-[0.8125rem] font-semibold text-amber-900 dark:text-amber-200">Tu plan no lo incluye todavía</p>
-              <p className="text-[0.75rem] text-amber-800/80 dark:text-amber-200/80">Viene en el plan más completo o se añade como extra a cualquier plan. Ya puedes dejar elegido qué quieres.</p>
-              {datos.esDireccion && (
-                <button type="button" onClick={() => { pedirSeccionAjustes('plan'); window.dispatchEvent(new CustomEvent(EVENTO_AJUSTES_MENU, { detail: 'plan' })); }}
+              <p className="text-[0.75rem] text-amber-800/80 dark:text-amber-200/80">Se añade como extra a cualquier plan. Ya puedes dejar elegido qué quieres.</p>
+              {bloqueado('llamadas') && (
+                <button type="button" onClick={() => verModulo('llamadas')}
                   className="mt-2 min-h-[36px] px-3 rounded-full bg-amber-600 text-white text-[0.75rem] font-bold inline-flex items-center gap-1 cursor-pointer">
-                  <Sparkles className="w-3.5 h-3.5" /> Ver mi plan
+                  <Sparkles className="w-3.5 h-3.5" /> Ver cómo tenerlo
                 </button>
               )}
             </div>

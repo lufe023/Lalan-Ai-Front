@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
+import { SeccionConCandado, VerComoTenerlo } from '../plan/VerComoTenerlo';
 import { useSedes } from '../../hooks/useSedes';
 import { SelectorSede } from '../ui/SelectorSede';
 import { useConfirmar } from '../ui/ModalConfirmar';
@@ -54,8 +55,9 @@ export const PlanesSeguimiento: React.FC<{ clienteId: string; clienteNombre: str
     void cargar();
   }, [cargar, clienteId]);
 
+  // Sin el módulo y sin planes guardados: la dueña ve que existe (con candado); el resto del equipo, nada
+  if (!incluido && !planes?.length) return <SeccionConCandado modulo="planes_seguimiento" titulo="Planes de seguimiento" texto="Tratamientos de varias sesiones: Lalan agenda cada sesión y le escribe a la clienta entre una y otra." />;
   if (!planes) return null;
-  if (!incluido && !planes.length) return null;
 
   const activo = planes.find((p) => p.estado === 'activo') ?? planes.find((p) => p.estado === 'pausado') ?? null;
   const alertas = planes.reduce((n, p) => n + p.alertas.length, 0);
@@ -83,7 +85,7 @@ export const PlanesSeguimiento: React.FC<{ clienteId: string; clienteNombre: str
 
       {abierta && (
         <div className="p-3 space-y-3">
-          {!incluido && <p className="text-[0.6875rem] text-amber-700 dark:text-amber-400">«Planes de seguimiento» no está en tu plan: ves lo guardado, pero no puedes empezar planes nuevos.</p>}
+          {!incluido && <p className="text-[0.6875rem] text-amber-700 dark:text-amber-400">«Planes de seguimiento» no está en tu plan: ves lo guardado, pero no puedes empezar planes nuevos. <VerComoTenerlo modulo="planes_seguimiento" /></p>}
           {planes.map((p) => <TarjetaPlan key={p.id} plan={p} onCambio={cambiar} abiertoDeEntrada={p === activo || planes.length === 1} />)}
 
           {incluido && !empezando && (

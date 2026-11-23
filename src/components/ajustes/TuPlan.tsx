@@ -10,7 +10,7 @@ const WHATSAPP_LALAN = '18092299444';
 
 /** En Ajustes: qué incluye su plan y cuánto lleva usado */
 export const TuPlan: React.FC = () => {
-  const { miPlan, recargarPlan } = usePlan();
+  const { miPlan, recargarPlan, verModulo, verBloqueados } = usePlan();
   const [catalogo, setCatalogo] = useState<CatalogoModulos | null>(null);
   useEffect(() => { void recargarPlan(); }, [recargarPlan]);
   useEffect(() => { api.get<CatalogoModulos>('/mi-plan/modulos').then(setCatalogo).catch(() => setCatalogo(null)); }, []);
@@ -66,9 +66,12 @@ export const TuPlan: React.FC = () => {
         {catalogo?.modulos.map((m) => {
           const si = miPlan.modulos.includes(m.id);
           return (
-            <div key={m.id} className={`flex items-start gap-1.5 text-[0.75rem] ${si ? 'text-slate-600 dark:text-neutral-300' : 'text-slate-400 dark:text-neutral-600'}`} title={m.descripcion}>
-              {si ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-px" /> : <Lock className="w-3.5 h-3.5 shrink-0 mt-px" />}{m.nombre}
-            </div>
+            // Cada uno se toca: explica qué hace, enseña ejemplos y, si no lo tiene, cómo tenerlo
+            <button key={m.id} type="button" disabled={!verBloqueados} onClick={() => verModulo(m.id)} data-medir={`Tu plan: ${m.nombre}`}
+              className={`flex items-start gap-1.5 text-left text-[0.75rem] enabled:cursor-pointer enabled:hover:text-[var(--primary)] ${si ? 'text-slate-600 dark:text-neutral-300' : 'text-slate-400 dark:text-neutral-500'}`} title={m.descripcion}>
+              {si ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-px" /> : <Lock className="w-3.5 h-3.5 shrink-0 mt-px" />}
+              <span>{m.nombre}{!si && verBloqueados && <span className="font-semibold text-[var(--primary)]"> · Ver cómo tenerlo</span>}</span>
+            </button>
           );
         })}
       </div>

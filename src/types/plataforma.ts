@@ -107,7 +107,13 @@ export interface ModuloCatalogo {
   /** Otro módulo sin el cual este no funciona (Compras necesita Inventario) */
   requiere?: ClaveModulo;
 }
-export interface CatalogoModulos { modulos: ModuloCatalogo[]; siempreIncluido: string[] }
+/** El plan donde viene un módulo (el más barato que lo trae); precio null = el plan no lo enseña */
+export interface DondeViene { clave: string; nombre: string; precio: { monto: number; moneda: string } | null }
+export interface CatalogoModulos {
+  modulos: ModuloCatalogo[]; siempreIncluido: string[];
+  /** Solo en /mi-plan/modulos: en qué plan viene cada módulo (null = en ninguno, se pide aparte) */
+  dondeViene?: Partial<Record<ClaveModulo, DondeViene | null>>;
+}
 
 export type Recurso = 'mensajesMes' | 'sedes' | 'usuarios' | 'especialistas';
 export type Limites = Record<Recurso, number | null> & {

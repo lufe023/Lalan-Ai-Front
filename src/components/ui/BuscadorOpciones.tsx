@@ -108,7 +108,7 @@ function puntaje(busqueda: string, o: Opcion): number {
 export const BuscadorOpciones: React.FC = () => {
   const { currentScreen, navigateTo } = useApp();
   const { currentUser, puede } = useAuth();
-  const { tieneModulo } = usePlan();
+  const { tieneModulo, bloqueado, verModulo } = usePlan();
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState('');
   const [activa, setActiva] = useState(0);
@@ -184,8 +184,11 @@ export const BuscadorOpciones: React.FC = () => {
       lista.push({ id: 'lalan', titulo: 'Habla con Lalan', donde: 'Lalan', palabras: 'asistente ayuda preguntar voz', icono: Sparkles, color: 'bg-[var(--primary)]', ir: abrirLalan });
     }
     // Lo que la dueña le apagó a la asistente tampoco sale en el buscador
-    return lista.filter((o) => (!o.modulo || tieneModulo(o.modulo)) && puede(PERMISO_DE_PANTALLA[o.id as ScreenName]));
-  }, [currentUser?.role, currentScreen, navigateTo, tieneModulo, puede]);
+    // Lo que el plan no trae, la dueña lo encuentra igual: abre la hoja que lo explica (lo que no se exhibe no se vende)
+    return lista
+      .filter((o) => (!o.modulo || tieneModulo(o.modulo) || bloqueado(o.modulo)) && puede(PERMISO_DE_PANTALLA[o.id as ScreenName]))
+      .map((o) => (o.modulo && !tieneModulo(o.modulo) ? { ...o, donde: 'No está en tu plan', ir: () => verModulo(o.modulo!) } : o));
+  }, [currentUser?.role, currentScreen, navigateTo, tieneModulo, bloqueado, verModulo, puede]);
 
   const resultados = useMemo(() => {
     const q = normalizar(texto.trim());

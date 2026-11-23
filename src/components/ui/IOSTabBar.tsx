@@ -22,6 +22,7 @@ import {
   LayoutGrid,
   CalendarRange,
   ShoppingCart,
+  Lock,
 } from 'lucide-react';
 import { abrirBuscador, ATAJO_BUSCADOR } from './BuscadorOpciones';
 import { IOSModal } from './IOSModal';
@@ -82,7 +83,7 @@ export const IOSTabBar: React.FC = () => {
   const lalanDescubierta = useLalanDescubierta();
   const quieto = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const nombreSede = useNombreSede();
-  const { tieneModulo } = usePlan();
+  const { tieneModulo, bloqueado, verModulo } = usePlan();
   const aplicacionesNuevas = useAplicacionesNuevas(currentUser?.role === 'super_admin');
 
   const unreadChats = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
@@ -133,6 +134,10 @@ export const IOSTabBar: React.FC = () => {
   ];
   // Fuera lo que el plan no trae y lo que la dueña le apagó a la asistente
   const tabs = todasLasPestanas.filter((t) => { const m = MODULO_DE_PESTANA[t.id]; return (!m || tieneModulo(m)) && puede(PERMISO_DE_PANTALLA[t.id]); });
+  /* Lo que el plan no trae, la dueña lo ve con candado al final del menú y
+     del cajón (nunca en la barra fija): lo que no se exhibe no se vende.
+     Tocarlo abre la hoja que lo explica y lleva a subir de plan. */
+  const conCandado = todasLasPestanas.filter((t) => { const m = MODULO_DE_PESTANA[t.id]; return !!m && bloqueado(m) && puede(PERMISO_DE_PANTALLA[t.id]); });
 
   /* El teléfono: cuatro fijas y «Más». En la computadora el menú lateral
      sigue mostrando todas. */
@@ -413,6 +418,23 @@ export const IOSTabBar: React.FC = () => {
               </button>
             );
           })}
+          {conCandado.length > 0 && (
+            <>
+              <p className="px-3 pt-4 pb-1 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500">Para crecer</p>
+              {conCandado.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button key={tab.id} type="button" data-medir={`Menú con candado: ${tab.label}`}
+                    onClick={() => verModulo(MODULO_DE_PESTANA[tab.id]!)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left cursor-pointer ios-touch text-slate-400 dark:text-neutral-500 hover:bg-slate-100 dark:hover:bg-neutral-800/60 hover:text-slate-700 dark:hover:text-neutral-200 transition-colors">
+                    <Icon className="w-5 h-5 shrink-0 stroke-[1.8]" />
+                    <span className="text-sm font-medium flex-1 truncate">{tab.label}</span>
+                    <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span className="sr-only">No está en tu plan</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* Mini player in sidebar */}
@@ -483,7 +505,7 @@ export const IOSTabBar: React.FC = () => {
                 onClick={() => navigateTo(tab.id)}
               />
             ))}
-            {enElCajon.length > 0 && (
+            {(enElCajon.length > 0 || conCandado.length > 0) && (
               <BotonBarra
                 id="tab-btn-mas"
                 medir="Menú: Más"
@@ -551,6 +573,27 @@ export const IOSTabBar: React.FC = () => {
               );
             })}
           </div>
+          {conCandado.length > 0 && (
+            <>
+              <p className="mt-5 mb-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500">Para crecer · no están en tu plan</p>
+              <div className="grid grid-cols-3 gap-2.5">
+                {conCandado.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button key={tab.id} type="button" data-medir={`Menú con candado: ${tab.label}`}
+                      onClick={() => { setCajonAbierto(false); verModulo(MODULO_DE_PESTANA[tab.id]!); }}
+                      className="relative flex flex-col items-center justify-center gap-1.5 min-h-[84px] px-1 py-3 rounded-2xl border border-dashed border-slate-300 dark:border-neutral-700 text-slate-400 dark:text-neutral-500 cursor-pointer ios-touch active:bg-slate-100 dark:active:bg-neutral-800">
+                      <span className="relative">
+                        <Icon className="w-6 h-6 stroke-[1.8]" />
+                        <Lock className="absolute -top-1.5 -right-2.5 w-3.5 h-3.5 p-0.5 rounded-full bg-white dark:bg-neutral-900" aria-hidden="true" /><span className="sr-only">No está en tu plan</span>
+                      </span>
+                      <span className="text-[0.8125rem] leading-tight text-center font-semibold">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </IOSModal>
       </div>, document.body)}
 

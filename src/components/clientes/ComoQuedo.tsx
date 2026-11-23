@@ -3,6 +3,7 @@ import { Camera, ChevronDown, Loader2, MapPin, Play, Plus, Trash2, Video, X } fr
 import { api, subirArchivo, urlDeFoto } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { usePlan } from '../../context/PlanContext';
+import { SeccionConCandado, VerComoTenerlo } from '../plan/VerComoTenerlo';
 import { useSedes } from '../../hooks/useSedes';
 import { fotoParaCatalogo } from '../../utils/fotoParaCatalogo';
 import { IOSToggle } from '../ui/IOSToggle';
@@ -74,9 +75,9 @@ export const ComoQuedo: React.FC<{ clienteId: string }> = ({ clienteId }) => {
   }, [clienteId]);
   useEffect(() => { setDatos(null); setAgregando(false); void cargar(); }, [cargar]);
 
+  // Sin el módulo y sin nada guardado: la dueña ve que existe (con candado); el resto del equipo, nada
+  if (!incluido && !datos?.visitas.length) return <SeccionConCandado modulo="fotos_clientes" titulo="Cómo quedó" texto="Fotos y videos de cada visita, para que Lalan se las enseñe cuando pregunte cómo fue la última vez." />;
   if (!datos) return null;
-  // Sin el módulo y sin nada guardado no hay nada que enseñar
-  if (!incluido && !datos.visitas.length) return null;
 
   const cambiarPermiso = async (si: boolean) => {
     if (!si && !(await confirmar({
@@ -137,7 +138,7 @@ export const ComoQuedo: React.FC<{ clienteId: string }> = ({ clienteId }) => {
             </div>
           )}
 
-          {!incluido && <p className="text-[0.6875rem] text-amber-700 dark:text-amber-400">«Cómo quedó» no está en tu plan: ves lo guardado, pero no puedes subir más.</p>}
+          {!incluido && <p className="text-[0.6875rem] text-amber-700 dark:text-amber-400">«Cómo quedó» no está en tu plan: ves lo guardado, pero no puedes subir más. <VerComoTenerlo modulo="fotos_clientes" /></p>}
 
           {puedeSubir && !agregando && (
             <button type="button" onClick={() => setAgregando(true)}
