@@ -86,6 +86,7 @@ export const ClientsScreen: React.FC = () => {
        ella misma un segundo antes. */
     showToast,
     settings,
+    updateSettings,
   } = useApp();
   const { currentUser } = useAuth();
   // Toda la lista de clientas: solo la dirección puede sacarla del sistema
@@ -751,6 +752,32 @@ export const ClientsScreen: React.FC = () => {
             { id: 'archivadas', label: '🗄️ Archivadas' },
           ]}
         />
+
+        {/* Cuándo entra a Clientas quien escribe por un chat: lo decide la dirección, para todo el salón */}
+        {puedeExportar && selectedTagFilter !== 'archivadas' && (
+          <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 space-y-2">
+            <div className="text-[0.75rem] font-bold text-slate-900 dark:text-white">¿Cuándo entra a Clientas quien te escribe?</div>
+            <div role="radiogroup" aria-label="Cuándo se crea la ficha" className="grid grid-cols-2 gap-2">
+              {([
+                { valor: true, titulo: 'Al escribir', texto: 'Por WhatsApp, Instagram o Messenger: así le das seguimiento aunque no agende.' },
+                { valor: false, titulo: 'Al agendar', texto: 'Solo cuando saca una cita. Los chats sin cita quedan como chats.' },
+              ] as const).map((o) => {
+                const activa = (settings.fichaAlEscribir !== false) === o.valor;
+                return (
+                  <button key={o.titulo} type="button" role="radio" aria-checked={activa}
+                    onClick={() => { if (!activa) void updateSettings({ fichaAlEscribir: o.valor }); }}
+                    className={`text-left p-2.5 rounded-xl border cursor-pointer ios-touch ${activa ? 'border-[var(--primary)] bg-[var(--primary)]/10' : 'border-slate-200 dark:border-neutral-800'}`}>
+                    <span className="block text-[0.75rem] font-bold text-slate-900 dark:text-white">{o.titulo}</span>
+                    <span className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400">{o.texto}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
+              Siempre puedes crearla a mano, o desde el chat con «Crear la ficha». Proveedores y tus números de confianza nunca entran.
+            </p>
+          </div>
+        )}
 
         {/* Clients List */}
         {selectedTagFilter === 'archivadas' ? (

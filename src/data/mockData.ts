@@ -953,6 +953,7 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   aiAgentName: 'Lalan',
   aiSuggestWhenPaused: true,
   lalanSugiereFichas: true,
+  fichaAlEscribir: true,
   aiPrompt: null,
   aiPromptSalon: null,
   alertsEnabled: false,

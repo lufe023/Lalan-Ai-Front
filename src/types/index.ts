@@ -575,6 +575,8 @@ export interface SalonBusinessSettings {
   aiSuggestWhenPaused: boolean;
   /** Lalan propone sola «Qué dice Lalan» en las fichas del catálogo (de todo el salón) */
   lalanSugiereFichas?: boolean;
+  /** Quien escribe por un chat entra a Clientas al primer mensaje (true) o al agendar (false). De todo el salón */
+  fichaAlEscribir?: boolean;
   /** Instrucciones propias; null = las de base del sistema */
   aiPrompt: string | null;
   /** Instrucciones para TODAS las sedes del salón (las de la sede mandan sobre estas) */
