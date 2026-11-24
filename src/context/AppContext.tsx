@@ -383,6 +383,8 @@ interface AppContextType {
   sendMessageToConversation: (conversationId: string, text: string, sender?: 'client' | 'agent' | 'bot') => Promise<void>;
   /** Vuelve a pedir los chats (por ejemplo, después de mandar una nota de voz) */
   recargarConversaciones: () => Promise<unknown>;
+  /** Pide los mensajes más viejos de un chat (la bandeja trae solo los últimos) */
+  cargarAnteriores: (id: string) => Promise<void>;
   startChatWithClient: (client: Client) => void;
   botConfigs: BotChannelConfig[];
   /** Vuelve a pedir los canales (tras conectar o desconectar una cuenta de Meta) */
@@ -896,18 +898,41 @@ function mapApiConversation(c: any): Conversation {
     especialista: c.especialista ? { userId: c.especialista.id, nombre: c.especialista.name, staffId: c.especialista.staffId ?? null } : null,
     especialistaDesde: c.especialistaDesde ?? null, especialistaPor: c.especialistaPor ?? null,
     especialistaPausadaAt: c.especialistaPausadaAt ?? null, especialistaPausaMotivo: c.especialistaPausaMotivo ?? null,
+    masAntiguos: !!c.masAntiguos,
     // Los borrados vienen sin contenido (salvo para el super admin): se muestran como aviso
-    messages: (c.messages ?? [])
-      .map((m: any): ChatMessage => ({
-        id: m.id, sender: m.sender, text: m.text ?? '', timestamp: m.createdAt,
-        isAiGenerated: m.isAiGenerated, isSuggestion: !!m.isSuggestion,
-        deliveryStatus: m.deliveryStatus ?? null, failureReason: m.failureReason ?? null,
-        tipo: m.contentType ?? 'texto', adjunto: m.adjunto ?? null,
-        reaccion: m.reaction ?? null, eliminado: !!m.deletedAt, origen: m.origin ?? null,
-        autorNombre: m.autorNombre ?? null, conducta: m.contentData?.conducta ?? null,
-        fotoCatalogo: m.contentData?.fotoCatalogo ?? null,
-      })),
+    messages: (c.messages ?? []).map(mapApiMensaje),
   };
+}
+/** Un mensaje del chat como lo usa la pantalla */
+function mapApiMensaje(m: any): ChatMessage {
+  return {
+    id: m.id, sender: m.sender, text: m.text ?? '', timestamp: m.createdAt,
+    isAiGenerated: m.isAiGenerated, isSuggestion: !!m.isSuggestion,
+    deliveryStatus: m.deliveryStatus ?? null, failureReason: m.failureReason ?? null,
+    tipo: m.contentType ?? 'texto', adjunto: m.adjunto ?? null,
+    reaccion: m.reaction ?? null, eliminado: !!m.deletedAt, origen: m.origin ?? null,
+    autorNombre: m.autorNombre ?? null, conducta: m.contentData?.conducta ?? null,
+    fotoCatalogo: m.contentData?.fotoCatalogo ?? null,
+  };
+}
+
+/**
+ * La bandeja trae solo los últimos mensajes de cada chat. Lo más viejo que
+ * ya se pidió al abrir un chat («Ver mensajes anteriores») no se pierde
+ * cuando la bandeja se recarga: se queda delante de lo que llegó.
+ */
+function conservarAnteriores(nuevas: Conversation[], antes: Conversation[]): Conversation[] {
+  const previas = new Map(antes.map(c => [c.id, c]));
+  return nuevas.map(n => {
+    const v = previas.get(n.id);
+    const primero = n.messages[0]?.timestamp;
+    if (!v || !primero) return n;
+    const ids = new Set(n.messages.map(m => m.id));
+    const viejos = v.messages.filter(m => !ids.has(m.id) && !m.id.startsWith('temp_') && m.timestamp < primero);
+    if (!viejos.length) return n;
+    // Lo que queda más atrás lo dice lo último que se pidió de ese chat
+    return { ...n, messages: [...viejos, ...n.messages], masAntiguos: v.masAntiguos };
+  });
 }
 function mapApiBotConfig(b: any): BotChannelConfig {
   return {
@@ -1124,6 +1149,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  // Para leer la bandeja de ahora desde un callback estable
+  const conversationsRef = useRef<Conversation[]>([]);
+  conversationsRef.current = conversations;
   const [botConfigs, setBotConfigs] = useState<BotChannelConfig[]>([]);
   const [loungeTracks, setLoungeTracks] = useState<LoungeTrack[]>([FALLBACK_TRACK]);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
@@ -1173,7 +1201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (svcs.status === 'fulfilled') setServices(svcs.value.map(mapApiService));
         if (prods.status === 'fulfilled') setProducts(prods.value.map(mapApiProduct));
         if (apts.status === 'fulfilled') setAppointments(apts.value.map(mapApiAppointment));
-        if (convs.status === 'fulfilled') setConversations(convs.value.map(mapApiConversation));
+        if (convs.status === 'fulfilled') setConversations(c => conservarAnteriores(convs.value.map(mapApiConversation), c));
         if (bots.status === 'fulfilled') setBotConfigs(bots.value.map(mapApiBotConfig));
         if (tracks.status === 'fulfilled' && (tracks.value as any[]).length > 0)
           setLoungeTracks((tracks.value as any[]).map(mapApiTrack));
@@ -1666,8 +1694,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loadConversations = useCallback(async () => {
     const lista = (await api.get<any[]>('/conversations')).map(mapApiConversation);
-    setConversations(lista);
+    setConversations(c => conservarAnteriores(lista, c));
     return lista;
+  }, []);
+  /** «Ver mensajes anteriores»: los que van antes del más viejo que ya se ve */
+  const cargarAnteriores = useCallback(async (id: string) => {
+    const actual = conversationsRef.current.find(c => c.id === id);
+    const primero = actual?.messages.find(m => !m.id.startsWith('temp_'));
+    if (!actual || !primero) return;
+    const r = await api.get<any>(`/conversations/${id}?antes=${encodeURIComponent(primero.id)}`);
+    const anteriores: ChatMessage[] = (r.messages ?? []).map(mapApiMensaje);
+    setConversations(c => c.map(x => {
+      if (x.id !== id) return x;
+      const ids = new Set(x.messages.map(m => m.id));
+      return { ...x, messages: [...anteriores.filter(m => !ids.has(m.id)), ...x.messages], masAntiguos: !!r.masAntiguos };
+    }));
   }, []);
   // Con varias sedes, el panel muestra los canales de UNA (vacía = la principal)
   const sedeBotsRef = useRef('');
@@ -3143,7 +3184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       preguntar, consulta,
       conversations, activeConversationId, setActiveConversationId, marcarLeida,
       avisosAtencion, abrirConversacion, descartarAviso,
-      toggleChatAiStatus, sendMessageToConversation, recargarConversaciones: loadConversations, startChatWithClient,
+      toggleChatAiStatus, sendMessageToConversation, recargarConversaciones: loadConversations, cargarAnteriores, startChatWithClient,
       botConfigs, recargarBots: loadBots, toggleBotChannel, updateBotMessage, sedeBots, elegirSedeBots, ponerTodasLasSedes, ponerListas,
       settings, updateSettings,
       metricsPeriod, setMetricsPeriod,

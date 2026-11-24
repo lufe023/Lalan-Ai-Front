@@ -111,7 +111,7 @@ interface VentanaChatProps {
  * es una ventanita y se pueden tener varias a la vez.
  */
 export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotante = false, minimizada = false, onCerrar, onMinimizar }) => {
-  const { conversations, toggleChatAiStatus, sendMessageToConversation, recargarConversaciones, showToast, settings, descartarAviso, marcarLeida, currentScreen, navigateTo } = useApp();
+  const { conversations, toggleChatAiStatus, sendMessageToConversation, recargarConversaciones, cargarAnteriores, showToast, settings, descartarAviso, marcarLeida, currentScreen, navigateTo } = useApp();
   const agente = settings.aiAgentName || 'Lalan';
   const [inputText, setInputText] = useState('');
   const activeConversation = conversations.find(c => c.id === conversacionId);
@@ -244,10 +244,49 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
   }, [conversacionId, minimizada]);
   const cantidad = hilo.length;
   const ultimoEsDelSalon = hilo[cantidad - 1]?.sender === 'agent';
+  /* «Ver mensajes anteriores»: la bandeja trae solo lo último de cada chat.
+     Lo de antes entra arriba sin mover lo que se estaba leyendo. */
+  const [trayendoAnteriores, setTrayendoAnteriores] = useState(false);
+  const desdeElFinal = useRef<number | null>(null);
+  const recienAnteriores = useRef(false);
+  const verAnteriores = async () => {
+    const el = cuerpoRef.current;
+    if (!el || trayendoAnteriores) return;
+    desdeElFinal.current = el.scrollHeight - el.scrollTop;
+    setTrayendoAnteriores(true);
+    try {
+      await cargarAnteriores(conversacionId);
+    } catch {
+      desdeElFinal.current = null;
+      showToast('No se pudieron traer', 'Inténtalo de nuevo en un momento.', 'warning');
+    } finally {
+      setTrayendoAnteriores(false);
+    }
+  };
+  useLayoutEffect(() => {
+    const el = cuerpoRef.current;
+    if (!el || desdeElFinal.current == null) return;
+    el.scrollTop = el.scrollHeight - desdeElFinal.current;
+    desdeElFinal.current = null;
+    recienAnteriores.current = true;
+  }, [cantidad]);
   useEffect(() => {
     const el = cuerpoRef.current;
+    if (recienAnteriores.current) { recienAnteriores.current = false; return; }
     if (el && (cercaDelFinal.current || ultimoEsDelSalon)) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [cantidad, ultimoEsDelSalon, sugerenciaVigente?.id]);
+  const botonAnteriores = activeConversation?.masAntiguos ? (
+    <div className="flex justify-center">
+      <button
+        type="button"
+        onClick={() => void verAnteriores()}
+        disabled={trayendoAnteriores}
+        className="px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-[0.75rem] font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-60 transition-colors"
+      >
+        {trayendoAnteriores ? 'Trayendo…' : 'Ver mensajes anteriores'}
+      </button>
+    </div>
+  ) : null;
 
   /* Las burbujas solo se vuelven a pintar si cambian los mensajes: al escribir
      cada letra cambia el texto de abajo, y repintar cien burbujas por letra
@@ -386,6 +425,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
+          {botonAnteriores}
           {burbujas}
         </div>
 
@@ -569,6 +609,7 @@ export const VentanaChat: React.FC<VentanaChatProps> = ({ conversacionId, flotan
         <PedidoFueraDeHorario key={`pedido-${activeConversation.id}`} conversacion={activeConversation} puedeAutorizar={puedeAutorizarTurno} ventanaCerrada={ventanaCerrada} />
         {/* Chat Messages Body */}
         <div ref={cuerpoRef} onScroll={alDesplazar} className={`flex-1 overflow-y-auto hide-scrollbar ${flotante ? 'p-3' : 'p-4'} space-y-3 bg-slate-50/50 dark:bg-[#0c0c0e]`}>
+          {botonAnteriores}
           {burbujas}
         </div>
 
