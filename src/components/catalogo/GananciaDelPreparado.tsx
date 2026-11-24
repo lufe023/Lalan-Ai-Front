@@ -1,4 +1,5 @@
 import React from 'react';
+import { CampoNumero } from '../ui/CampoNumero';
 import { MapPin } from 'lucide-react';
 import { useDinero } from '../../hooks/useDinero';
 import { COLOR_DE_NIVEL, RANGO_TEXTO, TEXTO_DE_NIVEL, nivelDeGanancia } from '../../utils/ganancia';
@@ -69,9 +70,9 @@ export const GananciaDelPreparado: React.FC<{
           Avísame cuando alcance para menos de
         </label>
         <div className="flex items-center gap-2">
-          <input
-            type="number" min="0" step="1" placeholder="ej: 5" value={minStock}
-            onChange={e => onMinStock(e.target.value)}
+          <CampoNumero
+            conMiles={false} placeholder="ej: 5" valor={minStock}
+            onCambio={n => onMinStock(n == null ? '' : String(n))}
             className="w-28 px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.875rem] font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
           />
           <span className="text-[0.75rem] text-slate-500 dark:text-neutral-400">porciones (Lalan cuenta lo que queda de sus insumos)</span>

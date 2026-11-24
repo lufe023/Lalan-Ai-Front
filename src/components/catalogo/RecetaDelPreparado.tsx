@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { CampoNumero } from '../ui/CampoNumero';
 import { ChefHat, Plus, Trash2 } from 'lucide-react';
 import { LineaDeReceta, SalonProduct } from '../../types';
 import { useDinero } from '../../hooks/useDinero';
@@ -127,8 +128,8 @@ export const RecetaDelPreparado: React.FC<{
               )}
               <span className="block text-[0.6875rem] font-normal text-slate-400 leading-snug">{cuenta(l, insumo)}</span>
             </span>
-            <input type="number" min="0" step="0.001" value={l.quantity} aria-label="Cantidad por porción"
-              onChange={e => cambiar(i, { quantity: Number(e.target.value) })}
+            <CampoNumero conMiles={false} valor={l.quantity} aria-label="Cantidad por porción" placeholder="0"
+              onCambio={n => cambiar(i, { quantity: n ?? 0 })}
               className="w-20 px-2 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-right font-bold text-[0.8125rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" />
             <select value={l.unit} onChange={e => cambiar(i, { unit: e.target.value })} aria-label="Unidad"
               className="px-2 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] font-semibold">
@@ -169,8 +170,8 @@ export const RecetaDelPreparado: React.FC<{
         </span>
         <div className="w-32 flex items-center gap-1 px-2 py-2 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 focus-within:ring-2 focus-within:ring-[var(--primary)]">
           <span className="text-[0.6875rem] font-semibold text-slate-400">{base}</span>
-          <input type="number" min="0" step="0.01" value={otros} placeholder="0" aria-label="Otros por porción"
-            onChange={e => onOtros(e.target.value)}
+          <CampoNumero valor={otros} placeholder="0" aria-label="Otros por porción"
+            onCambio={n => onOtros(n == null ? '' : String(n))}
             className="w-full min-w-0 bg-transparent text-right font-bold text-[0.8125rem] focus:outline-none" />
         </div>
       </div>

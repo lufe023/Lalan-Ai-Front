@@ -73,6 +73,7 @@ import { VariantesDePrecio, preciosDeSedesDesde, preciosParaGuardar, type Precio
 import { useSedeActiva } from '../context/SedeActivaContext';
 import { AvisoSinFoto, FotoDeGaleria, FotosDelCatalogo, MiniaturaCatalogo, fotosGuardadas } from '../components/catalogo/FotoDelCatalogo';
 import { usePlan } from '../context/PlanContext';
+import { CampoNumero } from '../components/ui/CampoNumero';
 import { useEncuadres } from '../hooks/useEncuadres';
 import { BotonEnlaceDirecto, HojaEnlaceDirecto, type PedidoDeEnlace } from '../components/catalogo/EnlaceParaCompartir';
 import { COLOR_ASISTENTE, InterruptorDeCatalogo, SaleEnVitrina, VitrinaEnFormulario, type ModoPrecioVitrina } from '../components/catalogo/SaleEnVitrina';
@@ -1123,15 +1124,11 @@ export const CatalogScreen: React.FC = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <input
-                          type="number"
-                          min="0.001"
-                          step="0.001"
-                          value={ing.quantity}
-                          onChange={e => {
-                            const val = parseFloat(e.target.value) || 0;
-                            setIngredients(prev => prev.map((i, j) => j === idx ? { ...i, quantity: val } : i));
-                          }}
+                        <CampoNumero
+                          conMiles={false}
+                          aria-label="Cantidad"
+                          valor={ing.quantity}
+                          onCambio={n => setIngredients(prev => prev.map((i, j) => j === idx ? { ...i, quantity: n ?? 0 } : i))}
                           className="w-16 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-[0.75rem] text-center font-bold focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
                         />
                         <span className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-neutral-800 text-[0.6875rem] font-bold text-slate-600 dark:text-neutral-400 border border-slate-200 dark:border-neutral-700 min-w-[32px] text-center">
@@ -1188,13 +1185,12 @@ export const CatalogScreen: React.FC = () => {
                 <div className="flex gap-2">
                   <div className="flex-1">
                     <label className="block text-[0.6875rem] text-slate-500 dark:text-neutral-400 mb-1">Cantidad</label>
-                    <input
-                      type="number"
-                      min="0.001"
-                      step="0.001"
+                    <CampoNumero
+                      conMiles={false}
                       placeholder="Cantidad"
-                      value={ingredientQty}
-                      onChange={e => setIngredientQty(e.target.value)}
+                      aria-label="Cantidad"
+                      valor={ingredientQty}
+                      onCambio={n => setIngredientQty(n == null ? '' : String(n))}
                       className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.75rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                     />
                   </div>
@@ -1719,13 +1715,12 @@ export const CatalogScreen: React.FC = () => {
               })() : (
                 <div className="space-y-2">
                   <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.001"
+                    <CampoNumero
+                      conMiles={false}
                       placeholder="0"
-                      value={productForm.stock}
-                      onChange={e => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                      aria-label="Cantidad inicial"
+                      valor={productForm.stock}
+                      onCambio={n => setProductForm(prev => ({ ...prev, stock: n ?? 0 }))}
                       className="flex-1 px-3.5 py-3 rounded-xl bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white font-bold text-[0.875rem] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:bg-white dark:focus:bg-neutral-900 transition"
                     />
                     <select
@@ -1759,13 +1754,12 @@ export const CatalogScreen: React.FC = () => {
                 <p className="text-[0.75rem] font-bold text-sky-700 dark:text-sky-400">📦 ¿Cuánto contiene cada unidad?</p>
                 <p className="text-[0.6875rem] text-slate-500 dark:text-neutral-400 leading-relaxed">Si cada botella tiene 15 ml, escríbelo aquí para que el sistema calcule bien cuánto se usa en las recetas de tus servicios.</p>
                 <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.001"
+                  <CampoNumero
+                    conMiles={false}
                     placeholder="ej: 15"
-                    value={productForm.unitQty}
-                    onChange={e => setProductForm({ ...productForm, unitQty: e.target.value })}
+                    aria-label="Contenido"
+                    valor={productForm.unitQty}
+                    onCambio={n => setProductForm(prev => ({ ...prev, unitQty: n == null ? '' : String(n) }))}
                     className="flex-1 px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400 transition"
                   />
                   <select
@@ -1873,13 +1867,11 @@ export const CatalogScreen: React.FC = () => {
                 </label>
                 <div className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-800/50 focus-within:ring-2 focus-within:ring-amber-400 transition">
                   <DollarSign className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                  <CampoNumero
                     placeholder="0.00"
-                    value={productForm.costPrice}
-                    onChange={e => setProductForm({ ...productForm, costPrice: e.target.value })}
+                    aria-label="Costo de compra"
+                    valor={productForm.costPrice}
+                    onCambio={n => setProductForm(prev => ({ ...prev, costPrice: n == null ? '' : String(n) }))}
                     className="flex-1 bg-transparent text-[0.875rem] font-bold text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
@@ -1899,13 +1891,12 @@ export const CatalogScreen: React.FC = () => {
                 <label className="block text-[0.6875rem] font-semibold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-wide">
                   Stock mínimo (alerta)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
+                <CampoNumero
+                  conMiles={false}
                   placeholder="ej: 5"
-                  value={productForm.minStock}
-                  onChange={e => setProductForm({ ...productForm, minStock: e.target.value })}
+                  aria-label="Stock mínimo"
+                  valor={productForm.minStock}
+                  onCambio={n => setProductForm(prev => ({ ...prev, minStock: n == null ? '' : String(n) }))}
                   className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-[0.875rem] font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
                 />
                 <p className="text-[0.6875rem] text-slate-400 dark:text-neutral-500 mt-1.5 px-0.5 leading-relaxed">

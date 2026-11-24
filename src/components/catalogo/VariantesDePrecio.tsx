@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bot, CheckCircle2, Globe, MapPin, Plus, Trash2 } from 'lucide-react';
 import type { PriceTier } from '../../types';
+import { CampoNumero } from '../ui/CampoNumero';
 import { useSedeActiva, type SedeDelSalon } from '../../context/SedeActivaContext';
 
 /**
@@ -66,11 +67,10 @@ export function preciosParaGuardar(tiers: PriceTier[], sedes: SedeDelSalon[], p:
 const campo = 'px-2.5 py-2 rounded-lg bg-white dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[var(--primary)]';
 
 const Precio: React.FC<{ moneda: string; valor: number; onChange: (n: number) => void; etiqueta: string; chico?: boolean }> = ({ moneda, valor, onChange, etiqueta, chico }) => (
-  <label className={`flex items-center gap-1 ${campo} ${chico ? 'w-24 py-1.5' : 'w-32'}`}>
+  <label className={`flex items-center gap-1 ${campo} ${chico ? 'w-28 py-1.5' : 'w-36'}`}>
     <span className="text-[0.6875rem] font-bold text-slate-400 shrink-0">{moneda}</span>
-    <input type="number" min="0" step="any" value={Number.isFinite(valor) ? valor : 0} aria-label={etiqueta}
-      onChange={e => onChange(Number(e.target.value))}
-      className="w-full min-w-0 bg-transparent text-[0.8125rem] font-black tabular-nums focus:outline-none" />
+    <CampoNumero valor={valor} aria-label={etiqueta} placeholder="0" onCambio={n => onChange(n ?? 0)}
+      className="w-full min-w-0 bg-transparent text-[0.8125rem] font-black focus:outline-none" />
   </label>
 );
 
