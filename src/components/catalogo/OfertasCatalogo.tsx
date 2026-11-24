@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CampoNumero } from '../ui/CampoNumero';
 import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { Bot, Gift, Globe, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -214,7 +215,7 @@ export const OfertasCatalogo: React.FC<{ servicios: SalonService[] }> = ({ servi
               </div>
               <label className="block space-y-1.5">
                 <span className="font-semibold text-slate-600 dark:text-neutral-300">Precio del combo ({editando.currencyCode || base})</span>
-                <input type="number" min={0} value={editando.precio || ''} onChange={(e) => set({ precio: Number(e.target.value) })} className={campo} />
+                <CampoNumero valor={editando.precio || ''} placeholder="0" onCambio={(n) => set({ precio: n ?? 0 })} className={campo} />
                 {editando.servicioIds.length > 1 && (
                   <span className="block text-[0.75rem] text-slate-500">
                     Sueltos costarían {dinero(sueltoTotal)}{editando.precio > 0 && editando.precio < sueltoTotal ? ` · ahorra ${dinero(sueltoTotal - editando.precio)}` : ''}
