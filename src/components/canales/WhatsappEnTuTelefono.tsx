@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, BookUser, Check, Loader2, MessageCircle, RefreshCw, Smartphone } from 'lucide-react';
+import { AlertTriangle, BookUser, Check, ChevronRight, Loader2, MessageCircle, RefreshCw, Smartphone, UserPlus } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { IOSToggle } from '../ui/IOSToggle';
+import { ContactosNuevosAgenda } from './ContactosNuevosAgenda';
 
 /** Lo que devuelve GET /bots/conexion/whatsapp/coexistencia (backend: conexiones/coexistencia.contrato.ts) */
 interface EstadoCoexistencia {
@@ -15,6 +16,10 @@ interface VistaCoexistencia {
   coexistencia: boolean;
   estado: EstadoCoexistencia | null;
   soloNuevosConLalan: boolean;
+  /** Hasta qué fecha sus contactos son suyos (la que eligió o el día en que conectó) */
+  contactosHasta: string | null;
+  /** Contactos que guardó en la app después de conectar */
+  contactosNuevos: number;
   contactos: number;
   puedeReintentar: boolean;
   venceEn: string | null;
@@ -30,10 +35,11 @@ const fmt = (n: number) => n.toLocaleString('es-DO');
  * cómo va la copia de sus contactos y de sus chats de 6 meses, quién atiende
  * a sus contactos, y qué hacer si se desconectó. Solo aparece con ese número.
  */
-export const WhatsappEnTuTelefono: React.FC<{ sede: string; conectado: boolean }> = ({ sede, conectado }) => {
+export const WhatsappEnTuTelefono: React.FC<{ sede: string; conectado: boolean; abrirContactos?: boolean; onContactosAbiertos?: () => void }> = ({ sede, conectado, abrirContactos, onContactosAbiertos }) => {
   const { navigateTo, showToast } = useApp();
   const [v, setV] = useState<VistaCoexistencia | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [verNuevos, setVerNuevos] = useState(false);
   const q = sede ? `?sede=${encodeURIComponent(sede)}` : '';
 
   const cargar = useCallback(() => {
@@ -42,6 +48,12 @@ export const WhatsappEnTuTelefono: React.FC<{ sede: string; conectado: boolean }
   }, [q, conectado]);
 
   useEffect(() => { cargar(); }, [cargar]);
+  // El aviso «Guardaste contactos nuevos» abre la lista
+  useEffect(() => {
+    if (!abrirContactos) return;
+    setVerNuevos(true);
+    onContactosAbiertos?.();
+  }, [abrirContactos, onContactosAbiertos]);
 
   const h = v?.estado?.historial;
   const copiando = !!v?.coexistencia && !v.estado?.desconexion && (!h?.terminadoEn && h?.compartido !== false);
@@ -152,6 +164,25 @@ export const WhatsappEnTuTelefono: React.FC<{ sede: string; conectado: boolean }
           <IOSToggle checked={v.soloNuevosConLalan} onChange={(x) => void soloNuevos(x)} disabled={ocupado} ariaLabel="Mis contactos los atiendo yo" />
         </label>
       )}
+
+      {!e.desconexion && (v.soloNuevosConLalan || v.contactosNuevos > 0) && (
+        <button type="button" onClick={() => setVerNuevos(true)}
+          className="w-full flex items-start gap-2 p-2.5 rounded-lg bg-white/70 dark:bg-neutral-900/60 border border-emerald-200/70 dark:border-emerald-900/60 text-left cursor-pointer">
+          <UserPlus className="w-4 h-4 text-emerald-700 dark:text-emerald-400 mt-0.5 shrink-0" />
+          <span className="flex-1 min-w-0">
+            <b className="text-xs text-slate-900 dark:text-white block">
+              {v.contactosNuevos ? `${fmt(v.contactosNuevos)} ${v.contactosNuevos === 1 ? 'contacto nuevo' : 'contactos nuevos'} en tu agenda` : 'Contactos nuevos de tu agenda'}
+            </b>
+            <span className="text-[0.75rem] text-slate-600 dark:text-neutral-400 leading-relaxed block">
+              {v.soloNuevosConLalan && v.contactosHasta
+                ? `Los que guardes después del ${new Date(v.contactosHasta).toLocaleDateString('es-DO', { day: 'numeric', month: 'long' })} los atiende Lalan. Toca para elegir a quién le contestas tú o crear su ficha.`
+                : 'Los que guardaste con Lalan conectada. Toca para elegir quién les contesta o crear su ficha.'}
+            </span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+        </button>
+      )}
+      <ContactosNuevosAgenda sede={sede} abierto={verNuevos} onCerrar={() => setVerNuevos(false)} onCambio={cargar} />
 
       <span className="block text-[0.6875rem] text-slate-500 leading-relaxed">
         Para dejar de usar Lalan con este número, desconéctalo aquí y también en la app: Ajustes › Cuenta › Plataforma empresarial › Desconectar.
