@@ -40,7 +40,7 @@ import { AvisosAlergiaCita } from '../components/agenda/AvisosAlergia';
 import { RecordatorioCita, RecordatoriosAMano, useRecordatoriosAMano } from '../components/agenda/RecordarPorWhatsapp';
 import { useAusencias } from '../hooks/useAusencias';
 import { semanaCompleta } from '../components/ajustes/HorarioSemanal';
-import { cabeEn, estadoDelDia, ratos, turnosParaAgendar } from '../utils/turnos';
+import { cabeEn, estadoDelDia, minutosTrasCierre, ratos, turnosParaAgendar } from '../utils/turnos';
 import { SedesDeClienta } from '../components/ui/SedesDeClienta';
 import { compromisosApi, EVENTO_NUEVA_CITA, leerNuevaCita } from '../services/compromisos';
 import { abrirFichaDeClienta } from '../services/abrirFicha';
@@ -319,7 +319,11 @@ export const CalendarScreen: React.FC = () => {
   const personaElegida = (especialistas ?? []).find(e => e.id === newStaff) ?? null;
   const turnosDelDia = turnosParaAgendar(personaElegida, currentDateStr, semanaSalon, ausencias);
   const duracionElegida = services.find(s => s.id === newServiceId)?.durationMinutes || settings.defaultAppointmentDurationMinutes || 60;
-  const fueraDeHorario = !cabeEn(turnosDelDia, newTime, duracionElegida);
+  // La regla de la sede para la última cita: quien cierra el salón puede quedarse con ella
+  const tramosSalon = semanaSalon.find(d => d.dia === new Date(`${currentDateStr}T12:00:00Z`).getUTCDay())?.tramos ?? [];
+  const cierreDelDia = tramosSalon.length ? tramosSalon[tramosSalon.length - 1].hasta : null;
+  const pasarDelCierre = minutosTrasCierre(settings.citasAlCierre);
+  const fueraDeHorario = !cabeEn(turnosDelDia, newTime, duracionElegida, cierreDelDia, pasarDelCierre);
   const [errorAlAgendar, setErrorAlAgendar] = useState<string | null>(null);
   const [agendando, setAgendando] = useState(false);
 
@@ -1047,6 +1051,13 @@ export const CalendarScreen: React.FC = () => {
               : <>
                   <span className="font-bold">{personaElegida ? `${personaElegida.name.split(' ')[0]} atiende` : 'Este día se atiende'}: </span>{ratos(turnosDelDia)}
                   {fueraDeHorario && <span className="block font-semibold mt-0.5">A esa hora la cita ({duracionElegida} min) queda fuera del horario.</span>}
+                  {pasarDelCierre > 0 && cierreDelDia && turnosDelDia.some(t => t.hasta === cierreDelDia) && (
+                    <span className="block mt-0.5">
+                      {settings.citasAlCierre?.modo === 'empiezan'
+                        ? `Se recibe hasta las ${hora12(cierreDelDia)}, aunque el servicio termine después.`
+                        : `La última cita puede terminar hasta ${pasarDelCierre} min después de cerrar.`}
+                    </span>
+                  )}
                 </>}
           </div>
           <div>
