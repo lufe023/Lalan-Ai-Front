@@ -64,6 +64,7 @@ import { GRUPOS_AJUSTES, gruposPara, MenuAjustes, SeccionAjustes, tomarSeccionPe
 import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioExtra } from '../components/ajustes/HorarioExtra';
+import { CitasAlCierre } from '../components/ajustes/CitasAlCierre';
 import { TarjetaEspecialistas } from '../components/especialistas/VentanaEspecialistas';
 import { VozDelSalon } from '../components/ajustes/VozDelSalon';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
@@ -636,6 +637,15 @@ export const SettingsScreen: React.FC = () => {
             <HorarioSemanal
               semana={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
               onGuardar={horarioSemanal => updateSettings({ horarioSemanal })}
+            />
+          </div>
+
+          <div data-guia="citas-al-cierre" id="citas-al-cierre" className="pt-2 border-t border-slate-200/60 dark:border-neutral-800">
+            <CitasAlCierre
+              valor={settings.citasAlCierre}
+              semana={semanaCompleta(settings.horarioSemanal, settings.openingTime, settings.closingTime)}
+              sede={variasSedes ? sedeActual?.name ?? null : null}
+              onGuardar={citasAlCierre => updateSettings({ citasAlCierre })}
             />
           </div>
 

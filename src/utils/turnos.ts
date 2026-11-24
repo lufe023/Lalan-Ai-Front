@@ -110,10 +110,33 @@ export function turnosParaAgendar(
   return tramos;
 }
 
-/** ¿Cabe una cita de `duracionMin` que empieza a las `hhmm` en alguno de esos ratos? */
-export function cabeEn(tramos: TramoHorario[], hhmm: string, duracionMin: number): boolean {
+/** Una cita nunca cruza la medianoche */
+const FIN_DEL_DIA = 24 * 60 - 1;
+
+/**
+ * Cuántos minutos puede pasarse del cierre la última cita, según la regla de
+ * la sede (Ajustes → El salón → «La última cita del día»). 0 = tiene que
+ * terminar antes de cerrar.
+ */
+export function minutosTrasCierre(regla?: { modo: string; margenMin: number } | null): number {
+  if (regla?.modo === 'pasarse') return regla.margenMin;
+  if (regla?.modo === 'empiezan') return FIN_DEL_DIA;
+  return 0;
+}
+
+/**
+ * ¿Cabe una cita de `duracionMin` que empieza a las `hhmm` en alguno de esos
+ * ratos? El rato que termina a la hora de cierre del salón (`cierre`) deja
+ * pasarse `pasarMin` minutos, siempre que la cita empiece a más tardar a esa
+ * hora. La misma regla que usa el servidor.
+ */
+export function cabeEn(tramos: TramoHorario[], hhmm: string, duracionMin: number, cierre: string | null = null, pasarMin = 0): boolean {
   const d = minutos(hhmm), h = d + duracionMin;
-  return tramos.some(t => d >= minutos(t.desde) && h <= minutos(t.hasta));
+  return tramos.some(t => {
+    const c = minutos(t.hasta);
+    const tope = pasarMin > 0 && t.hasta === cierre ? Math.min(FIN_DEL_DIA, c + pasarMin) : c;
+    return d >= minutos(t.desde) && d <= c && h <= tope;
+  });
 }
 
 /** "9:00 – 10:00 a. m. · 2:00 – 3:00 p. m." */

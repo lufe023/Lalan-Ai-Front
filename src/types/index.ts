@@ -533,6 +533,16 @@ export interface HorarioExtra {
   enChat: boolean;
 }
 
+/**
+ * La última cita del día en la sede: que termine antes de cerrar (lo de
+ * siempre), que pueda pasarse `margenMin` minutos, o recibir clientas hasta
+ * la hora de cierre aunque el servicio termine después.
+ */
+export interface CitasAlCierre {
+  modo: 'terminan' | 'pasarse' | 'empiezan';
+  margenMin: number;
+}
+
 export interface SalonBusinessSettings {
   salonName: string;
   /** El nombre de la sede en la que se trabaja ("Tress — Piantini"); el del salón es salonName */
@@ -549,6 +559,8 @@ export interface SalonBusinessSettings {
   horarioSemanal: DiaDeHorario[];
   /** El rato extra que la dueña abre a voluntad (antes de abrir o después de cerrar), por sede */
   horarioExtra: HorarioExtra;
+  /** Si la última cita del día puede terminar después de cerrar (por sede) */
+  citasAlCierre?: CitasAlCierre;
   // Appointment timing & buffer parameters
   bufferTimeMinutes: number; // Tiempo de descanso / preparación entre cita y cita (ej. 5, 10, 15 min)
   defaultAppointmentDurationMinutes: number; // Tiempo que dura una cita estándar (ej. 60 min)
