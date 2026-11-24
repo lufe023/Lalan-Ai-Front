@@ -388,6 +388,8 @@ export interface Conversation {
   unreadCount: number;
   serviceInterest?: string;
   messages: ChatMessage[];
+  /** Quedan mensajes más viejos en el servidor (la bandeja trae solo los últimos) */
+  masAntiguos?: boolean;
   /** ISO del último mensaje, para ordenar y para decir "hace 5 min" */
   lastMessageAt?: string;
   /** Hasta cuándo se le puede escribir (24 h desde su último mensaje, regla de Meta) */
