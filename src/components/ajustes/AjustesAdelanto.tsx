@@ -87,7 +87,7 @@ export const AjustesAdelanto: React.FC = () => {
           <label className="block">
             <span className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">Cuánto (%)</span>
             <div className="flex items-center gap-1.5">
-              <input type="number" min="1" max="100" step="5" value={porcentaje} onChange={e => setPorcentaje(Math.min(100, Math.max(0, Number(e.target.value))))}
+              <input type="number" min="1" max="100" step="1" inputMode="numeric" value={porcentaje} onChange={e => setPorcentaje(Math.min(100, Math.max(0, Math.trunc(Number(e.target.value)) || 0)))}
                 className={`${campo} font-bold`} />
               <span className="font-bold text-slate-400 text-sm">%</span>
             </div>
