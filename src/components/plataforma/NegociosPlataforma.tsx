@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
-import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet, Sparkles, Pencil, Check } from 'lucide-react';
+import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet, Sparkles, Pencil, Check, MessageCircle, Mail } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
 import { IOSToggle } from '../ui/IOSToggle';
 import { api } from '../../services/api';
@@ -14,6 +14,37 @@ import { EditorCanales } from './EditorCanales';
 import { LineasTelefonicas } from './LineasTelefonicas';
 import { InstruccionesLalan } from './InstruccionesLalan';
 import { MediosDelEjemplo, SalonEjemplo } from './SalonEjemplo';
+
+/** 809-555-1234 → 18095551234, para wa.me */
+const digitosWa = (t: string) => {
+  const d = t.replace(/\D/g, '');
+  return d.length === 10 && /^(809|829|849)/.test(d) ? `1${d}` : d;
+};
+
+/** Cómo contactar a la dueña: WhatsApp y correo a un toque, para ofrecerle ayuda */
+function ContactoDuena({ nombre, telefono, correo, salon, sedes }: { nombre: string; telefono: string | null | undefined; correo: string | null | undefined; salon: string; sedes?: NegocioDetalle['sedes'] }) {
+  const primer = nombre.trim().split(' ')[0];
+  const hola = `Hola ${primer}, soy del equipo de Lalan. Vi que creaste la cuenta de ${salon}. ¿Te ayudo a dejarla lista (tus servicios, tu horario o conectar tu WhatsApp)?`;
+  const boton = 'px-3 py-1.5 rounded-xl text-[0.75rem] font-bold flex items-center gap-1 cursor-pointer';
+  // Otros números de sedes distintos al de la dueña
+  const otras = (sedes ?? []).filter((s) => s.phone && digitosWa(s.phone) !== digitosWa(telefono ?? ''));
+  return (
+    <div className="rounded-xl bg-slate-50 dark:bg-neutral-800/50 p-3 space-y-2">
+      <p className="text-[0.75rem] font-bold text-slate-500">Contacto de la dueña · {nombre}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        {telefono
+          ? <a href={`https://wa.me/${digitosWa(telefono)}?text=${encodeURIComponent(hola)}`} target="_blank" rel="noopener" className={`${boton} bg-emerald-600 text-white hover:bg-emerald-700`}><MessageCircle className="w-3.5 h-3.5" /> Escribirle por WhatsApp · {telefono}</a>
+          : <span className="text-[0.75rem] text-slate-500">No dejó teléfono.</span>}
+        {correo && <a href={`mailto:${correo}`} className={`${boton} bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-slate-200`}><Mail className="w-3.5 h-3.5" /> {correo}</a>}
+      </div>
+      {otras.length > 0 && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] text-slate-500">
+          {otras.map((s) => <a key={s.id} href={`https://wa.me/${digitosWa(s.phone!)}`} target="_blank" rel="noopener" className="underline">{s.name}: {s.phone}</a>)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Lo que llega de una aplicación al piloto para llenar el formulario */
 export interface PrellenadoNegocio { aplicacionId?: string; salon?: string; nombre?: string; telefono?: string; ciudad?: string; planClave?: string | null }
@@ -343,6 +374,12 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
           <button type="button" onClick={onCerrar} aria-label="Cerrar" className="cursor-pointer"><X className="w-4 h-4 text-slate-400" /></button>
         </div>
       </div>
+      {(() => {
+        const adm = d.usuarios.find((u) => u.role === 'admin');
+        if (!adm) return null;
+        const tel = adm.telefono ?? d.sedes.find((x) => x.alertPhone)?.alertPhone ?? null;
+        return <ContactoDuena nombre={adm.name} telefono={tel} correo={adm.email} salon={d.nombre} sedes={d.sedes} />;
+      })()}
       {paraEntrar && (
         <form onSubmit={entrar} className="p-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/30 space-y-2.5">
           <label className="block space-y-1">
@@ -558,8 +595,9 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
       {abierto && <Detalle key={abierto} id={abierto} planes={planes} catalogo={catalogo} soloSoporte={soloSoporte} onCerrar={() => setAbierto(null)} onCambio={() => void cargar()} />}
       <div className="grid lg:grid-cols-2 gap-3">
         {lista.map((n) => (
-          <button key={n.id} type="button" onClick={() => { setAbierto(n.id); setCreando(false); }}
-            className={`${tarjeta} text-left hover:border-[var(--primary)]/50 transition cursor-pointer ${abierto === n.id ? 'border-[var(--primary)]' : ''} ${n.activo ? '' : 'opacity-60'}`}>
+          <div key={n.id} role="button" tabIndex={0} onClick={() => { setAbierto(n.id); setCreando(false); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) { setAbierto(n.id); setCreando(false); } }}
+            className={`${tarjeta} text-left block hover:border-[var(--primary)]/50 transition cursor-pointer ${abierto === n.id ? 'border-[var(--primary)]' : ''} ${n.activo ? '' : 'opacity-60'}`}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0"><Building2 className="w-4 h-4" /></div>
@@ -580,8 +618,12 @@ export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null
               {n.registroPropio && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-sky-100 text-sky-700" title={n.planElegido ? `Eligió el plan «${n.planElegido}»` : undefined}>Se registró sola</span>}
               {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}
             </div>
+            {n.duena?.telefono && (
+              <a href={`https://wa.me/${digitosWa(n.duena.telefono)}`} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 mb-2.5 text-[0.75rem] font-bold text-emerald-700 dark:text-emerald-400 hover:underline"><MessageCircle className="w-3.5 h-3.5" /> Escribirle por WhatsApp · {n.duena.telefono}</a>
+            )}
             <UsoDelPlan uso={n.uso} limites={n.limites} compacto />
-          </button>
+          </div>
         ))}
       </div>
     </div>
