@@ -245,7 +245,7 @@ export interface NegocioResumen {
   porCobrar?: number;
   porCobrarMonto?: number;
   pagadoHasta?: string | null;
-  duena: { name: string; email: string; debeCambiarClave: boolean } | null;
+  duena: { name: string; email: string; telefono?: string | null; debeCambiarClave: boolean } | null;
   uso: Uso;
   limites: Limites;
 }
@@ -281,7 +281,7 @@ export interface NegocioDetalle {
   /** La versión vigente de los términos y la última que aceptó su administración */
   terminos?: { vigente: string; aceptados: { version: string; en: string; por: string } | null };
   uso: Uso;
-  sedes: { id: string; name: string; address: string | null; phone: string | null }[];
+  sedes: { id: string; name: string; address: string | null; phone: string | null; alertPhone?: string | null; alertContactName?: string | null }[];
   usuarios: { id: string; name: string; email: string | null; usuario?: string | null; telefono?: string | null; correoConfirmadoEn?: string | null; role: string; active: boolean; debeCambiarClave: boolean }[];
 }
 
