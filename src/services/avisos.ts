@@ -108,6 +108,7 @@ export function botonDe(ir: string | null, aviso: string | null): string {
   if (aviso?.startsWith('por-pedir:')) return 'Armar el pedido';
   if (aviso?.startsWith('borradores:')) return 'Revisar pedidos';
   if (aviso?.startsWith('proveedor:')) return 'Ver el chat';
+  if (aviso?.startsWith('contactos-nuevos:')) return 'Elegir quién les contesta';
   switch (ir) {
     case 'chats': return 'Abrir chat';
     case 'calendar': return 'Ir a la agenda';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
 import { Check, Facebook, Instagram, Loader2, MessageCircle, Unplug } from 'lucide-react';
 import { api } from '../../services/api';
@@ -77,6 +77,25 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
 
   // La sede activa manda: si se cambia arriba, aquí también
   useEffect(() => { if (actual) setSede(actual.id); }, [actual]);
+
+  // El aviso «Guardaste contactos nuevos» trae su sede: se elige y se abre la lista
+  const [contactosDe, setContactosDe] = useState<string | null>(null);
+  useEffect(() => {
+    const tomar = () => {
+      let aviso: string | null = null;
+      try { aviso = sessionStorage.getItem('lalan.abrirAviso'); } catch { /* nada */ }
+      if (!aviso?.startsWith('contactos-nuevos:')) return;
+      try { sessionStorage.removeItem('lalan.abrirAviso'); } catch { /* nada */ }
+      setContactosDe(aviso.slice('contactos-nuevos:'.length));
+    };
+    tomar();
+    window.addEventListener('lalan:abrir-aviso', tomar);
+    return () => window.removeEventListener('lalan:abrir-aviso', tomar);
+  }, []);
+  useEffect(() => {
+    if (contactosDe && sedes.some((s) => s.id === contactosDe)) setSede(contactosDe);
+  }, [contactosDe, sedes]);
+  const contactosAbiertos = useCallback(() => setContactosDe(null), []);
 
   useEffect(() => {
     if (!sede) { setDeLaSede(null); return; }
@@ -226,7 +245,7 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
       </div>
 
       {/* WhatsApp que sigue en la app del teléfono: cómo va la copia de sus chats y quién atiende a sus contactos */}
-      <WhatsappEnTuTelefono sede={sede} conectado={conectado('whatsapp')} />
+      <WhatsappEnTuTelefono sede={sede} conectado={conectado('whatsapp')} abrirContactos={!!contactosDe && sede === contactosDe} onContactosAbiertos={contactosAbiertos} />
 
       {/* Lo que cobra Meta y las plantillas viven en la tarjeta de WhatsApp (Interruptores por canal) */}
 
