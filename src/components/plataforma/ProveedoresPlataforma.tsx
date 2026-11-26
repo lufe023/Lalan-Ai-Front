@@ -7,7 +7,6 @@ import { IOSModal } from '../ui/IOSModal';
 import { IOSToggle } from '../ui/IOSToggle';
 import { useConfirmar } from '../ui/ModalConfirmar';
 import { ChipsFiltro } from '../ui/movimiento';
-import type { NegocioResumen } from '../../types/plataforma';
 import { botonPrincipal, botonSuave, campo, etiqueta } from '../compras/piezas';
 
 type Estado = 'borrador' | 'publicado' | 'solicitud' | 'rechazado';
@@ -42,14 +41,15 @@ export const ProveedoresPlataforma: React.FC = () => {
   const [q, setQ] = useState('');
   const [editando, setEditando] = useState<ProveedorLalan | 'nuevo' | null>(null);
   const [interruptor, setInterruptor] = useState<Interruptor | null>(null);
-  const [negocios, setNegocios] = useState<NegocioResumen[]>([]);
+  const [negocios, setNegocios] = useState<{ id: string; nombre: string }[]>([]);
   const [salonElegido, setSalonElegido] = useState('');
 
   const cargar = useCallback(() => { api.get<ProveedorLalan[]>('/plataforma/proveedores').then(setLista).catch(() => setLista([])); }, []);
   useEffect(() => {
     cargar();
     api.get<Interruptor>('/plataforma/proveedores/interruptor').then(setInterruptor).catch(() => setInterruptor(null));
-    api.get<NegocioResumen[]>('/plataforma/negocios').then(setNegocios).catch(() => setNegocios([]));
+    // Solo los nombres: con miles de salones no se trae el uso de cada uno
+    api.get<{ id: string; nombre: string }[]>('/plataforma/negocios/nombres').then(setNegocios).catch(() => setNegocios([]));
   }, [cargar]);
 
   const guardarInterruptor = async (cambio: Partial<{ activo: boolean; salones: Record<string, boolean | null> }>) => {
