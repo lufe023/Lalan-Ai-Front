@@ -246,8 +246,25 @@ export interface NegocioResumen {
   porCobrarMonto?: number;
   pagadoHasta?: string | null;
   duena: { name: string; email: string; telefono?: string | null; debeCambiarClave: boolean } | null;
+  /** Su WhatsApp con Lalan: conectado y encendido, conectado pero apagado, o sin conectar */
+  whatsapp?: 'conectado' | 'apagado' | 'sin';
   uso: Uso;
   limites: Limites;
+}
+
+/** Las vistas rápidas de la lista de clientes (igual que el backend) */
+export type FiltroNegocios = 'todos' | 'activos' | 'suspendidos' | 'promocion' | 'registroPropio' | 'pagoVencido' | 'porCobrar' | 'aunNoEntra' | 'conWhatsapp' | 'sinWhatsapp' | 'ejemplo';
+export type OrdenNegocios = 'nuevos' | 'antiguos' | 'nombre';
+
+/** Una página de la lista de clientes, con cuántos hay en cada vista y en cada plan */
+export interface PaginaNegocios {
+  items: NegocioResumen[];
+  total: number;
+  pagina: number;
+  porPagina: number;
+  paginas: number;
+  conteos: Record<FiltroNegocios, number>;
+  planes: { id: string; nombre: string; cuantos: number }[];
 }
 
 export interface NegocioDetalle {

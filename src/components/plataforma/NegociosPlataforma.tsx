@@ -1,19 +1,22 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { comoPregunta, useConfirmar } from '../ui/ModalConfirmar';
-import { Building2, Plus, Loader2, X, KeyRound, MapPin, Save, Power, ChevronRight, LifeBuoy, Gift, Wallet, Sparkles, Pencil, Check, MessageCircle, Mail } from 'lucide-react';
+import { Plus, Loader2, X, KeyRound, MapPin, Save, Power, LifeBuoy, Gift, Wallet, Sparkles, Pencil, Check, MessageCircle, Mail, Search } from 'lucide-react';
 import { entrarComoSoporte } from '../../services/soporte';
 import { IOSToggle } from '../ui/IOSToggle';
 import { api } from '../../services/api';
 import { ClaveParaCompartir } from './ClaveParaCompartir';
 import { UsoDelPlan } from './UsoDelPlan';
 import {
-  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type Limites, type NegocioDetalle, type NegocioResumen, type OfertaPlan, type PlanLalan, type PromocionInicial, type Recurso, type VistaCambioDePlan,
+  NOMBRE_RECURSO, RECURSOS, type CatalogoModulos, type ClaveModulo, type FiltroNegocios, type Limites, type NegocioDetalle, type NegocioResumen, type OrdenNegocios, type PaginaNegocios, type OfertaPlan, type PlanLalan, type PromocionInicial, type Recurso, type VistaCambioDePlan,
 } from '../../types/plataforma';
 import { CanalesCliente } from './CanalesCliente';
 import { EditorCanales } from './EditorCanales';
 import { LineasTelefonicas } from './LineasTelefonicas';
 import { InstruccionesLalan } from './InstruccionesLalan';
 import { MediosDelEjemplo, SalonEjemplo } from './SalonEjemplo';
+import { Paginas } from '../avisos/Paginas';
+import { BotonAtras } from '../ui/BotonAtras';
 
 /** 809-555-1234 → 18095551234, para wa.me */
 const digitosWa = (t: string) => {
@@ -371,7 +374,7 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
             className={`px-3 py-1.5 rounded-xl text-[0.75rem] font-bold flex items-center gap-1 cursor-pointer ${d.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
             <Power className="w-3.5 h-3.5" /> {d.activo ? 'Activo' : 'Suspendido'}
           </button>
-          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="cursor-pointer"><X className="w-4 h-4 text-slate-400" /></button>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar la ficha" title="Cerrar (Esc)" className="hidden xl:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-neutral-800 cursor-pointer"><X className="w-4 h-4 text-slate-400" /></button>
         </div>
       </div>
       {(() => {
@@ -546,86 +549,297 @@ const Detalle: React.FC<{ id: string; planes: PlanLalan[]; catalogo: CatalogoMod
   </>);
 };
 
-/** Los clientes de Lalan: crear, cambiar de plan, excepciones, suspender */
+/** Las vistas rápidas, en el orden en que se muestran */
+const VISTAS: { id: FiltroNegocios; nombre: string; tono?: string }[] = [
+  { id: 'todos', nombre: 'Todos' },
+  { id: 'activos', nombre: 'Activos' },
+  { id: 'promocion', nombre: 'En promoción', tono: 'text-emerald-700 dark:text-emerald-400' },
+  { id: 'registroPropio', nombre: 'Se registraron solas', tono: 'text-sky-700 dark:text-sky-400' },
+  { id: 'aunNoEntra', nombre: 'Aún no entran' },
+  { id: 'sinWhatsapp', nombre: 'Sin WhatsApp conectado', tono: 'text-amber-700 dark:text-amber-400' },
+  { id: 'conWhatsapp', nombre: 'Con WhatsApp' },
+  { id: 'pagoVencido', nombre: 'Pago vencido', tono: 'text-rose-600 dark:text-rose-400' },
+  { id: 'porCobrar', nombre: 'Por cobrar', tono: 'text-orange-700 dark:text-orange-400' },
+  { id: 'suspendidos', nombre: 'Suspendidos', tono: 'text-rose-600 dark:text-rose-400' },
+  { id: 'ejemplo', nombre: 'De ejemplo', tono: 'text-violet-700 dark:text-violet-400' },
+];
+const POR_PAGINA = 25;
+const chip = 'px-1.5 py-px rounded-full text-[0.625rem] font-bold whitespace-nowrap';
+
+/** Respuestas de Lalan del mes, en número y barrita (lo que más se mira para ver si lo usan) */
+function UsoRespuestas({ n }: { n: NegocioResumen }) {
+  const usadas = n.uso.mensajesMes;
+  const tope = n.limites.mensajesMes;
+  const p = tope ? Math.min(100, Math.round((usadas / tope) * 100)) : 0;
+  const color = !tope ? 'bg-slate-300 dark:bg-neutral-700' : p >= 100 ? 'bg-rose-500' : p >= 80 ? 'bg-amber-500' : 'bg-[var(--primary)]';
+  return (
+    <div className="min-w-0" title="Respuestas de Lalan este mes">
+      <div className="text-[0.75rem] tabular-nums whitespace-nowrap"><b className="text-slate-900 dark:text-white">{usadas.toLocaleString('es-DO')}</b> <span className="text-slate-400">{tope !== null ? `de ${tope.toLocaleString('es-DO')}` : '· sin límite'}</span></div>
+      <div className="h-1 rounded-full bg-slate-100 dark:bg-neutral-800 mt-1 overflow-hidden"><div className={`h-full rounded-full ${color}`} style={{ width: `${tope ? Math.max(p, usadas ? 3 : 0) : 100}%`, opacity: tope ? 1 : 0.35 }} /></div>
+    </div>
+  );
+}
+
+/** Lo que pide atención, en etiquetas cortas */
+function Etiquetas({ n }: { n: NegocioResumen }) {
+  const vencido = !!n.pagadoHasta && new Date(n.pagadoHasta).getTime() < Date.now();
+  return (
+    <>
+      {!n.activo && <span className={`${chip} bg-rose-100 text-rose-700`}>Suspendido</span>}
+      {vencido && <span className={`${chip} bg-rose-100 text-rose-700`}>Pago vencido</span>}
+      {!!n.porCobrar && <span className={`${chip} bg-orange-100 text-orange-700`}>{n.porCobrar.toLocaleString('es-DO')} por cobrar</span>}
+      {n.promoHasta && <span className={`${chip} bg-emerald-100 text-emerald-700`}>Promo hasta {fecha(n.promoHasta)}</span>}
+      {n.registroPropio && <span className={`${chip} bg-sky-100 text-sky-700`} title={n.planElegido ? `Eligió el plan «${n.planElegido}»` : undefined}>Se registró sola</span>}
+      {n.duena?.debeCambiarClave && <span className={`${chip} bg-slate-100 text-slate-500`}>Aún no entra</span>}
+      {n.excepciones > 0 && <span className={`${chip} bg-amber-100 text-amber-700`}>{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
+      {n.esEjemplo && <span className={`${chip} bg-violet-100 text-violet-700`}>De ejemplo</span>}
+    </>
+  );
+}
+
+/** Si su WhatsApp con Lalan está conectado */
+function EstadoWhatsapp({ estado, corto }: { estado: NegocioResumen['whatsapp']; corto?: boolean }) {
+  if (!estado) return null;
+  const v = { conectado: { t: 'Conectado', c: 'text-emerald-600 dark:text-emerald-400', d: 'bg-emerald-500' }, apagado: { t: 'Apagado', c: 'text-amber-600 dark:text-amber-400', d: 'bg-amber-500' }, sin: { t: 'Sin conectar', c: 'text-slate-400', d: 'bg-slate-300 dark:bg-neutral-600' } }[estado];
+  return (
+    <span className={`inline-flex items-center gap-1 text-[0.6875rem] font-semibold whitespace-nowrap ${v.c}`} title={`Su WhatsApp con Lalan: ${v.t.toLowerCase()}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${v.d}`} aria-hidden="true" />{corto ? <span className="sr-only">WhatsApp {v.t.toLowerCase()}</span> : v.t}
+    </span>
+  );
+}
+
+/** Botón redondo para escribirle a la dueña sin abrir la ficha */
+function BotonWhatsapp({ n }: { n: NegocioResumen }) {
+  if (!n.duena?.telefono) return <span className="w-8 h-8 shrink-0" aria-hidden="true" />;
+  return (
+    <a href={`https://wa.me/${digitosWa(n.duena.telefono)}`} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}
+      title={`Escribirle por WhatsApp · ${n.duena.telefono}`} aria-label={`Escribirle a ${n.duena.name} por WhatsApp`}
+      className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10">
+      <MessageCircle className="w-4 h-4" />
+    </a>
+  );
+}
+
+/** Pantalla de computadora ancha (xl): la ficha va al lado de la lista; si no, encima */
+function useAncho(): boolean {
+  const q = '(min-width: 1280px)';
+  const [ancho, setAncho] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const c = () => setAncho(m.matches);
+    m.addEventListener('change', c);
+    return () => m.removeEventListener('change', c);
+  }, []);
+  return ancho;
+}
+
+/** Lo que se abre al lado de la lista */
+type Panel = { tipo: 'ficha'; id: string } | { tipo: 'nuevo' } | { tipo: 'ejemplo' } | null;
+
+/** Los clientes de Lalan: buscar, filtrar, y la ficha al lado (crear, cambiar de plan, excepciones, suspender) */
 export const NegociosPlataforma: React.FC<{ prellenado: PrellenadoNegocio | null; onPrellenadoUsado: () => void; soloSoporte?: boolean; abrirId?: string | null }> = ({ prellenado, onPrellenadoUsado, soloSoporte, abrirId }) => {
-  const [lista, setLista] = useState<NegocioResumen[] | null>(null);
+  const [datos, setDatos] = useState<PaginaNegocios | null>(null);
+  const [cargando, setCargando] = useState(false);
   const [planes, setPlanes] = useState<PlanLalan[]>([]);
   const [catalogo, setCatalogo] = useState<CatalogoModulos | null>(null);
-  const [creando, setCreando] = useState(false);
-  const [ejemplo, setEjemplo] = useState(false);
-  const [abierto, setAbierto] = useState<string | null>(null);
+  const [panel, setPanel] = useState<Panel>(null);
   const [clave, setClave] = useState<ClaveNueva | null>(null);
   const [error, setError] = useState('');
+  // Lo que se busca: el texto se manda medio segundo después de dejar de escribir
+  const [texto, setTexto] = useState('');
+  const [q, setQ] = useState('');
+  const [plan, setPlan] = useState('');
+  const [filtro, setFiltro] = useState<FiltroNegocios>('todos');
+  const [orden, setOrden] = useState<OrdenNegocios>('nuevos');
+  const [pagina, setPagina] = useState(1);
+  const lista = useRef<HTMLDivElement>(null);
+  const ancho = useAncho();
+  useEffect(() => { const t = setTimeout(() => { setQ(texto.trim()); setPagina(1); }, 350); return () => clearTimeout(t); }, [texto]);
 
+  useEffect(() => {
+    Promise.all([
+      soloSoporte ? Promise.resolve([] as PlanLalan[]) : api.get<PlanLalan[]>('/plataforma/planes'),
+      soloSoporte ? api.get<CatalogoModulos>('/mi-plan/modulos') : api.get<CatalogoModulos>('/plataforma/planes/modulos'),
+    ]).then(([p, c]) => { setPlanes(p); setCatalogo(c); }).catch((e) => setError((e as Error).message));
+  }, [soloSoporte]);
+
+  const pedido = useRef(0);
   const cargar = useCallback(async () => {
+    const n = ++pedido.current;
+    setCargando(true);
     try {
-      const [n, p, c] = await Promise.all([
-        api.get<NegocioResumen[]>('/plataforma/negocios'), soloSoporte ? Promise.resolve([] as PlanLalan[]) : api.get<PlanLalan[]>('/plataforma/planes'),
-        soloSoporte ? api.get<CatalogoModulos>('/mi-plan/modulos') : api.get<CatalogoModulos>('/plataforma/planes/modulos'),
-      ]);
-      setLista(n); setPlanes(p); setCatalogo(c);
-    } catch (e) { setError((e as Error).message); }
-  }, []);
+      const qs = new URLSearchParams({ pagina: String(pagina), porPagina: String(POR_PAGINA), filtro, orden });
+      if (q) qs.set('q', q);
+      if (plan) qs.set('plan', plan);
+      const r = await api.get<PaginaNegocios | NegocioResumen[]>(`/plataforma/negocios?${qs}`);
+      if (n !== pedido.current) return;
+      // Un servidor viejo todavía manda todos de una vez: se pagina aquí mismo
+      setDatos(Array.isArray(r) ? { items: r.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA), total: r.length, pagina, porPagina: POR_PAGINA, paginas: Math.max(1, Math.ceil(r.length / POR_PAGINA)), conteos: { todos: r.length, activos: r.filter((x) => x.activo).length } as PaginaNegocios['conteos'], planes: [] } : r);
+      setError('');
+    } catch (e) { if (n === pedido.current) setError((e as Error).message); } finally { if (n === pedido.current) setCargando(false); }
+  }, [pagina, filtro, orden, q, plan]);
   useEffect(() => { void cargar(); }, [cargar]);
-  useEffect(() => { if (prellenado) { setCreando(true); setAbierto(null); } }, [prellenado]);
-  // Desde Salud: abrir directo la ficha del cliente con problemas
-  useEffect(() => { if (abrirId) { setAbierto(abrirId); setCreando(false); } }, [abrirId]);
 
-  if (error) return <p className="text-xs text-rose-600">{error}</p>;
-  if (!lista || !catalogo) return <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Cargando clientes…</div>;
+  useEffect(() => { if (prellenado) setPanel({ tipo: 'nuevo' }); }, [prellenado]);
+  // Desde Salud: abrir directo la ficha del cliente con problemas
+  useEffect(() => { if (abrirId) setPanel({ tipo: 'ficha', id: abrirId }); }, [abrirId]);
+  const cerrar = useCallback(() => { if (panel?.tipo === 'nuevo') onPrellenadoUsado(); setPanel(null); setClave(null); }, [panel, onPrellenadoUsado]);
+  // Esc cierra la ficha
+  useEffect(() => {
+    if (!panel) return;
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && !(e.target as HTMLElement)?.closest('input,textarea,select,[role=dialog]')) cerrar(); };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [panel, cerrar]);
+
+  const irA = (p: number) => { setPagina(p); lista.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+  const elegirFiltro = (f: FiltroNegocios) => { setFiltro(f); setPagina(1); };
+  const abierto = panel?.tipo === 'ficha' ? panel.id : null;
+  const conPanel = !!panel;
+  const nombreAbierto = abierto ? datos?.items.find((n) => n.id === abierto)?.nombre : undefined;
+  const hayFiltros = !!q || !!plan || filtro !== 'todos';
+
+  if (error && !datos) return <p className="text-xs text-rose-600">{error}</p>;
+  if (!datos || !catalogo) return <div className="flex items-center gap-2 text-xs text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Cargando clientes…</div>;
+
+  // La ficha: en la computadora ancha va al lado de la lista (y la lista sigue a la vista); en el teléfono y la tableta, encima de todo
+  const fichaAlLado = panel && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/30 hidden md:block xl:hidden" onClick={cerrar} aria-hidden="true" />
+          <aside aria-label={panel.tipo === 'ficha' ? `Ficha de ${nombreAbierto ?? 'el cliente'}` : panel.tipo === 'nuevo' ? 'Nuevo cliente' : 'Salón de ejemplo'}
+            className="fixed inset-0 md:left-auto md:w-[min(780px,100%)] z-[61] overflow-y-auto overscroll-contain hide-scrollbar bg-slate-50 dark:bg-neutral-950 md:shadow-2xl
+              xl:static xl:z-auto xl:w-auto xl:flex-1 xl:min-w-0 xl:sticky xl:top-0 xl:max-h-[calc(100dvh-9rem)] xl:bg-transparent xl:dark:bg-transparent xl:shadow-none xl:rounded-2xl">
+            <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 bg-slate-50/90 dark:bg-neutral-950/90 backdrop-blur xl:hidden" style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}>
+              <BotonAtras onVolver={cerrar} texto="Clientes" enDialogo />
+            </div>
+            <div className="px-3 pb-6 xl:p-0 space-y-3">
+              {clave && <ClaveParaCompartir {...clave} onListo={() => setClave(null)} />}
+              {panel.tipo === 'nuevo' && (
+                <FormNuevo planes={planes} prellenado={prellenado}
+                  onCancelar={cerrar}
+                  onCreado={(c, id) => { setClave(c); onPrellenadoUsado(); setPanel({ tipo: 'ficha', id }); void cargar(); }} />
+              )}
+              {panel.tipo === 'ejemplo' && <SalonEjemplo onCerrar={cerrar} onCambio={() => void cargar()} onAbrirFicha={(id) => setPanel({ tipo: 'ficha', id })} />}
+              {panel.tipo === 'ficha' && <Detalle key={panel.id} id={panel.id} planes={planes} catalogo={catalogo} soloSoporte={soloSoporte} onCerrar={cerrar} onCambio={() => void cargar()} />}
+            </div>
+          </aside>
+        </>
+  );
+
+  const vistas = VISTAS.filter((v) => v.id === 'todos' || v.id === filtro || (datos.conteos[v.id] ?? 0) > 0);
+  const campoChico = 'h-10 px-3 rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-[0.8125rem] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]';
 
   return (
-    <div className="space-y-3 text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark]">
-      <div className="flex items-center justify-between">
-        <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400">{lista.length} {lista.length === 1 ? 'cliente' : 'clientes'} · {lista.filter((n) => n.activo).length} activos</p>
-        {!creando && !ejemplo && !soloSoporte && (
-          <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={() => { setEjemplo(true); setAbierto(null); }} className="px-3 py-2 rounded-xl border border-[var(--primary)]/50 text-[var(--primary)] text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer hover:bg-[var(--primary)]/5"><Sparkles className="w-4 h-4" /> Preparar salón de ejemplo</button>
-            <button type="button" onClick={() => { setCreando(true); setAbierto(null); }} className="px-3 py-2 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer"><Plus className="w-4 h-4" /> Nuevo cliente</button>
-          </div>
-        )}
-      </div>
-      {ejemplo && <SalonEjemplo onCerrar={() => setEjemplo(false)} onCambio={() => void cargar()} onAbrirFicha={(id) => { setEjemplo(false); setAbierto(id); }} />}
-      {clave && <ClaveParaCompartir {...clave} onListo={() => setClave(null)} />}
-      {creando && (
-        <FormNuevo planes={planes} prellenado={prellenado}
-          onCancelar={() => { setCreando(false); onPrellenadoUsado(); }}
-          onCreado={(c, id) => { setClave(c); setCreando(false); onPrellenadoUsado(); setAbierto(id); void cargar(); }} />
-      )}
-      {abierto && <Detalle key={abierto} id={abierto} planes={planes} catalogo={catalogo} soloSoporte={soloSoporte} onCerrar={() => setAbierto(null)} onCambio={() => void cargar()} />}
-      <div className="grid lg:grid-cols-2 gap-3">
-        {lista.map((n) => (
-          <div key={n.id} role="button" tabIndex={0} onClick={() => { setAbierto(n.id); setCreando(false); }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) { setAbierto(n.id); setCreando(false); } }}
-            className={`${tarjeta} text-left block hover:border-[var(--primary)]/50 transition cursor-pointer ${abierto === n.id ? 'border-[var(--primary)]' : ''} ${n.activo ? '' : 'opacity-60'}`}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shrink-0"><Building2 className="w-4 h-4" /></div>
-                <div className="min-w-0">
-                  <div className="text-[0.9375rem] font-extrabold text-slate-900 dark:text-white truncate">{n.nombre}</div>
-                  <div className="text-[0.75rem] text-slate-500 truncate">{n.duena ? `${n.duena.name} · ${n.duena.email}` : 'Sin administración'}</div>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+    <div className="text-slate-900 dark:text-neutral-100 dark:[color-scheme:dark] xl:flex xl:items-start xl:gap-4">
+      {/* La lista */}
+      <section ref={lista} aria-label="Clientes" className={`space-y-3 min-w-0 scroll-mt-4 ${conPanel ? 'xl:w-[400px] 2xl:w-[460px] xl:shrink-0' : 'xl:flex-1'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[0.8125rem] text-slate-500 dark:text-neutral-400">
+            <b className="text-slate-900 dark:text-white">{(datos.conteos.todos ?? datos.total).toLocaleString('es-DO')}</b> {datos.conteos.todos === 1 ? 'cliente' : 'clientes'}{datos.conteos.activos !== undefined && <> · {datos.conteos.activos.toLocaleString('es-DO')} activos</>}
+          </p>
+          {!soloSoporte && (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" onClick={() => setPanel({ tipo: 'ejemplo' })} title="Preparar salón de ejemplo" className="h-9 px-3 rounded-xl border border-[var(--primary)]/50 text-[var(--primary)] text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer hover:bg-[var(--primary)]/5"><Sparkles className="w-4 h-4" /><span className={conPanel ? 'xl:hidden' : ''}>Salón de ejemplo</span></button>
+              <button type="button" onClick={() => setPanel({ tipo: 'nuevo' })} className="h-9 px-3 rounded-xl bg-[var(--primary)] text-white text-[0.8125rem] font-bold flex items-center gap-1 cursor-pointer"><Plus className="w-4 h-4" /> Nuevo cliente</button>
             </div>
-            <div className="flex flex-wrap gap-1.5 mt-2.5 mb-2.5">
-              <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-[var(--primary)]/10 text-[var(--primary)]">{n.plan?.nombre ?? 'Sin plan'}</span>
-              {!!n.porCobrar && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-orange-100 text-orange-700">{n.porCobrar} respuestas por cobrar</span>}
-              {n.promoHasta && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-emerald-100 text-emerald-700">Promoción hasta {fecha(n.promoHasta)}</span>}
-              {n.excepciones > 0 && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-100 text-amber-700">{n.excepciones} {n.excepciones === 1 ? 'excepción' : 'excepciones'}</span>}
-              {!n.activo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-rose-100 text-rose-700">Suspendido</span>}
-              {n.esEjemplo && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-violet-100 text-violet-700">De ejemplo</span>}
-              {n.registroPropio && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-sky-100 text-sky-700" title={n.planElegido ? `Eligió el plan «${n.planElegido}»` : undefined}>Se registró sola</span>}
-              {n.duena?.debeCambiarClave && <span className="px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-slate-100 text-slate-500">Aún no entra</span>}
-            </div>
-            {n.duena?.telefono && (
-              <a href={`https://wa.me/${digitosWa(n.duena.telefono)}`} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 mb-2.5 text-[0.75rem] font-bold text-emerald-700 dark:text-emerald-400 hover:underline"><MessageCircle className="w-3.5 h-3.5" /> Escribirle por WhatsApp · {n.duena.telefono}</a>
-            )}
-            <UsoDelPlan uso={n.uso} limites={n.limites} compacto />
+          )}
+        </div>
+
+        <div className={`grid gap-2 ${conPanel ? '' : 'sm:grid-cols-[1fr_auto_auto]'}`}>
+          <label className="relative block">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
+            <input type="search" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar salón, dueña, correo o teléfono" aria-label="Buscar clientes" className={`${campoChico} w-full pl-9`} />
+          </label>
+          <div className={`grid grid-cols-2 gap-2 ${conPanel ? '' : 'sm:contents'}`}>
+            <select value={plan} onChange={(e) => { setPlan(e.target.value); setPagina(1); }} aria-label="Plan" className={campoChico}>
+              <option value="">Todos los planes</option>
+              {datos.planes.map((p) => <option key={p.id} value={p.id}>{p.nombre} ({p.cuantos.toLocaleString('es-DO')})</option>)}
+            </select>
+            <select value={orden} onChange={(e) => { setOrden(e.target.value as OrdenNegocios); setPagina(1); }} aria-label="Orden" className={campoChico}>
+              <option value="nuevos">Los más nuevos</option>
+              <option value="antiguos">Los más antiguos</option>
+              <option value="nombre">Por nombre (A-Z)</option>
+            </select>
           </div>
-        ))}
-      </div>
+        </div>
+
+        <div className={`flex gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1 pb-0.5 ${conPanel ? '' : 'lg:flex-wrap'}`} role="group" aria-label="Vistas">
+          {vistas.map((v) => {
+            const activa = filtro === v.id;
+            return (
+              <button key={v.id} type="button" onClick={() => elegirFiltro(v.id)} aria-pressed={activa}
+                className={`shrink-0 h-8 px-3 rounded-full border text-[0.75rem] font-semibold flex items-center gap-1.5 cursor-pointer transition ${activa ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white' : `bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-800 ${v.tono ?? 'text-slate-600 dark:text-neutral-300'} hover:border-slate-300`}`}>
+                {v.nombre}<span className={`tabular-nums ${activa ? 'opacity-70' : 'text-slate-400'}`}>{(datos.conteos[v.id] ?? 0).toLocaleString('es-DO')}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className={`rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 overflow-hidden transition-opacity ${cargando ? 'opacity-60' : ''}`} aria-busy={cargando}>
+          {/* Encabezado de la tabla (solo en pantalla ancha y sin la ficha abierta) */}
+          {!conPanel && (
+            <div className="hidden lg:grid grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(120px,1fr)_110px_120px_32px] gap-4 px-4 py-2 border-b border-slate-100 dark:border-neutral-800 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400">
+              <span>Salón y dueña</span><span>Plan</span><span>Respuestas del mes</span><span>Sedes · usuarios</span><span>WhatsApp</span><span />
+            </div>
+          )}
+          {datos.items.length === 0 && (
+            <div className="px-4 py-10 text-center space-y-2">
+              <p className="text-[0.8125rem] text-slate-500">{hayFiltros ? 'Ningún cliente con esa búsqueda.' : 'Todavía no hay clientes.'}</p>
+              {hayFiltros && <button type="button" onClick={() => { setTexto(''); setQ(''); setPlan(''); setFiltro('todos'); setPagina(1); }} className="text-[0.8125rem] font-bold text-[var(--primary)] cursor-pointer">Quitar filtros</button>}
+            </div>
+          )}
+          <ul className="divide-y divide-slate-100 dark:divide-neutral-800">
+            {datos.items.map((n) => {
+              const sel = abierto === n.id;
+              const abrir = () => { setPanel({ tipo: 'ficha', id: n.id }); setClave(null); };
+              return (
+                <li key={n.id}>
+                  <div role="button" tabIndex={0} onClick={abrir} aria-current={sel ? 'true' : undefined}
+                    onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); abrir(); } }}
+                    className={`relative px-4 py-2.5 cursor-pointer transition-colors focus:outline-none focus-visible:bg-slate-50 dark:focus-visible:bg-neutral-800/60 ${sel ? 'bg-[var(--primary)]/[0.07]' : 'hover:bg-slate-50 dark:hover:bg-neutral-800/50'} ${n.activo ? '' : 'opacity-60'}`}>
+                    {sel && <span className="absolute left-0 inset-y-0 w-[3px] bg-[var(--primary)]" aria-hidden="true" />}
+                    {/* Fila de tabla: pantalla ancha sin la ficha abierta */}
+                    {!conPanel && (
+                      <div className="hidden lg:grid grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(120px,1fr)_110px_120px_32px] gap-4 items-center">
+                        <div className="min-w-0">
+                          <div className="text-[0.875rem] font-bold text-slate-900 dark:text-white truncate">{n.nombre}</div>
+                          <div className="text-[0.75rem] text-slate-500 truncate">{n.duena ? `${n.duena.name} · ${n.duena.email}` : 'Sin administración'}</div>
+                        </div>
+                        <div className="min-w-0 flex flex-wrap items-center gap-1">
+                          <span className="text-[0.75rem] font-bold text-[var(--primary)] mr-1">{n.plan?.nombre ?? 'Sin plan'}</span>
+                          <Etiquetas n={n} />
+                        </div>
+                        <UsoRespuestas n={n} />
+                        <div className="text-[0.75rem] tabular-nums text-slate-600 dark:text-neutral-300">{n.uso.sedes} {n.uso.sedes === 1 ? 'sede' : 'sedes'} · {n.uso.usuarios}</div>
+                        <EstadoWhatsapp estado={n.whatsapp} />
+                        <BotonWhatsapp n={n} />
+                      </div>
+                    )}
+                    {/* Fila compacta: teléfono, o con la ficha abierta al lado */}
+                    <div className={`${conPanel ? '' : 'lg:hidden'} flex items-start gap-2`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[0.875rem] font-bold text-slate-900 dark:text-white truncate">{n.nombre}</span>
+                          <EstadoWhatsapp estado={n.whatsapp} corto />
+                        </div>
+                        <div className="text-[0.75rem] text-slate-500 truncate">{n.duena?.name ?? 'Sin administración'} · <span className="font-semibold text-[var(--primary)]">{n.plan?.nombre ?? 'Sin plan'}</span></div>
+                        <div className="flex flex-wrap gap-1 mt-1 empty:hidden"><Etiquetas n={n} /></div>
+                      </div>
+                      <div className="w-[92px] shrink-0 pt-0.5"><UsoRespuestas n={n} /></div>
+                      <BotonWhatsapp n={n} />
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <Paginas pagina={datos.pagina} paginas={datos.paginas} total={datos.total} porPagina={datos.porPagina} onIr={irA} />
+        </div>
+        {error && <p className="text-xs text-rose-600" role="alert">{error}</p>}
+      </section>
+
+      {/* La ficha, al lado de la lista: en la computadora la lista sigue a la vista; en el teléfono ocupa la pantalla */}
+      {panel && (ancho ? fichaAlLado : createPortal(fichaAlLado, document.body))}
     </div>
   );
 };
