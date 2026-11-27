@@ -44,18 +44,20 @@ const VistaPrevia: React.FC<{ p: Plantilla }> = ({ p }) => (
 /**
  * Las plantillas de WhatsApp que Lalan usa para escribir primero (recordar
  * una cita, avisarle a la dueña). Son de la cuenta de WhatsApp de cada
- * salón: se crean solas al conectar, y si falta alguna, aquí se crea.
+ * salón y se crean aquí. En un WhatsApp recién conectado se espera una
+ * semana: pedirlas de golpe a una cuenta nueva puede hacer que Meta la bloquee.
  */
 export const PlantillasWhatsapp: React.FC<{ sede?: string }> = ({ sede }) => {
   const [lista, setLista] = useState<Plantilla[] | null>(null);
+  const [crearDesde, setCrearDesde] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [error, setError] = useState('');
   const q = sede ? `?sede=${sede}` : '';
 
   const cargar = useCallback(() => {
-    api.get<{ plantillas: Plantilla[] }>(`/bots/conexion/plantillas${q}`)
-      .then((r) => { setLista(r.plantillas); setError(''); })
+    api.get<{ plantillas: Plantilla[]; crearDesde?: string | null }>(`/bots/conexion/plantillas${q}`)
+      .then((r) => { setLista(r.plantillas); setCrearDesde(r.crearDesde ?? null); setError(''); })
       .catch((e) => setError((e as Error).message));
   }, [q]);
   useEffect(() => { cargar(); }, [cargar]);
@@ -94,7 +96,13 @@ export const PlantillasWhatsapp: React.FC<{ sede?: string }> = ({ sede }) => {
           </div>
         );
       })}
-      {faltan > 0 && (
+      {faltan > 0 && crearDesde && (
+        <p className="flex items-start gap-1.5 text-[0.6875rem] text-slate-600 dark:text-neutral-300 rounded-lg bg-slate-50 dark:bg-neutral-900 p-2">
+          <Clock className="w-3.5 h-3.5 mt-px shrink-0 text-amber-600" />
+          <span>Este WhatsApp se conectó hace poco. Para cuidar el número, las plantillas se piden a Meta a partir del <b>{new Date(crearDesde).toLocaleDateString('es-DO', { day: 'numeric', month: 'long' })}</b>. Mientras tanto Lalan contesta normal a quien escriba.</span>
+        </p>
+      )}
+      {faltan > 0 && !crearDesde && (
         <button type="button" onClick={() => void crear()} disabled={creando}
           className="w-full py-2 rounded-lg bg-[#25D366] text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer">
           {creando && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Crear {faltan === 1 ? 'la que falta' : `las ${faltan} que faltan`}
