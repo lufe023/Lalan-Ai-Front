@@ -61,6 +61,7 @@ import { GrabadorRuta } from './components/guias/GrabadorRuta';
 import { OfflineIndicator } from './components/ui/OfflineIndicator';
 import { BuscadorOpciones } from './components/ui/BuscadorOpciones';
 import { PWAInstallBanner } from './components/ui/PWAInstallBanner';
+import { PedirNotificaciones } from './components/ui/PedirNotificaciones';
 import { PWAUpdateNotification } from './components/ui/PWAUpdateNotification';
 import type { ScreenName } from './context/AppContext';
 
@@ -187,6 +188,12 @@ const MainAppContent: React.FC = () => {
       <OfflineIndicator />
       <PWAInstallBanner />
       <PWAUpdateNotification />
+
+      {/* Ya dentro (no en cambiar clave, correo, términos ni 2FA): pedir los avisos del teléfono */}
+      {!isLoading && isAuthenticated && !currentUser?.debeCambiarClave && !currentUser?.aceptarTerminos
+        && !(currentUser?.configurarDosPasos && !currentUser.soporte)
+        && !(currentUser?.confirmarCorreo === 'obligatoria' || (currentUser?.confirmarCorreo === 'opcional' && !confirmacionOmitida(currentUser.id)))
+        && <PedirNotificaciones key={currentUser?.id} />}
 
       {/* ── Login vs Authenticated ──────────────────────── */}
       {!isLoading && (

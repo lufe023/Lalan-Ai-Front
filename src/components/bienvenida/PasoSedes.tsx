@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Plus } from 'lucide-react';
+import { Check, MapPin, Plus } from 'lucide-react';
 import { bienvenidaApi } from '../../services/bienvenida';
 import type { SedeBienvenida } from '../../types/bienvenida';
-import type { DiaDeHorario } from '../../types';
+import type { CitasAlCierre as CitasAlCierreDatos, DiaDeHorario, HorarioExtra as HorarioExtraDatos } from '../../types';
+import { CITAS_AL_CIERRE_INICIAL, CitasAlCierre } from '../ajustes/CitasAlCierre';
+import { HORARIO_EXTRA_INICIAL, HorarioExtra } from '../ajustes/HorarioExtra';
 import { HorarioSemanal, semanaCompleta } from '../ajustes/HorarioSemanal';
 import { Aviso, BotonPrincipal, BotonSecundario, Cargando, Encabezado, Etiqueta, Tarjeta, claseCampo } from './comun';
 
@@ -89,25 +91,57 @@ export const PasoSedes: React.FC<{ onSiguiente: () => void }> = ({ onSiguiente }
   );
 };
 
-/** Paso 3: el horario de la semana (el mismo para todas las sedes; luego cada una se ajusta en Ajustes) */
+/**
+ * Paso 3: el horario. Las mismas opciones que Ajustes → El salón: cada día
+ * con sus turnos (corrida, con almuerzo, solo mañana o tarde), «Mismo
+ * horario a varios días», qué pasa con la última cita del día y el horario
+ * extra. Con varias sedes se elige: igual en todas, o una por una.
+ */
 export const PasoHorario: React.FC<{ onSiguiente: () => void }> = ({ onSiguiente }) => {
+  const [sedes, setSedes] = useState<SedeBienvenida[] | null>(null);
+  /** 'todas' = el mismo en todas; si no, el id de la sede que se está poniendo */
+  const [para, setPara] = useState<string>('todas');
+  const [hechas, setHechas] = useState<string[]>([]);
   const [semana, setSemana] = useState<DiaDeHorario[] | null>(null);
-  const [varias, setVarias] = useState(false);
+  const [cierre, setCierre] = useState<CitasAlCierreDatos>(CITAS_AL_CIERRE_INICIAL);
+  const [extra, setExtra] = useState<HorarioExtraDatos>(HORARIO_EXTRA_INICIAL);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
+  const cargarDe = (s?: SedeBienvenida) => {
+    setSemana(semanaCompleta(s?.horarioSemanal));
+    setCierre({ ...CITAS_AL_CIERRE_INICIAL, ...(s?.citasAlCierre ?? {}) });
+    setExtra({ ...HORARIO_EXTRA_INICIAL, ...(s?.horarioExtra ?? {}) });
+  };
+
   useEffect(() => {
     bienvenidaApi.sedes()
-      .then((s) => { setSemana(semanaCompleta(s[0]?.horarioSemanal)); setVarias(s.length > 1); })
+      .then((s) => { setSedes(s); cargarDe(s[0]); })
       .catch((e) => setError((e as Error).message));
   }, []);
+
+  const varias = (sedes?.length ?? 0) > 1;
+  const elegir = (id: string) => {
+    setPara(id);
+    setError('');
+    cargarDe(id === 'todas' ? sedes?.[0] : sedes?.find((s) => s.id === id));
+  };
 
   const seguir = async () => {
     if (!semana) return;
     setError('');
     setGuardando(true);
     try {
-      await bienvenidaApi.horario(semana);
+      const una = para !== 'todas';
+      const nuevas = await bienvenidaApi.horario(semana, { ...(una ? { locationIds: [para] } : {}), citasAlCierre: cierre, horarioExtra: extra });
+      setSedes(nuevas);
+      if (una) {
+        const listas = [...new Set([...hechas, para])];
+        setHechas(listas);
+        // Una por una: pasa a la siguiente que falte; al terminar, al siguiente paso
+        const falta = nuevas.find((s) => !listas.includes(s.id));
+        if (falta) { setPara(falta.id); cargarDe(falta); return; }
+      }
       onSiguiente();
     } catch (e) {
       setError((e as Error).message);
@@ -118,19 +152,53 @@ export const PasoHorario: React.FC<{ onSiguiente: () => void }> = ({ onSiguiente
 
   if (!semana && !error) return <Cargando />;
 
+  const nombrePara = para === 'todas' ? null : sedes?.find((s) => s.id === para)?.name ?? null;
+  const falta = para !== 'todas' ? sedes?.find((s) => s.id !== para && !hechas.includes(s.id)) : undefined;
+  const chip = (activo: boolean) => `px-3 py-1.5 rounded-full text-[0.8125rem] font-bold border transition-colors cursor-pointer ${activo
+    ? 'bg-[var(--primary)] border-[var(--primary)] text-white'
+    : 'bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300'}`;
+
   return (
     <div className="space-y-5">
       <Encabezado
         titulo="¿Cuándo abres?"
-        texto={`Lalan solo agenda dentro de este horario.${varias ? ' Lo pongo igual en todas tus sedes; si alguna es distinta, la cambias en Ajustes.' : ''}`}
+        texto="Lalan solo agenda dentro de este horario. Toca un día para cambiarlo, o «Mismo horario a varios días» para poner de una vez los que son iguales."
       />
+      {varias && (
+        <Tarjeta>
+          <p className="text-[0.8125rem] font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-1.5"><MapPin className="w-4 h-4" /> ¿Para qué sede?</p>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => elegir('todas')} className={chip(para === 'todas')}>Igual en todas</button>
+            {(sedes ?? []).map((s) => (
+              <button key={s.id} type="button" onClick={() => elegir(s.id)} className={chip(para === s.id)}>
+                {hechas.includes(s.id) && <Check className="inline w-3.5 h-3.5 -mt-0.5 mr-0.5" />}{s.name}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[0.75rem] text-slate-400">
+            {para === 'todas' ? 'Si alguna abre distinto, elígela y ponle el suyo.' : `Solo ${nombrePara}. Al guardar paso a la siguiente.`}
+          </p>
+        </Tarjeta>
+      )}
       {semana && (
         <Tarjeta>
-          <HorarioSemanal semana={semana} onGuardar={setSemana} />
+          <HorarioSemanal semana={semana} onGuardar={setSemana} titulo={nombrePara ? `Horario de ${nombrePara}` : 'Horario de la semana'} sobreTodo />
+        </Tarjeta>
+      )}
+      {semana && (
+        <Tarjeta>
+          <CitasAlCierre valor={cierre} semana={semana} sede={nombrePara} onGuardar={setCierre} />
+        </Tarjeta>
+      )}
+      {semana && (
+        <Tarjeta>
+          <HorarioExtra valor={extra} semana={semana} sede={nombrePara} onGuardar={setExtra} />
         </Tarjeta>
       )}
       {error && <Aviso tipo="error">{error}</Aviso>}
-      <BotonPrincipal onClick={seguir} cargando={guardando} className="w-full">Siguiente</BotonPrincipal>
+      <BotonPrincipal onClick={seguir} cargando={guardando} className="w-full">
+        {falta ? `Guardar y seguir con ${falta.name}` : 'Siguiente'}
+      </BotonPrincipal>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import type { DiaDeHorario } from './index';
+import type { CitasAlCierre, DiaDeHorario, HorarioExtra } from './index';
 
 /**
  * La Bienvenida: configurar el salón paso a paso. Mismo contrato que el
@@ -38,6 +38,9 @@ export interface SedeBienvenida {
   address: string | null;
   phone: string | null;
   horarioSemanal: DiaDeHorario[];
+  /** Lo mismo que en Ajustes (servidor nuevo); null o ausente = lo de siempre */
+  citasAlCierre?: CitasAlCierre | null;
+  horarioExtra?: HorarioExtra | null;
 }
 
 export interface ServicioPlantilla {

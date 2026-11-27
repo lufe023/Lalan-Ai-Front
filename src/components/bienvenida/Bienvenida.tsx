@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BotonAtras } from '../ui/BotonAtras';
 import { FondoVivo } from '../ui/FondoVivo';
 import { AnimatePresence, motion } from 'motion/react';
-import { PartyPopper, Sparkles, X } from 'lucide-react';
+import { BellRing, PartyPopper, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { abrirLalan } from '../lalan/PantallaLalan';
 import { useIrAtras } from '../../hooks/useIrAtras';
-import { alPedirBienvenida, avisarCambioBienvenida, bienvenidaApi, bienvenidaPospuesta, posponerBienvenida } from '../../services/bienvenida';
+import { alPedirBienvenida, avisarCambioBienvenida, bienvenidaApi, bienvenidaPospuesta, marcarBienvenidaAbierta, posponerBienvenida } from '../../services/bienvenida';
+import { estadoNotificaciones, type EstadoNotificaciones } from '../../services/notificaciones';
+import { PasoTelefono, pasoTelefonoVisto } from './PasoTelefono';
 import type { EstadoBienvenida, Paso } from '../../types/bienvenida';
 import { Aviso, BotonPrincipal, BotonSecundario, Cargando } from './comun';
 import { PasoSalon } from './PasoSalon';
@@ -17,8 +19,13 @@ import { PasoServicios } from './PasoServicios';
 import { PasoRecetas } from './PasoRecetas';
 import { PasoProductos } from './PasoProductos';
 
-/** Además de los pasos del servidor, una pantalla de entrada y una de cierre */
-type Pantalla = 'inicio' | Paso | 'final';
+/**
+ * Además de los pasos del servidor, una pantalla de entrada, el paso del
+ * teléfono (instalar y avisos: es de este aparato, no del salón) y el cierre
+ */
+type Pantalla = 'inicio' | 'telefono' | Paso | 'final';
+/** Los avisos todavía se pueden activar (o instalar para tenerlos) en este aparato */
+const avisosPendientes = (e: EstadoNotificaciones | null) => e === 'apagadas' || e === 'instalar' || e === 'bloqueadas';
 
 /** Configurar el salón lo hace la dirección; el resto del equipo nunca la ve */
 const puedeConfigurar = (rol?: string) => rol === 'admin' || rol === 'super_admin';
@@ -37,6 +44,7 @@ export const Bienvenida: React.FC = () => {
   const [pantalla, setPantalla] = useState<Pantalla>('inicio');
   const [terminando, setTerminando] = useState(false);
   const [error, setError] = useState('');
+  const [avisos, setAvisos] = useState<EstadoNotificaciones | null>(null);
   const puede = isAuthenticated && puedeConfigurar(currentUser?.role);
 
   const refrescar = useCallback(async () => {
@@ -48,14 +56,22 @@ export const Bienvenida: React.FC = () => {
   // La primera vez se abre sola (solo a la dueña, no a soporte ni a Lalan)
   useEffect(() => {
     if (!puede || currentUser?.role !== 'admin' || currentUser?.soporte) return;
-    refrescar()
-      .then((e) => {
+    Promise.all([refrescar(), estadoNotificaciones().catch(() => null)])
+      .then(([e, av]) => {
+        setAvisos(av);
         if (!e.mostrar || bienvenidaPospuesta()) return;
-        setPantalla(e.porcentaje > 10 && e.siguiente ? e.siguiente : 'inicio');
+        // Ya empezada: sigue donde iba, pero si en este aparato faltan los avisos, eso primero
+        const seguir: Pantalla = e.porcentaje > 10 && e.siguiente ? e.siguiente : 'inicio';
+        setPantalla(seguir !== 'inicio' && avisosPendientes(av) && !pasoTelefonoVisto() ? 'telefono' : seguir);
         setAbierta(true);
       })
       .catch(() => undefined);
   }, [puede, currentUser?.role, currentUser?.soporte, refrescar]);
+
+  // Mientras está abierta, la hoja de «Activa los avisos» no sale aparte: aquí tiene su paso
+  useEffect(() => { marcarBienvenidaAbierta(abierta); return () => marcarBienvenidaAbierta(false); }, [abierta]);
+  // Al volver a «inicio» se pone al día (pudo activarlos en el paso del teléfono)
+  useEffect(() => { if (abierta && pantalla === 'inicio') void estadoNotificaciones().then(setAvisos).catch(() => undefined); }, [abierta, pantalla]);
 
   // Desde Ajustes o desde el aviso
   useEffect(() => alPedirBienvenida(() => {
@@ -63,11 +79,12 @@ export const Bienvenida: React.FC = () => {
     setAbierta(true);
     setPantalla('inicio');
     refrescar().catch((e) => setError((e as Error).message));
+    void estadoNotificaciones().then(setAvisos).catch(() => undefined);
   }), [puede, refrescar]);
 
   /** Los pasos que aplican a su plan (sin inventario no hay recetas ni productos) */
   const orden = useMemo<Pantalla[]>(
-    () => ['inicio', ...(estado?.pasos.filter((p) => p.aplica).map((p) => p.id) ?? []), 'final'],
+    () => ['inicio', 'telefono', ...(estado?.pasos.filter((p) => p.aplica).map((p) => p.id) ?? []), 'final'],
     [estado],
   );
   const indice = orden.indexOf(pantalla);
@@ -76,7 +93,9 @@ export const Bienvenida: React.FC = () => {
   const irA = (p: Pantalla) => { setError(''); setPantalla(p); };
   const siguiente = async () => {
     const e = await refrescar().catch(() => estado);
-    const lista: Pantalla[] = ['inicio', ...(e?.pasos.filter((p) => p.aplica).map((p) => p.id) ?? []), 'final'];
+    // Del teléfono se sigue donde iba el salón (si ya estaba empezado), no desde el primer paso
+    if (pantalla === 'telefono' && e?.siguiente && e.porcentaje > 10) { irA(e.siguiente); return; }
+    const lista: Pantalla[] = ['inicio', 'telefono', ...(e?.pasos.filter((p) => p.aplica).map((p) => p.id) ?? []), 'final'];
     irA(lista[Math.min(lista.indexOf(pantalla) + 1, lista.length - 1)]);
   };
   const atras = () => irA(orden[Math.max(indice - 1, 0)]);
@@ -105,7 +124,12 @@ export const Bienvenida: React.FC = () => {
   const contenido = () => {
     if (!estado) return error ? <Aviso tipo="error">{error}</Aviso> : <Cargando />;
     switch (pantalla) {
-      case 'inicio': return <Inicio nombre={currentUser?.name?.split(' ')[0]} estado={estado} onEmpezar={() => irA(estado.siguiente && estado.porcentaje > 10 ? estado.siguiente : 'salon')} onIrA={irA} />;
+      case 'inicio': return (
+        <Inicio nombre={currentUser?.name?.split(' ')[0]} estado={estado} avisos={avisos}
+          onEmpezar={() => irA(avisosPendientes(avisos) && !pasoTelefonoVisto() ? 'telefono' : estado.siguiente && estado.porcentaje > 10 ? estado.siguiente : 'salon')}
+          onIrA={irA} />
+      );
+      case 'telefono': return <PasoTelefono onSiguiente={siguiente} />;
       case 'salon': return <PasoSalon tiposElegidos={estado.tipos} onSiguiente={siguiente} />;
       case 'sedes': return <PasoSedes onSiguiente={siguiente} />;
       case 'horario': return <PasoHorario onSiguiente={siguiente} />;
@@ -141,7 +165,7 @@ export const Bienvenida: React.FC = () => {
               {/* Deslizar desde el borde o clic derecho = el paso anterior */}
               <BotonAtras onVolver={atras} texto={null} activo={abierta && indice > 0} enDialogo tono="suave" className="p-1.5" />
               <div className="flex-1 text-center">
-                <div className="text-[0.8125rem] font-bold text-slate-900 dark:text-white">{pasoActual?.nombre ?? 'Configurar mi salón'}</div>
+                <div className="text-[0.8125rem] font-bold text-slate-900 dark:text-white">{pasoActual?.nombre ?? (pantalla === 'telefono' ? 'Tu teléfono' : 'Configurar mi salón')}</div>
                 {estado && <div className="text-[0.6875rem] text-slate-400">Tu salón está al {estado.porcentaje} %</div>}
               </div>
               <button type="button" onClick={cerrar} className="px-2 py-1 rounded-lg text-[0.8125rem] font-semibold text-slate-500 flex items-center gap-1 cursor-pointer">
@@ -171,7 +195,8 @@ export const Bienvenida: React.FC = () => {
 };
 
 /** La entrada: qué vamos a hacer y en qué va */
-const Inicio: React.FC<{ nombre?: string; estado: EstadoBienvenida; onEmpezar: () => void; onIrA: (p: Paso) => void }> = ({ nombre, estado, onEmpezar, onIrA }) => {
+const Inicio: React.FC<{ nombre?: string; estado: EstadoBienvenida; avisos: EstadoNotificaciones | null; onEmpezar: () => void; onIrA: (p: Pantalla) => void }> = ({ nombre, estado, avisos, onEmpezar, onIrA }) => {
+  const avisosListos = avisos === 'activas';
   const empezado = estado.porcentaje > 10;
   return (
     <div className="space-y-5">
@@ -187,6 +212,16 @@ const Inicio: React.FC<{ nombre?: string; estado: EstadoBienvenida; onEmpezar: (
         </p>
       </div>
       <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 divide-y divide-slate-100 dark:divide-neutral-800">
+        {/* De este aparato, no del salón: no cuenta en el porcentaje */}
+        <button type="button" onClick={() => onIrA('telefono')} className="w-full flex items-center gap-3 p-3.5 text-left cursor-pointer">
+          <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${avisosListos ? 'bg-emerald-500 text-white text-[0.75rem] font-bold' : 'bg-[var(--primary)]/10 text-[var(--primary)]'}`}>
+            {avisosListos ? '✓' : <BellRing className="w-3.5 h-3.5" />}
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[0.9375rem] font-semibold text-slate-900 dark:text-white">Lalan en tu teléfono</span>
+            <span className="block text-[0.75rem] text-slate-400 truncate">{avisosListos ? 'Avisos activos en este aparato' : 'Instálala y activa los avisos'}</span>
+          </span>
+        </button>
         {estado.pasos.filter((p) => p.aplica).map((p, i) => (
           <button key={p.id} type="button" onClick={() => onIrA(p.id)} className="w-full flex items-center gap-3 p-3.5 text-left cursor-pointer">
             <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[0.75rem] font-bold shrink-0 ${p.hecho ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-neutral-800 text-slate-500'}`}>

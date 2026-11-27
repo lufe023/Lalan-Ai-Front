@@ -78,12 +78,19 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
   // La sede activa manda: si se cambia arriba, aquí también
   useEffect(() => { if (actual) setSede(actual.id); }, [actual]);
 
-  // El aviso «Guardaste contactos nuevos» trae su sede: se elige y se abre la lista
+  // El aviso «Guardaste contactos nuevos» trae su sede: se elige y se abre la lista.
+  // El recordatorio «Conecta tu WhatsApp» también: llega con esa sede ya elegida.
   const [contactosDe, setContactosDe] = useState<string | null>(null);
+  const [conectarEn, setConectarEn] = useState<string | null>(null);
   useEffect(() => {
     const tomar = () => {
       let aviso: string | null = null;
       try { aviso = sessionStorage.getItem('lalan.abrirAviso'); } catch { /* nada */ }
+      if (aviso?.startsWith('conectar-whatsapp:')) {
+        try { sessionStorage.removeItem('lalan.abrirAviso'); } catch { /* nada */ }
+        setConectarEn(aviso.slice('conectar-whatsapp:'.length));
+        return;
+      }
       if (!aviso?.startsWith('contactos-nuevos:')) return;
       try { sessionStorage.removeItem('lalan.abrirAviso'); } catch { /* nada */ }
       setContactosDe(aviso.slice('contactos-nuevos:'.length));
@@ -95,6 +102,13 @@ export const ConectarMeta: React.FC<{ incrustado?: boolean }> = ({ incrustado })
   useEffect(() => {
     if (contactosDe && sedes.some((s) => s.id === contactosDe)) setSede(contactosDe);
   }, [contactosDe, sedes]);
+  useEffect(() => {
+    if (!conectarEn || !sedes.some((s) => s.id === conectarEn)) return;
+    setSede(conectarEn);
+    setConectarEn(null);
+    // Directo a la tarjeta de WhatsApp: el aviso ya sabe qué falta
+    setTimeout(() => document.querySelector('[data-guia="conectar-whatsapp-opciones"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  }, [conectarEn, sedes]);
   const contactosAbiertos = useCallback(() => setContactosDe(null), []);
 
   useEffect(() => {

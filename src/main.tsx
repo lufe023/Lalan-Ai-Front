@@ -1,5 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+// Antes que nada: el aviso de «se puede instalar» llega una sola vez al cargar
+import './services/instalarApp';
 import App from './App.tsx';
 import './index.css';
 import { aplicarTamano, tamanoGuardado } from './utils/tamanoLetra';

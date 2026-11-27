@@ -65,3 +65,24 @@ export async function apagarNotificaciones(): Promise<void> {
 }
 
 export const probarNotificacion = () => api.post<{ llegaron: number }>('/push/prueba', {});
+
+/**
+ * «Acaba de entrar»: al iniciar sesión o crear la cuenta se le piden los
+ * avisos aunque los haya dejado para después. Vive en sessionStorage: se
+ * lee una vez (después de decidir, olvidarRecienEntro lo borra).
+ */
+const CLAVE_RECIEN = 'lalan_recien_entro';
+export function marcarRecienEntro() { try { sessionStorage.setItem(CLAVE_RECIEN, '1'); } catch { /* nada */ } }
+export function recienEntro(): boolean {
+  try { return sessionStorage.getItem(CLAVE_RECIEN) === '1'; } catch { return false; }
+}
+export function olvidarRecienEntro() { try { sessionStorage.removeItem(CLAVE_RECIEN); } catch { /* nada */ } }
+
+/** «Ahora no» a pedir los avisos: no se vuelve a pedir solo hasta dentro de unos días (al entrar, sí) */
+const CLAVE_POSPUESTO = 'lalan_pedir_avisos_hasta';
+export function pedirAvisosPospuesto(): boolean {
+  try { return Number(localStorage.getItem(CLAVE_POSPUESTO) ?? 0) > Date.now(); } catch { return false; }
+}
+export function posponerPedirAvisos(dias: number) {
+  try { localStorage.setItem(CLAVE_POSPUESTO, String(Date.now() + dias * 86_400_000)); } catch { /* nada */ }
+}
