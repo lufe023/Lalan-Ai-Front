@@ -340,10 +340,12 @@ export const BotsControlScreen: React.FC = () => {
           <div className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-neutral-800/80">
             <div>
               <div className="text-xs font-bold text-slate-900 dark:text-white">
-                Agendamiento 100% Autónomo
+                {agente} confirma sola las citas
               </div>
               <div className="text-[0.6875rem] text-slate-500 dark:text-neutral-400">
-                El bot bloquea el horario directamente sin requerir confirmación humana.
+                {settings.aiAutoBooking
+                  ? `${agente} agenda y confirma la cita sin esperarte. Te avisa al teléfono.`
+                  : `${agente} aparta la cita y tú la confirmas con un toque desde el aviso (teléfono o WhatsApp). La clienta recibe la confirmación al instante.`}
               </div>
             </div>
             <IOSToggle

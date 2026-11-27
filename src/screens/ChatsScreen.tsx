@@ -31,6 +31,7 @@ import { PageContent } from '../components/ui/PageContent';
 import { ChipsFiltro, Insignia, ItemAnimado, ListaAnimada, NumeroAnimado, PuntoEstado, Vacio } from '../components/ui/movimiento';
 
 import { abrirFichaDeClienta } from '../services/abrirFicha';
+import { InterruptorLalan } from '../components/chats/InterruptorLalan';
 import { VentanaChat, getChannelBadge, getStatusIndicator, horaDeMensaje } from '../components/chats/VentanaChat';
 
 /**
@@ -119,6 +120,9 @@ export const ChatsScreen: React.FC = () => {
             <span className="text-[0.75rem] text-slate-600 dark:text-neutral-300">Aún no llega ningún mensaje porque no hay canales conectados. Toca aquí: se hace en Configuración, con un botón.</span>
           </button>
         )}
+        {/* Pausar a Lalan sin ir a Configuración: lo cambia quien dirige el salón */}
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && <InterruptorLalan />}
+
         {/* Search Bar */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
