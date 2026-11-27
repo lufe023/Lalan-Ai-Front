@@ -60,6 +60,32 @@ function direccionDeLaApiPlugin(api: string | undefined): Plugin {
   };
 }
 
+/**
+ * Las preguntas frecuentes de la portada como datos estructurados (FAQPage):
+ * se leen de la sección #preguntas de index.html al servir y al compilar, así
+ * lo que leen Google y los buscadores con IA es siempre lo que ve la dueña.
+ */
+function preguntasFrecuentesPlugin(): Plugin {
+  const limpio = (html: string) => html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+  return {
+    name: 'lalan-preguntas-frecuentes',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        // Solo la portada tiene #preguntas: la app sale igual
+        const seccion = /<section[^>]*id="preguntas"[^>]*>([\s\S]*?)<\/section>/.exec(html)?.[1];
+        if (!seccion) return html;
+        const preguntas = [...seccion.matchAll(/<details[^>]*>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g)]
+          .map(([, q, a]) => ({ '@type': 'Question', name: limpio(q), acceptedAnswer: { '@type': 'Answer', text: limpio(a) } }))
+          .filter((p) => p.name && p.acceptedAnswer.text);
+        if (!preguntas.length) return html;
+        const datos = JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: preguntas }).replace(/</g, '\\u003c');
+        return html.replace('</head>', `  <script type="application/ld+json">${datos}</script>\n</head>`);
+      },
+    },
+  };
+}
+
 function pwaServiceWorkerPlugin(): Plugin {
   return {
     name: 'pwa-service-worker-env',
@@ -128,7 +154,7 @@ export default defineConfig(({ mode }) => {
   const cacheName = env.VITE_CACHE_NAME || env.CACHE_NAME || 'lalan-shell-v3';
 
   return {
-    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin(), direccionCortaPlugin(), direccionDeLaApiPlugin(env.VITE_API_URL)],
+    plugins: [react(), tailwindcss(), pwaServiceWorkerPlugin(), direccionCortaPlugin(), direccionDeLaApiPlugin(env.VITE_API_URL), preguntasFrecuentesPlugin()],
     define: {
       'import.meta.env.VITE_CACHE_NAME': JSON.stringify(cacheName),
     },
