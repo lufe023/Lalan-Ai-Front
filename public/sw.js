@@ -225,6 +225,9 @@ self.addEventListener('push', (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch { d = { cuerpo: event.data ? event.data.text() : '' }; }
   const titulo = d.titulo || 'Lalan';
+  // Una reserva por confirmar trae el botón «Confirmar» (Android y computadora;
+  // el iPhone no muestra botones: al tocarla se abre la cita)
+  const conToque = !!(d.toque && d.toque.url && d.toque.token);
   event.waitUntil(
     self.registration.showNotification(titulo, {
       body: d.cuerpo || '',
@@ -232,14 +235,45 @@ self.addEventListener('push', (event) => {
       badge: '/icono-192.png',
       tag: d.etiqueta || undefined,
       renotify: !!d.etiqueta,
-      data: { ir: d.ir || 'dashboard', aviso: d.aviso || null, conversacion: d.conversacion || null },
+      actions: conToque ? [{ action: 'confirmar', title: 'Confirmar' }, { action: 'ver', title: 'Ver la cita' }] : [],
+      data: { ir: d.ir || 'dashboard', aviso: d.aviso || null, conversacion: d.conversacion || null, toque: conToque ? d.toque : null },
     }).then(() => (self.navigator && 'setAppBadge' in self.navigator ? self.navigator.setAppBadge().catch(() => {}) : undefined))
   );
 });
 
+/**
+ * «Confirmar» en la notificación: confirma la reserva sin abrir la app (el
+ * permiso firmado viene en la notificación) y avisa cómo quedó. Si falla,
+ * abre la cita para que la confirme ahí.
+ */
+async function confirmarDesdeLaNotificacion(datos) {
+  let r = null;
+  try {
+    const res = await fetch(datos.toque.url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: datos.toque.token }),
+    });
+    r = res.ok ? await res.json() : null;
+  } catch { r = null; }
+  if (r && r.ok) {
+    return self.registration.showNotification('Cita confirmada', {
+      body: r.mensaje || 'Listo.', icon: '/icono-192.png', badge: '/icono-192.png',
+      tag: 'toque-confirmada', data: { ir: datos.ir || 'calendar', aviso: datos.aviso || null },
+    });
+  }
+  return self.registration.showNotification('No se pudo confirmar', {
+    body: (r && r.mensaje) || 'Toca para abrir la cita y confirmarla en la app.', icon: '/icono-192.png', badge: '/icono-192.png',
+    tag: 'toque-fallo', data: { ir: datos.ir || 'calendar', aviso: datos.aviso || null },
+  });
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const datos = event.notification.data || {};
+  if (event.action === 'confirmar' && datos.toque) {
+    event.waitUntil(confirmarDesdeLaNotificacion(datos));
+    return;
+  }
   const ir = datos.ir || 'dashboard';
   let url = '/app/?ir=' + encodeURIComponent(ir);
   if (datos.aviso) url += '&aviso=' + encodeURIComponent(datos.aviso);
