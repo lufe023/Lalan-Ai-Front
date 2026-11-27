@@ -1,5 +1,5 @@
 import { direccionCorta } from './direccion-corta.js';
-import { conVistaPrevia, vistaPrevia } from './vista-previa.js';
+import { conVistaPrevia, mapaDeVitrinas, vistaPrevia } from './vista-previa.js';
 
 /**
  * Cloudflare sirve primero los archivos de dist. Este código solo corre
@@ -13,6 +13,8 @@ import { conVistaPrevia, vistaPrevia } from './vista-previa.js';
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // Antes que la dirección corta: «sitemap-vitrinas.xml» también parece el nombre de un salón
+    if (url.pathname === '/sitemap-vitrinas.xml') return mapaDeVitrinas(env, url);
     const corta = (request.method === 'GET' || request.method === 'HEAD') ? direccionCorta(url.pathname) : null;
     if (corta) {
       const [app, previa] = await Promise.all([
