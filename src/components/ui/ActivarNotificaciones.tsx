@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { BellRing, BellOff, Loader2, Share } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { VerComo } from '../minitutoriales/VerComo';
+import { BotonInstalar } from './InstalarApp';
 import { activarNotificaciones, apagarNotificaciones, estadoNotificaciones, probarNotificacion, type EstadoNotificaciones } from '../../services/notificaciones';
 
 const TEXTO: Record<EstadoNotificaciones, string> = {
   activas: 'Activas en este aparato. Te llegan como las de cualquier app, aunque Lalan esté cerrada.',
   apagadas: 'Recibe en la pantalla del teléfono los chats que te esperan, las citas y tus informes. Es gratis.',
   bloqueadas: 'Las bloqueaste en este aparato. Para activarlas: Ajustes del teléfono → Notificaciones → Lalan.',
-  instalar: 'En iPhone primero instala Lalan: toca Compartir y luego "Agregar a pantalla de inicio". Ábrela desde el ícono y vuelve aquí.',
+  instalar: 'En iPhone primero instala Lalan en tu pantalla de inicio. Ábrela desde el ícono y vuelve aquí para activarlas.',
   no_soportado: 'Este navegador no permite notificaciones. Prueba con la app instalada o con Chrome.',
   sin_servidor: 'Todavía no están configuradas en el servidor.',
   desarrollo: 'Se prueban con la app compilada (npm run movil); en modo desarrollo no hay notificaciones.',
@@ -18,6 +20,7 @@ export const ActivarNotificaciones: React.FC = () => {
   const { showToast } = useApp();
   const [estado, setEstado] = useState<EstadoNotificaciones | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [verComo, setVerComo] = useState(false);
   useEffect(() => { void estadoNotificaciones().then(setEstado); }, []);
 
   const activar = async () => {
@@ -46,6 +49,15 @@ export const ActivarNotificaciones: React.FC = () => {
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Notificaciones en el teléfono</h3>
       </div>
       <p className="text-[0.75rem] text-slate-500 dark:text-neutral-400 leading-relaxed">{TEXTO[estado]}</p>
+      {estado === 'instalar' && <BotonInstalar className="w-full" />}
+      {estado === 'bloqueadas' && (
+        <>
+          <button type="button" onClick={() => setVerComo(true)} className="min-h-[40px] px-3 rounded-xl border border-slate-200 dark:border-neutral-700 text-[0.8125rem] font-bold text-slate-800 dark:text-neutral-100 cursor-pointer">
+            Ver cómo desbloquearlas
+          </button>
+          <VerComo tema={verComo ? 'permiso-notificaciones' : null} onCerrar={() => setVerComo(false)} />
+        </>
+      )}
       {(estado === 'apagadas' || activas) && (
         <div className="flex gap-2">
           {!activas ? (

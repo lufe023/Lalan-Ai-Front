@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { BotonAtras } from '../ui/BotonAtras';
-import { CalendarDays, Check, Moon, Plus, X } from 'lucide-react';
+import { CalendarDays, Check, CopyCheck, Moon, Plus, X } from 'lucide-react';
 import { IOSModal } from '../ui/IOSModal';
 import { IOSToggle } from '../ui/IOSToggle';
 import { SelectorHora } from '../ui/SelectorHora';
@@ -116,9 +117,29 @@ export const HorarioSemanal: React.FC<{
   enLinea?: boolean;
   /** El nombre de la especialista, si el horario es de una persona y no del salón */
   persona?: string;
-}> = ({ semana, onGuardar, titulo = 'Horario de la semana', textoApagado = 'Cerrado', enLinea = false, persona }) => {
+  /**
+   * La hoja del día va pegada a la pantalla entera (en el body). Para la
+   * Bienvenida: dentro de una tarjeta con desenfoque, la hoja quedaba
+   * encerrada en la tarjeta y no se veían las opciones del día.
+   */
+  sobreTodo?: boolean;
+}> = ({ semana, onGuardar, titulo = 'Horario de la semana', textoApagado = 'Cerrado', enLinea = false, persona, sobreTodo = false }) => {
   const [editando, setEditando] = useState<DiaDeHorario | null>(null);
+  /** Los días que ya salen marcados para copiar (el botón «Mismo horario a varios días») */
+  const [tambienInicial, setTambienInicial] = useState<number[]>([]);
   const habitual = useMemo(() => jornadaHabitual(semana), [semana]);
+  const abrirDia = (d: DiaDeHorario, tambien: number[] = []) => { setTambienInicial(tambien); setEditando(d); };
+  /**
+   * «Mismo horario a varios días»: abre el primer día abierto con los días
+   * que hoy tienen ese mismo horario ya marcados (o, si ninguno, de lunes a
+   * viernes). Se cambia una vez y queda en todos.
+   */
+  const variosDias = () => {
+    const base = semana.find(d => d.abierto) ?? semana[0];
+    const iguales = semana.filter(d => d.dia !== base.dia && d.abierto === base.abierto && mismos(d.tramos, base.tramos)).map(d => d.dia);
+    const entreSemana = [1, 2, 3, 4, 5].filter(d => d !== base.dia);
+    abrirDia(base, iguales.length ? iguales : entreSemana);
+  };
   // Con el día abierto en el mismo lugar, deslizar o clic derecho vuelve a la semana
 
   const cambiarAbierto = (dia: number, abierto: boolean) =>
@@ -135,7 +156,7 @@ export const HorarioSemanal: React.FC<{
       <div className="space-y-3">
         <BotonAtras onVolver={() => setEditando(null)} texto="Volver a la semana" enDialogo />
         <p className="text-[1rem] font-bold text-slate-900 dark:text-white">{nombreDe(editando.dia)}</p>
-        <ContenidoDia dia={editando} habitual={habitual} semana={semana} onGuardar={guardarDia} persona={persona} />
+        <ContenidoDia dia={editando} habitual={habitual} semana={semana} onGuardar={guardarDia} persona={persona} tambienInicial={tambienInicial} primeroLosDias={tambienInicial.length > 0} />
       </div>
     );
   }
@@ -155,7 +176,7 @@ export const HorarioSemanal: React.FC<{
           <li key={d.dia} className="flex items-center gap-2 bg-slate-50 dark:bg-neutral-800/60">
             <button
               type="button"
-              onClick={() => setEditando(d)}
+              onClick={() => abrirDia(d)}
               className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left ios-touch"
             >
               <span className={`w-20 shrink-0 text-[0.8125rem] font-bold ${d.abierto ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-neutral-500'}`}>
@@ -178,11 +199,22 @@ export const HorarioSemanal: React.FC<{
         ))}
       </ul>
 
-      {editando && !enLinea && (
-        <IOSModal isOpen onClose={() => setEditando(null)} title={nombreDe(editando.dia)}>
-          <ContenidoDia dia={editando} habitual={habitual} semana={semana} onGuardar={guardarDia} persona={persona} />
+      <button type="button" onClick={variosDias}
+        className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-neutral-600 text-[0.8125rem] font-bold text-[var(--primary)] flex items-center justify-center gap-1.5 ios-touch">
+        <CopyCheck className="w-4 h-4" /> Mismo horario a varios días
+      </button>
+
+      {editando && !enLinea && (sobreTodo
+        ? createPortal(<div className="fixed inset-0 z-[300]">
+        <IOSModal fijo isOpen onClose={() => setEditando(null)} title={nombreDe(editando.dia)}>
+          <ContenidoDia dia={editando} habitual={habitual} semana={semana} onGuardar={guardarDia} persona={persona} tambienInicial={tambienInicial} primeroLosDias={tambienInicial.length > 0} />
         </IOSModal>
-      )}
+        </div>, document.body)
+        : (
+        <IOSModal isOpen onClose={() => setEditando(null)} title={nombreDe(editando.dia)}>
+          <ContenidoDia dia={editando} habitual={habitual} semana={semana} onGuardar={guardarDia} persona={persona} tambienInicial={tambienInicial} primeroLosDias={tambienInicial.length > 0} />
+        </IOSModal>
+        ))}
     </div>
   );
 };
@@ -193,10 +225,12 @@ const ContenidoDia: React.FC<{
   semana: DiaDeHorario[];
   onGuardar: (dia: DiaDeHorario, tambien: number[]) => void;
   persona?: string;
-}> = ({ dia, habitual, semana, onGuardar, persona }) => {
+  tambienInicial?: number[];
+  primeroLosDias?: boolean;
+}> = ({ dia, habitual, semana, onGuardar, persona, tambienInicial = [], primeroLosDias = false }) => {
   const [abierto, setAbierto] = useState(dia.abierto);
   const [tramos, setTramos] = useState<TramoHorario[]>(dia.tramos);
-  const [tambien, setTambien] = useState<number[]>([]);
+  const [tambien, setTambien] = useState<number[]>(tambienInicial);
 
   const problema = abierto ? problemaDeTurnos(tramos) : null;
   const otros = ORDEN_SEMANA.filter(x => x !== dia.dia);
@@ -243,8 +277,42 @@ const ContenidoDia: React.FC<{
         : 'bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300'
     }`;
 
+  /** A qué otros días se copia (con «Mismo horario a varios días» va arriba: es lo primero que se elige) */
+  const copiar = (
+        <div className={`space-y-2 border-slate-200/70 dark:border-neutral-800 ${primeroLosDias ? 'pb-3 border-b' : 'pt-3 border-t'}`}>
+          <p className="text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">
+            {primeroLosDias ? `Días con el mismo horario que el ${nombreDe(dia.dia).toLowerCase()}` : 'Usar este mismo horario también el…'}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {otros.map(d => {
+              const actual = semana.find(x => x.dia === d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => alternar(d)}
+                  className={chip(tambien.includes(d))}
+                  title={actual ? (actual.abierto ? `Ahora: ${actual.tramos.map(rango).join(' · ')}` : 'Ahora: cerrado') : undefined}
+                >
+                  {tambien.includes(d) && <Check className="inline w-3 h-3 -mt-0.5 mr-0.5" />}
+                  {cortoDe(d)}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {GRUPOS_DE_DIAS.map(g => (
+              <button key={g.id} type="button" onClick={() => elegirGrupo(g.dias)} className="text-[0.75rem] font-bold text-[var(--primary)] ios-touch">
+                {g.descripcion}
+              </button>
+            ))}
+          </div>
+        </div>
+  );
+
   return (
       <div className="space-y-5 text-xs pb-2">
+        {primeroLosDias && copiar}
         {/* Abierto o cerrado */}
         <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-neutral-800/60">
           <div>
@@ -309,34 +377,7 @@ const ContenidoDia: React.FC<{
           </>
         )}
 
-        {/* Copiar a otros días */}
-        <div className="space-y-2 pt-3 border-t border-slate-200/70 dark:border-neutral-800">
-          <p className="text-[0.75rem] font-bold text-slate-700 dark:text-slate-300">Usar este mismo horario también el…</p>
-          <div className="flex flex-wrap gap-1.5">
-            {otros.map(d => {
-              const actual = semana.find(x => x.dia === d);
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => alternar(d)}
-                  className={chip(tambien.includes(d))}
-                  title={actual ? (actual.abierto ? `Ahora: ${actual.tramos.map(rango).join(' · ')}` : 'Ahora: cerrado') : undefined}
-                >
-                  {tambien.includes(d) && <Check className="inline w-3 h-3 -mt-0.5 mr-0.5" />}
-                  {cortoDe(d)}
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {GRUPOS_DE_DIAS.map(g => (
-              <button key={g.id} type="button" onClick={() => elegirGrupo(g.dias)} className="text-[0.75rem] font-bold text-[var(--primary)] ios-touch">
-                {g.descripcion}
-              </button>
-            ))}
-          </div>
-        </div>
+        {!primeroLosDias && copiar}
 
         <button
           type="button"

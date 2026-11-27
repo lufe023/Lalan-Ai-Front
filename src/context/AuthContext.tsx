@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { marcarRecienEntro } from '../services/notificaciones';
 import { ConfirmacionCorreo, UserProfile, UserRole } from '../types';
 import { api, apiFetch, migrarSesionVieja, salirEnServidor, sesionLocal } from '../services/api';
 import { tomarLlaveDelEnlace } from '../services/enlaceEntrada';
@@ -199,6 +200,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /** Con la sesión ya abierta en cookies: la marca local y la persona */
   function abrir(user: ApiUser) {
+    // Acaba de entrar (o de crear su cuenta): se le piden los avisos del teléfono
+    marcarRecienEntro();
     sesionLocal.guardar(user);
     setCurrentUser(buildProfile(user));
     try { localStorage.setItem('lalan_cached_user', JSON.stringify(user)); } catch {}

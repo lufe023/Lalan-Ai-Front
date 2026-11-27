@@ -109,6 +109,7 @@ export function botonDe(ir: string | null, aviso: string | null): string {
   if (aviso?.startsWith('borradores:')) return 'Revisar pedidos';
   if (aviso?.startsWith('proveedor:')) return 'Ver el chat';
   if (aviso?.startsWith('contactos-nuevos:')) return 'Elegir quién les contesta';
+  if (aviso?.startsWith('conectar-whatsapp:')) return 'Conectar WhatsApp';
   switch (ir) {
     case 'chats': return 'Abrir chat';
     case 'calendar': return 'Ir a la agenda';

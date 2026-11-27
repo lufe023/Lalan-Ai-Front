@@ -2,7 +2,7 @@ import { api, apiCadena, subirArchivo } from './api';
 import type {
   EstadoBienvenida, Paso, Plantillas, ProductoBienvenida, ProductoLeido, RecetaServicio, SedeBienvenida, ServicioAGuardar, ServicioLeido, TipoSalon,
 } from '../types/bienvenida';
-import type { DiaDeHorario } from '../types';
+import type { CitasAlCierre, DiaDeHorario, HorarioExtra } from '../types';
 
 /** La Bienvenida se abre desde cualquier parte (Ajustes, el aviso) con un evento, como Lalan */
 const EVENTO_ABRIR = 'lalan:bienvenida';
@@ -39,6 +39,11 @@ export function alCambiarBienvenida(fn: () => void) {
   return () => window.removeEventListener(EVENTO_CAMBIO, fn);
 }
 
+/** Si la Bienvenida está abierta ahora (ella misma pide los avisos: no se piden dos veces) */
+let abiertaAhora = false;
+export function marcarBienvenidaAbierta(v: boolean) { abiertaAhora = v; }
+export function bienvenidaEstaAbierta() { return abiertaAhora; }
+
 export function bienvenidaPospuesta(): boolean { return vigente(CLAVE_POSPUESTA); }
 export function posponerBienvenida() { hastaDentroDe(CLAVE_POSPUESTA, DIAS_POSPUESTA); }
 
@@ -59,7 +64,9 @@ export const bienvenidaApi = {
   sedes: () => apiCadena.get<SedeBienvenida[]>('/bienvenida/sedes'),
   guardarSede: (id: string, d: { nombre?: string; direccion?: string | null; telefono?: string | null }) => apiCadena.patch<SedeBienvenida[]>(`/bienvenida/sedes/${id}`, d),
   nuevaSede: (d: { nombre: string; direccion?: string; telefono?: string }) => apiCadena.post<SedeBienvenida[]>('/bienvenida/sedes', d),
-  horario: (horarioSemanal: DiaDeHorario[]) => apiCadena.put<SedeBienvenida[]>('/bienvenida/horario', { horarioSemanal }),
+  /** Sin `locationIds`, igual en todas las sedes. La última cita del día y el horario extra, como en Ajustes */
+  horario: (horarioSemanal: DiaDeHorario[], extra: { locationIds?: string[]; citasAlCierre?: CitasAlCierre; horarioExtra?: HorarioExtra } = {}) =>
+    apiCadena.put<SedeBienvenida[]>('/bienvenida/horario', { horarioSemanal, ...extra }),
 
   /** `locationId`: la sede donde trabajan (con varias sedes) */
   especialistas: (especialistas: { nombre: string; rol?: string; telefono?: string }[], locationId?: string) =>
