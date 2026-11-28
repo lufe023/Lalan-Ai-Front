@@ -17,7 +17,7 @@
       if (/^#\/(pantalla|reproductor|pedir-cancion)\//.test(h) || instalada || aviso) location.replace('/app/' + location.search + h);
     })();
   </script>
-  <title>Lalan AI · Agenda automática con IA para el WhatsApp de tu salón</title>
+  <title>Agenda automática con IA para tu salón | Lalan AI</title>
   <meta name="description" content="Asistente virtual con IA para el WhatsApp de tu salón de belleza, spa, uñas o barbería: agenda automática, notas de voz y tu ganancia real. Pruébala gratis." />
   <link rel="canonical" href="%VITE_SITIO_URL%/" />
   <meta name="theme-color" content="#C46B7C" />
@@ -34,7 +34,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Lalan AI" />
   <meta property="og:locale" content="es_DO" />
-  <meta property="og:title" content="Lalan AI · Agenda automática con IA para el WhatsApp de tu salón" />
+  <meta property="og:title" content="Agenda automática con IA para tu salón | Lalan AI" />
   <meta property="og:description" content="Agenda de noche, recibe a cada clienta con lo que le gusta y ve tu ganancia real. Pruébala gratis con tu mismo WhatsApp." />
   <meta property="og:image" content="%VITE_SITIO_URL%/landing/compartir.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -124,7 +124,7 @@
       <span class="ceja">Para salones de belleza, spas, uñas y barberías</span>
       <h1>Son las 11 de la noche. Tu salón <em class="acento">sigue agendando.</em></h1>
       <p class="bajada">
-        Lalan contesta el WhatsApp de tu salón, entiende notas de voz, busca la hora libre con la especialista correcta
+        Lalan contesta el WhatsApp de tu salón de día y de noche, entiende notas de voz, busca la hora libre con la especialista correcta
         y deja la cita en tu agenda. Cuando algo necesita a una persona, te avisa a ti.
       </p>
       <div class="acciones">
@@ -151,7 +151,7 @@
         <!-- La captura larga baja sola, como si alguien leyera el informe; el menú de la izquierda se queda quieto -->
         <div class="pc-ventana">
           <img class="pc-rollo" src="/landing/capturas/conversiones-largo.webp" width="1210" height="1660" alt="El informe de conversiones de Lalan en la PC: 19 de 48 conversaciones terminaron en cita o compra" fetchpriority="high">
-          <div class="pc-menu" aria-hidden="true"><img src="/landing/capturas/conversiones-largo.webp" width="1210" height="1660" alt=""></div>
+          <div class="pc-menu" aria-hidden="true"><img src="/landing/capturas/conversiones-largo.webp" width="1210" height="1660" alt="Informe de conversiones de Lalan en la PC"></div>
         </div>
       </figure>
       <figure class="marco-tel vivo" role="img" aria-label="El teléfono de la dueña mientras Lalan trabaja: entiende una nota de voz, agenda la cita, avisa de una alergia y recuerda las citas a todos">
@@ -292,15 +292,15 @@
         </div>
         <div class="cadena" data-arrastre="cadena">
           <p class="cadena-pedido" aria-live="polite"><span class="ceja">En la cinta</span> <b id="cadena-pedido">Carmen · manicure + masaje, mañana en la tarde</b></p>
-          <p class="paso-actual" id="paso-actual" aria-hidden="true"><b>1</b> <span>Recibe</span> <em>Esperando el mensaje…</em></p>
+          <p class="paso-actual" id="paso-actual" aria-hidden="true"><span class="neg">1</span> <span>Recibe</span> <em>Esperando el mensaje…</em></p>
           <div class="escena-iso" id="escena-iso" role="img" aria-label="Cadena de montaje de Lalan: el mensaje entra por WhatsApp y una caja pasa por seis puestos: recibe, agenda, inventario de la sede, especialista, caja e informe para la dueña."></div>
           <ol class="pasos-iso" id="estaciones">
-            <li class="listo" data-estacion="recibe"><b>1</b><span class="paso-nombre">Recibe</span><span class="estado-txt">Nota de voz de Carmen, entendida</span></li>
-            <li class="listo" data-estacion="agenda"><b>2</b><span class="paso-nombre">Agenda</span><span class="estado-txt">Mañana 2:00 y 2:30 libres</span></li>
-            <li class="listo" data-estacion="inventario"><b>3</b><span class="paso-nombre">Inventario</span><span class="estado-txt">Esmalte y aceite apartados</span></li>
-            <li class="listo" data-estacion="equipo"><b>4</b><span class="paso-nombre">Equipo</span><span class="estado-txt">Valentina y Carla asignadas</span></li>
-            <li class="listo" data-estacion="caja"><b>5</b><span class="paso-nombre">Caja</span><span class="estado-txt">RD$ 2,950 por cobrar</span></li>
-            <li class="listo" data-estacion="informe"><b>6</b><span class="paso-nombre">Para ti</span><span class="estado-txt">«2 citas nuevas de noche»</span></li>
+            <li class="listo" data-estacion="recibe"><span class="neg">1</span><span class="paso-nombre">Recibe</span><span class="estado-txt">Nota de voz de Carmen, entendida</span></li>
+            <li class="listo" data-estacion="agenda"><span class="neg">2</span><span class="paso-nombre">Agenda</span><span class="estado-txt">Mañana 2:00 y 2:30 libres</span></li>
+            <li class="listo" data-estacion="inventario"><span class="neg">3</span><span class="paso-nombre">Inventario</span><span class="estado-txt">Esmalte y aceite apartados</span></li>
+            <li class="listo" data-estacion="equipo"><span class="neg">4</span><span class="paso-nombre">Equipo</span><span class="estado-txt">Valentina y Carla asignadas</span></li>
+            <li class="listo" data-estacion="caja"><span class="neg">5</span><span class="paso-nombre">Caja</span><span class="estado-txt">RD$ 2,950 por cobrar</span></li>
+            <li class="listo" data-estacion="informe"><span class="neg">6</span><span class="paso-nombre">Para ti</span><span class="estado-txt">«2 citas nuevas de noche»</span></li>
           </ol>
           <p class="cadena-fin" id="cadena-fin">Todo listo en segundos. <b>Tú no tocaste nada.</b></p>
         </div>
@@ -350,7 +350,7 @@
         <!-- Mientras carga el 3D (o si la persona pidió menos movimiento) se ve esta portada -->
         <picture class="h-portada" aria-hidden="true">
           <source media="(max-width: 700px)" srcset="/landing/capturas/historia-movil.webp" width="540" height="900">
-          <img src="/landing/capturas/historia.webp" alt="" width="1600" height="900" loading="lazy" decoding="async">
+          <img src="/landing/capturas/historia.webp" alt="Un manicure premium en Lalan: de la nota de voz de la clienta a la ganancia real" width="1600" height="900" loading="lazy" decoding="async">
         </picture>
         <canvas class="h-lienzo" aria-hidden="true"></canvas>
         <svg class="h-lineas" aria-hidden="true"></svg>
@@ -363,12 +363,12 @@
             <p>De la nota de voz a la ganancia real</p>
           </div>
 
-          <div class="h-cap" data-v="4.4,15.4"><span class="ceja-h">11:04 de la noche</span><h3>Carmen agenda con una nota de voz</h3></div>
-          <div class="h-cap" data-v="15.8,25.0"><span class="ceja-h">La receta</span><h3>Cada insumo, con su medida y su costo</h3></div>
-          <div class="h-cap" data-v="25.0,29.6"><span class="ceja-h">El inventario</span><h3>Al terminar, cada insumo sale del inventario solo</h3></div>
-          <div class="h-cap" data-v="30.0,36.8"><span class="ceja-h">Al día siguiente</span><h3>Su música y su copa, sin pedirlas</h3></div>
-          <div class="h-cap" data-v="36.8,42.6"><span class="ceja-h">El salón, en orden</span><h3>La música y los turnos se mueven solos</h3></div>
-          <div class="h-cap" data-v="44.2,55.4"><span class="ceja-h">La dueña no opera: orquesta</span><h3>Desde la playa, ve lo que pasa en todas sus sedes</h3></div>
+          <div class="h-cap" data-v="4.4,15.4"><span class="ceja-h">11:04 de la noche</span><p class="h-cap-t">Carmen agenda con una nota de voz</p></div>
+          <div class="h-cap" data-v="15.8,25.0"><span class="ceja-h">La receta</span><p class="h-cap-t">Cada insumo, con su medida y su costo</p></div>
+          <div class="h-cap" data-v="25.0,29.6"><span class="ceja-h">El inventario</span><p class="h-cap-t">Al terminar, cada insumo sale del inventario solo</p></div>
+          <div class="h-cap" data-v="30.0,36.8"><span class="ceja-h">Al día siguiente</span><p class="h-cap-t">Su música y su copa, sin pedirlas</p></div>
+          <div class="h-cap" data-v="36.8,42.6"><span class="ceja-h">El salón, en orden</span><p class="h-cap-t">La música y los turnos se mueven solos</p></div>
+          <div class="h-cap" data-v="44.2,55.4"><span class="ceja-h">La dueña no opera: orquesta</span><p class="h-cap-t">Desde la playa, ve lo que pasa en todas sus sedes</p></div>
 
           <!-- 1 · Agenda -->
           <div class="h-tarjeta" data-v="4.8,15.4">
@@ -532,7 +532,7 @@
           <div class="cupo"><p class="cupo-numero"><b>100</b> respuestas de Lalan al mes</p><ul class="cupo-flex"><li class="no">Lo que sobra no pasa al mes siguiente</li><li class="no">Sin adelantar del mes siguiente</li><li class="no">Sin respuestas extra</li><li class="info">Si se acaban, Lalan contesta con un menú sin IA</li></ul></div>
           <p class="trae-titulo">Qué trae</p>
           <ul class="trae"><li>Lalan responde y agenda en WhatsApp</li><li>Entiende notas de voz</li><li>Agenda, especialistas y zonas</li><li>Ficha de cada clienta y sus gustos</li><li>Avisos a la dueña por WhatsApp</li><li>Métricas</li></ul>
-          <ul class="topes" aria-label="Topes del Plan Gratis"><li><b>1</b> sede</li><li><b>1</b> usuario</li><li><b>2</b> especialistas</li></ul>
+          <ul class="topes" aria-label="Topes del Plan Gratis"><li><span class="neg">1</span> sede</li><li><span class="neg">1</span> usuario</li><li><span class="neg">2</span> especialistas</li></ul>
           <a class="boton claro" href="#piloto" data-plan="gratis">Quiero el Plan Gratis</a>
         </article>
         <article class="plan">
@@ -541,8 +541,8 @@
           <h3>Plan Esencial</h3>
           <div class="cupo"><p class="cupo-numero"><b>400</b> respuestas de Lalan al mes</p><ul class="cupo-flex"><li class="si">Lo que sobra pasa al mes siguiente</li><li class="si">Adelantas hasta 200 del mes siguiente</li><li class="si">Compras más sin cambiar de plan</li><li class="info">Si se acaban, tu equipo sigue el chat</li></ul></div>
           <p class="trae-titulo">Qué trae</p>
-          <ul class="trae"><li class="base">Todo lo del Plan Gratis</li><li class="nuevo"><span><b>Informes</b><small>Ganancias, informe de citas y exportar a Excel.</small></span></li></ul>
-          <ul class="topes" aria-label="Topes del Plan Esencial"><li><b>1</b> sede</li><li><b>2</b> usuarios</li><li><b>3</b> especialistas</li></ul>
+          <ul class="trae"><li class="base">Todo lo del Plan Gratis</li><li class="nuevo"><span><span class="neg">Informes</span><small>Ganancias, informe de citas y exportar a Excel.</small></span></li></ul>
+          <ul class="topes" aria-label="Topes del Plan Esencial"><li><span class="neg">1</span> sede</li><li><span class="neg">2</span> usuarios</li><li><span class="neg">3</span> especialistas</li></ul>
           <a class="boton claro" href="#piloto" data-plan="esencial">Quiero el Plan Esencial</a>
         </article>
         <article class="plan">
@@ -551,8 +551,8 @@
           <h3>Plan Salón</h3>
           <div class="cupo"><p class="cupo-numero"><b>1,500</b> respuestas de Lalan al mes</p><ul class="cupo-flex"><li class="si">Lo que sobra pasa al mes siguiente</li><li class="no">Sin adelantar del mes siguiente</li><li class="si">Compras más sin cambiar de plan</li><li class="info">Si se acaban, tu equipo sigue el chat</li></ul></div>
           <p class="trae-titulo">Qué trae</p>
-          <ul class="trae"><li class="base">Todo lo del Plan Esencial</li><li class="nuevo"><span><b>Recordatorios de cita</b></span></li><li class="nuevo"><span><b>Instagram y Messenger</b></span></li><li class="nuevo"><span><b>Caja</b></span></li><li class="nuevo"><span><b>Vitrina</b></span></li><li class="nuevo"><span><b>Inventario y recetas</b></span></li><li class="nuevo"><span><b>Listas de precios</b></span></li><li class="nuevo"><span><b>Varias monedas</b></span></li><li class="nuevo"><span><b>Sala y pizarra de turnos</b></span></li><li class="nuevo"><span><b>Hospitalidad</b></span></li></ul>
-          <ul class="topes" aria-label="Topes del Plan Salón"><li><b>2</b> sedes</li><li><b>5</b> usuarios</li><li><b>15</b> especialistas</li></ul>
+          <ul class="trae"><li class="base">Todo lo del Plan Esencial</li><li class="nuevo"><span><span class="neg">Recordatorios de cita</span></span></li><li class="nuevo"><span><span class="neg">Instagram y Messenger</span></span></li><li class="nuevo"><span><span class="neg">Caja</span></span></li><li class="nuevo"><span><span class="neg">Vitrina</span></span></li><li class="nuevo"><span><span class="neg">Inventario y recetas</span></span></li><li class="nuevo"><span><span class="neg">Listas de precios</span></span></li><li class="nuevo"><span><span class="neg">Varias monedas</span></span></li><li class="nuevo"><span><span class="neg">Sala y pizarra de turnos</span></span></li><li class="nuevo"><span><span class="neg">Hospitalidad</span></span></li></ul>
+          <ul class="topes" aria-label="Topes del Plan Salón"><li><span class="neg">2</span> sedes</li><li><span class="neg">5</span> usuarios</li><li><span class="neg">15</span> especialistas</li></ul>
           <a class="boton claro" href="#piloto" data-plan="salon">Quiero el Plan Salón</a>
         </article>
         <article class="plan destacado">
@@ -561,8 +561,8 @@
           <h3>Plan Lounge</h3>
           <div class="cupo"><p class="cupo-numero"><b>3,000</b> respuestas de Lalan al mes</p><ul class="cupo-flex"><li class="si">Lo que sobra pasa al mes siguiente</li><li class="no">Sin adelantar del mes siguiente</li><li class="si">Compras más sin cambiar de plan</li><li class="info">Si se acaban, tu equipo sigue el chat</li></ul></div>
           <p class="trae-titulo">Qué trae</p>
-          <ul class="trae"><li class="base">Todo lo del Plan Salón</li><li class="nuevo"><span><b>Quiosco de llegada</b><small>Una tablet en la entrada: la clienta sin cita se anota sola, elige sus servicios y sus gustos, y pasa a la pizarra con su especialista.</small></span></li><li class="nuevo"><span><b>Lounge y música</b><small>Suena la música favorita de quien está en el salón.</small></span></li><li class="nuevo"><span><b>Pedir canción por QR</b><small>Las clientas piden canciones escaneando el QR de la pared.</small></span></li></ul>
-          <ul class="topes" aria-label="Topes del Plan Lounge"><li><b>5</b> sedes</li><li><b>12</b> usuarios</li><li><b>Sin límite</b> especialistas</li></ul>
+          <ul class="trae"><li class="base">Todo lo del Plan Salón</li><li class="nuevo"><span><span class="neg">Quiosco de llegada</span><small>Una tablet en la entrada: la clienta sin cita se anota sola, elige sus servicios y sus gustos, y pasa a la pizarra con su especialista.</small></span></li><li class="nuevo"><span><span class="neg">Lounge y música</span><small>Suena la música favorita de quien está en el salón.</small></span></li><li class="nuevo"><span><span class="neg">Pedir canción por QR</span><small>Las clientas piden canciones escaneando el QR de la pared.</small></span></li></ul>
+          <ul class="topes" aria-label="Topes del Plan Lounge"><li><span class="neg">5</span> sedes</li><li><span class="neg">12</span> usuarios</li><li><span class="neg">Sin límite</span> especialistas</li></ul>
           <a class="boton" href="#piloto" data-plan="lounge">Quiero el Plan Lounge</a>
         </article>
       </div>
@@ -681,7 +681,7 @@
           <h3>Créala tú, en 2 minutos</h3>
           <p>Tu nombre, el de tu salón y tu correo. Te llega un código, lo pones y ya estás dentro de tu salón. Lalan te guía para cargar tus servicios y tu equipo.</p>
           <p class="oferta-elegida" id="r-oferta" role="status" hidden></p>
-          <a class="boton" id="r-crear" href="/app/?registro=1">Crear mi cuenta</a>
+          <a class="boton" id="r-crear" href="/app/?registro=1" rel="nofollow">Crear mi cuenta</a>
           <button type="button" class="registro-otra" id="p-abrir" aria-expanded="false" aria-controls="form-piloto">¿Prefieres que te la instalemos? Déjanos tus datos</button>
         </div>
         <form class="contacto" id="form-piloto" novalidate hidden>
@@ -769,7 +769,7 @@
 <footer class="envoltura" id="pie">
   <div class="pie-fila">
     <span>© 2026 Gomez Santana Solutions Group SRL · Lalan AI</span>
-    <span><a href="/app/">Entrar a Lalan</a> · <a href="/app/?registro=1" id="pie-crear">Crear mi cuenta</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes">Condiciones de los planes</a> · <a href="/privacidad">Privacidad</a> · <a href="/terminos">Términos</a></span>
+    <span><a href="/app/">Entrar a Lalan</a> · <a href="/app/?registro=1" id="pie-crear" rel="nofollow">Crear mi cuenta</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes">Condiciones de los planes</a> · <a href="/privacidad">Privacidad</a> · <a href="/terminos">Términos</a></span>
   </div>
   <div class="pie-fila">
     <!-- Las cinco letras siguen siendo el camino al huevo de pascua (huevo.ts) -->

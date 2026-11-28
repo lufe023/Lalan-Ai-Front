@@ -62,7 +62,7 @@ const numero = (n: number) => n.toLocaleString('es-DO');
  * hacer con ellas.
  */
 function topes(l: PlanPublico['limites'], conRespuestas: boolean): string {
-  const tope = (n: number | null, uno: string, varios: string) => (n == null ? `<b>Sin límite</b> ${varios}` : `<b>${numero(n)}</b> ${n === 1 ? uno : varios}`);
+  const tope = (n: number | null, uno: string, varios: string) => (n == null ? `<span class="neg">Sin límite</span> ${varios}` : `<span class="neg">${numero(n)}</span> ${n === 1 ? uno : varios}`);
   return [
     conRespuestas ? null : tope(l.respuestasMes, 'respuesta de Lalan al mes', 'respuestas de Lalan al mes'),
     tope(l.sedes, 'sede', 'sedes'),
@@ -131,7 +131,7 @@ function tarjeta(p: PlanPublico, destacado: boolean): string {
     const tipo = lista.some((e) => e.video) ? 'Ver video' : 'Ver ejemplo';
     return `<button type="button" class="ver-ejemplo" data-ejemplo="${escapar(id)}" data-plan-clave="${escapar(p.clave)}" data-plan-nombre="${escapar(p.nombre)}">${contenido}<span class="ver">${tipo}</span></button>`;
   };
-  const nuevo = (m: PlanPublico['suma'][number]) => `<li class="nuevo">${conEjemplo(m.id, m.nombre, `<span><b>${escapar(m.nombre)}</b>${conDetalle && m.descripcion ? `<small>${escapar(primeraFrase(m.descripcion))}</small>` : ''}</span>`)}</li>`;
+  const nuevo = (m: PlanPublico['suma'][number]) => `<li class="nuevo">${conEjemplo(m.id, m.nombre, `<span><span class="neg">${escapar(m.nombre)}</span>${conDetalle && m.descripcion ? `<small>${escapar(primeraFrase(m.descripcion))}</small>` : ''}</span>`)}</li>`;
   const items = p.anterior
     ? [`<li class="base">Todo lo del ${escapar(p.anterior)}</li>`, ...p.suma.map(nuevo)]
     : [...BASICO.map((b) => `<li>${conEjemplo(b.id, b.nombre, `<span>${escapar(b.nombre)}</span>`)}</li>`), ...p.suma.map(nuevo)];

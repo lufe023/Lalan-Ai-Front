@@ -18,3 +18,16 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(self), microphone=(self), geolocation=(self)
   Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.youtube.com https://s.ytimg.com https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.facebook.com https://web.facebook.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
+
+# Las páginas dicen su juego de caracteres también en la cabecera HTTP (lo piden los revisores de SEO):
+# sin esto Cloudflare manda solo "text/html".
+/
+  Content-Type: text/html; charset=utf-8
+/privacidad
+  Content-Type: text/html; charset=utf-8
+/terminos
+  Content-Type: text/html; charset=utf-8
+/condiciones-planes
+  Content-Type: text/html; charset=utf-8
+/eliminar-datos
+  Content-Type: text/html; charset=utf-8

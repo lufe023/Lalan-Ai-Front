@@ -430,7 +430,8 @@ export function iniciarFabrica(): void {
   }
   function decir(k: string, texto: string): void {
     actual!.textContent = '';
-    const b = document.createElement('b'); b.textContent = String(LINEA.indexOf(k) + 1);
+    // Número del paso: en <span> (no <b>) para no llenar la página de negritas
+    const b = document.createElement('span'); b.className = 'neg'; b.textContent = String(LINEA.indexOf(k) + 1);
     const s = document.createElement('span'); s.textContent = NOMBRE[k];
     const em = document.createElement('em'); em.textContent = texto;
     actual!.append(b, ' ', s, ' ', em);
