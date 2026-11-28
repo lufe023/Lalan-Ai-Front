@@ -936,6 +936,11 @@ export const INITIAL_SETTINGS: SalonBusinessSettings = {
   horarioSemanal: [1, 2, 3, 4, 5, 6, 0].map(dia => ({ dia, abierto: true, tramos: [{ desde: '09:00', hasta: '20:00' }] })),
   horarioExtra: { activo: false, antesMin: 0, despuesMin: 60, soloSiLleno: true, enVitrina: true, enChat: true },
   citasAlCierre: { modo: 'terminan', margenMin: 30 },
+  tipo: 'local',
+  domicilio: {
+    cobro: 'distancia', base: 0, porKm: 0, minimo: 0, maxKm: null, redondeo: 1, fijo: 0,
+    zonas: [], minutosTraslado: 30, kmPorHora: 25, salida: null,
+  },
   // Configuration requested by user
   bufferTimeMinutes: 5, // 5 minutos de descanso / preparación entre cita y cita
   defaultAppointmentDurationMinutes: 60, // 60 min duración estándar

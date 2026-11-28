@@ -35,6 +35,7 @@ import {
 import { LoQueLalanSabe } from '../components/clientes/LoQueLalanSabe';
 import { AlergiasEnGrupos } from '../components/clientes/AlergiasEnGrupos';
 import { ComoQuedo } from '../components/clientes/ComoQuedo';
+import { DireccionesClienta } from '../components/clientes/DireccionesClienta';
 import { PlanesSeguimiento } from '../components/clientes/PlanesSeguimiento';
 import { PerfilesDeLaClienta } from '../components/clientes/PerfilesDeLaClienta';
 import { ElegirFotoDeCanal } from '../components/clientes/ElegirFotoDeCanal';
@@ -1008,6 +1009,9 @@ export const ClientsScreen: React.FC = () => {
                 <p className="text-[0.75rem] leading-relaxed opacity-90">{selectedClient.medicalOrAllergyNotes}</p>
               </div>
             )}
+
+            {/* A domicilio: sus direcciones, con cómo llegar */}
+            <DireccionesClienta clienta={selectedClient} />
 
             {/* Las alergias en grupos: con ellas se avisa de los productos de cada servicio */}
             <AlergiasEnGrupos clienteId={selectedClient.id} texto={selectedClient.medicalOrAllergyNotes} />

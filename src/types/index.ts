@@ -250,6 +250,8 @@ export interface Client {
   tratoPersonal?: string | null;
   /** Cumpleaños: "MM-DD" o "AAAA-MM-DD". Lalan lo recuerda en «Tu día» */
   cumpleanos?: string | null;
+  /** A domicilio: dónde se la atiende. La primera es la última que usó */
+  direcciones?: DireccionClienta[];
 }
 
 export type TratoCliente = 'femenino' | 'masculino';
@@ -321,6 +323,79 @@ export interface Appointment {
   cambioEspecialistaDe?: string | null;
   /** Qué dijo la clienta: 'esperando' | 'acepta' | 'reagendo' | 'cancelo' */
   cambioRespuesta?: string | null;
+  /** Sede a domicilio: a dónde va la especialista (null = en el local) */
+  domicilio?: DomicilioDeCita | null;
+  /** Lo que se cobra por el traslado, aparte del servicio (solo en la primera cita del bloque) */
+  trasladoPrecio?: number;
+  /** Minutos de ida antes y de vuelta después: bloquean a la especialista */
+  trasladoAntesMin?: number;
+  trasladoDespuesMin?: number;
+}
+
+/** Local (las clientas vienen) o a domicilio (la especialista va a su casa). Cada uno es su propia sede */
+export type TipoSede = 'local' | 'domicilio';
+
+/** Cómo se cobra el traslado de una sede a domicilio */
+export type CobroTraslado = 'distancia' | 'zonas' | 'fijo' | 'gratis';
+
+export interface ZonaDomicilio { id: string; nombre: string; precio: number; minutos: number }
+
+export interface ConfigDomicilio {
+  cobro: CobroTraslado;
+  /** Por distancia: lo que se cobra siempre por salir */
+  base: number;
+  /** Por distancia: cuánto cada km de calle */
+  porKm: number;
+  /** Lo mínimo por un traslado (0 = sin mínimo) */
+  minimo: number;
+  /** Hasta cuántos km se va (null = sin tope) */
+  maxKm: number | null;
+  /** Redondear hacia arriba de tanto en tanto */
+  redondeo: number;
+  fijo: number;
+  zonas: ZonaDomicilio[];
+  /** Minutos de ida cuando todavía no se sabe a dónde */
+  minutosTraslado: number;
+  kmPorHora: number;
+  /** De dónde sale la especialista (null = el pin de la sede) */
+  salida: { lat: number; lng: number } | null;
+}
+
+export type ComoSeCalculoTraslado = 'distancia' | 'zona' | 'fijo' | 'gratis' | 'sin_datos' | 'manual';
+
+export interface DomicilioDeCita {
+  direccion: string;
+  referencia?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  km?: number | null;
+  calculo: ComoSeCalculoTraslado;
+  zona?: string | null;
+  /** Quién puso el monto a mano */
+  calculadoPor?: string | null;
+}
+
+/** El traslado aproximado que devuelve el servidor */
+export interface EstimacionTraslado {
+  calculo: ComoSeCalculoTraslado;
+  km: number | null;
+  minutos: number;
+  precio: number | null;
+  zona: { id: string; nombre: string } | null;
+  fuera: boolean;
+  explicacion: string;
+  moneda: string;
+  mapa: string | null;
+}
+
+/** Una dirección guardada en la ficha (la primera es la última que usó) */
+export interface DireccionClienta {
+  id: string;
+  direccion: string;
+  referencia?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  usadaEn?: string;
 }
 
 export interface ChatMessage {
@@ -563,6 +638,12 @@ export interface SalonBusinessSettings {
   horarioExtra: HorarioExtra;
   /** Si la última cita del día puede terminar después de cerrar (por sede) */
   citasAlCierre?: CitasAlCierre;
+  /** Local o a domicilio (cada uno es su propia sede: agenda, caja e inventario aparte) */
+  tipo?: TipoSede;
+  /** Cómo se cobra el traslado (sede a domicilio) */
+  domicilio?: ConfigDomicilio;
+  /** El pin de la sede en el mapa (Ajustes → Vitrina): de ahí sale la especialista */
+  pin?: { lat: number; lng: number } | null;
   // Appointment timing & buffer parameters
   bufferTimeMinutes: number; // Tiempo de descanso / preparación entre cita y cita (ej. 5, 10, 15 min)
   defaultAppointmentDurationMinutes: number; // Tiempo que dura una cita estándar (ej. 60 min)

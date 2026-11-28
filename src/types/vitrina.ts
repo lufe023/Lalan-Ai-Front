@@ -217,6 +217,10 @@ export interface DatosVitrina {
     /** El pin del local; null = solo la dirección */
     latitud?: number | null;
     longitud?: number | null;
+    /** «domicilio»: la especialista va a la casa de la clienta (no hay local al que ir) */
+    tipo?: 'local' | 'domicilio';
+    /** Cómo cobra el traslado una sede a domicilio (null en un local) */
+    traslado?: TrasladoVitrina | null;
     zona: string;
     moneda: string;
     hoy: string;
@@ -289,6 +293,24 @@ export interface ConfigVitrina {
   publicados: { servicios: number; serviciosPublicados: number; productos: number; productosPublicados: number };
 }
 
+/** Cómo cobra el traslado una sede a domicilio, para decírselo a la clienta antes de reservar */
+export interface TrasladoVitrina {
+  cobro: 'distancia' | 'zonas' | 'fijo' | 'gratis';
+  zonas: { nombre: string; precio: number }[];
+  fijo: number | null;
+  maxKm: number | null;
+}
+
+/** El traslado aproximado hasta donde está la clienta */
+export interface EstimacionTrasladoVitrina {
+  precio: number | null;
+  moneda: string;
+  minutos: number;
+  fuera: boolean;
+  zona: string | null;
+  aproximado: boolean;
+}
+
 export interface ReservaHecha {
   confirmada: boolean;
   /** «V-1A2B3C4D»: va en el mensaje a Lalan para que sepa que es esta reserva y no una cita nueva */
@@ -300,6 +322,8 @@ export interface ReservaHecha {
   sede: { nombre: string; direccion: string | null };
   citas: { servicio: string; hora: string; texto: string; especialista: string | null }[];
   apartados: string[];
+  /** A domicilio: a dónde va la especialista y el traslado aproximado */
+  domicilio?: { direccion: string; traslado: number; moneda: string } | null;
 }
 
 /** Lo que hay detrás de una dirección corta (/<nombre>): el nombre de hoy y las sedes publicadas */

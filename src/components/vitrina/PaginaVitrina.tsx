@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Maximize2, Minus,
-  MessageCircle, Music, Navigation, Phone, Plus, ShoppingBag, Sparkles, Star, Store, Tag, User, Volume2, VolumeX, X,
+  AlertCircle, CalendarDays, Car, Check, ChevronLeft, ChevronRight, Clock, Facebook, Images, Instagram, Loader2, MapPin, Maximize2, Minus,
+  LocateFixed, MessageCircle, Music, Navigation, Phone, Plus, ShoppingBag, Sparkles, Star, Store, Tag, User, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { ErrorPublico, publicRequest, urlDeFoto } from '../../services/api';
 import { useIrAtras } from '../../hooks/useIrAtras';
 import type {
-  DatosVitrina, EspecialistaVitrina, EstadoDiaVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina,
+  DatosVitrina, EspecialistaVitrina, EstadoDiaVitrina, EstimacionTrasladoVitrina, OfertaVitrina, OtraSedeVitrina, ProductoVitrina, ReservaHecha, ServicioVitrina,
   TestimonioVitrina, TipoBloqueVitrina,
 } from '../../types/vitrina';
 import { TITULO_TESTIMONIOS } from '../../types/vitrina';
@@ -15,6 +15,7 @@ import { estiloVitrina } from './temaVitrina';
 import { buscarPorParte, pedidoDelEnlace } from './enlaceDirecto';
 import { IOSModal } from '../ui/IOSModal';
 import MapaSede from './MapaSede';
+import { miUbicacion, montoTraslado } from '../../services/domicilio';
 import { FotoEncuadrada, estiloEncuadre, type Encuadre } from '../catalogo/FotoEncuadrada';
 
 /**
@@ -1533,7 +1534,7 @@ const enlaceDeSede = (o: OtraSedeVitrina) => (o.direccionCorta ? `/${o.direccion
 function Ubicacion({ datos }: { datos: DatosVitrina }) {
   const { direccion, telefono, instagram, facebook, latitud, longitud, nombre, hoy } = datos.sede;
   const otras = datos.otrasSedes ?? [];
-  if (!direccion && !telefono && !instagram && !facebook && latitud == null && !otras.length) return null;
+  if (datos.sede.tipo !== 'domicilio' && !direccion && !telefono && !instagram && !facebook && latitud == null && !otras.length) return null;
   const llegar = enlacesDeLlegada(datos.salon.nombre, datos.sede);
   const ig = instagram ? `https://instagram.com/${instagram.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '')}` : null;
   const fb = facebook ? (/^https?:/.test(facebook) ? facebook : `https://facebook.com/${facebook}`) : null;
@@ -1541,7 +1542,10 @@ function Ubicacion({ datos }: { datos: DatosVitrina }) {
   const BOTON = 'inline-flex items-center gap-1.5 rounded-full border border-[var(--v-borde)] px-3.5 py-2 text-xs font-semibold transition hover:bg-[var(--v-tinte)]';
   return (
     <section aria-labelledby="v-ubicacion" className={`${TARJETA} p-5`}>
-      <h2 id="v-ubicacion" className={`${TITULO_BLOQUE} mb-3`}>{otras.length ? 'Nuestras sedes' : 'Cómo llegar'}</h2>
+      <h2 id="v-ubicacion" className={`${TITULO_BLOQUE} mb-3`}>{otras.length ? 'Nuestras sedes' : datos.sede.tipo === 'domicilio' ? 'A domicilio' : 'Cómo llegar'}</h2>
+      {datos.sede.tipo === 'domicilio' && (
+        <p className="mb-1 flex items-start gap-2 text-sm"><Car className="mt-0.5 size-4 shrink-0 text-[var(--v-p)]" />Vamos a tu casa. Al reservar nos dices la dirección y ves el traslado.</p>
+      )}
       {latitud != null && longitud != null && (
         <div className="mb-3"><MapaSede punto={{ latitud, longitud }} color="var(--v-p)" etiqueta={`Mapa de ${nombre}`} /></div>
       )}
@@ -1657,7 +1661,96 @@ interface RespuestaGusto { ids: string[]; otra: string }
 /** Opciones que se pueden marcar en cada pregunta del Lounge */
 const MAXIMO_POR_GUSTO = 3;
 
-type ClavePaso = 'elegido' | `quien-${string}` | 'cuando' | `gusto-${string}` | 'datos' | 'resumen';
+type ClavePaso = 'elegido' | `quien-${string}` | 'cuando' | 'donde' | `gusto-${string}` | 'datos' | 'resumen';
+
+/** A domicilio: a dónde va la especialista */
+interface DondeReserva { direccion: string; referencia: string; lat?: number; lng?: number }
+
+/** Lo que le decimos del traslado antes de que escriba su dirección */
+function comoSeCobra(t: DatosVitrina['sede']['traslado'], dinero: Intl.NumberFormat): string {
+  if (!t) return '';
+  if (t.cobro === 'gratis') return 'El traslado no tiene cargo.';
+  if (t.cobro === 'fijo' && t.fijo) return `El traslado es ${dinero.format(t.fijo)}, aparte del servicio.`;
+  if (t.cobro === 'zonas' && t.zonas.length) return `El traslado depende de tu zona: ${t.zonas.map((z) => `${z.nombre} ${dinero.format(z.precio)}`).join(' · ')}.`;
+  return `El traslado se cobra aparte, según la distancia${t.maxKm ? ` (hasta ${t.maxKm} km)` : ''}.`;
+}
+
+/**
+ * Sede a domicilio: la clienta dice a dónde vamos (o toca «Estoy en casa» y
+ * va su GPS) y ve el traslado aproximado mientras escribe.
+ */
+function PasoDonde({ slug, valor, cambiar, traslado, dinero, campo }: {
+  slug: string | null; valor: DondeReserva; cambiar: (v: DondeReserva) => void;
+  traslado: DatosVitrina['sede']['traslado']; dinero: Intl.NumberFormat; campo: string;
+}) {
+  const [est, setEst] = useState<EstimacionTrasladoVitrina | null>(null);
+  const [calculando, setCalculando] = useState(false);
+  const [gps, setGps] = useState<string | null>(null);
+  const vez = useRef(0);
+
+  // El traslado aproximado, medio segundo después de dejar de escribir
+  useEffect(() => {
+    const texto = valor.direccion.trim();
+    if (!slug || (!texto && valor.lat == null)) { setEst(null); setCalculando(false); return; }
+    const mia = ++vez.current;
+    setCalculando(true);
+    const t = window.setTimeout(() => {
+      const q = new URLSearchParams();
+      if (texto) q.set('direccion', texto);
+      if (valor.lat != null && valor.lng != null) { q.set('lat', String(valor.lat)); q.set('lng', String(valor.lng)); }
+      publicRequest<EstimacionTrasladoVitrina>(`/vitrina/publica/${encodeURIComponent(slug)}/traslado?${q}`)
+        .then((r) => { if (mia === vez.current) setEst(r); })
+        .catch(() => { if (mia === vez.current) setEst(null); })
+        .finally(() => { if (mia === vez.current) setCalculando(false); });
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [slug, valor.direccion, valor.lat, valor.lng]);
+
+  const conMiGps = async () => {
+    setGps('leyendo');
+    try {
+      const p = await miUbicacion();
+      cambiar({ ...valor, lat: p.lat, lng: p.lng, direccion: valor.direccion.trim() || 'Mi ubicación' });
+      setGps(null);
+    } catch (e) {
+      setGps((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="space-y-2.5">
+      <input
+        className={campo} placeholder="Calle, número y sector" autoComplete="street-address" maxLength={300}
+        value={valor.direccion} onChange={(e) => cambiar({ ...valor, direccion: e.target.value, lat: undefined, lng: undefined })}
+        aria-label="Tu dirección"
+      />
+      <input
+        className={campo} placeholder="Referencia: casa azul, apto 3B… (opcional)" maxLength={200}
+        value={valor.referencia} onChange={(e) => cambiar({ ...valor, referencia: e.target.value })}
+        aria-label="Referencia"
+      />
+      <button type="button" onClick={conMiGps} disabled={gps === 'leyendo'}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--v-borde)] px-4 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-60">
+        {gps === 'leyendo' ? <Loader2 className="size-4 animate-spin" /> : <LocateFixed className="size-4 text-[var(--v-p)]" />}
+        {valor.lat != null ? 'Ubicación puesta · leerla otra vez' : 'Estoy en casa: usar mi ubicación'}
+      </button>
+      {gps && gps !== 'leyendo' && <p role="alert" className="px-1 text-xs text-rose-600">{gps}</p>}
+      <div className={`${TARJETA} flex items-start gap-3 p-3.5`}>
+        <Car className="mt-0.5 size-4 shrink-0 text-[var(--v-p)]" />
+        <div className="min-w-0 text-sm">
+          <p className="font-semibold">
+            Traslado: {calculando ? 'calculando…' : !est ? 'escribe tu dirección' : est.precio == null ? 'por confirmar' : est.precio <= 0 ? 'sin cargo' : `${dinero.format(est.precio)}${est.aproximado ? ' aprox.' : ''}`}
+          </p>
+          <p className="text-xs text-[var(--v-suave)]">
+            {est?.fuera ? 'Queda lejos de lo que cubrimos: el salón te dice si puede ir.'
+              : est?.zona ? `Zona ${est.zona}. El salón te confirma el monto.`
+                : est ? 'Es aproximado: el salón te confirma el monto.' : comoSeCobra(traslado, dinero)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface CuentaDeLaReserva { total: number; aproximado: boolean; minutos: number }
 
@@ -1765,6 +1858,8 @@ function PanelReserva({
   const [hora, setHora] = useState<string | null>(null);
   const [contacto, setContacto] = useState(leerContacto);
   const [nota, setNota] = useState('');
+  const aDomicilio = sede.tipo === 'domicilio';
+  const [donde, setDonde] = useState<DondeReserva>({ direccion: '', referencia: '' });
   const [respuestas, setRespuestas] = useState<Record<string, RespuestaGusto>>({});
   const [estado, setEstado] = useState<EstadoHoras>({ cargando: false, horas: [], extra: [], cerrado: false, error: null });
   const [enviando, setEnviando] = useState(false);
@@ -1798,6 +1893,7 @@ function PanelReserva({
     const l: { clave: ClavePaso; titulo: string; ayuda?: string }[] = [
       { clave: 'elegido', titulo: 'Lo que elegiste' },
       { clave: 'cuando', titulo: '¿Qué día y a qué hora?' },
+      ...(aDomicilio ? [{ clave: 'donde' as ClavePaso, titulo: '¿A dónde vamos?', ayuda: 'La especialista va a tu casa. El traslado se cobra aparte del servicio.' }] : []),
       { clave: 'datos', titulo: '¿A nombre de quién reservamos?' },
     ];
     conElegir.forEach((s, i) => l.push({
@@ -1808,7 +1904,7 @@ function PanelReserva({
     for (const g of gustos) l.push({ clave: `gusto-${g.tipo}`, titulo: g.titulo, ayuda: g.ayuda });
     l.push({ clave: 'resumen', titulo: 'Revisa y reserva' });
     return l;
-  }, [conElegir, gustos]);
+  }, [conElegir, gustos, aDomicilio]);
   const indice = Math.max(0, pasos.findIndex((p) => p.clave === clave));
   const paso = pasos[indice];
 
@@ -1927,7 +2023,8 @@ function PanelReserva({
 
   const telefonoOk = contacto.telefono.replace(/\D/g, '').length >= 7;
   const datosOk = contacto.nombre.trim().length >= 2 && telefonoOk;
-  const listo = !!elegidos.length && !!hora && datosOk;
+  const dondeOk = !aDomicilio || donde.direccion.trim().length >= 3;
+  const listo = !!elegidos.length && !!hora && datosOk && dondeOk;
 
   const respuesta = (tipo: string): RespuestaGusto => respuestas[tipo] ?? { ids: [], otra: '' };
   const marcarGusto = (tipo: string, id: string) => {
@@ -1944,11 +2041,13 @@ function PanelReserva({
   const puedeSeguir = (() => {
     if (paso.clave === 'elegido') return !!elegidos.length;
     if (paso.clave === 'cuando') return previa || !!hora;
+    if (paso.clave === 'donde') return previa || dondeOk;
     if (paso.clave === 'datos') return previa || datosOk;
     return true;
   })();
   const porQueNo = paso.clave === 'elegido' ? 'Elige al menos un servicio'
     : paso.clave === 'cuando' ? 'Elige una hora'
+      : paso.clave === 'donde' ? 'Escribe tu dirección'
       : paso.clave === 'datos' ? (contacto.nombre.trim().length < 2 ? 'Escribe tu nombre' : 'Escribe tu WhatsApp con código de área')
         : '';
 
@@ -1966,6 +2065,7 @@ function PanelReserva({
           nota: [oferta ? `Viene por la oferta «${oferta.nombre}»` : '', nota.trim()].filter(Boolean).join(' · '),
           gustoIds: gustos.flatMap((g) => respuesta(g.tipo).ids),
           gustosNuevos: gustos.map((g) => ({ tipo: g.tipo, valor: respuesta(g.tipo).otra.trim() })).filter((g) => g.valor),
+          ...(aDomicilio ? { domicilio: { direccion: donde.direccion.trim(), referencia: donde.referencia.trim() || undefined, lat: donde.lat, lng: donde.lng } } : {}),
         },
       });
       guardarContacto(contacto.nombre.trim(), contacto.telefono.trim());
@@ -2096,6 +2196,9 @@ function PanelReserva({
         );
       }
 
+      case paso.clave === 'donde':
+        return <PasoDonde slug={slug} valor={donde} cambiar={setDonde} traslado={sede.traslado} dinero={dinero} campo={campo} />;
+
       case paso.clave === 'datos':
         return (
           <div className="space-y-2.5">
@@ -2133,6 +2236,9 @@ function PanelReserva({
             {fila(<CalendarDays className="size-4" />, hora
               ? <span className="first-letter:uppercase inline-block">{fmtFechaLarga.format(new Date(`${fecha}T12:00:00Z`))}, {horaBonita(hora)}</span>
               : <span className="text-[var(--v-suave)]">{previa ? 'Aquí va el día y la hora' : 'Elige el día y la hora'}</span>, 'cuando')}
+            {aDomicilio && fila(<Car className="size-4" />, donde.direccion.trim()
+              ? <>{donde.direccion.trim()}{donde.referencia.trim() ? <span className="block text-xs text-[var(--v-suave)]">{donde.referencia.trim()}</span> : null}<span className="block text-xs text-[var(--v-suave)]">El traslado va aparte del servicio</span></>
+              : <span className="text-[var(--v-suave)]">{previa ? 'Aquí va su dirección' : 'Tu dirección'}</span>, 'donde')}
             {fila(<Phone className="size-4" />, contacto.nombre.trim() ? `${contacto.nombre.trim()} · ${contacto.telefono.trim()}` : <span className="text-[var(--v-suave)]">Tu nombre y tu WhatsApp</span>, 'datos')}
             {!!conElegir.length && fila(<User className="size-4" />, (
               <span className="block space-y-0.5">
@@ -2283,7 +2389,7 @@ function Exito({ hecha, salon, otra }: { hecha: ReservaHecha; salon: string; otr
       </motion.span>
       <h1 className="mt-5 text-2xl font-bold tracking-tight">{hecha.confirmada ? '¡Tu cita quedó reservada!' : '¡Recibimos tu pedido!'}</h1>
       <p className="mt-1 text-[var(--v-suave)]">
-        {hecha.confirmada ? `Te esperamos en ${salon}.` : `${salon} te confirma la cita por WhatsApp.`}
+        {hecha.confirmada ? (hecha.domicilio ? `${salon} va a tu casa.` : `Te esperamos en ${salon}.`) : `${salon} te confirma la cita por WhatsApp.`}
       </p>
       {!hecha.confirmada && hecha.whatsapp && hecha.codigo && (
         <>
@@ -2308,7 +2414,13 @@ function Exito({ hecha, salon, otra }: { hecha: ReservaHecha; salon: string; otr
         {!!hecha.apartados.length && (
           <p className="mt-3 flex gap-2 text-sm"><ShoppingBag className="mt-0.5 size-4 shrink-0 text-[var(--v-p)]" />Te apartamos: {hecha.apartados.join(', ')}</p>
         )}
-        <p className="mt-3 flex gap-2 text-sm text-[var(--v-suave)]"><MapPin className="mt-0.5 size-4 shrink-0" />{hecha.sede.nombre}{hecha.sede.direccion ? ` · ${hecha.sede.direccion}` : ''}</p>
+        {hecha.domicilio ? (
+          <p className="mt-3 flex gap-2 text-sm text-[var(--v-suave)]"><Car className="mt-0.5 size-4 shrink-0" />
+            <span>Vamos a {hecha.domicilio.direccion}. Traslado {hecha.domicilio.traslado > 0 ? `aprox. ${montoTraslado(hecha.domicilio.traslado, hecha.domicilio.moneda)}` : 'sin cargo'}, el salón te lo confirma.</span>
+          </p>
+        ) : (
+          <p className="mt-3 flex gap-2 text-sm text-[var(--v-suave)]"><MapPin className="mt-0.5 size-4 shrink-0" />{hecha.sede.nombre}{hecha.sede.direccion ? ` · ${hecha.sede.direccion}` : ''}</p>
+        )}
       </div>
 
       <button type="button" onClick={otra} className="mt-6 text-sm font-semibold text-[var(--v-p)]">Hacer otra reserva</button>

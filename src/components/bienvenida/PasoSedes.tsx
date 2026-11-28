@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, MapPin, Plus } from 'lucide-react';
+import { Car, Check, MapPin, Plus, Store } from 'lucide-react';
 import { bienvenidaApi } from '../../services/bienvenida';
 import type { SedeBienvenida } from '../../types/bienvenida';
 import type { CitasAlCierre as CitasAlCierreDatos, DiaDeHorario, HorarioExtra as HorarioExtraDatos } from '../../types';
@@ -8,8 +8,9 @@ import { HORARIO_EXTRA_INICIAL, HorarioExtra } from '../ajustes/HorarioExtra';
 import { HorarioSemanal, semanaCompleta } from '../ajustes/HorarioSemanal';
 import { Aviso, BotonPrincipal, BotonSecundario, Cargando, Encabezado, Etiqueta, Tarjeta, claseCampo } from './comun';
 
-interface Borrador { nombre: string; direccion: string; telefono: string }
-const borradorDe = (s: SedeBienvenida): Borrador => ({ nombre: s.name, direccion: s.address ?? '', telefono: s.phone ?? '' });
+type TipoSede = 'local' | 'domicilio';
+interface Borrador { nombre: string; direccion: string; telefono: string; tipo: TipoSede }
+const borradorDe = (s: SedeBienvenida): Borrador => ({ nombre: s.name, direccion: s.address ?? '', telefono: s.phone ?? '', tipo: s.tipo === 'domicilio' ? 'domicilio' : 'local' });
 
 /** Paso 2: dirección y teléfono de cada local (y otra sucursal, si el plan la incluye) */
 export const PasoSedes: React.FC<{ onSiguiente: () => void }> = ({ onSiguiente }) => {
@@ -36,11 +37,11 @@ export const PasoSedes: React.FC<{ onSiguiente: () => void }> = ({ onSiguiente }
         const b = borradores[s.id];
         if (!b) continue;
         const original = borradorDe(s);
-        if (b.nombre === original.nombre && b.direccion === original.direccion && b.telefono === original.telefono) continue;
-        await bienvenidaApi.guardarSede(s.id, { nombre: b.nombre.trim() || undefined, direccion: b.direccion.trim() || null, telefono: b.telefono.trim() || null });
+        if (b.nombre === original.nombre && b.direccion === original.direccion && b.telefono === original.telefono && b.tipo === original.tipo) continue;
+        await bienvenidaApi.guardarSede(s.id, { nombre: b.nombre.trim() || undefined, direccion: b.direccion.trim() || null, telefono: b.telefono.trim() || null, tipo: b.tipo });
       }
       if (nueva?.nombre.trim()) {
-        await bienvenidaApi.nuevaSede({ nombre: nueva.nombre.trim(), direccion: nueva.direccion.trim() || undefined, telefono: nueva.telefono.trim() || undefined });
+        await bienvenidaApi.nuevaSede({ nombre: nueva.nombre.trim(), direccion: nueva.direccion.trim() || undefined, telefono: nueva.telefono.trim() || undefined, tipo: nueva.tipo });
       }
       onSiguiente();
     } catch (e) {
@@ -52,15 +53,29 @@ export const PasoSedes: React.FC<{ onSiguiente: () => void }> = ({ onSiguiente }
 
   if (!sedes && !error) return <Cargando />;
 
+  const tipoChip = (activo: boolean) => `flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[0.8125rem] font-bold border transition-colors cursor-pointer ${activo
+    ? 'bg-[var(--primary)] border-[var(--primary)] text-white'
+    : 'bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-600 dark:text-slate-300'}`;
+
   const campos = (b: Borrador, cambio: (c: keyof Borrador, v: string) => void) => (
     <div className="space-y-3">
-      <Etiqueta texto="Nombre del local">
+      <div>
+        <p className="mb-1.5 text-[0.8125rem] font-semibold text-slate-600 dark:text-slate-300">¿Cómo atiende?</p>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => cambio('tipo', 'local')} className={tipoChip(b.tipo === 'local')}><Store className="w-4 h-4" /> En el local</button>
+          <button type="button" onClick={() => cambio('tipo', 'domicilio')} className={tipoChip(b.tipo === 'domicilio')}><Car className="w-4 h-4" /> A domicilio</button>
+        </div>
+        {b.tipo === 'domicilio' && (
+          <p className="mt-1.5 text-[0.75rem] text-slate-500 dark:text-slate-400">La especialista va a la casa de la clienta. Su agenda, caja e inventario van aparte. El cobro del traslado se ajusta en Ajustes → El salón.</p>
+        )}
+      </div>
+      <Etiqueta texto={b.tipo === 'domicilio' ? 'Nombre (por ejemplo «A domicilio»)' : 'Nombre del local'}>
         <input value={b.nombre} onChange={(e) => cambio('nombre', e.target.value)} maxLength={120} className={claseCampo} />
       </Etiqueta>
-      <Etiqueta texto="Dirección">
+      <Etiqueta texto={b.tipo === 'domicilio' ? 'Desde dónde salen (no se muestra a las clientas)' : 'Dirección'}>
         <input value={b.direccion} onChange={(e) => cambio('direccion', e.target.value)} maxLength={200} placeholder="Calle, número, sector" className={claseCampo} />
       </Etiqueta>
-      <Etiqueta texto="Teléfono del local">
+      <Etiqueta texto={b.tipo === 'domicilio' ? 'Teléfono' : 'Teléfono del local'}>
         <input value={b.telefono} onChange={(e) => cambio('telefono', e.target.value)} inputMode="tel" maxLength={30} placeholder="809 555 1234" className={claseCampo} />
       </Etiqueta>
     </div>
@@ -77,13 +92,20 @@ export const PasoSedes: React.FC<{ onSiguiente: () => void }> = ({ onSiguiente }
       ))}
       {nueva ? (
         <Tarjeta>
-          <div className="mb-3 text-[0.8125rem] font-bold text-slate-500">Otra sucursal</div>
+          <div className="mb-3 text-[0.8125rem] font-bold text-slate-500">{nueva.tipo === 'domicilio' ? 'Servicio a domicilio' : 'Otra sucursal'}</div>
           {campos(nueva, (c, v) => setNueva((n) => (n ? { ...n, [c]: v } : n)))}
         </Tarjeta>
       ) : (
-        <BotonSecundario onClick={() => setNueva({ nombre: '', direccion: '', telefono: '' })} className="w-full">
-          <Plus className="w-4 h-4" /> Tengo otra sucursal
-        </BotonSecundario>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <BotonSecundario onClick={() => setNueva({ nombre: '', direccion: '', telefono: '', tipo: 'local' })} className="w-full">
+            <Plus className="w-4 h-4" /> Tengo otra sucursal
+          </BotonSecundario>
+          {!(sedes ?? []).some((s) => s.tipo === 'domicilio') && (
+            <BotonSecundario onClick={() => setNueva({ nombre: 'A domicilio', direccion: borradores[sedes?.[0]?.id ?? '']?.direccion ?? '', telefono: borradores[sedes?.[0]?.id ?? '']?.telefono ?? '', tipo: 'domicilio' })} className="w-full">
+              <Car className="w-4 h-4" /> También voy a domicilio
+            </BotonSecundario>
+          )}
+        </div>
       )}
       {error && <Aviso tipo="error">{error}</Aviso>}
       <BotonPrincipal onClick={seguir} cargando={guardando} className="w-full">Siguiente</BotonPrincipal>

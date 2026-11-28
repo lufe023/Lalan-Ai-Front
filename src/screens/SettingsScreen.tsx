@@ -65,6 +65,7 @@ import { EVENTO_AJUSTES_MENU } from '../components/guias/GuiaEnCurso';
 import { HorarioSemanal, semanaCompleta } from '../components/ajustes/HorarioSemanal';
 import { HorarioExtra } from '../components/ajustes/HorarioExtra';
 import { CitasAlCierre } from '../components/ajustes/CitasAlCierre';
+import { AjustesDomicilio } from '../components/ajustes/AjustesDomicilio';
 import { TarjetaEspecialistas } from '../components/especialistas/VentanaEspecialistas';
 import { VozDelSalon } from '../components/ajustes/VozDelSalon';
 import { ConectarMeta } from '../components/canales/ConectarMeta';
@@ -552,6 +553,17 @@ export const SettingsScreen: React.FC = () => {
             </span>
           </button>
         )}
+        {/* En el local o a domicilio, y cómo se cobra el traslado (de esta sede) */}
+        {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
+          <div id="domicilio" data-guia="domicilio" className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 shadow-xs">
+            <AjustesDomicilio
+              sede={variasSedes ? sedeActual?.name ?? null : null}
+              moneda={baseCurrency?.code ?? null}
+              onPonerPin={() => abrirSeccion('vitrina')}
+              onOtraSede={abrirBienvenida}
+            />
+          </div>
+        )}
         {/* SECTION 3: SALON BUSINESS PARAMETERS */}
         <form
           onSubmit={handleSaveSalonSettings}
@@ -598,7 +610,9 @@ export const SettingsScreen: React.FC = () => {
 
           <div>
             <label className="block text-[0.75rem] font-bold text-slate-700 dark:text-slate-300 mb-1">
-              {variasSedes ? `Dirección de ${sedeActual?.name ?? 'la sede principal'}` : 'Dirección Principal'}
+              {settings.tipo === 'domicilio'
+                ? 'Desde dónde salen (no se muestra a las clientas)'
+                : variasSedes ? `Dirección de ${sedeActual?.name ?? 'la sede principal'}` : 'Dirección Principal'}
             </label>
             <input
               type="text"
