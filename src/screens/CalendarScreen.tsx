@@ -20,6 +20,7 @@ import {
   UserCheck,
   AlertCircle,
   ChevronRight,
+  Car,
 } from 'lucide-react';
 import { useDinero } from '../hooks/useDinero';
 import { useApp } from '../context/AppContext';
@@ -36,6 +37,8 @@ import { CitasPendientes, citasPendientes } from '../components/agenda/CitasPend
 import { CambiarEspecialista } from '../components/agenda/CambiarEspecialista';
 import { ConfirmarCita, sinEspecialista } from '../components/agenda/ConfirmarCita';
 import { AdelantoCita } from '../components/agenda/AdelantoCita';
+import { DomicilioCita } from '../components/agenda/DomicilioCita';
+import { DireccionNuevaCita, type DireccionElegida } from '../components/agenda/DireccionNuevaCita';
 import { AvisosAlergiaCita } from '../components/agenda/AvisosAlergia';
 import { RecordatorioCita, RecordatoriosAMano, useRecordatoriosAMano } from '../components/agenda/RecordarPorWhatsapp';
 import { useAusencias } from '../hooks/useAusencias';
@@ -249,6 +252,9 @@ export const CalendarScreen: React.FC = () => {
   const [newStaff, setNewStaff] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [newChannel, setNewChannel] = useState<CommunicationChannel>('whatsapp');
+  /** Sede a domicilio: a dónde va la especialista (y el monto, si lo puso a mano) */
+  const [newDireccion, setNewDireccion] = useState<DireccionElegida | null>(null);
+  const aDomicilio = settings.tipo === 'domicilio';
 
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
@@ -333,6 +339,7 @@ export const CalendarScreen: React.FC = () => {
   const handleCreateAppointment = async (e: React.FormEvent | React.MouseEvent, forzar = false) => {
     e.preventDefault();
     if (!newClientName || (fueraDeHorario && !forzar) || agendando) return;
+    if (aDomicilio && !newDireccion?.direccion?.trim()) { setErrorAlAgendar('Escribe a dónde va la especialista (calle, número y sector).'); return; }
     const selectedSrv = services.find(s => s.id === newServiceId) || services[0];
     const finalPrice = customPrice !== null ? customPrice : (selectedSrv.priceTiers?.[0]?.price ?? selectedSrv.price ?? 0);
     const fullServiceName = selectedTierName ? `${selectedSrv.name} (${selectedTierName})` : selectedSrv.name;
@@ -364,6 +371,14 @@ export const CalendarScreen: React.FC = () => {
       status: 'confirmed',
       channel: newChannel,
       notes: newNotes,
+      ...(aDomicilio && newDireccion ? {
+        domicilioNuevo: {
+          direccion: newDireccion.direccion.trim(),
+          ...(newDireccion.referencia?.trim() ? { referencia: newDireccion.referencia.trim() } : {}),
+          ...(newDireccion.lat != null && newDireccion.lng != null ? { lat: newDireccion.lat, lng: newDireccion.lng } : {}),
+        },
+        ...(newDireccion.precio != null ? { trasladoManual: newDireccion.precio } : {}),
+      } : {}),
     });
     } catch (err: any) {
       // El servidor tiene la última palabra (horario, ausencias): se dice aquí mismo, sin cerrar
@@ -375,7 +390,7 @@ export const CalendarScreen: React.FC = () => {
     // Venía de algo pendiente en un chat: queda resuelto
     if (compromisoDeLaCita.current) { void compromisosApi.agendado(compromisoDeLaCita.current).catch(() => undefined); compromisoDeLaCita.current = null; }
     setNewClientName(''); setNewClientPhone(''); setSelectedClientId('');
-    setSelectedTierName(''); setCustomPrice(null); setNewNotes('');
+    setSelectedTierName(''); setCustomPrice(null); setNewNotes(''); setNewDireccion(null);
     setShowNewAptModal(false);
   };
 
@@ -581,6 +596,11 @@ export const CalendarScreen: React.FC = () => {
                             {getServiceCategoryIcon(apt.serviceCategory)}
                             <span>{apt.serviceName}</span>
                           </p>
+                          {apt.domicilio && (
+                            <p className="text-[0.6875rem] font-semibold text-sky-700 dark:text-sky-300 truncate mt-0.5 flex items-center gap-1" title="A domicilio">
+                              <Car className="w-3 h-3 shrink-0" /><span className="truncate">{apt.domicilio.direccion}</span>
+                            </p>
+                          )}
                           <div className="flex items-center justify-between text-[0.6875rem] text-slate-400 mt-1.5 pt-1 border-t border-slate-100 dark:border-neutral-800/60">
                             {sinEspecialista(apt) && ['pending', 'confirmed', 'confirmed_by_ai'].includes(apt.status)
                               ? <span className="font-bold text-amber-700 dark:text-amber-400">Sin especialista</span>
@@ -734,6 +754,16 @@ export const CalendarScreen: React.FC = () => {
                 })()}
                 <div className="shrink-0 hidden sm:block">{getStatusBadge(activeAppointment.status, activeAppointment)}</div>
               </div>
+
+              {/* ── A domicilio: a dónde va, cómo llegar y el traslado ─────── */}
+              {(activeAppointment.domicilio || activeAppointment.trasladoAntesMin || settings.tipo === 'domicilio') && (
+                <DomicilioCita
+                  key={`domicilio-${activeAppointment.id}`}
+                  cita={activeAppointment}
+                  editable={!['cancelled', 'completed'].includes(activeAppointment.status)}
+                  onCambio={(c) => setActiveAppointment((a) => (a && a.id === c.id ? { ...a, domicilio: c.domicilio, trasladoPrecio: c.trasladoPrecio } : a))}
+                />
+              )}
 
               {/* ── El adelanto: apartada, comprobante por revisar o registrado ── */}
               <AdelantoCita
@@ -978,7 +1008,7 @@ export const CalendarScreen: React.FC = () => {
       <IOSModal
         isOpen={showNewAptModal}
         onClose={() => { setShowNewAptModal(false); setCustomPrice(null); setSelectedTierName(''); compromisoDeLaCita.current = null; }}
-        title="Nueva Cita en Salón"
+        title={aDomicilio ? 'Nueva cita a domicilio' : 'Nueva Cita en Salón'}
         subtitle={`Agendando para el ${currentDateStr}`}
       >
         <form onSubmit={handleCreateAppointment} className="space-y-3 text-xs">
@@ -1043,6 +1073,14 @@ export const CalendarScreen: React.FC = () => {
               <SelectorHora value={newTime} onChange={v => { setNewTime(v); setErrorAlAgendar(null); }} />
             </div>
           </div>
+          {aDomicilio && (
+            <DireccionNuevaCita
+              key={selectedClientId || 'sin-ficha'}
+              guardadas={selectedClientId ? clients.find(c => c.id === selectedClientId)?.direcciones ?? [] : []}
+              valor={newDireccion}
+              onCambio={setNewDireccion}
+            />
+          )}
           <div className={`px-3 py-2 rounded-xl text-[0.75rem] ${fueraDeHorario
             ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
             : 'bg-slate-50 dark:bg-neutral-800/60 text-slate-500 dark:text-neutral-400'}`}>

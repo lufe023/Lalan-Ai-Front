@@ -62,8 +62,8 @@ export const bienvenidaApi = {
   salon: (d: { nombre?: string; tipos?: TipoSalon[] }) => api.put<EstadoBienvenida>('/bienvenida/salon', d),
 
   sedes: () => apiCadena.get<SedeBienvenida[]>('/bienvenida/sedes'),
-  guardarSede: (id: string, d: { nombre?: string; direccion?: string | null; telefono?: string | null }) => apiCadena.patch<SedeBienvenida[]>(`/bienvenida/sedes/${id}`, d),
-  nuevaSede: (d: { nombre: string; direccion?: string; telefono?: string }) => apiCadena.post<SedeBienvenida[]>('/bienvenida/sedes', d),
+  guardarSede: (id: string, d: { nombre?: string; direccion?: string | null; telefono?: string | null; tipo?: 'local' | 'domicilio' }) => apiCadena.patch<SedeBienvenida[]>(`/bienvenida/sedes/${id}`, d),
+  nuevaSede: (d: { nombre: string; direccion?: string; telefono?: string; tipo?: 'local' | 'domicilio' }) => apiCadena.post<SedeBienvenida[]>('/bienvenida/sedes', d),
   /** Sin `locationIds`, igual en todas las sedes. La última cita del día y el horario extra, como en Ajustes */
   horario: (horarioSemanal: DiaDeHorario[], extra: { locationIds?: string[]; citasAlCierre?: CitasAlCierre; horarioExtra?: HorarioExtra } = {}) =>
     apiCadena.put<SedeBienvenida[]>('/bienvenida/horario', { horarioSemanal, ...extra }),

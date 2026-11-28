@@ -1,5 +1,6 @@
 import { api, subirArchivo } from './api';
 import type { AvisoAlergia, PreguntaAlergia } from './saberProductos';
+import type { DomicilioDeCita, EstimacionTraslado } from '../types';
 
 /** Los interruptores que la administración le enciende o apaga a cada especialista */
 export type ClavePermiso =
@@ -71,6 +72,11 @@ export interface MiCita {
   precio?: number;
   moneda?: string;
   notas?: string | null;
+  /** A domicilio: a dónde va ella y el traslado (el monto, si ve precios) */
+  domicilio?: DomicilioDeCita | null;
+  trasladoPrecio?: number;
+  trasladoAntesMin?: number;
+  trasladoDespuesMin?: number;
 }
 
 export interface FichaClienta {
@@ -96,6 +102,9 @@ export const miAgendaApi = {
   revisado: (citaId: string, productId: string) => api.post<{ ok: true }>(`/especialista/citas/${citaId}/revisado`, { productId }),
   /** Lo que dijo la clienta: sí la anota en su ficha, no la descarta */
   responderAlergia: (citaId: string, grupo: string, tiene: boolean) => api.post<FichaClienta>(`/especialista/citas/${citaId}/alergia`, { grupo, tiene }),
+  /** A domicilio: su GPS en la puerta, la dirección o el monto */
+  traslado: (citaId: string, dto: { direccion?: string; referencia?: string; lat?: number; lng?: number; precio?: number }) =>
+    api.post<EstimacionTraslado & { domicilio: DomicilioDeCita | null }>(`/especialista/citas/${citaId}/traslado`, dto),
 };
 
 // ── Los chats de la especialista con sus clientas ────────────────

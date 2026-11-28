@@ -37,6 +37,8 @@ export interface SedeBienvenida {
   name: string;
   address: string | null;
   phone: string | null;
+  /** «local» o «domicilio» (la especialista va a la casa) */
+  tipo?: 'local' | 'domicilio' | string;
   horarioSemanal: DiaDeHorario[];
   /** Lo mismo que en Ajustes (servidor nuevo); null o ausente = lo de siempre */
   citasAlCierre?: CitasAlCierre | null;

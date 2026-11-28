@@ -14,6 +14,7 @@ import { TamanoLetraSelector } from '../components/ui/TamanoLetraSelector';
 import { useConfirmar } from '../components/ui/ModalConfirmar';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import { DomicilioCita } from '../components/agenda/DomicilioCita';
 import { miAgendaApi, misChatsApi, type EstadoCita, type FichaClienta, type MiChat, type MiChatResumen, type MiCita, type MiPerfil } from '../services/especialistas';
 import { ChatDeEspecialista } from '../components/especialista/ChatDeEspecialista';
 import { MisPagos } from '../components/especialista/MisPagos';
@@ -369,7 +370,7 @@ const TarjetaCita: React.FC<{
         <div className="min-w-0 flex-1">
           <div className="text-[0.875rem] font-bold text-slate-900 dark:text-white truncate">{cita.clienta}</div>
           <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400 truncate">
-            {cita.servicio} · {cita.minutos} min{varias && cita.sede ? ` · ${cita.sede}` : ''}
+            {cita.servicio} · {cita.minutos} min{varias && cita.sede ? ` · ${cita.sede}` : ''}{cita.domicilio ? ` · 🚗 ${cita.domicilio.direccion}` : ''}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -386,6 +387,20 @@ const TarjetaCita: React.FC<{
               <div className="text-[0.75rem] text-slate-500 dark:text-neutral-400">
                 {inicio.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })} · {hora(inicio)} a {hora(fin)}
               </div>
+
+              {/* A domicilio: a dónde va, cómo llegar y, ya en la puerta, el traslado con su GPS */}
+              {(cita.domicilio || cita.trasladoAntesMin) && (
+                <DomicilioCita
+                  cita={{
+                    id: cita.id, currencyCode: cita.moneda, domicilio: cita.domicilio ?? null,
+                    trasladoPrecio: cita.trasladoPrecio, trasladoAntesMin: cita.trasladoAntesMin, trasladoDespuesMin: cita.trasladoDespuesMin,
+                  }}
+                  editable={cita.estado !== 'cancelled' && cita.estado !== 'completed'}
+                  conMonto={cita.trasladoPrecio !== undefined}
+                  guardarCon={miAgendaApi.traslado}
+                  onCambio={(c) => onCambio({ ...cita, domicilio: c.domicilio, ...(cita.trasladoPrecio !== undefined ? { trasladoPrecio: c.trasladoPrecio } : {}) })}
+                />
+              )}
 
               {!ficha ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : (
                 <div className="space-y-2">

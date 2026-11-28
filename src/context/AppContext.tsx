@@ -744,6 +744,7 @@ export function mapApiClient(c: any): Client {
     trato: c.trato ?? null,
     tratoPersonal: c.tratoPersonal ?? null,
     cumpleanos: c.cumpleMesDia ? (c.cumpleAnio ? `${c.cumpleAnio}-${c.cumpleMesDia}` : c.cumpleMesDia) : null,
+    direcciones: Array.isArray(c.direcciones) ? c.direcciones : [],
     sedes: Array.isArray(c.sedes) ? c.sedes : [],
     archivadaEn: c.archivadaEn ?? null,
     ...(c.restaurada ? { restaurada: true } : {}),
@@ -877,6 +878,10 @@ export function mapApiAppointment(a: any): Appointment {
     fueraDeHorario: !!a.fueraDeHorario,
     staffId: a.staffId ?? null,
     cambioEspecialistaDe: a.cambioEspecialistaDe ?? null, cambioRespuesta: a.cambioRespuesta ?? null,
+    domicilio: a.domicilio ?? null,
+    trasladoPrecio: Number(a.trasladoPrecio ?? 0),
+    trasladoAntesMin: a.trasladoAntesMin ?? 0,
+    trasladoDespuesMin: a.trasladoDespuesMin ?? 0,
   };
 }
 function mapApiConversation(c: any): Conversation {
@@ -1318,6 +1323,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updated.trato !== undefined)                  payload.trato = updated.trato || null;
     if (updated.tratoPersonal !== undefined)          payload.tratoPersonal = updated.tratoPersonal?.trim() || null;
     if (updated.cumpleanos !== undefined)             payload.cumpleanos = updated.cumpleanos || '';
+    if (updated.direcciones !== undefined)            payload.direcciones = updated.direcciones;
     const res = await api.patch<any>(`/clients/${id}`, payload);
     setClients(c => c.map(x => x.id === id ? mapApiClient(res) : x));
   }, []);
@@ -1518,6 +1524,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     currencyCode?: string;
     date?: string;
     time?: string;
+    /** Sede a domicilio: a dónde va la especialista */
+    domicilioNuevo?: { direccion: string; referencia?: string; lat?: number; lng?: number };
+    /** El traslado que puso a mano (gana a la cuenta) */
+    trasladoManual?: number;
   }) => {
     const res = await api.post<any>('/appointments', {
       locationId: data.locationId || undefined,
@@ -1538,6 +1548,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       channel: data.channel,
       notes: data.notes || undefined,
       ...((data as any).fueraDeHorario ? { fueraDeHorario: true } : {}),
+      ...(data.domicilioNuevo ? { domicilio: data.domicilioNuevo } : {}),
+      ...(data.trasladoManual != null ? { trasladoPrecio: data.trasladoManual } : {}),
     });
     setAppointments(a => [...a, mapApiAppointment(res)]);
 
