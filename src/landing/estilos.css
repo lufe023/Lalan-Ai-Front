@@ -673,7 +673,7 @@
   .cupo-flex li.info { color: var(--tinta-2); border-top: 1px dashed var(--linea); padding-top: 6px; margin-top: 2px; }
   .cupo-flex li.info::before { content: "↳"; color: var(--tinta-3); }
   .trae-titulo { font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--tinta-2); margin-bottom: -6px; }
-  .plan .trae li.nuevo b { display: block; font-weight: 600; }
+  .plan .trae li.nuevo b, .plan .trae li.nuevo .neg { display: block; font-weight: 600; }
   .plan .trae li.nuevo small { display: block; font-size: .78rem; color: var(--tinta-2); line-height: 1.35; margin-top: 2px; }
 
   /* ── Las respuestas no se pierden ── */
@@ -770,7 +770,8 @@
   .plan .trae .ver-ejemplo .ver::before { content: ""; width: 0; height: 0; border-left: 7px solid currentColor; border-block: 4.5px solid transparent; }
   .plan .topes { display: grid; gap: 4px; border-top: 1px solid var(--linea); padding-top: 12px; font-size: .8rem; color: var(--tinta-2); }
   .plan .topes li { line-height: 1.35; }
-  .plan .topes b { color: var(--tinta); font-size: .86rem; font-variant-numeric: tabular-nums; }
+  .plan .topes .neg { font-weight: 700; }
+  .plan .topes b, .plan .topes .neg { color: var(--tinta); font-size: .86rem; font-variant-numeric: tabular-nums; }
   .plan .nota { font-size: .8rem; color: var(--tinta-3); border-top: 1px solid var(--linea); padding-top: 12px; flex: 1; }
   .plan .boton { justify-content: center; text-align: center; padding-inline: 14px; min-height: 4.6rem; text-wrap: balance; }
   /* El botón de la oferta en tres líneas centradas: Pruébalo / 2 meses gratis / con Plan Lounge */
@@ -922,7 +923,7 @@
 
   .h-cap { left: 4%; top: 6%; max-width: 44%; }
   .h-cap .ceja-h { margin-bottom: .6em; display: table; font-size: .78em; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--rosa-hondo); background: color-mix(in srgb, var(--papel) 80%, transparent); padding: .35em .8em; border-radius: 999px; }
-  .h-cap h3 { display: inline; margin: 0; font-family: var(--serif); font-weight: 600; font-size: 2.05em; line-height: 1.32; letter-spacing: -.01em; -webkit-box-decoration-break: clone; box-decoration-break: clone; background: color-mix(in srgb, var(--papel) 74%, transparent); padding: .04em .3em; border-radius: .3em; }
+  .h-cap h3, .h-cap .h-cap-t { display: inline; margin: 0; font-family: var(--serif); font-weight: 600; font-size: 2.05em; line-height: 1.32; letter-spacing: -.01em; -webkit-box-decoration-break: clone; box-decoration-break: clone; background: color-mix(in srgb, var(--papel) 74%, transparent); padding: .04em .3em; border-radius: .3em; }
 
   .h-titulo { left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; width: min(80%, 34em); padding: 1.4em 1.6em; border-radius: 1.6em; background: color-mix(in srgb, var(--papel) 72%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
   .h-titulo small { font-size: .85em; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rosa-hondo); }
@@ -998,7 +999,7 @@
 
   /* Vertical (teléfono y reel): el texto abajo, la escena arriba */
   .historia.h-vertical .h-cap { left: 6%; right: 6%; top: 4.5%; max-width: none; }
-  .historia.h-vertical .h-cap h3 { font-size: 1.9em; }
+  .historia.h-vertical .h-cap h3, .historia.h-vertical .h-cap .h-cap-t { font-size: 1.9em; }
   .historia.h-vertical .h-tarjeta { left: 6%; right: 6%; width: auto; top: auto; bottom: 12%; }
   .historia.h-vertical .h-titulo { top: 34%; }
   .historia.reel.h-vertical .h-tarjeta { bottom: 5%; }
@@ -1240,7 +1241,7 @@
   .cadena-pedido b { color: var(--tinta); font-weight: 700; }
   /* El paso de ahora, como el rótulo del video: número grande y lo que hizo */
   .paso-actual { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 2.2em; font-size: 1rem; }
-  .paso-actual b { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--boton); color: #fff; font: 600 1rem/1 var(--serif); align-self: center; }
+  .paso-actual b, .paso-actual .neg { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--boton); color: #fff; font: 600 1rem/1 var(--serif); align-self: center; }
   .paso-actual span { font-family: var(--serif); font-size: 1.35rem; font-weight: 600; color: var(--tinta); }
   .paso-actual em { font-style: normal; color: var(--tinta-2); }
   .escena-iso { position: relative; overflow: hidden; border-radius: 22px; }
@@ -1356,13 +1357,14 @@
   /* Los seis pasos debajo de la escena, con lo que hizo cada ayudante */
   .pasos-iso { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .pasos-iso li { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; background: var(--papel); border: 1px solid var(--linea); border-radius: 14px; padding: 8px 10px; transition: border-color .3s, box-shadow .3s; }
-  .pasos-iso b { grid-row: span 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--linea); color: var(--tinta); font-size: .72rem; align-self: start; transition: background-color .3s, color .3s; }
+  .pasos-iso .neg { font-weight: 700; }
+  .pasos-iso b, .pasos-iso .neg { grid-row: span 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--linea); color: var(--tinta); font-size: .72rem; align-self: start; transition: background-color .3s, color .3s; }
   .pasos-iso .paso-nombre { font-weight: 700; font-size: .84rem; color: var(--tinta); }
   .pasos-iso .estado-txt { font-size: .78rem; line-height: 1.35; color: var(--tinta-2); display: inline-block; }
   .pasos-iso li.trabaja { border-color: var(--rosa); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rosa) 14%, transparent); }
-  .pasos-iso li.trabaja b { background: var(--boton); color: #fff; }
-  .pasos-iso li.listo b { background: var(--verde); color: #fff; }
-  .pasos-iso li.ojo b { background: var(--ambar); }
+  .pasos-iso li.trabaja b, .pasos-iso li.trabaja .neg { background: var(--boton); color: #fff; }
+  .pasos-iso li.listo b, .pasos-iso li.listo .neg { background: var(--verde); color: #fff; }
+  .pasos-iso li.ojo b, .pasos-iso li.ojo .neg { background: var(--ambar); }
   .cadena-fin { justify-self: center; font-size: .95rem; color: var(--tinta-2); opacity: 0; translate: 0 10px; transition: opacity .5s, translate .6s cubic-bezier(.3, 1.6, .5, 1); }
   .cadena-fin b { color: var(--tinta); }
   .cadena-fin.se-ve { opacity: 1; translate: 0 0; }
