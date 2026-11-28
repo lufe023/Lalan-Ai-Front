@@ -17,8 +17,9 @@
       if (/^#\/(pantalla|reproductor|pedir-cancion)\//.test(h) || instalada || aviso) location.replace('/app/' + location.search + h);
     })();
   </script>
-  <title>Lalan AI · La asistente de WhatsApp para tu salón</title>
-  <meta name="description" content="Lalan atiende el WhatsApp de tu salón, agenda citas con notas de voz, recibe a cada clienta con lo que le gusta y te dice cuánto ganas de verdad. Pruébala gratis con tu mismo WhatsApp." />
+  <title>Lalan AI · Agenda automática con IA para el WhatsApp de tu salón</title>
+  <meta name="description" content="Asistente virtual con IA para el WhatsApp de tu salón de belleza, spa, uñas o barbería: agenda automática, notas de voz y tu ganancia real. Pruébala gratis." />
+  <link rel="canonical" href="%VITE_SITIO_URL%/" />
   <meta name="theme-color" content="#C46B7C" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -31,12 +32,60 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/icono-192.png" />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lalan AI" />
   <meta property="og:locale" content="es_DO" />
-  <meta property="og:title" content="Lalan AI · La asistente de WhatsApp para tu salón" />
+  <meta property="og:title" content="Lalan AI · Agenda automática con IA para el WhatsApp de tu salón" />
   <meta property="og:description" content="Agenda de noche, recibe a cada clienta con lo que le gusta y ve tu ganancia real. Pruébala gratis con tu mismo WhatsApp." />
   <meta property="og:image" content="%VITE_SITIO_URL%/landing/compartir.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Lalan AI, la asistente de WhatsApp para salones" />
   <meta property="og:url" content="%VITE_SITIO_URL%/" />
   <meta name="twitter:card" content="summary_large_image" />
+  <!--
+    Datos estructurados (schema.org): le dicen a Google y a los buscadores con IA
+    qué es Lalan, quién la hace y dónde se usa. Las preguntas frecuentes
+    (FAQPage) las agrega vite.config.ts al compilar, leídas de la sección
+    #preguntas de esta misma página, para que nunca digan otra cosa.
+  -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "%VITE_SITIO_URL%/#organizacion",
+        "name": "Lalan AI",
+        "legalName": "Gomez Santana Solutions Group SRL",
+        "url": "%VITE_SITIO_URL%/",
+        "logo": "%VITE_SITIO_URL%/icono-512.png",
+        "areaServed": { "@type": "Country", "name": "República Dominicana" },
+        "contactPoint": { "@type": "ContactPoint", "contactType": "sales", "telephone": "+1-809-229-9444", "availableLanguage": "es" }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "%VITE_SITIO_URL%/#sitio",
+        "name": "Lalan AI",
+        "url": "%VITE_SITIO_URL%/",
+        "inLanguage": "es-DO",
+        "publisher": { "@id": "%VITE_SITIO_URL%/#organizacion" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Lalan AI",
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "Sistema de agenda automática e IA para WhatsApp de salones de belleza",
+        "operatingSystem": "Web, Android, iOS",
+        "url": "%VITE_SITIO_URL%/",
+        "image": "%VITE_SITIO_URL%/landing/compartir.jpg",
+        "inLanguage": "es",
+        "description": "Asistente virtual con IA y sistema de agenda automática que atiende el WhatsApp, Instagram y Messenger de salones de belleza, spas, centros de uñas y barberías: agenda citas, entiende notas de voz, recuerda a cada clienta y lleva caja, inventario y ganancia por sede.",
+        "offers": { "@type": "Offer", "name": "Plan Gratis", "price": "0", "priceCurrency": "DOP" },
+        "publisher": { "@id": "%VITE_SITIO_URL%/#organizacion" }
+      }
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Unbounded:wght@700;800&display=swap" />
@@ -72,7 +121,7 @@
   <!-- ── Portada: la app de verdad, en la PC y en el teléfono ── -->
   <section class="portada envoltura entra" id="inicio">
     <div class="texto">
-      <span class="ceja">La asistente de WhatsApp para salones</span>
+      <span class="ceja">Para salones de belleza, spas, uñas y barberías</span>
       <h1>Son las 11 de la noche. Tu salón <em class="acento">sigue agendando.</em></h1>
       <p class="bajada">
         Lalan contesta el WhatsApp de tu salón, entiende notas de voz, busca la hora libre con la especialista correcta
@@ -564,7 +613,7 @@
             <p>Vuelve la calma.<span data-t="enero"> Si adelantaste, ese mes tienes lo de tu plan menos lo que tomaste.</span></p>
           </li>
         </ol>
-        <p class="letra-chica">Lo que sobra pasa un solo mes y como mucho lo que trae tu plan. Mientras devuelves lo adelantado no puedes adelantar otra vez, y si cambias a un plan menor o te vas, lo adelantado se cobra. Las respuestas extra valen el mes en que las compras. Cada tarjeta de arriba dice qué incluye cada plan. Todo está en las <a href="/condiciones-planes.html">condiciones de los planes</a>.</p>
+        <p class="letra-chica">Lo que sobra pasa un solo mes y como mucho lo que trae tu plan. Mientras devuelves lo adelantado no puedes adelantar otra vez, y si cambias a un plan menor o te vas, lo adelantado se cobra. Las respuestas extra valen el mes en que las compras. Cada tarjeta de arriba dice qué incluye cada plan. Todo está en las <a href="/condiciones-planes">condiciones de los planes</a>.</p>
       </div>
     </div>
   </section>
@@ -596,6 +645,10 @@
       <details>
         <summary>¿Tengo que estar pendiente del teléfono?</summary>
         <p>Solo de los avisos. Lo demás lo ves cuando quieras en la agenda y en las métricas. Si contestas un aviso con una nota de voz, Lalan sigue la conversación con lo que le dijiste.</p>
+      </details>
+      <details>
+        <summary>¿Lalan es un sistema de agenda?</summary>
+        <p>Sí, y algo más: es una asistente virtual con IA para WhatsApp. Tus clientas escriben o mandan una nota de voz a cualquier hora y Lalan les busca la hora libre con la especialista correcta y deja la cita en tu agenda sola. Es una agenda automática que además conversa, y te avisa cuando algo necesita a una persona.</p>
       </details>
       <details>
         <summary>¿Cómo empiezo?</summary>
@@ -656,7 +709,7 @@
           <label for="p-mensaje">¿Algo que quieras contarnos?</label>
           <textarea id="p-mensaje" rows="3" maxlength="600" placeholder="Ej.: tenemos dos sucursales y mucha gente escribe de noche"></textarea>
           <div class="trampa" aria-hidden="true"><label for="p-web">No llenar</label><input id="p-web" name="web" tabindex="-1" autocomplete="off"></div>
-          <label class="acepto"><input type="checkbox" id="p-acepto" required> <span>Acepto que Lalan AI me escriba por WhatsApp para coordinar mi prueba gratis, los <a href="/terminos.html" target="_blank" rel="noopener">términos</a> y la <a href="/privacidad.html" target="_blank" rel="noopener">política de privacidad</a>. <small style="display:block;margin-top:4px;opacity:.75">Los mensajes que Lalan manda primero por WhatsApp (recordatorios y avisos) los cobra Meta aparte.</small></span></label>
+          <label class="acepto"><input type="checkbox" id="p-acepto" required> <span>Acepto que Lalan AI me escriba por WhatsApp para coordinar mi prueba gratis, los <a href="/terminos" target="_blank" rel="noopener">términos</a> y la <a href="/privacidad" target="_blank" rel="noopener">política de privacidad</a>. <small style="display:block;margin-top:4px;opacity:.75">Los mensajes que Lalan manda primero por WhatsApp (recordatorios y avisos) los cobra Meta aparte.</small></span></label>
           <button class="boton" type="submit" id="p-enviar">Quiero mi prueba gratis</button>
           <p class="aviso" id="p-aviso" role="status" aria-live="polite"></p>
         </form>
@@ -716,7 +769,7 @@
 <footer class="envoltura" id="pie">
   <div class="pie-fila">
     <span>© 2026 Gomez Santana Solutions Group SRL · Lalan AI</span>
-    <span><a href="/app/">Entrar a Lalan</a> · <a href="/app/?registro=1" id="pie-crear">Crear mi cuenta</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes.html">Condiciones de los planes</a> · <a href="/privacidad.html">Privacidad</a> · <a href="/terminos.html">Términos</a></span>
+    <span><a href="/app/">Entrar a Lalan</a> · <a href="/app/?registro=1" id="pie-crear">Crear mi cuenta</a> · <a href="#otro-negocio" id="enlace-otro">¿Otro tipo de negocio?</a> · <a href="/condiciones-planes">Condiciones de los planes</a> · <a href="/privacidad">Privacidad</a> · <a href="/terminos">Términos</a></span>
   </div>
   <div class="pie-fila">
     <!-- Las cinco letras siguen siendo el camino al huevo de pascua (huevo.ts) -->

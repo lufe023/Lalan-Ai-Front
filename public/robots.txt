@@ -1,0 +1,7 @@
+# Lalan AI: the landing page and legal pages can be indexed.
+# The app (/app/) and each salon's Vitrina carry their own "noindex";
+# they are not blocked here so Google can read that tag.
+User-agent: *
+Allow: /
+
+Sitemap: https://lalan.gomezsantana.com/sitemap.xml

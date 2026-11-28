@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Las páginas fijas de Lalan (las Vitrinas van en /sitemap-vitrinas.xml, que arma el worker). Si cambia el dominio, cambiarlo aquí, en sitemap.xml y en robots.txt. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://lalan.gomezsantana.com/</loc><lastmod>2026-11-27</lastmod></url>
+  <url><loc>https://lalan.gomezsantana.com/condiciones-planes</loc><lastmod>2026-11-27</lastmod></url>
+  <url><loc>https://lalan.gomezsantana.com/privacidad</loc><lastmod>2026-11-27</lastmod></url>
+  <url><loc>https://lalan.gomezsantana.com/terminos</loc><lastmod>2026-11-27</lastmod></url>
+</urlset>
